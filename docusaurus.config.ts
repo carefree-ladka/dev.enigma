@@ -11,12 +11,12 @@ const config: Config = {
   url: 'https://your-docusaurus-site.example.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/js_enigma/',
+  baseUrl: '/js.enigma/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'jsenigma', // Usually your GitHub org/user name.
-  projectName: 'js_enigma', // Usually your repo name.
+  projectName: 'js.enigma', // Usually your repo name.
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
