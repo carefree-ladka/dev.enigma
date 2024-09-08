@@ -12,4 +12,5 @@ sidebar_position: 1
 4. [Grind 75](https://www.techinterviewhandbook.org/grind75)
 5. [Tech Interview Handbook](https://www.techinterviewhandbook.org/)
 6. [Striver's Sheet](https://leetcode.com/problem-list/eeudwo2i/)
+7. [Sean Prasad's Cheatsheet](https://seanprashad.com/leetcode-patterns/)
 
