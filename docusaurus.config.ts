@@ -132,7 +132,7 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} JSEnigma, Built with Kadak Chai`,
     },
     prism: {
-      theme: prismThemes.github,
+      theme: prismThemes.vsLight,
       darkTheme: prismThemes.dracula,
     },
   } satisfies Preset.ThemeConfig,
