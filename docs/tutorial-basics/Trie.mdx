@@ -71,16 +71,75 @@ class Trie {
     }
     return true;
   }
+
+  // Helper function to perform DFS and collect all words
+  #collectAllWords = (node, prefix, results) => {
+    if (node.isEndOfWord) {
+      results.push(prefix);
+    }
+    for (let char in node.children) {
+      this.#collectAllWords(node.children[char], prefix + char, results);
+    }
+  }
+
+  // Autocomplete function
+  autocomplete(prefix) {
+    let node = this.root;
+    for (let char of prefix) {
+      if (!node.children[char]) {
+        return []; // If prefix doesn't exist, return an empty array
+      }
+      node = node.children[char];
+    }
+
+    let results = [];
+    this.#collectAllWords(node, prefix, results);
+    return results;
+  }
+
+// Longest common prefix function
+  longestPrefix() {
+    let node = this.root;
+    let prefix = '';
+
+    while (node && !node.isEndOfWord) {
+      const keys = Object.keys(node.children);
+
+      // If there is more than one child or no children, break the loop
+      if (keys.length !== 1) {
+        break;
+      }
+
+      // Move to the next child
+      const nextChar = keys[0];
+      prefix += nextChar;
+      node = node.children[nextChar];
+    }
+
+    return prefix;
+  }
 }
 
 // Example usage
 const trie = new Trie();
 trie.insert("hello");
 trie.insert("world");
+trie.insert("apple");
+trie.insert("app");
+trie.insert("apply");
+trie.insert("banana");
+trie.insert("bat");
+trie.insert("ball");
 
 console.log(trie.search("hello")); // Output: true
 console.log(trie.search("hell")); // Output: false
 console.log(trie.startsWith("hell")); // Output: true
 console.log(trie.startsWith("worl")); // Output: true
+
+console.log(trie.autocomplete("app")); // ["apple", "apply", "app"]
+console.log(trie.autocomplete("ba"));  // ["banana", "bat", "ball"]
+console.log(trie.autocomplete("c"));   // []
+console.log(trie.longestPrefix());  // Output: ""
+
 
 ```
