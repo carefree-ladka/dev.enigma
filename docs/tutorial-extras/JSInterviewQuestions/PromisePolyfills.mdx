@@ -1,0 +1,311 @@
+---
+title: Promise Polyfills
+---
+
+### Promise
+
+```JavaScript
+const STATE = Object.freeze({
+  PENDING: "pending",
+  SUCCESS: "fulfilled",
+  REJECTED: "rejected",
+});
+
+class MyPromise {
+  #value = null;
+  #state = STATE.PENDING;
+  #successcbs = [];
+  #rejectedcbs = [];
+  constructor(executor) {
+    try {
+      executor(
+        (val) => this.#resolve(val),
+        (val) => this.#reject(val)
+      );
+    } catch (e) {
+      this.#reject(e);
+    }
+  }
+
+  #resolve(val) {
+    this.#value = val;
+    this.#state = STATE.SUCCESS;
+    this.#successcbs.forEach((cb) => cb());
+  }
+
+  #reject(val) {
+    this.#value = val;
+    this.#state = STATE.REJECTED;
+    this.#rejectedcbs.forEach((cb) => cb());
+  }
+
+  then(onFulfilled, onRejected) {
+    return new MyPromise((resolve, reject) => {
+      const successCb = () => {
+        if (!onFulfilled) return resolve(this.#value);
+        queueMicrotask(() => {
+          try {
+            resolve(onFulfilled(this.#value));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      };
+
+      const rejectCb = () => {
+        if (!onRejected) return reject(this.#value);
+        queueMicrotask(() => {
+          try {
+            resolve(onRejected(this.#value));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      };
+
+      switch (this.#state) {
+        case STATE.PENDING:
+          this.#successcbs.push(successCb);
+          this.#rejectedcbs.push(rejectCb);
+          break;
+        case STATE.SUCCESS:
+          successCb();
+          break;
+        case STATE.REJECTED:
+          rejectCb();
+          break;
+        default:
+          throw new Error("unknown state...");
+      }
+    });
+  }
+
+  catch(onRejected) {
+    return this.then(null, onRejected);
+  }
+
+  finally(onFinally) {
+    return this.then(
+      (value) => {
+        return MyPromise.resolve(onFinally()).then(() => value);
+      },
+      (reason) => {
+        return MyPromise.resolve(onFinally()).then(() => {
+          throw reason;
+        });
+      }
+    );
+  }
+
+  static resolve(value) {
+    return new MyPromise((resolve) => resolve(value));
+  }
+
+  static reject(reason) {
+    return new MyPromise((_, reject) => reject(reason));
+  }
+}
+
+const getUser = () => {
+  return new MyPromise((resolve, reject) => {
+    if (Math.random() * 5 > 6) {
+      resolve("Hiii");
+    } else {
+      reject("Byeee");
+    }
+  });
+};
+
+getUser()
+  .then((x) => console.log(x))
+  .catch((e) => console.log(e))
+  .finally(() => console.log("next..."))
+  .finally(() => console.log('lol'))
+```
+
+### Promise.all
+
+```JavaScript
+Promise.myAll = function (promises = []) {
+  return new Promise((resolve, reject) => {
+    if (!promises.length) resolve([])
+    const result = []
+    let count = 0
+    promises.forEach((promise, index) => {
+      Promise.resolve(promise).then((value) => {
+        result[index] = value
+        count++
+        if (count === promises.length) {
+          resolve(result)
+        }
+      }).catch((error) => reject(error))
+    })
+  })
+}
+
+// Example usage:
+const p1 = Promise.reject(3);
+const p2 = 42;
+const p3 = new Promise((resolve, reject) => {
+  setTimeout(resolve, 100, 'foo');
+});
+
+Promise.myAll([p1, p2, p3])
+  .then((values) => {
+    console.log(values); // [3, 42, "foo"]
+  })
+  .catch((error) => {
+    console.error(error);
+  });
+```
+
+### Promise.allSettled
+
+```JavaScript
+Promise.myAllSettled = function (promises = []) {
+  return Promise.all(
+    promises.map(promise => {
+      return Promise.resolve(promise).then((value) => ({
+        status: 'fulfilled', value
+      })).catch((reason => ({
+        status: 'rejected', reason
+      })))
+    })
+  )
+}
+
+// Example usage:
+const p1 = Promise.resolve(3);
+const p2 = Promise.reject('An error occurred');
+const p3 = new Promise((resolve, reject) => {
+  setTimeout(resolve, 100, 'foo');
+});
+
+Promise.myAllSettled([p1, p2, p3])
+  .then(results => {
+    console.log(results);
+    // [
+    //   { status: 'fulfilled', value: 3 },
+    //   { status: 'rejected', reason: 'An error occurred' },
+    //   { status: 'fulfilled', value: 'foo' }
+    // ]
+  });
+```
+
+### Promise Any
+
+```JavaScript
+Promise.myAny = function (promises = []) {
+  return new Promise((resolve, reject) => {
+    let errors = [];
+    let rejectedCount = 0;
+    const totalPromises = promises.length;
+
+    if (!totalPromises) {
+      return reject(new AggregateError(errors, "All promises were rejected"));
+    }
+
+    promises.forEach((promise, index) => {
+      Promise.resolve(promise)
+        .then(value => {
+          resolve(value);
+        })
+        .catch(error => {
+          errors[index] = error;
+          rejectedCount++;
+
+          if (rejectedCount === totalPromises) {
+            reject(new AggregateError(errors, "All promises were rejected"));
+          }
+        });
+    });
+  });
+};
+
+// Example usage:
+const p1 = Promise.reject('Error 1');
+const p2 = new Promise((resolve) => setTimeout(resolve, 100, 'Success 2'));
+const p3 = new Promise((resolve) => setTimeout(resolve, 200, 'Success 3'));
+
+Promise.myAny([p1, p2, p3])
+  .then(value => {
+    console.log('Resolved with value:', value); // "Resolved with value: Success 2"
+  })
+  .catch(error => {
+    console.error('Rejected with error:', error);
+  });
+```
+
+
+### Promise Race
+
+```JavaScript
+Promise.myRace = function (promises = []) {
+  return new Promise((resolve, reject) => {
+    promises.forEach(promise => {
+      Promise.resolve(promise)
+        .then(resolve)
+        .catch(reject);
+    });
+  });
+};
+
+// Example usage:
+const p1 = new Promise((resolve) => setTimeout(resolve, 500, 'Success 1'));
+const p2 = new Promise((resolve, reject) => setTimeout(reject, 100, 'Error 2'));
+const p3 = new Promise((resolve) => setTimeout(resolve, 200, 'Success 3'));
+
+Promise.myRace([p1, p2, p3])
+  .then(value => {
+    console.log('Resolved with value:', value); // "Resolved with value: Success 2"
+  })
+  .catch(error => {
+    console.error('Rejected with error:', error); // "Rejected with error: Error 2"
+  });
+```
+
+### Fetch with Retry
+
+```JavaScript
+const fetchWithRetry = async (fetcher, maxRetry = 3, currentRetry = 0) => {
+  try {
+    const response = await fetcher()
+    if (response.ok) {
+      return await response.json()
+    }
+  }
+  catch (err) {
+    console.log('err', err);
+    if (maxRetry > 0) {
+      return fetchWithRetry(fetcher, maxRetry - 1, currentRetry + 1)
+    }
+  }
+  throw new Error(`Failed to fetch after ${currentRetry} retries`)
+}
+
+
+//Usage 
+const url = 'https://api.example.com'
+
+const fetchData = async () => fetchWithRetry(() => fetch(url), 3)
+
+
+fetchData()
+  .then(res => res.json())
+  .then(data => console.log(data))
+  .catch(error => console.log('failed to fetch', error))
+```
+
+### Sleep
+
+```JavaScript
+const sleep = (wait) => new Promise(res => setTimeout(res, wait))
+
+async function fix() {
+  console.log('Start');
+  await sleep(2000); // Sleep for 2 seconds
+  console.log('End');
+}
+
+fix();
+```

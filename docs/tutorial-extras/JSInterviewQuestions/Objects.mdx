@@ -1,0 +1,174 @@
+---
+title: Object Related Problems
+---
+
+### Flatten an Object
+**Recursive Way**
+
+```JavaScript
+const obj = {
+  a: 1,
+  b: {
+    c: 3,
+    d: {
+      e: 5,
+    },
+  },
+};
+
+const flatten = (obj, sep, parent = "") => {
+  return Object.keys(obj).reduce((acc, curr) => {
+    let newKey = parent ? parent + sep + curr : curr;
+    if (typeof obj[curr] === "object" && !Array.isArray(obj[curr])) {
+      acc = {
+        ...acc,
+        ...flatten(obj[curr], sep, newKey),
+      };
+    } else acc[newKey] = obj[curr];
+    return acc;
+  }, {});
+};
+
+console.log(flatten(obj, ".")); //{ a: 1, 'b.c': 3, 'b.d.e': 5 }
+```
+
+**Stack Based**
+
+```JavaScript
+function flattenObject(obj) {
+  const result = {};
+  const stack = [{ parentKey: '', value: obj }];
+
+  while (stack.length > 0) {
+    const { parentKey, value } = stack.pop();
+
+    for (const [key, val] of Object.entries(value)) {
+      const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+      if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        stack.push({ parentKey: newKey, value: val });
+      } else {
+        result[newKey] = val;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Example object to flatten
+const obj = {
+  a: 1,
+  b: {
+    c: 2,
+    d: {
+      e: 3,
+      f: 4
+    }
+  },
+  g: 5
+};
+
+console.log(flattenObject(obj)); //{ a: 1, g: 5, 'b.c': 2, 'b.d.e': 3, 'b.d.f': 4 }
+```
+
+### Group By
+
+```JavaScript
+const people = [
+  { id: 1, name: "Alice", age: 25, city: "New York" },
+  { id: 2, name: "Bob", age: 30, city: "San Francisco" },
+  { id: 3, name: "Charlie", age: 28, city: "New York" },
+  { id: 4, name: "David", age: 25, city: "Los Angeles" },
+];
+
+const groupBy = (obj, keyGetter) => {
+  return obj.reduce((acc, curr) => {
+    const key = keyGetter(curr);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(curr);
+    return acc;
+  }, {});
+};
+
+console.log(groupBy(people, (item) => item.city));
+
+/* 
+{
+  'New York': [
+    { id: 1, name: 'Alice', age: 25, city: 'New York' },
+    { id: 3, name: 'Charlie', age: 28, city: 'New York' }
+  ],
+  'San Francisco': [ { id: 2, name: 'Bob', age: 30, city: 'San Francisco' } ],
+  'Los Angeles': [ { id: 4, name: 'David', age: 25, city: 'Los Angeles' } ]
+}
+*/
+```
+
+### Add Keys
+
+```JavaScript
+const obj1 = {
+  a: 1,
+  b: 2,
+  c: 4
+}
+
+const obj2 = {
+  a: 1,
+  b: 2,
+  c: 4
+}
+
+const obj3 = {
+  e: 2,
+}
+
+const addKeys = (...objs) => {
+  return objs?.reduce((acc, curr) => {
+    for (const key in curr) {
+      if (!acc[key]) acc[key] = 0
+      acc[key] += curr[key]
+    }
+    return acc
+  }, {})
+}
+
+console.log(addKeys(obj1, obj2, obj3)); //{ a: 2, b: 4, c: 8, e: 2 }
+```
+
+
+### Deep Copy
+
+```JavaScript
+const obj = {
+  a: 1,
+  b: {
+    c: 3,
+    d: {
+      e: 5,
+    },
+  },
+};
+
+const deepCopy = (obj) => {
+  if (typeof obj !== "object" || obj === null) return obj;
+
+  const copiedObj = Array.isArray(obj) ? [] : {};
+
+  for (const key in obj) {
+    if (Object.hasOwn(obj, key)) {
+      copiedObj[key] = deepCopy(obj[key]);
+    }
+  }
+  return copiedObj;
+};
+
+const newObj = deepCopy(obj);
+newObj.a = 10;
+newObj.b.c = 11;
+newObj.b.d.e = 15;
+
+console.log(obj); //{ a: 1, b: { c: 3, d: { e: 5 } } }
+console.log(newObj); //{ a: 10, b: { c: 11, d: { e: 15 } } }
+```

@@ -1,0 +1,60 @@
+---
+title: Currying Variations
+---
+
+
+### Type 1
+
+```JavaScript
+const sum = (a) => (b) => b ? sum2(a + b) : a
+console.log(sum(1)(2)(3)());  //6
+```
+
+### Type 2
+
+```JavaScript
+const sum = (a, b, c) => a + b + c
+
+const curry = (fn) => {
+  return function curried(...args) {
+    return args.length >= fn.length
+      ? fn(...args)
+      : (...newArgs) => curried(...args, ...newArgs)
+  }
+}
+
+const curriedSum = curry(sum);
+console.log(curriedSum(1)(2)(3)); // 6
+```
+
+### Type 3
+
+```JavaScript
+const add = (...args) => args.reduce((acc, curr) => acc + curr, 0);
+
+const sum = (...args) => {
+  // Initialize total sum with the provided arguments
+  let total = add(...args);
+
+  // Helper function to accumulate sums
+  const helper = (...newArgs) => {
+    if (newArgs.length === 0) {
+      // If no new arguments are provided, return the total sum
+      return total;
+    }
+    // Update the total with new arguments and return the helper function for further chaining
+    total += add(...newArgs);
+    return helper;
+  };
+
+  return args.length === 0 ? 0 : helper;
+};
+
+// Example usage
+console.log(sum(1)(2)(3)()); // 6
+console.log(sum(1, 2)(3)()); // 6
+console.log(sum(1)(2, 3)()); // 6
+console.log(sum(1, 2, 3, 4)()); // 10
+console.log(sum(1)(2, 3, 4)()); // 10
+console.log(sum()); // 0
+```

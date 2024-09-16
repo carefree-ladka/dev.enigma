@@ -1,0 +1,123 @@
+---
+title: Array Methods Polyfills
+---
+
+
+### forEach Polyfill
+
+```JavaScript
+const arr = [1, 2, 3, 4];
+
+Array.prototype.myForEach = function (cb) {
+  for (let i = 0; i < this.length; i++) {
+    // Execute the callback, passing the current element, index, and the array
+    cb(this[i], i, this);
+  }
+};
+
+// Example usage
+arr.myForEach((item, index, array) => {
+  console.log(`Item: ${item}, Index: ${index}, Array: [${array}]`);
+});
+
+```
+
+### Map Polyfill
+
+```JavaScript
+const arr = [1, 2, 3, 4];
+
+Array.prototype.myMap = function (cb) {
+  const result = [];
+  for (let i = 0; i < this.length; i++) {
+    result.push(cb(this[i], i, this));
+  }
+  return result;
+};
+
+console.log(arr.myMap((x) => x * 2)); //[ 2, 4, 6, 8 ]
+```
+
+### Filter Polyfill
+
+```JavaScript
+const arr = [1, 2, 3, 4];
+
+Array.prototype.myFilter = function (cb) {
+  const result = [];
+  for (let i = 0; i < this.length; i++) {
+    if (cb(this[i], i, this)) result.push(this[i]);
+  }
+  return result;
+};
+
+console.log(arr.myFilter((x) => x % 2 === 0)); //[ 2, 4 ]
+```
+
+### Reduce Polyfill
+
+```JavaScript
+const arr = [1, 2, 3, 4];
+
+Array.prototype.myReduce = function (cb, intialvalue) {
+  let accumulator;
+  accumulator = intialvalue ? intialvalue : 0;
+  const startIndex = intialvalue ? 1 : 0;
+  for (let i = startIndex; i < this.length; i++) {
+    accumulator = cb(accumulator, this[i], i, this);
+  }
+  return accumulator;
+};
+
+console.log(arr.myReduce((acc, curr) => acc + curr, 0)); //10
+```
+
+### Flat Polyfill
+
+**Recursion Based**
+
+```JavaScript
+const arr = [1, [[[2], 7], 8], [[[[[9]]]]]];
+
+// const isFlattened = (arr) => !arr.some(Array.isArray);
+
+const flatten = (arr, depth) => {
+  if (depth <= 0) return arr;
+  return arr.reduce(
+    (acc, curr) =>
+      Array.isArray(curr)
+        ? [...acc, ...flatten(curr, depth - 1)]
+        : [...acc, curr],
+    []
+  );
+};
+
+console.log(flatten(arr, Infinity)); //[ 1, 2, 7, 8, 9 ]
+```
+
+**Iterative Approach**
+
+```JavaScript
+function flattenArray(arr) {
+  const stack = [...arr];  // Initialize stack with all elements of the array
+  const result = [];       // To store the flattened array
+
+  while (stack.length) {
+    const current = stack.pop(); // Pop the last element from the stack
+
+    if (Array.isArray(current)) {
+      // If it's an array, push its elements back onto the stack
+      stack.push(...current);
+    } else {
+      // If it's not an array, add it to the result
+      result.push(current);
+    }
+  }
+
+  return result.reverse();  // Reverse the result to maintain the original order
+}
+
+// Example usage
+const nestedArray = [1, [2, [3, 4], 5], [6, 7], 8];
+console.log(flattenArray(nestedArray)); // Output: [1, 2, 3, 4, 5, 6, 7, 8]
+```

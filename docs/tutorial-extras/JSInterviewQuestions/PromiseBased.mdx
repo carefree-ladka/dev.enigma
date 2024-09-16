@@ -1,0 +1,108 @@
+---
+title: Promise Based Outputs
+---
+
+### Problem 1
+
+```JavaScript
+console.log("Start");
+
+setTimeout(() => {
+  console.log("Timeout 1");
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log("Promise 1");
+}).then(() => {
+  console.log("Promise 2");
+});
+
+setTimeout(() => {
+  console.log("Timeout 2");
+}, 0);
+
+console.log("End");
+```
+
+```text
+Start
+End
+Promise 1
+Promise 2
+Timeout 1
+Timeout 2
+```
+
+### Problem 2
+
+```JavaScript
+function callbackExample(cb) {
+  console.log("Callback Start");
+  cb();
+  console.log("Callback End");
+}
+
+console.log("Start");
+
+setTimeout(() => {
+  console.log("Timeout 1");
+
+  Promise.resolve().then(() => {
+    console.log("Promise inside Timeout 1");
+  });
+
+  callbackExample(() => {
+    console.log("Callback inside Timeout 1");
+  });
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log("Promise 1");
+
+  setTimeout(() => {
+    console.log("Timeout inside Promise 1");
+
+    callbackExample(() => {
+      console.log("Callback inside Timeout from Promise 1");
+    });
+  }, 0);
+  
+}).then(() => {
+  console.log("Promise 2");
+});
+
+setTimeout(() => {
+  console.log("Timeout 2");
+
+  callbackExample(() => {
+    console.log("Callback inside Timeout 2");
+  });
+
+  Promise.resolve().then(() => {
+    console.log("Promise inside Timeout 2");
+  });
+}, 0);
+
+console.log("End");
+```
+
+```text
+Start
+End
+Promise 1
+Promise 2
+Timeout 1
+Callback Start
+Callback inside Timeout 1
+Callback End
+Promise inside Timeout 1
+Timeout 2
+Callback Start
+Callback inside Timeout 2
+Callback End
+Promise inside Timeout 2
+Timeout inside Promise 1
+Callback Start
+Callback inside Timeout from Promise 1
+Callback End
+```
