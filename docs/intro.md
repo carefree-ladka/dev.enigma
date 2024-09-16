@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Welcome to JSEnigma
 
-**It's a handy reference for mastering common coding techniques for your next coding interview**
+### It's a handy reference for mastering common coding techniques for your next coding interview
 
 1. [BigO Cheat Sheet](https://bigocheatsheet.io/)
 2. [Download PDF](https://www.bigocheatsheet.com/pdf/big-o-cheatsheet.pdf)
