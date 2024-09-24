@@ -1,0 +1,160 @@
+---
+title: Cycle Detection in Graphs
+---
+
+Cycle detection is an essential aspect of graph theory, used to identify whether a graph contains cycles. This document outlines methods for detecting cycles in both directed and undirected graphs.
+
+### Cycle Detection in Directed Graphs
+    1. DFS
+    2. BFS
+    3. Kahn's Algorithm (Topological Sorting)
+
+Kahn's Algorithm is a method used to detect cycles in directed graphs by attempting to find a topological ordering. If a topological order exists, the graph is acyclic; otherwise, it contains at least one cycle. 
+
+## Steps of Kahn's Algorithm
+
+1. **Compute In-Degree**: Calculate the in-degree (the number of incoming edges) for each vertex in the graph.
+2. **Initialize the Queue**: Enqueue all vertices with an in-degree of 0 (vertices with no incoming edges).
+3. **Process the Queue**:
+   - Dequeue a vertex and increment a counter for visited nodes.
+   - For each neighboring vertex, decrease its in-degree. If a neighbor’s in-degree becomes 0, enqueue it.
+4. **Cycle Check**: After processing, if the count of visited nodes is not equal to the total number of vertices, a cycle exists.
+
+```JavaScript
+function kahnCycleDetection(graph) {
+    // Step 1: Compute in-degrees of all vertices
+    const inDegree = new Array(graph.length).fill(0);
+    
+    for (let u = 0; u < graph.length; u++) {
+        for (const v of graph[u]) {
+            inDegree[v]++;
+        }
+    }
+
+    // Step 2: Initialize the queue with all vertices having in-degree 0
+    const queue = [];
+    for (let i = 0; i < inDegree.length; i++) {
+        if (inDegree[i] === 0) {
+            queue.push(i);
+        }
+    }
+
+    // Step 3: Count of visited nodes
+    let visitedCount = 0;
+
+    // Step 4: Process the queue
+    while (queue.length > 0) {
+        // Dequeue a vertex
+        const current = queue.shift();
+        visitedCount++; // Increment count of visited nodes
+
+        // Step 5: Decrease the in-degree of neighboring nodes
+        for (const neighbor of graph[current]) {
+            inDegree[neighbor]--;
+            // If in-degree becomes 0, add it to the queue
+            if (inDegree[neighbor] === 0) {
+                queue.push(neighbor);
+            }
+        }
+    }
+
+    // Step 6: If the visited count is not equal to the number of nodes, a cycle exists
+    return visitedCount !== graph.length; // Returns true if a cycle is detected
+}
+
+// Example usage:
+const directedGraph = [
+    [1],    // 0 -> 1
+    [2],    // 1 -> 2
+    [0],    // 2 -> 0 (cycle)
+    []
+];
+
+console.log("Cycle Detected:", kahnCycleDetection(directedGraph));
+```
+
+Kahn's Algorithm is an efficient method for detecting cycles in directed graphs, with a time complexity of O(V+E), where V is the number of vertices and E is the number of edges. 
+
+
+### Cycle Detection in Directed Graphs
+    1. DFS
+    2. BFS
+    3. Union Find (Disjoint Set)
+    4. Graph coloring
+
+### Union-Find (Disjoint Set) for Cycle Detection in Undirected Graphs
+
+1. **Initialize**: Create a Union-Find structure to keep track of the components.
+2. **Process Edges**: For each edge in the graph:
+   - Use the **Find** operation to check if the two vertices of the edge belong to the same set.
+   - If they do, a cycle exists.
+   - If they don’t, use the **Union** operation to merge their sets.
+3. **Conclusion**: If no cycles are detected during the process, the graph is acyclic.
+
+```JavaScript
+class UnionFind {
+    constructor(size) {
+        this.parent = Array.from({ length: size }, (_, i) => i);
+        this.rank = Array(size).fill(1);
+    }
+
+    find(node) {
+        if (this.parent[node] !== node) {
+            // Path compression
+            this.parent[node] = this.find(this.parent[node]);
+        }
+        return this.parent[node];
+    }
+
+    union(node1, node2) {
+        const root1 = this.find(node1);
+        const root2 = this.find(node2);
+
+        if (root1 === root2) {
+            return false; // A cycle is detected
+        }
+
+        // Union by rank
+        if (this.rank[root1] > this.rank[root2]) {
+            this.parent[root2] = root1;
+        } else if (this.rank[root1] < this.rank[root2]) {
+            this.parent[root1] = root2;
+        } else {
+            this.parent[root2] = root1;
+            this.rank[root1]++;
+        }
+        return true; // No cycle detected
+    }
+}
+
+function hasCycle(graph) {
+    const uf = new UnionFind(graph.length);
+
+    for (const [u, v] of graph) {
+        if (!uf.union(u, v)) {
+            return true; // Cycle detected
+        }
+    }
+
+    return false; // No cycle detected
+}
+
+// Example usage:
+const undirectedGraph = [
+    [0, 1],
+    [1, 2],
+    [2, 0], // This edge creates a cycle
+    [1, 3]
+];
+
+console.log("Cycle Detected:", hasCycle(undirectedGraph));
+```
+``Time Complexity:``
+- Find : O(α(n))
+- Union: O(α(n))O(α(n))
+- Total for m operations:O(m⋅α(n))
+- Here, α(n) is the inverse Ackermann function, which grows very slowly. For all practical purposes, it can be considered constant, making the Find operation nearly O(1)
+
+``Space Complexity`` : O(n)
+
+  
