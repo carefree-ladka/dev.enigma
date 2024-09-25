@@ -76,38 +76,36 @@ console.log(flattenObject(obj)); //{ a: 1, g: 5, 'b.c': 2, 'b.d.e': 3, 'b.d.f': 
 We are not using extra space for this case.
 
 ```JavaScript
-function flattenObjectInPlace(obj, parentKey = '', res = {}) {
-  for (const key in obj) {
-    if (Object.hasOwn(obj,key)) {
-      const newKey = parentKey ? `${parentKey}.${key}` : key;
-      if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-        flattenObjectInPlace(obj[key], newKey, res);
-        delete obj[key]; // Remove the nested object
-      } else {
-        res[newKey] = obj[key];
-        if (parentKey) delete obj[parentKey];
+function flattenObject(obj, parent = '', res = obj) {
+  for (let key in obj) {
+    if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+      flattenObject(obj[key], parent + key + '.', res);
+      delete obj[key];  // Remove the nested object as it's flattened
+    } else {
+      // If the key already exists in the object, we replace it directly
+      if (parent) {
+        res[parent + key] = obj[key];
+        delete obj[key]; // Delete the original key to avoid duplication
       }
     }
   }
-
-  // Update original object with flattened result
-  Object.assign(obj, res);
+  return res;
 }
 
-// Example usage:
-const nestedObject = {
-  a: 1,
-  b: {
-    c: 2,
-    d: {
+let obj = {
+  a: {
+    b: 1,
+    c: {
+      d: 2,
       e: 3
     }
-  }
+  },
+  f: 4
 };
 
-flattenObjectInPlace(nestedObject);
-console.log(nestedObject);
-// Output: { a: 1, 'b.c': 2, 'b.d.e': 3 }
+flattenObject(obj);
+console.log(obj);
+/* { f: 4, 'a.b': 1, 'a.c.d': 2, 'a.c.e': 3 } */
 ```
 
 ### Extended Version of Object Flattening
@@ -165,6 +163,72 @@ console.log(flattenObj(obj));
   'b.d.f[2].h.i': 6,
   'b.d.f[2].h.x[0]': 22,
   'b.d.f[2].h.x[1]': 11
+}
+*/
+```
+
+### Extended Version of Object Flattening (In Place)
+
+```JavaScript
+function flattenObject(obj, parent = '', res = obj) {
+  // Helper function to process array values
+  const processArray = (arr, parentKey) => {
+    arr.forEach((item, index) => {
+      if (typeof item === 'object' && item !== null) {
+        flattenObject(item, `${parentKey}[${index}].`, res);
+      } else {
+        res[`${parentKey}[${index}]`] = item;
+      }
+    });
+  };
+
+  // Iterate over object keys
+  Object.keys(obj).forEach(key => {
+    const value = obj[key];
+    const newKey = parent + key
+
+    if (Array.isArray(value)) {
+      // Process arrays
+      processArray(value, newKey);
+      delete obj[key]; // Remove the original array key after processing
+    } else if (typeof value === 'object' && value !== null) {
+      // Process nested objects
+      flattenObject(value, newKey + '.', res);
+      delete obj[key]; // Remove the original nested object key after processing
+    } else {
+      // Handle simple values
+      if (parent) {
+        res[newKey] = value;
+        delete obj[key]; // Remove the original key to avoid duplication
+      }
+    }
+  });
+
+  return res;
+}
+
+let obj = {
+  a: {
+    b: 1,
+    c: {
+      d: 2,
+      e: [3, 4]
+    }
+  },
+  f: [5, { g: 6 }]
+};
+
+flattenObject(obj);
+console.log(obj);
+
+/* 
+{
+  'a.b': 1,
+  'a.c.d': 2,
+  'a.c.e[0]': 3,
+  'a.c.e[1]': 4,
+  'f[0]': 5,
+  'f[1].g': 6
 }
 */
 ```
