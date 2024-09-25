@@ -309,3 +309,52 @@ async function fix() {
 
 fix();
 ```
+
+### Retry Callback
+
+```JavaScript
+function retry(fn, retries = 3, delay = 1000) {
+    const attempt = (triesLeft, resolve, reject, args) => {
+        fn(...args)
+            .then(resolve)
+            .catch(error => {
+                if (triesLeft === 0) {
+                    reject(`Failed after ${retries} attempts: ${error}`);
+                } else {
+                    console.log(`Retrying... Attempts left: ${triesLeft}`);
+                    setTimeout(() => attempt(triesLeft - 1, resolve, reject, args), delay);
+                }
+            });
+    };
+
+    return (...args) => new Promise((resolve, reject) => attempt(retries, resolve, reject, args));
+}
+```
+
+### Example Usage
+
+```JavaScript
+function unreliableFunction() {
+    return new Promise((resolve, reject) => {
+        const success = Math.random() > 0.7;  // 30% chance of success
+        if (success) {
+            resolve("Success!");
+        } else {
+            reject("Random failure");
+        }
+    });
+}
+
+const retryUnreliable = retry(unreliableFunction, 3, 1000);
+
+retryUnreliable()
+    .then(result => console.log(result))
+    .catch(error => console.error(error));
+
+/* 
+Retrying... Attempts left: 3
+Retrying... Attempts left: 2
+Retrying... Attempts left: 1
+Failed after 3 attempts: Random failure
+*/
+```
