@@ -15,6 +15,67 @@ Stacks are a fundamental data structure that follows the Last In, First Out (LIF
 - **Peek**: View the top element of the stack without removing it.
 - **isEmpty**: Check if the stack is empty.
 
+
+### Stack Implementation Using a LinkedList
+```JavaScript
+// Node class represents each element in the stack
+class Node {
+  constructor(value, next = null) {
+    this.value = value; // The value stored in the node
+    this.next = next;   // Reference to the next node in the stack
+  }
+}
+
+// Stack class manages the stack operations using a linked list
+class Stack {
+  constructor() {
+    this.top = null; // Points to the top node in the stack
+    this.size = 0;   // Tracks the number of elements in the stack
+  }
+
+  // Adds a new value to the top of the stack
+  push(value) {
+    this.top = new Node(value, this.top); // Create a new node pointing to the current top
+    this.size++; // Increment the size of the stack
+  }
+
+  // Removes and returns the value from the top of the stack
+  pop() {
+    if (!this.top) return null; // If the stack is empty, return null
+    const value = this.top.value; // Get the value of the top node
+    this.top = this.top.next; // Move the top pointer to the next node
+    this.size--; // Decrement the size of the stack
+    return value; // Return the value of the popped node
+  }
+
+  // Returns the value at the top of the stack without removing it
+  peek() {
+    return this.top ? this.top.value : null; // Return top value or null if stack is empty
+  }
+
+  // Checks if the stack is empty
+  isEmpty() {
+    return !this.top; // Returns true if top is null
+  }
+
+  // Returns the current size of the stack
+  getSize() {
+    return this.size; // Return the number of elements in the stack
+  }
+}
+
+// Example usage:
+const stack = new Stack();
+stack.push(10); // Add 10 to the stack
+stack.push(20); // Add 20 to the stack
+stack.push(30); // Add 30 to the stack
+
+console.log(stack.peek()); // 30 (top value)
+console.log(stack.pop());  // 30 (removes and returns the top value)
+console.log(stack.getSize()); // 2 (size of the stack after pop)
+console.log(stack.isEmpty()); // false (stack is not empty)
+```
+
 ## Common Patterns
 
 ### 1. Balanced Parentheses
@@ -108,6 +169,73 @@ function nextGreaterElements(nums) {
 
     return result;
 }
+```
+
+
+### Monotonic Stack Pattern Template
+
+```JavaScript
+const CASES = Object.freeze({
+  'NEXT_GREATER': 'NEXT_GREATER',
+  'PREV_GREATER': 'PREV_GREATER',
+  'NEXT_SMALLER': 'NEXT_SMALLER',
+  'PREV_SMALLER': 'PREV_SMALLER'
+})
+
+
+function monotonicStackTemplate(arr, type) {
+  let result = new Array(arr.length).fill(-1);
+  let stack = [];
+
+  for (let i = 0; i < arr.length; i++) {
+    let condition;
+    let assignmentPos;
+
+    switch (type) {
+      case CASES.NEXT_GREATER:
+        condition = () => stack.length && arr[stack[stack.length - 1]] < arr[i];
+        assignmentPos = 'inside';
+        break;
+      case CASES.PREV_GREATER:
+        condition = () => stack.length && arr[stack[stack.length - 1]] <= arr[i];
+        assignmentPos = 'outside';
+        break;
+      case CASES.NEXT_SMALLER:
+        condition = () => stack.length && arr[stack[stack.length - 1]] > arr[i];
+        assignmentPos = 'inside';
+        break;
+      case CASES.PREV_SMALLER:
+        condition = () => stack.length && arr[stack[stack.length - 1]] >= arr[i];
+        assignmentPos = 'outside';
+        break;
+      default:
+        throw new Error('Invalid type');
+    }
+
+    while (condition()) {
+      let index = stack.pop();
+      if (assignmentPos === 'inside') {
+        result[index] = arr[i];
+      }
+    }
+
+    if (assignmentPos === 'outside' && stack.length) {
+      result[i] = arr[stack.at(-1)];
+    }
+
+    stack.push(i);
+  }
+
+  return result;
+}
+
+// Example usage:
+const arr = [4, 5, 2, 10, 8];
+
+console.log(monotonicStackTemplate(arr, CASES.NEXT_GREATER)); // Output: [5, 10, 10, -1, -1]
+console.log(monotonicStackTemplate(arr, CASES.PREV_GREATER)); // Output: [-1, -1, 5, -1, 10]
+console.log(monotonicStackTemplate(arr, CASES.NEXT_SMALLER)); // Output: [2, 2, -1, 8, -1]
+console.log(monotonicStackTemplate(arr, CASES.PREV_SMALLER)); // Output: [-1, 4, -1, 2, 2]
 ```
 
 ## Stack Problems
