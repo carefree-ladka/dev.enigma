@@ -1,6 +1,44 @@
 ---
 title: Promise Based Outputs
 ---
+# Understanding Micro Queue and Macro Queue in JavaScript
+
+In JavaScript, the concepts of **Micro Queue** and **Macro Queue** (also known as the Task Queue) refer to different types of queues that manage the execution of asynchronous tasks. Understanding these queues helps clarify how the event loop processes different types of operations.
+
+## Macro Queue (Task Queue)
+
+The **Macro Queue** contains tasks that are generally scheduled by APIs (like `setTimeout`, `setInterval`, or I/O operations). Tasks in this queue are executed one at a time in the order they were added. After all currently executing code has completed and any microtasks in the Micro Queue have been processed, the next task from the Macro Queue is executed. 
+
+**Examples of tasks in the Macro Queue include:**
+
+- `setTimeout`
+- `setInterval`
+- I/O operations (e.g., file reading)
+- Event handlers
+
+## Micro Queue (Job Queue)
+
+The **Micro Queue**, on the other hand, is used for more granular operations that need to occur after the currently executing script but before the next task from the Macro Queue. This queue is processed immediately after the execution of the currently running script and before any tasks from the Macro Queue are executed. 
+
+**Examples of operations in the Micro Queue include:**
+
+- Promises (`Promise.then`, `Promise.catch`, `Promise.finally`)
+- Mutation Observers
+- `queueMicrotask()`
+
+## Execution Order
+
+When the JavaScript event loop runs, it follows this general order:
+
+1. Execute the currently running code (main stack).
+2. Process all tasks in the **Micro Queue**.
+3. If there are no more microtasks, process the next task in the **Macro Queue**.
+4. Repeat the process.
+
+## Summary
+
+- **Macro Queue**: Contains tasks like `setTimeout`, `setInterval`, and I/O tasks; processed after the Micro Queue.
+- **Micro Queue**: Contains promise callbacks and other high-priority tasks; processed immediately after the current execution context.
 
 ### Problem 1
 
@@ -22,15 +60,15 @@ setTimeout(() => {
 }, 0);
 
 console.log("End");
-```
 
-```text
+/* 
 Start
 End
 Promise 1
 Promise 2
 Timeout 1
 Timeout 2
+*/
 ```
 
 ### Problem 2
@@ -84,9 +122,8 @@ setTimeout(() => {
 }, 0);
 
 console.log("End");
-```
 
-```text
+/* 
 Start
 End
 Promise 1
@@ -105,4 +142,39 @@ Timeout inside Promise 1
 Callback Start
 Callback inside Timeout from Promise 1
 Callback End
+*/
+```
+
+### Problem 3
+
+```JavaScript
+console.log('console1');
+
+setTimeout(() => {
+  console.log('setTimeout1');
+  Promise.resolve().then(() => {
+    console.log('Promise1');
+  })
+}, 0)
+
+new Promise((resolve) => {
+  console.log('Promise 1');
+  setTimeout(() => {
+    resolve('resolve 1')
+  }, 0)
+}).then((res) => {
+  console.log('resolved 2');
+  setTimeout(() => {
+    console.log(res);
+  }, 0)
+})
+
+/* 
+console1
+Promise 1
+setTimeout1
+Promise1
+resolved 2
+resolve 1
+*/
 ```
