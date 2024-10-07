@@ -1,0 +1,48 @@
+---
+title: React TypeScript Context
+---
+
+```JavaScript
+import * as React from "react";
+
+interface Todo {
+  id: number;
+  text: string;
+}
+
+interface AppState {
+  todos: Todo[];
+}
+
+type SetAppState = React.Dispatch<React.SetStateAction<AppState>>;
+
+const AppContext = React.createContext<
+  | {
+      appState: AppState;
+      setAppState: SetAppState;
+    }
+  | undefined
+>(undefined);
+
+interface AppProviderProps {
+  children: React.ReactNode;
+}
+
+export default function AppProvider({ children }: AppProviderProps) {
+  const [appState, setAppState] = React.useState<AppState>({
+    todos: [{ id: 1, text: "Walk the dog" }],
+  });
+
+  const value = React.useMemo(() => ({ appState, setAppState }), [appState]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useAppContext() {
+  const context = React.useContext(AppContext);
+  if (context === undefined) {
+    throw new Error("useAppContext must be used within an AppProvider");
+  }
+  return context;
+}
+```
