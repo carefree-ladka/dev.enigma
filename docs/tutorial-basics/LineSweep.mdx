@@ -1,0 +1,164 @@
+---
+title: Line Sweep Algorithm
+---
+
+The **Line Sweep** algorithm is a computational geometry technique used to solve various problems involving intervals or segments. The basic idea is to "sweep" a line across the plane and process events as the line intersects with points of interest (typically the endpoints of segments).
+
+## Steps of the Line Sweep Algorithm
+
+1. **Event Creation**: Create a list of events from the segments or intervals. Each event represents a point where an interval starts or ends.
+
+2. **Sorting Events**: Sort the events primarily by the x-coordinate. If two events have the same x-coordinate, handle the starting events before ending events.
+
+3. **Sweeping the Line**: Initialize a data structure (like a balanced tree or a multiset) to keep track of active segments. As you process each event:
+   - For a starting event, add the segment to the active set.
+   - For an ending event, remove the segment from the active set.
+   - Optionally, during the sweep, check for intersections or perform other calculations based on the active segments.
+
+4. **Processing Events**: For each event, update the state of the active segments and collect any required information (like intersection points, area calculations, etc.).
+
+Must Read  : [Line Sweep](https://leetcode.com/discuss/study-guide/2166045/line-sweep-algorithms)
+## Example: Finding Intersections of Line Segments
+
+Consider the following line segments:
+
+1. Segment A: (1, 3)
+2. Segment B: (2, 5)
+3. Segment C: (4, 6)
+
+### Step-by-Step Process
+
+1. **Create Events**:
+   - Event A_start: (1, start, A)
+   - Event A_end: (3, end, A)
+   - Event B_start: (2, start, B)
+   - Event B_end: (5, end, B)
+   - Event C_start: (4, start, C)
+   - Event C_end: (6, end, C)
+
+2. **Sort Events**:
+   - [(1, start, A), (2, start, B), (3, end, A), (4, start, C), (5, end, B), (6, end, C)]
+
+3. **Sweep the Line**:
+- Start with an empty active set.
+- Process Event A_start: Add Segment A → Active Set: ``{A}``
+- Process Event B_start: Add Segment B → Active Set: ``{A, B}``
+- Process Event A_end: Remove Segment A → Active Set: ``{B}``
+- Process Event C_start: Add Segment C → Active Set: ``{B, C}``
+- Process Event B_end: Remove Segment B → Active Set: ``{C}``
+- Process Event C_end: Remove Segment C → Active Set: ``{}``
+
+4. **Intersections Found**: In this case, Segment A intersects with Segment B at point (2,3).
+
+### Meeting Rooms II
+
+```JavaScript
+function minMeetingRooms(intervals) {
+  if (intervals.length === 0) return 0;
+
+  const events = [];
+
+  // Step 1: Convert intervals to events
+  intervals.forEach(([start, end]) => {
+    events.push([start, 1]);  // Start of a meeting
+    events.push([end, -1]);   // End of a meeting
+  });
+
+  // Step 2: Sort events
+  events.sort(([time1, type1], [time2, type2]) => {
+    if (time1 === time2) {
+      return type1 - type2; // End event (-1) before start event (+1)
+    }
+    return time1 - time2;   // Sort by time
+  });
+
+  // Step 3: Sweep through events to find max rooms required
+  let activeRooms = 0;
+  let maxRooms = 0;
+
+  events.forEach(([, type]) => {
+    activeRooms += type; // Increment or decrement active room count
+    maxRooms = Math.max(maxRooms, activeRooms); // Update maximum rooms needed
+  });
+
+  return maxRooms; // Return the maximum number of rooms needed
+}
+
+// Example usage:
+const intervals = [
+  [0, 30],
+  [5, 10],
+  [15, 20]
+];
+console.log(minMeetingRooms(intervals)); // Output: 2
+```
+
+### Employee Free time
+
+```JavaScript
+/**
+ * // Definition for an Interval.
+ * function Interval(start, end) {
+ *    this.start = start;
+ *    this.end = end;
+ * };
+ */
+
+/**
+ * @param {Interval[][]} schedules
+ * @return {Interval[]}
+ */
+function employeeFreeTime(schedules) {
+  const events = [];
+
+  // Step 1: Create events from employee schedules
+  schedules.forEach(schedule => {
+    schedule.forEach(({ start, end }) => {
+      events.push([start, 'start']);
+      events.push([end, 'end']);
+    });
+  });
+
+  // Step 2: Sort events
+  events.sort(([time1, type1], [time2, type2]) => {
+    return time1 === time2 ? (type1 === 'end' ? -1 : 1) : time1 - time2;
+  });
+
+  // Step 3: Sweep through events to find free time
+  const freeTime = [];
+  let active = 0;
+  let lastEnd = null;
+
+  for (const [time, type] of events) {
+    if (type === 'start') {
+      if (active === 0 && lastEnd !== null) {
+        // Add the free time interval if there was a gap
+        if (lastEnd < time) { // Ensure that we only add intervals where there is a gap
+          freeTime.push(new Interval(lastEnd, time));
+        }
+      }
+      active++; // Increase active intervals
+    } else { // type === 'end'
+      active--; // Decrease active intervals
+      if (active === 0) {
+        lastEnd = time; // Mark the end of the last active interval
+      }
+    }
+  }
+
+  return freeTime; // Return an array of Interval objects
+}
+```
+
+## Related LeetCode Problems
+
+Here are some problems on LeetCode that can be solved using the Line Sweep algorithm:
+
+1. **[Meeting Rooms II](https://leetcode.com/problems/meeting-rooms-ii/)**
+2. **[Insert Interval](https://leetcode.com/problems/insert-interval/)**
+3. **[Minimum Interval to Include Each Query](https://leetcode.com/problems/minimum-interval-to-include-each-query/)**
+4. **[Skyline Problem](https://leetcode.com/problems/the-skyline-problem/)**
+5. **[Overlapping Intervals](https://leetcode.com/problems/merge-intervals/)**
+6. **[Car Fleet](https://leetcode.com/problems/car-fleet/)**
+
+More Problems: https://leetcode.com/problem-list/mzw3cyy6/
