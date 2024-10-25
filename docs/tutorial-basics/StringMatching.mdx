@@ -1,0 +1,334 @@
+---
+title: String Matching
+---
+
+### Brute-Force String Matching
+
+The brute-force string matching algorithm is the simplest approach to solving the problem. It checks for the presence of the pattern at every possible position in the text.
+
+#### Algorithm Steps
+
+1. **Iterate through the Text**: For each position in the text, check if the pattern matches starting from that position.
+2. **Check for Match**: Compare the characters of the pattern with the corresponding characters in the text.
+3. **Record Matches**: If a match is found, record the starting index of the match.
+
+**Code Example**:
+
+```javascript
+/**
+ * Perform brute-force string matching to find the pattern in the text.
+ * @param {string} text - The text string.
+ * @param {string} pattern - The pattern string.
+ * @return {number[]} - The starting indices of occurrences of the pattern.
+ */
+const bruteForceSearch = (text, pattern) => {
+  const result = [];
+  const m = pattern.length;
+  const n = text.length;
+
+  for (let i = 0; i <= n - m; i++) {
+    let j;
+    for (j = 0; j < m; j++) {
+      if (text[i + j] !== pattern[j]) break;
+    }
+    if (j === m) {
+      result.push(i);
+    }
+  }
+  
+  return result;
+};
+```
+
+
+## Knuth-Morris-Pratt (KMP) Algorithm
+
+The Knuth-Morris-Pratt (KMP) algorithm is an efficient string searching algorithm that finds occurrences of a "pattern" string within a "text" string. It improves upon the naive string matching algorithm by avoiding redundant comparisons.
+
+### Overview
+
+The KMP algorithm uses information gained from previous comparisons to avoid redundant checking. It preprocesses the pattern to create a partial match table (also known as the "longest prefix suffix" or LPS array), which helps in skipping unnecessary comparisons when a mismatch occurs.
+
+### Algorithm Steps
+
+1. **Preprocess the Pattern**: Construct the LPS array for the pattern.
+2. **Search for the Pattern**: Use the LPS array to efficiently search for the pattern in the text.
+
+### Preprocessing the Pattern
+
+The LPS array (Longest Prefix Suffix) stores the length of the longest proper prefix of the pattern which is also a suffix. This allows the algorithm to skip unnecessary comparisons in the search phase.
+
+**Code Example**:
+
+```Javascript
+/**
+ * Build the LPS (Longest Prefix Suffix) array for the pattern.
+ * @param {string} pattern - The pattern string.
+ * @return {number[]} - The LPS array.
+ */
+const buildLPSArray = (pattern) => {
+  const lps = Array(pattern.length).fill(0);
+  let length = 0;
+  let i = 1;
+
+  while (i < pattern.length) {
+    if (pattern[i] === pattern[length]) {
+      length++;
+      lps[i] = length;
+      i++;
+    } else {
+      if (length > 0) {
+        length = lps[length - 1];
+      } else {
+        lps[i] = 0;
+        i++;
+      }
+    }
+  }
+  
+  return lps;
+};
+
+/**
+ * Perform KMP search to find the pattern in the text.
+ * @param {string} text - The text string.
+ * @param {string} pattern - The pattern string.
+ * @return {number[]} - The starting indices of occurrences of the pattern.
+ */
+const kmpSearch = (text, pattern) => {
+  const lps = buildLPSArray(pattern);
+  const result = [];
+  let i = 0; // Index for text
+  let j = 0; // Index for pattern
+
+  while (i < text.length) {
+    if (pattern[j] === text[i]) {
+      i++;
+      j++;
+    }
+    
+    if (j === pattern.length) {
+      result.push(i - j);
+      j = lps[j - 1];
+    } else if (i < text.length && pattern[j] !== text[i]) {
+      if (j > 0) {
+        j = lps[j - 1];
+      } else {
+        i++;
+      }
+    }
+  }
+  
+  return result;
+};
+
+const text = "ababcababcabc";
+const pattern = "abc";
+
+console.log(kmpSearch(text, pattern)); // Output: [2, 7, 10]
+```
+
+# Using Trie 
+
+```JavaScript
+class TrieNode {
+  constructor() {
+    this.children = {};
+    this.isEndOfWord = false; // Marks the end of a pattern
+  }
+}
+
+class Trie {
+  constructor() {
+    this.root = new TrieNode();
+  }
+
+  insert(word) {
+    let currentNode = this.root;
+
+    for (const char of word) {
+      if (!currentNode.children[char]) {
+        currentNode.children[char] = new TrieNode();
+      }
+      currentNode = currentNode.children[char];
+    }
+    currentNode.isEndOfWord = true; // Mark the end of the pattern
+  }
+
+  search(text) {
+    const results = [];
+    const n = text.length;
+
+    for (let i = 0; i < n; i++) {
+      let currentNode = this.root;
+
+      for (let j = i; j < n && currentNode.children[text[j]]; j++) {
+        currentNode = currentNode.children[text[j]];
+        if (currentNode.isEndOfWord) {
+          results.push({ pattern: text.substring(i, j + 1), index: i });
+        }
+      }
+    }
+
+    return results;
+  }
+}
+
+// Example Usage
+const trie = new Trie();
+trie.insert('he');
+trie.insert('she');
+trie.insert('his');
+trie.insert('hers');
+
+const text = 'ushers';
+const results = trie.search(text);
+console.log(results); // Output: [{ pattern: 'she', index: 1 }, { pattern: 'hers', index: 3 }]
+/* 
+TC : O(N*K)
+K is the maximum length of any pattern that has been inserted into the Trie.
+where N is the length of the text.
+
+SC : O(M+R)
+M is the number of characters in all patterns in the Trie.
+R is the number of matched patterns (or substrings) found during the search.
+*/
+```
+
+# Aho-Corasick Algorithm
+   - Use Aho-Corasick when you need to search for multiple patterns in a single text, especially when those patterns can share common prefixes
+   - Use KMP for single pattern searches where space efficiency is a concern or when the patterns are relatively small and do not need to be checked against a larger set
+
+```JavaScript
+class Node {
+
+  constructor() {
+    this.outputs = new Set();
+    this.children = new Map();
+    this.failureLink = null;
+  }
+
+  hasChild(key) {
+    return this.children.has(key);
+  }
+
+  getChild(key) {
+    return this.children.get(key);
+  }
+
+  setChild(key, node) {
+    this.children.set(key, node);
+  }
+
+  addOutput(output) {
+    this.outputs.add(output);
+  }
+
+  copyOutputs(node) {
+    for (const o of node.outputs) {
+      this.outputs.add(o);
+    }
+  }
+
+}
+
+class AhoCorasick {
+
+  constructor(patterns) {
+
+    // construct the trie
+    this.root = new Node();
+
+    let currNode = this.root;
+    for (const pattern of patterns) {
+      for (let i = 0; i < pattern.length; i++) {
+        const key = pattern[i];
+        if (!currNode.hasChild(key)) {
+          currNode.setChild(key, new Node());
+        }
+        currNode = currNode.getChild(key);
+      }
+      currNode.addOutput(pattern);
+      currNode = this.root;
+    }
+
+    // failure link
+    this.root.failureLink = this.root;
+    const queue = [];
+    for (const [_, child] of this.root.children) {
+      child.failureLink = this.root;
+      queue.push(child);
+    }
+
+    while (queue.length !== 0) {
+      currNode = queue.shift();
+      for (const [key, child] of currNode.children) {
+        queue.push(child);
+
+        let n = currNode.failureLink;
+        while (!n.hasChild(key) && n != this.root) {
+          n = n.failureLink;
+        }
+        child.failureLink = n.getChild(key) ?? this.root;
+        child.copyOutputs(child.failureLink);
+
+      }
+    }
+  }
+
+  search(text) {
+    const found = [];
+    let state = this.root;
+    let i = 0;
+    while (i < text.length) {
+      const c = text[i];
+      if (state.hasChild(c)) {
+        state = state.getChild(c);
+        i++;
+        if (state.outputs.size > 0) {
+          state.outputs.forEach(val => {
+            found.push({ "pos": i - val.length, "val": val });
+          });
+        }
+      } else if (state === this.root) {
+        i++;
+      } else {
+        state = state.failureLink;
+      }
+    }
+    return found;
+  }
+}
+
+// Test the Aho-Corasick implementation
+function testAhoCorasick() {
+  const patterns = ['he', 'she', 'his', 'hers'];
+  const text = 'ushers';
+  const ac = new AhoCorasick(patterns);
+  const results = ac.search(text);
+
+  results.forEach(result => {
+    console.log(`Pattern: "${result.val}" found at position: ${result.pos}`);
+  });
+}
+
+// Run the test
+testAhoCorasick();
+
+/* 
+Pattern: "she" found at position: 1
+Pattern: "he" found at position: 2
+Pattern: "hers" found at position: 2
+*/
+
+/* 
+TC : O(P+N+T)
+P is the total length of all patterns
+N is the number of nodes in the trie (which can be up to P).
+T is the length of the text.
+
+SC : O(N+M)
+N is the number of nodes in the trie
+M is the number of matches found in the text (this could be up to T, but usually M≤T)
+*/
+```
