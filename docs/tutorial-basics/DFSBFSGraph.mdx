@@ -124,3 +124,107 @@ for (const node of allNodes) {
   }
 }
 ```
+
+### Shortest Path Using BFS
+
+```JavaScript
+const bfsShortestPath = (graph, start, end) => {
+  const queue = [[start]];
+  const visited = new Set();
+
+  while (queue.length > 0) {
+    const path = queue.shift(); // Get the current path
+    const node = path[path.length - 1]; // Get the last node in the path
+
+    if (node === end) {
+      return path; // Return the path if we've reached the end
+    }
+
+    if (!visited.has(node)) {
+      visited.add(node); // Mark the node as visited
+
+      for (const neighbor of graph[node] ?? []) {
+        // Create a new path to the neighbor and enqueue it
+        const newPath = [...path, neighbor];
+        queue.push(newPath);
+      }
+    }
+  }
+
+  return []; // Return an empty array if there's no path to the end
+}
+
+// Example usage with disconnected vertices:
+const graph = {
+  A: ['B', 'C'],
+  B: ['A', 'D', 'E'],
+  C: ['A', 'F'],
+  D: ['B'],
+  E: ['B', 'F'],
+  F: ['C', 'E'],
+  G: [], // Disconnected vertex G
+};
+
+const shortestPath1 = bfsShortestPath(graph, 'A', 'F');
+console.log(shortestPath1); // Output: ['A', 'C', 'F']
+
+const shortestPath2 = bfsShortestPath(graph, 'A', 'G');
+console.log(shortestPath2); // Output: [] (no path to G)
+```
+
+### Shortest Path Using BFS for a 2D Grid
+
+```JavaScript
+const bfsShortestPath = (grid, start, end) => {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // Down, Right, Up, Left
+  const queue = [[...start, 0]]; // [row, col, distance]
+  const visited = new Set(); // To track visited cells
+  visited.add(start.toString()); // Mark the start cell as visited
+
+  while (queue.length > 0) {
+    const [row, col, distance] = queue.shift(); // Dequeue
+
+    // Check if we reached the end
+    if (row === end[0] && col === end[1]) {
+      return distance; // Return the distance (shortest path length)
+    }
+
+    // Explore the neighbors
+    for (const [dRow, dCol] of directions) {
+      const newRow = row + dRow;
+      const newCol = col + dCol;
+
+      // Check if the new position is within bounds and not visited
+      if (
+        newRow >= 0 &&
+        newRow < rows &&
+        newCol >= 0 &&
+        newCol < cols &&
+        grid[newRow][newCol] === 0 && // Assuming 0 is a valid cell
+        !visited.has([newRow, newCol].toString())
+      ) {
+        visited.add([newRow, newCol].toString()); // Mark as visited
+        queue.push([newRow, newCol, distance + 1]); // Enqueue with increased distance
+      }
+    }
+  }
+
+  return -1; // Return -1 if there's no path
+}
+
+// Example usage:
+const grid = [
+  [0, 0, 0, 1],
+  [0, 1, 0, 0],
+  [0, 0, 0, 0],
+  [1, 0, 1, 0]
+];
+
+const start = [0, 0]; // Starting position
+const end = [3, 3];   // Ending position
+
+const shortestPathLength = bfsShortestPath(grid, start, end);
+console.log(shortestPathLength); // Should output: 6
+```
