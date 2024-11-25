@@ -76,36 +76,55 @@ console.log(flattenObject(obj)); //{ a: 1, g: 5, 'b.c': 2, 'b.d.e': 3, 'b.d.f': 
 We are not using extra space for this case.
 
 ```JavaScript
-function flattenObject(obj, parent = '', res = obj) {
-  for (let key in obj) {
-    if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-      flattenObject(obj[key], parent + key + '.', res);
-      delete obj[key];  // Remove the nested object as it's flattened
-    } else {
-      // If the key already exists in the object, we replace it directly
-      if (parent) {
-        res[parent + key] = obj[key];
-        delete obj[key]; // Delete the original key to avoid duplication
+function flattenObjectInPlace(obj, parentKey = '') {
+  const keys = Object.keys(obj);
+
+  for (const key of keys) {
+    const newKey = parentKey ? `${parentKey}.${key}` : key;
+
+    if (typeof obj[key] === 'object' && obj[key] !== null) {
+      // Recurse for nested objects
+      flattenObjectInPlace(obj[key], newKey);
+
+      // After processing nested object, copy its flattened properties up
+      for (const childKey in obj[key]) {
+        obj[childKey] = obj[key][childKey];
       }
+      // Delete the original nested object
+      delete obj[key];
+    } else if (parentKey) {
+      // For primitive values in nested objects, move them up with the new key
+      obj[newKey] = obj[key];
+      delete obj[key];
     }
   }
-  return res;
 }
 
-let obj = {
-  a: {
-    b: 1,
-    c: {
-      d: 2,
-      e: 3
+// // Example usage:
+const nestedObject = {
+  user: {
+    name: "Alice",
+    address: {
+      city: "Wonderland",
+      postalCode: "12345"
+    },
+    preferences: {
+      theme: "dark",
+      language: "en"
     }
-  },
-  f: 4
+  }
 };
 
-flattenObject(obj);
-console.log(obj);
-/* { f: 4, 'a.b': 1, 'a.c.d': 2, 'a.c.e': 3 } */
+console.log(JSON.stringify(flattenObjectInPlace(nestedObject), null, 2));
+/* 
+{
+  "user.name": "Alice",
+  "user.address.city": "Wonderland",
+  "user.address.postalCode": "12345",
+  "user.preferences.theme": "dark",
+  "user.preferences.language": "en"
+}
+*/
 ```
 
 ### Extended Version of Object Flattening
