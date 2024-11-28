@@ -1,0 +1,145 @@
+---
+title: Binary Lifting
+---
+
+Binary lifting (also known as binary jumping or jump pointers) is an advanced algorithmic technique primarily used to solve problems involving tree traversal and finding ancestors in a tree data structure. It's particularly efficient for queries like "find the kth ancestor of a node" or "find the lowest common ancestor (LCA) of two nodes.
+
+## Core Concept
+
+The main idea behind binary lifting is to precompute and store ancestor information for each node in powers of 2. Instead of moving up the tree one step at a time, we can make jumps of size 2^i, allowing us to reach any ancestor in O(log n) time.
+
+## Understanding the Basics
+
+Let's break down how binary lifting works:
+
+1. For each node, we store its 2^i-th ancestor for i = 0, 1, 2, ... until we reach the root.
+2. To find the kth ancestor, we use the binary representation of k.
+3. We jump using the precomputed ancestors based on the set bits in k.
+
+
+```JavaScript
+class BinaryLifting {
+  constructor(n, edges, root = 0) {
+    this.n = n;  // number of nodes
+    this.maxLog = Math.floor(Math.log2(n));  // maximum power of 2 needed
+    this.up = Array.from({ length: n }, () => Array(this.maxLog).fill(-1));  // dp table
+    this.depth = Array(n).fill(0);  // depth of each node
+
+    // Build adjacency list
+    this.adj = Array.from({ length: n }, () => []);
+    for (let [u, v] of edges) {
+      this.adj[u].push(v);
+      this.adj[v].push(u);
+    }
+
+    // Initialize with DFS
+    this.#dfs(root, -1);
+
+    // Build the binary lifting table
+    this.#buildTable();
+  }
+
+  #dfs(v, parent) {
+    // Initialize immediate ancestors and depths
+    this.up[v][0] = parent;
+    for (let child of this.adj[v]) {
+      if (child !== parent) {
+        this.depth[child] = this.depth[v] + 1;
+        this.#dfs(child, v);
+      }
+    }
+  }
+
+  #buildTable() {
+    // Build the binary lifting table
+    for (let j = 1; j < this.maxLog; j++) {
+      for (let v = 0; v < this.n; v++) {
+        if (this.up[v][j - 1] !== -1) {
+          this.up[v][j] = this.up[this.up[v][j - 1]][j - 1];
+        }
+      }
+    }
+  }
+
+  getKthAncestor(node, k) {
+    // Find the kth ancestor of a given node
+    if (k > this.depth[node]) return -1;
+
+    // Process each bit of k
+    for (let j = 0; j < this.maxLog; j++) {
+      if (k & (1 << j)) {
+        node = this.up[node][j];
+        if (node === -1) break;
+      }
+    }
+    return node;
+  }
+
+  getLCA(u, v) {
+    // Find the Lowest Common Ancestor of nodes u and v
+    if (this.depth[u] < this.depth[v]) {
+      [u, v] = [v, u];
+    }
+
+    // Make u and v same depth
+    let diff = this.depth[u] - this.depth[v];
+
+    // Lift u to same depth as v
+    for (let j = 0; j < this.maxLog; j++) {
+      if (diff & (1 << j)) {
+        u = this.up[u][j];
+      }
+    }
+
+    if (u === v) return u;
+
+    // Lift both nodes until just before their LCA
+    for (let j = this.maxLog - 1; j >= 0; j--) {
+      if (this.up[u][j] !== this.up[v][j]) {
+        u = this.up[u][j];
+        v = this.up[v][j];
+      }
+    }
+
+    return this.up[u][0];
+  }
+}
+
+// Create a tree
+//       0
+//      / \
+//     1   2
+//    / \   \
+//   3   4   5
+const edges = [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5]];
+const n = 6;
+
+// Initialize binary lifting
+const bl = new BinaryLifting(n, edges);
+
+// Find ancestors
+console.log(bl.getKthAncestor(4, 1));  // Output: 1 (parent of 4)
+console.log(bl.getKthAncestor(4, 2));  // Output: 0 (grandparent of 4)
+console.log(bl.getKthAncestor(5, 1));  // Output: 2 (parent of 5)
+
+// Find LCA
+console.log(bl.getLCA(3, 4));  // Output: 1 (LCA of 3 and 4)
+```
+
+## Time and Space Complexity
+1. **Preprocessing:**
+
+   - Time: O(N log N) for building the table
+   - Space: O(N log N) for storing ancestors
+2. **Queries:**
+
+   - Time: O(log N) per query
+   - Space: O(1) per query
+
+Reference : https://cp-algorithms.com/graph/lca_binary_lifting.html
+
+1. K-th Ancestor of a Tree Node
+2. Lowest Common Ancestor of a Binary Tree
+3. Distance Between Two Nodes in a Tree
+4. https://www.codechef.com/problems/LGSEG
+5. https://www.hackerearth.com/practice/algorithms/graphs/graph-representation/practice-problems/algorithm/optimal-connectivity-c6ae79ca/
