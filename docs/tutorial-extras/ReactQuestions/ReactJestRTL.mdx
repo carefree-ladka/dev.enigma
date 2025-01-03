@@ -1,0 +1,202 @@
+# Jest & React Testing Library Cheatsheet
+
+## Jest Core
+
+### Test Structure
+```javascript
+describe('Component/Unit', () => {
+  beforeAll(() => {})
+  beforeEach(() => {})
+  afterEach(() => {})
+  afterAll(() => {})
+
+  it('should do something', () => {})
+  test('does something', () => {})
+})
+```
+
+### Matchers
+```javascript
+// Common
+expect(value).toBe(exact)
+expect(value).toEqual(deepEqual)
+expect(value).toBeTruthy()
+expect(value).toBeFalsy()
+expect(value).toBeNull()
+expect(value).toBeUndefined()
+expect(value).toBeDefined()
+
+// Numbers
+expect(value).toBeGreaterThan(3)
+expect(value).toBeLessThan(5)
+expect(value).toBeCloseTo(0.3)
+
+// Strings
+expect(str).toMatch(/regex/)
+expect(str).toContain('substring')
+expect(str).toHaveLength(6)
+
+// Arrays/Objects
+expect(arr).toContain(item)
+expect(obj).toHaveProperty('key')
+expect(arr).toHaveLength(n)
+
+// Functions/Async
+expect(fn).toThrow(error)
+expect(promise).resolves.toBe(value)
+expect(promise).rejects.toThrow(error)
+```
+
+### Mocks
+```javascript
+// Function Mocks
+const mock = jest.fn()
+mock.mockReturnValue(value)
+mock.mockImplementation(() => value)
+mock.mockResolvedValue(value)
+mock.mockRejectedValue(error)
+
+// Verifying Calls
+expect(mock).toHaveBeenCalled()
+expect(mock).toHaveBeenCalledWith(arg1, arg2)
+expect(mock).toHaveBeenCalledTimes(n)
+
+// Module Mocks
+jest.mock('./module')
+jest.spyOn(object, 'method')
+```
+
+## React Testing Library
+
+### Rendering
+```javascript
+import { render, screen } from '@testing-library/react'
+
+// Basic Render
+render(<Component />)
+
+// With Providers
+render(
+  <Provider>
+    <Component />
+  </Provider>
+)
+
+// With Router
+render(
+  <MemoryRouter initialEntries={['/path']}>
+    <Component />
+  </MemoryRouter>
+)
+```
+
+### Queries
+```javascript
+// Priority Order:
+// 1. getByRole
+// 2. getByLabelText
+// 3. getByPlaceholderText
+// 4. getByText
+// 5. getByDisplayValue
+// 6. getByAltText
+// 7. getByTitle
+// 8. getByTestId
+
+// Variants:
+// getBy: Expect element to be in DOM
+// queryBy: Element might not be in DOM
+// findBy: Async, element might appear in DOM
+
+// Multiple elements:
+// getAllBy, queryAllBy, findAllBy
+
+// Examples
+screen.getByRole('button', { name: /submit/i })
+screen.getByLabelText('Username')
+screen.getByPlaceholderText('Enter value')
+screen.getByText(/hello/i)
+screen.getByTestId('custom-id')
+```
+
+### User Events
+```javascript
+import userEvent from '@testing-library/user-event'
+
+// Setup
+const user = userEvent.setup()
+
+// Events
+await user.click(element)
+await user.type(input, 'text')
+await user.keyboard('{Enter}')
+await user.selectOptions(select, ['option'])
+await user.clear(input)
+await user.tab()
+```
+
+### Common Patterns
+```javascript
+// Testing Form Submission
+test('form submission', async () => {
+  const user = userEvent.setup()
+  const onSubmit = jest.fn()
+  
+  render(<Form onSubmit={onSubmit} />)
+  
+  await user.type(screen.getByLabelText('Email'), 'test@test.com')
+  await user.type(screen.getByLabelText('Password'), 'password')
+  await user.click(screen.getByRole('button', { name: /submit/i }))
+  
+  expect(onSubmit).toHaveBeenCalled()
+})
+
+// Testing Async Actions
+test('async data fetching', async () => {
+  render(<UserList />)
+  
+  expect(screen.getByText('Loading...')).toBeInTheDocument()
+  
+  await screen.findByRole('list')
+  expect(screen.getAllByRole('listitem')).toHaveLength(3)
+})
+
+// Testing Error States
+test('error handling', async () => {
+  server.use(
+    rest.get('/api/users', (req, res, ctx) => {
+      return res(ctx.status(500))
+    })
+  )
+  
+  render(<UserList />)
+  
+  await screen.findByText('Error loading users')
+})
+```
+
+### Custom Hooks Testing
+```javascript
+import { renderHook, act } from '@testing-library/react'
+
+test('custom hook', () => {
+  const { result } = renderHook(() => useCustomHook())
+  
+  act(() => {
+    result.current.update()
+  })
+  
+  expect(result.current.value).toBe('updated')
+})
+```
+
+### Testing Best Practices
+1. Test behavior, not implementation
+2. Use accessible queries
+3. Avoid implementation details
+4. Test user interactions
+5. Test error scenarios
+6. Mock external dependencies
+7. Keep tests focused and simple
+8. Use meaningful test descriptions
+9. Follow Arrange-Act-Assert pattern
+10. Write maintainable tests
