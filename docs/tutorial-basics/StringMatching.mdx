@@ -40,6 +40,51 @@ const bruteForceSearch = (text, pattern) => {
 };
 ```
 
+## Robin Karp
+
+```JavaScript
+function search(text, pattern) {
+  const D = 256; // ASCII length
+  const MOD = 1e9 + 7; // Prime modulus
+
+  const N = text.length;
+  const M = pattern.length;
+
+  if (M === 0) return 0; // Edge case: empty pattern
+
+  let p = 0; // Hash value for the pattern
+  let t = 0; // Hash value for the text window
+  const PREV = Math.pow(D, M - 1) % MOD; // Highest power of D (to remove the first character)
+
+  // Calculate hash value for the pattern and the first window of text
+  for (let i = 0; i < M; i++) {
+    p = (D * p + pattern.charCodeAt(i)) % MOD;
+    t = (D * t + text.charCodeAt(i)) % MOD;
+  }
+
+  // Slide the window over the text
+  for (let i = 0; i <= N - M; i++) {
+    // If the hash values match, check the characters one by one
+    if (p === t) {
+      let j = 0;
+      while (j < M && pattern[j] === text[i + j]) j++; // Character comparison
+
+      // If the full pattern matches, return the index
+      if (j === M) {
+        return i;
+      }
+    }
+
+    // Update the hash for the next window
+    if (i < N - M) {
+      t = (D * (t - text.charCodeAt(i) * PREV) + text.charCodeAt(i + M)) % MOD;
+      if (t < 0) t += MOD; // Handle negative values
+    }
+  }
+
+  return -1; // Return -1 if the pattern is not found
+}
+```
 
 ## Knuth-Morris-Pratt (KMP) Algorithm
 
@@ -60,7 +105,7 @@ The LPS array (Longest Prefix Suffix) stores the length of the longest proper pr
 
 **Code Example**:
 
-```Javascript
+```JavaScript
 /**
  * Build the LPS (Longest Prefix Suffix) array for the pattern.
  * @param {string} pattern - The pattern string.
@@ -128,7 +173,7 @@ const pattern = "abc";
 console.log(kmpSearch(text, pattern)); // Output: [2, 7, 10]
 ```
 
-# Using Trie 
+## Using Trie 
 
 ```JavaScript
 class TrieNode {
@@ -195,7 +240,7 @@ R is the number of matched patterns (or substrings) found during the search.
 */
 ```
 
-# Aho-Corasick Algorithm
+## Aho-Corasick Algorithm
    - Use Aho-Corasick when you need to search for multiple patterns in a single text, especially when those patterns can share common prefixes
    - Use KMP for single pattern searches where space efficiency is a concern or when the patterns are relatively small and do not need to be checked against a larger set
 
