@@ -1,0 +1,187 @@
+# SortedList
+
+An array-based implementation that maintains elements in sorted order.
+
+### Purpose
+- Maintains elements in sorted order using an array
+- Provides fast index-based access
+- Allows duplicates
+- Better for smaller collections with frequent access by index
+
+### Common Methods
+
+```javascript
+const list = new SortedList();
+
+// Basic Operations
+list.add(item)           // Add item while maintaining sort order
+list.remove(item)        // Remove first occurrence of item
+list.get(index)         // Get item at index
+list.indexOf(item)      // Find index of item
+list.clear()            // Remove all items
+list.size()             // Get number of items
+list.isEmpty()          // Check if list is empty
+
+// Navigation
+list.first()            // Get first item
+list.last()             // Get last item
+list.ceiling(item)      // Get smallest item ≥ given item
+list.floor(item)        // Get largest item ≤ given item
+
+// Conversion
+list.toArray()          // Convert to array
+```
+
+### Example Usage
+```javascript
+const list = new SortedList();
+list.add(3);
+list.add(1);
+list.add(2);
+
+console.log(list.get(1));        // 2
+console.log(list.ceiling(1.5));  // 2
+console.log(list.floor(2.5));    // 2
+console.log(list.toArray());     // [1, 2, 3]
+```
+
+# SortedList Implementation
+
+```JavaScript
+class SortedList {
+  constructor(comparator = (a, b) => a - b) {
+    this.items = [];
+    this.comparator = comparator;
+  }
+
+  // Add item while maintaining sort order - O(n)
+  add(item) {
+    const index = this.#findInsertionPoint(item);
+    this.items.splice(index, 0, item);
+    return this;
+  }
+
+  // Binary search to find insertion point - O(log n)
+  #findInsertionPoint(item) {
+    let left = 0;
+    let right = this.items.length;
+
+    while (left < right) {
+      const mid = (left + right) >> 1;
+      if (this.comparator(this.items[mid], item) <= 0) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+    return left;
+  }
+
+  // Remove first occurrence of item - O(n)
+  remove(item) {
+    const index = this.indexOf(item);
+    if (index !== -1) {
+      this.items.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  // Binary search to find item - O(log n)
+  indexOf(item) {
+    let left = 0;
+    let right = this.items.length - 1;
+
+    while (left <= right) {
+      const mid = (left + right) >> 1;
+      const cmp = this.comparator(this.items[mid], item);
+
+      if (cmp === 0) return mid;
+      if (cmp < 0) left = mid + 1;
+      else right = mid - 1;
+    }
+    return -1;
+  }
+
+  // Get item at index - O(1)
+  get(index) {
+    if (index < 0 || index >= this.items.length) return undefined;
+    return this.items[index];
+  }
+
+  // Get first item greater than or equal to given item
+  ceiling(item) {
+    const index = this.#findInsertionPoint(item);
+    return index < this.items.length ? this.items[index] : undefined;
+  }
+
+  // Get last item less than or equal to given item
+  floor(item) {
+    const index = this.#findInsertionPoint(item);
+    return index > 0 ? this.items[index - 1] : undefined;
+  }
+
+  // Get first item
+  first() {
+    return this.items[0];
+  }
+
+  // Get last item
+  last() {
+    return this.items[this.items.length - 1];
+  }
+
+  // Get size
+  size() {
+    return this.items.length;
+  }
+
+  // Check if empty
+  isEmpty() {
+    return this.items.length === 0;
+  }
+
+  // Clear all items
+  clear() {
+    this.items = [];
+  }
+
+  // Convert to array
+  toArray() {
+    return [...this.items];
+  }
+
+  // Iterator
+  *[Symbol.iterator]() {
+    yield* this.items;
+  }
+}
+
+const list = new SortedList();
+list.add(5);
+list.add(3);
+list.add(7);
+console.log(list.toArray());  // [3, 5, 7]
+console.log(list.ceiling(4)); // 5
+console.log(list.floor(6));   // 5
+list.remove(5);
+console.log(list.toArray());  // [3, 7]
+```
+### When to Use Each
+
+**SortedList**:
+- Need index-based access
+- Working with smaller datasets
+- Memory efficiency is important
+- Allow duplicates
+- Frequent iterations over the entire collection
+
+### Performance Comparison
+
+| Operation  | TreeMap/Set | SortedList |
+|------------|-------------|------------|
+| Insert     | O(log n)    | O(n)       |
+| Delete     | O(log n)    | O(n)       |
+| Search     | O(log n)    | O(log n)   |
+| Access     | O(log n)    | O(1)       |
+| Min/Max    | O(log n)    | O(1)       |

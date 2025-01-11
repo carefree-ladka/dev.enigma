@@ -1,0 +1,373 @@
+# TreeMap
+
+A self-balancing binary search tree implementation that stores key-value pairs in sorted order by keys.
+
+### Purpose
+- Maintains key-value pairs in sorted order
+- Provides efficient operations for insertion, deletion, and lookup
+- Guarantees O(log n) time complexity for most operations
+
+### Common Methods
+
+```javascript
+const map = new TreeMap();
+
+// Basic Operations
+map.put(key, value)      // Add or update key-value pair
+map.get(key)             // Get value by key
+map.remove(key)          // Remove key-value pair
+map.has(key)             // Check if key exists
+map.clear()              // Remove all entries
+map.getSize()            // Get number of entries
+map.isEmpty()            // Check if map is empty
+
+// Navigation
+map.firstKey()           // Get minimum key
+map.lastKey()            // Get maximum key
+map.ceilingKey(key)      // Get smallest key ≥ given key
+map.floorKey(key)        // Get largest key ≤ given key
+
+// Collection Views
+map.keys()               // Get all keys in sorted order
+map.values()             // Get all values in key order
+map.entries()            // Get all key-value pairs in key order
+```
+
+### Example Usage
+```javascript
+const map = new TreeMap();
+map.put("A", 1);
+map.put("C", 3);
+map.put("B", 2);
+
+console.log(map.get("B"));         // 2
+console.log(map.ceilingKey("B"));  // "B"
+console.log(map.floorKey("B"));    // "B"
+console.log(map.keys());           // ["A", "B", "C"]
+```
+
+# TreeMap implementation
+  The TreeMap implementation provides a wide range of functionalities for storing and navigating key-value pairs.
+
+```JavaScript
+class TreeNode {
+  constructor(key, value) {
+    this.key = key;
+    this.value = value;
+    this.left = null;
+    this.right = null;
+    this.height = 1;
+  }
+}
+
+
+class TreeMap {
+  constructor() {
+    this.root = null;
+    this.size = 0;
+  }
+
+  // Get height of node
+  #getHeight(node) {
+    return node ? node.height : 0;
+  }
+
+  // Get balance factor
+  #getBalance(node) {
+    return node ? this.#getHeight(node.left) - this.#getHeight(node.right) : 0;
+  }
+
+  // Right rotation
+  #rightRotate(y) {
+    const x = y.left;
+    const T2 = x.right;
+
+    x.right = y;
+    y.left = T2;
+
+    y.height = Math.max(this.#getHeight(y.left), this.#getHeight(y.right)) + 1;
+    x.height = Math.max(this.#getHeight(x.left), this.#getHeight(x.right)) + 1;
+
+    return x;
+  }
+
+  // Left rotation
+  #leftRotate(x) {
+    const y = x.right;
+    const T2 = y.left;
+
+    y.left = x;
+    x.right = T2;
+
+    x.height = Math.max(this.#getHeight(x.left), this.#getHeight(x.right)) + 1;
+    y.height = Math.max(this.#getHeight(y.left), this.#getHeight(y.right)) + 1;
+
+    return y;
+  }
+
+  // Insert a key-value pair
+  put(key, value) {
+    this.root = this.#put(this.root, key, value);
+    return this;
+  }
+
+  #put(node, key, value) {
+    if (!node) {
+      this.size++;
+      return new TreeNode(key, value);
+    }
+
+    if (key < node.key) {
+      node.left = this.#put(node.left, key, value);
+    } else if (key > node.key) {
+      node.right = this.#put(node.right, key, value);
+    } else {
+      node.value = value; // Update value if key exists
+      return node;
+    }
+
+    node.height = Math.max(this.#getHeight(node.left), this.#getHeight(node.right)) + 1;
+
+    const balance = this.#getBalance(node);
+
+    // Left Left Case
+    if (balance > 1 && key < node.left.key) {
+      return this.#rightRotate(node);
+    }
+
+    // Right Right Case
+    if (balance < -1 && key > node.right.key) {
+      return this.#leftRotate(node);
+    }
+
+    // Left Right Case
+    if (balance > 1 && key > node.left.key) {
+      node.left = this.#leftRotate(node.left);
+      return this.#rightRotate(node);
+    }
+
+    // Right Left Case
+    if (balance < -1 && key < node.right.key) {
+      node.right = this.#rightRotate(node.right);
+      return this.#leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Get value by key
+  get(key) {
+    const node = this.#get(this.root, key);
+    return node ? node.value : undefined;
+  }
+
+  #get(node, key) {
+    if (!node) return null;
+    if (key === node.key) return node;
+    return key < node.key ? this.#get(node.left, key) : this.#get(node.right, key);
+  }
+
+  // Remove key-value pair
+  remove(key) {
+    const hasKey = this.has(key);
+    if (hasKey) {
+      this.root = this.#remove(this.root, key);
+      this.size--;
+    }
+    return hasKey;
+  }
+
+  #remove(node, key) {
+    if (!node) return null;
+
+    if (key < node.key) {
+      node.left = this.#remove(node.left, key);
+    } else if (key > node.key) {
+      node.right = this.#remove(node.right, key);
+    } else {
+      if (!node.left || !node.right) {
+        return node.left || node.right;
+      }
+
+      const successor = this.#getMin(node.right);
+      node.key = successor.key;
+      node.value = successor.value;
+      node.right = this.#remove(node.right, successor.key);
+    }
+
+    node.height = Math.max(this.#getHeight(node.left), this.#getHeight(node.right)) + 1;
+
+    const balance = this.#getBalance(node);
+
+    // Rebalance after removal
+    if (balance > 1 && this.#getBalance(node.left) >= 0) {
+      return this.#rightRotate(node);
+    }
+    if (balance > 1 && this.#getBalance(node.left) < 0) {
+      node.left = this.#leftRotate(node.left);
+      return this.#rightRotate(node);
+    }
+    if (balance < -1 && this.#getBalance(node.right) <= 0) {
+      return this.#leftRotate(node);
+    }
+    if (balance < -1 && this.#getBalance(node.right) > 0) {
+      node.right = this.#rightRotate(node.right);
+      return this.#leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Check if key exists
+  has(key) {
+    return this.#get(this.root, key) !== null;
+  }
+
+  // Get minimum key
+  firstKey() {
+    if (!this.root) return undefined;
+    return this.#getMin(this.root).key;
+  }
+
+  // Get maximum key
+  lastKey() {
+    if (!this.root) return undefined;
+    return this.#getMax(this.root).key;
+  }
+
+  #getMin(node) {
+    while (node.left) {
+      node = node.left;
+    }
+    return node;
+  }
+
+  #getMax(node) {
+    while (node.right) {
+      node = node.right;
+    }
+    return node;
+  }
+
+  // Get first key greater than or equal to given key
+  ceilingKey(key) {
+    let node = this.root;
+    let ceiling = null;
+
+    while (node) {
+      if (key === node.key) {
+        return key;
+      }
+      if (key < node.key) {
+        ceiling = node.key;
+        node = node.left;
+      } else {
+        node = node.right;
+      }
+    }
+
+    return ceiling;
+  }
+
+  // Get last key less than or equal to given key
+  floorKey(key) {
+    let node = this.root;
+    let floor = null;
+
+    while (node) {
+      if (key === node.key) {
+        return key;
+      }
+      if (key < node.key) {
+        node = node.left;
+      } else {
+        floor = node.key;
+        node = node.right;
+      }
+    }
+
+    return floor;
+  }
+
+  // Clear all entries
+  clear() {
+    this.root = null;
+    this.size = 0;
+  }
+
+  // Get size of tree
+  getSize() {
+    return this.size;
+  }
+
+  // Check if tree is empty
+  isEmpty() {
+    return this.size === 0;
+  }
+
+  // Get all keys in order
+  keys() {
+    const result = [];
+    this.#inorderTraversal(this.root, node => result.push(node.key));
+    return result;
+  }
+
+  // Get all values in order of keys
+  values() {
+    const result = [];
+    this.#inorderTraversal(this.root, node => result.push(node.value));
+    return result;
+  }
+
+  // Get all entries in order
+  entries() {
+    const result = [];
+    this.#inorderTraversal(this.root, node => result.push([node.key, node.value]));
+    return result;
+  }
+
+  #inorderTraversal(node, callback) {
+    if (node) {
+      this.#inorderTraversal(node.left, callback);
+      callback(node);
+      this.#inorderTraversal(node.right, callback);
+    }
+  }
+}
+
+const map = new TreeMap();
+
+// Insert key-value pairs
+map.put(5, "five");
+map.put(3, "three");
+map.put(7, "seven");
+
+console.log(map.get(3));  // "three"
+console.log(map.has(7));  // true
+console.log(map.firstKey());  // 3
+console.log(map.lastKey());   // 7
+console.log(map.ceilingKey(4));  // 5
+console.log(map.floorKey(6));    // 5
+console.log(map.keys());     // [3, 5, 7]
+console.log(map.getSize());  // 3
+
+map.remove(5);
+console.log(map.has(5));  // false
+```
+### When to Use Each
+
+**TreeMap**:
+- Need key-value associations in sorted order
+- Large datasets with frequent modifications
+- Need efficient range queries
+- Memory usage is not a primary concern
+
+### Performance Comparison
+
+| Operation  | TreeMap/Set | SortedList |
+|------------|-------------|------------|
+| Insert     | O(log n)    | O(n)       |
+| Delete     | O(log n)    | O(n)       |
+| Search     | O(log n)    | O(log n)   |
+| Access     | O(log n)    | O(1)       |
+| Min/Max    | O(log n)    | O(1)       |

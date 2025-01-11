@@ -1,0 +1,345 @@
+# TreeSet
+
+A self-balancing binary search tree implementation that stores unique values in sorted order.
+
+### Purpose
+- Maintains unique elements in sorted order
+- Provides efficient operations for insertion, deletion, and lookup
+- Guarantees O(log n) time complexity for most operations
+- Automatically handles duplicates
+
+### Common Methods
+
+```javascript
+const set = new TreeSet();
+
+// Basic Operations
+set.add(value)           // Add value to set
+set.remove(value)        // Remove value from set
+set.has(value)          // Check if value exists
+set.clear()             // Remove all values
+set.getSize()           // Get set size
+set.isEmpty()           // Check if set is empty
+
+// Navigation
+set.first()             // Get minimum value
+set.last()              // Get maximum value
+set.ceiling(value)      // Get smallest value ≥ given value
+set.floor(value)        // Get largest value ≤ given value
+
+// Conversion
+set.toArray()           // Convert to sorted array
+```
+
+### Example Usage
+```javascript
+const set = new TreeSet();
+set.add(3);
+set.add(1);
+set.add(2);
+
+console.log(set.has(2));       // true
+console.log(set.ceiling(1.5)); // 2
+console.log(set.floor(2.5));   // 2
+console.log(set.toArray());    // [1, 2, 3]
+```
+
+# TreeSet Implementation
+```JavaScript
+class TreeNode {
+  constructor(value) {
+    this.value = value;
+    this.left = null;
+    this.right = null;
+    this.height = 1;
+  }
+}
+
+class TreeSet {
+  constructor(comparator = (a, b) => a - b) {
+    this.root = null;
+    this.size = 0;
+    this.comparator = comparator;
+  }
+
+  #getHeight(node) {
+    return node ? node.height : 0;
+  }
+
+  #getBalance(node) {
+    return node ? this.#getHeight(node.left) - this.#getHeight(node.right) : 0;
+  }
+
+  #rightRotate(y) {
+    const x = y.left;
+    const T2 = x.right;
+
+    x.right = y;
+    y.left = T2;
+
+    y.height = Math.max(this.#getHeight(y.left), this.#getHeight(y.right)) + 1;
+    x.height = Math.max(this.#getHeight(x.left), this.#getHeight(x.right)) + 1;
+
+    return x;
+  }
+
+  #leftRotate(x) {
+    const y = x.right;
+    const T2 = y.left;
+
+    y.left = x;
+    x.right = T2;
+
+    x.height = Math.max(this.#getHeight(x.left), this.#getHeight(x.right)) + 1;
+    y.height = Math.max(this.#getHeight(y.left), this.#getHeight(y.right)) + 1;
+
+    return y;
+  }
+
+  // Add value to set
+  add(value) {
+    const result = !this.has(value);
+    if (result) {
+      this.root = this.#add(this.root, value);
+      this.size++;
+    }
+    return result;
+  }
+
+  #add(node, value) {
+    if (!node) return new TreeNode(value);
+
+    const cmp = this.comparator(value, node.value);
+    if (cmp < 0) {
+      node.left = this.#add(node.left, value);
+    } else if (cmp > 0) {
+      node.right = this.#add(node.right, value);
+    } else {
+      return node;
+    }
+
+    node.height = Math.max(this.#getHeight(node.left), this.#getHeight(node.right)) + 1;
+    const balance = this.#getBalance(node);
+
+    // Balance the tree
+    if (balance > 1 && this.comparator(value, node.left.value) < 0) {
+      return this.#rightRotate(node);
+    }
+    if (balance < -1 && this.comparator(value, node.right.value) > 0) {
+      return this.#leftRotate(node);
+    }
+    if (balance > 1 && this.comparator(value, node.left.value) > 0) {
+      node.left = this.#leftRotate(node.left);
+      return this.#rightRotate(node);
+    }
+    if (balance < -1 && this.comparator(value, node.right.value) < 0) {
+      node.right = this.#rightRotate(node.right);
+      return this.#leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Remove value from set
+  remove(value) {
+    const result = this.has(value);
+    if (result) {
+      this.root = this.#remove(this.root, value);
+      this.size--;
+    }
+    return result;
+  }
+
+  #remove(node, value) {
+    if (!node) return null;
+
+    const cmp = this.comparator(value, node.value);
+    if (cmp < 0) {
+      node.left = this.#remove(node.left, value);
+    } else if (cmp > 0) {
+      node.right = this.#remove(node.right, value);
+    } else {
+      if (!node.left || !node.right) {
+        return node.left || node.right;
+      }
+      const temp = this.#getMin(node.right);
+      node.value = temp.value;
+      node.right = this.#remove(node.right, temp.value);
+    }
+
+    node.height = Math.max(this.#getHeight(node.left), this.#getHeight(node.right)) + 1;
+    const balance = this.#getBalance(node);
+
+    if (balance > 1 && this.#getBalance(node.left) >= 0) {
+      return this.#rightRotate(node);
+    }
+    if (balance > 1 && this.#getBalance(node.left) < 0) {
+      node.left = this.#leftRotate(node.left);
+      return this.#rightRotate(node);
+    }
+    if (balance < -1 && this.#getBalance(node.right) <= 0) {
+      return this.#leftRotate(node);
+    }
+    if (balance < -1 && this.#getBalance(node.right) > 0) {
+      node.right = this.#rightRotate(node.right);
+      return this.#leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Check if value exists
+  has(value) {
+    return this.#find(this.root, value) !== null;
+  }
+
+  #find(node, value) {
+    if (!node) return null;
+    const cmp = this.comparator(value, node.value);
+    if (cmp === 0) return node;
+    return cmp < 0 ? this.#find(node.left, value) : this.#find(node.right, value);
+  }
+
+  #getMin(node) {
+    while (node.left) {
+      node = node.left;
+    }
+    return node;
+  }
+
+  #getMax(node) {
+    while (node.right) {
+      node = node.right;
+    }
+    return node;
+  }
+
+  // Get smallest value greater than or equal to given value
+  ceiling(value) {
+    let node = this.root;
+    let result = null;
+
+    while (node) {
+      const cmp = this.comparator(value, node.value);
+      if (cmp === 0) return node.value;
+      if (cmp < 0) {
+        result = node.value;
+        node = node.left;
+      } else {
+        node = node.right;
+      }
+    }
+
+    return result;
+  }
+
+  // Get largest value less than or equal to given value
+  floor(value) {
+    let node = this.root;
+    let result = null;
+
+    while (node) {
+      const cmp = this.comparator(value, node.value);
+      if (cmp === 0) return node.value;
+      if (cmp < 0) {
+        node = node.left;
+      } else {
+        result = node.value;
+        node = node.right;
+      }
+    }
+
+    return result;
+  }
+
+  // Get smallest value in set
+  first() {
+    return this.root ? this.#getMin(this.root).value : undefined;
+  }
+
+  // Get largest value in set
+  last() {
+    return this.root ? this.#getMax(this.root).value : undefined;
+  }
+
+  // Get set size
+  getSize() {
+    return this.size;
+  }
+
+  // Check if set is empty
+  isEmpty() {
+    return this.size === 0;
+  }
+
+  // Clear all values
+  clear() {
+    this.root = null;
+    this.size = 0;
+  }
+
+  // Convert to array (in-order traversal)
+  toArray() {
+    const result = [];
+    this.#inorderTraversal(this.root, value => result.push(value));
+    return result;
+  }
+
+  #inorderTraversal(node, callback) {
+    if (node) {
+      this.#inorderTraversal(node.left, callback);
+      callback(node.value);
+      this.#inorderTraversal(node.right, callback);
+    }
+  }
+
+  // Iterator
+  *[Symbol.iterator]() {
+    yield* this.#iterate(this.root);
+  }
+
+  *#iterate(node) {
+    if (node) {
+      yield* this.#iterate(node.left);
+      yield node.value;
+      yield* this.#iterate(node.right);
+    }
+  }
+}
+
+// TreeSet usage
+const set = new TreeSet();
+set.add(5);
+set.add(3);
+set.add(7);
+console.log(set.toArray());   // [3, 5, 7]
+console.log(set.ceiling(4));  // 5
+console.log(set.floor(6));    // 5
+set.remove(5);
+console.log(set.toArray());   // [3, 7]
+
+// Custom comparator example
+const strSet = new TreeSet((a, b) => a.localeCompare(b));
+strSet.add("banana");
+strSet.add("apple");
+strSet.add("cherry");
+console.log(strSet.toArray()); // ["apple", "banana", "cherry"]
+```
+
+### When to Use Each
+
+**TreeSet**:
+- Need unique values in sorted order
+- Large datasets with frequent modifications
+- Need automatic duplicate handling
+- Memory usage is not a primary concern
+
+### Performance Comparison
+
+| Operation  | TreeMap/Set | SortedList |
+|------------|-------------|------------|
+| Insert     | O(log n)    | O(n)       |
+| Delete     | O(log n)    | O(n)       |
+| Search     | O(log n)    | O(log n)   |
+| Access     | O(log n)    | O(1)       |
+| Min/Max    | O(log n)    | O(1)       |
