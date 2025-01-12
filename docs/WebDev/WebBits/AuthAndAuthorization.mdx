@@ -1,0 +1,323 @@
+# Authentication & Authorization Security
+
+## Core Concepts
+
+### Authentication vs Authorization
+```
+Authentication (AuthN)
+- Verifies WHO you are
+- Handles user login/identity
+- Examples: passwords, biometrics
+- Comes before authorization
+
+Authorization (AuthZ)
+- Determines WHAT you can do
+- Handles permissions
+- Examples: admin rights, role-based access
+- Happens after authentication
+```
+
+## Cookie Security
+
+### Cookie Attributes
+```javascript
+// Setting a secure HttpOnly cookie
+res.cookie('sessionId', 'value', {
+    httpOnly: true,     // Cannot be accessed by JavaScript
+    secure: true,       // Only sent over HTTPS
+    sameSite: 'strict', // Protects against CSRF
+    path: '/',          // Cookie scope
+    domain: '.example.com',
+    maxAge: 3600000,    // 1 hour in milliseconds
+    expires: new Date() // Specific date
+});
+```
+
+### Cookie Security Best Practices
+1. **HttpOnly Cookies**
+   - Prevents XSS attacks accessing cookies
+   - Cannot be accessed via `document.cookie`
+   - Essential for session cookies
+
+2. **Secure Flag**
+   - Only transmitted over HTTPS
+   - Prevents man-in-the-middle attacks
+
+3. **SameSite Attribute**
+```javascript
+// Strict: Cookie only sent in first-party context
+sameSite: 'strict'
+
+// Lax: Sent with navigation to origin site
+sameSite: 'lax'
+
+// None: Cookie sent in all contexts (requires Secure)
+sameSite: 'none'
+```
+
+## JWT (JSON Web Tokens)
+
+### JWT Structure
+```
+Header.Payload.Signature
+
+Header: {
+  "alg": "HS256",
+  "typ": "JWT"
+}
+
+Payload: {
+  "sub": "1234567890",
+  "name": "John Doe",
+  "exp": 1516239022
+}
+
+Signature: HMACSHA256(
+  base64UrlEncode(header) + "." +
+  base64UrlEncode(payload),
+  secret
+)
+```
+
+### JWT Implementation
+```javascript
+// Creating a JWT
+const token = jwt.sign(
+    { userId: user.id },
+    process.env.JWT_SECRET,
+    { 
+        expiresIn: '15m',
+        algorithm: 'HS256'
+    }
+);
+
+// Verifying a JWT
+try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // decoded.userId is now available
+} catch (err) {
+    // Token invalid or expired
+}
+```
+
+### JWT Best Practices
+1. **Token Storage**
+   - Store in HttpOnly cookie (preferred)
+   - Never in localStorage (XSS vulnerable)
+   - Consider memory storage for SPAs
+
+2. **Security Measures**
+   - Short expiration times (15min recommended)
+   - Use refresh tokens for longevity
+   - Include only necessary payload data
+   - Use strong secrets (min 256 bits)
+
+## Refresh Token Implementation
+
+### Token Flow
+```javascript
+// Initial authentication
+const authToken = generateJWT(user, '15m');
+const refreshToken = generateRefreshToken(user);
+
+// Store refresh token in database
+await storeRefreshToken(user.id, refreshToken);
+
+// Send tokens to client
+res.cookie('authToken', authToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    maxAge: 900000 // 15 minutes
+});
+
+res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    path: '/refresh', // Restrict to refresh endpoint
+    maxAge: 7776000000 // 90 days
+});
+```
+
+### Refresh Token Rotation
+```javascript
+async function handleRefresh(refreshToken) {
+    // Verify refresh token
+    const storedToken = await getStoredRefreshToken(refreshToken);
+    if (!storedToken || storedToken.revoked) {
+        throw new Error('Invalid refresh token');
+    }
+
+    // Generate new tokens
+    const newAuthToken = generateJWT(user, '15m');
+    const newRefreshToken = generateRefreshToken(user);
+
+    // Revoke old refresh token
+    await revokeRefreshToken(refreshToken);
+    
+    // Store new refresh token
+    await storeRefreshToken(user.id, newRefreshToken);
+
+    return { newAuthToken, newRefreshToken };
+}
+```
+
+## CSRF (Cross-Site Request Forgery) Protection
+
+### CSRF Token Implementation
+```javascript
+// Generate CSRF token
+const csrfToken = crypto.randomBytes(32).toString('hex');
+
+// Store token in session
+req.session.csrfToken = csrfToken;
+
+// Send token to client
+res.cookie('XSRF-TOKEN', csrfToken, {
+    secure: true,
+    sameSite: 'strict'
+});
+
+// Verify token in middleware
+function validateCSRF(req, res, next) {
+    const token = req.headers['x-csrf-token'] || 
+                 req.body._csrf ||
+                 req.cookies['XSRF-TOKEN'];
+
+    if (!token || token !== req.session.csrfToken) {
+        return res.status(403).json({ error: 'CSRF token invalid' });
+    }
+    next();
+}
+```
+
+### Double Submit Cookie Pattern
+```javascript
+// Set CSRF token in cookie and form field
+function setCSRFToken(req, res) {
+    const token = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrfToken', token, { 
+        httpOnly: false,
+        secure: true 
+    });
+    return token;
+}
+
+// Validate token match
+function validateToken(req) {
+    return req.cookies.csrfToken === req.headers['x-csrf-token'];
+}
+```
+
+## Content Security Policy (CSP)
+
+### Basic CSP Implementation
+```javascript
+// Using helmet middleware in Express
+app.use(helmet.contentSecurityPolicy({
+    directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://api.example.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"]
+    }
+}));
+```
+
+### CSP Header Examples
+```http
+// Basic security
+Content-Security-Policy: default-src 'self'
+
+// Allow specific sources
+Content-Security-Policy: 
+    default-src 'self'; 
+    script-src 'self' https://trusted.com;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    font-src 'self' https://fonts.gstatic.com;
+    frame-src 'none';
+    base-uri 'self';
+    form-action 'self'
+
+// Report-only mode
+Content-Security-Policy-Report-Only: 
+    default-src 'self';
+    report-uri /csp-violation-report
+```
+
+## Security Headers
+
+### Essential Security Headers
+```javascript
+// Using helmet in Express
+app.use(helmet({
+    // Strict Transport Security
+    hsts: {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true
+    },
+    
+    // Prevent clickjacking
+    frameguard: {
+        action: 'deny'
+    },
+    
+    // Disable MIME type sniffing
+    noSniff: true,
+    
+    // XSS Protection
+    xssFilter: true,
+    
+    // Referrer Policy
+    referrerPolicy: { 
+        policy: 'strict-origin-when-cross-origin' 
+    }
+}));
+```
+
+## Session Management
+
+### Session Configuration
+```javascript
+// Express session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    name: 'sessionId', // Custom cookie name
+    cookie: {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 3600000 // 1 hour
+    },
+    resave: false,
+    saveUninitialized: false,
+    store: new RedisStore({
+        client: redisClient,
+        prefix: 'sess:'
+    })
+}));
+```
+
+### Session Security Best Practices
+1. **Session ID Management**
+   - Use cryptographically secure random IDs
+   - Rotate session IDs after login
+   - Invalidate on logout/timeout
+
+2. **Session Storage**
+   - Use server-side storage (Redis/Memcached)
+   - Never store sensitive data in cookie
+   - Implement session expiration
+
+3. **Session Validation**
+   - Validate IP address consistency
+   - Check User-Agent consistency
+   - Implement absolute/idle timeouts

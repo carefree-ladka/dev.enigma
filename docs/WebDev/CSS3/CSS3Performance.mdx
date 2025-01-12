@@ -1,0 +1,262 @@
+# CSS Performance & BEM Convention Cheatsheet
+
+## BEM Naming Convention
+
+### Basic Structure
+```css
+.block {}
+.block__element {}
+.block--modifier {}
+```
+
+### BEM Principles
+1. **Block**: Standalone component
+```css
+.card {}
+.navbar {}
+.button {}
+```
+
+2. **Element**: Parts of a block (double underscore)
+```css
+.card__title {}
+.card__image {}
+.navbar__menu {}
+.button__icon {}
+```
+
+3. **Modifier**: Variations of block/element (double dash)
+```css
+.card--featured {}
+.button--large {}
+.button--primary {}
+.navbar__menu--collapsed {}
+```
+
+### Real-world BEM Example
+```css
+/* Block component */
+.card {
+    background: #fff;
+    padding: 20px;
+}
+
+/* Elements that depend upon block */
+.card__title {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.card__content {
+    font-size: 1.1em;
+}
+
+/* Modifier that changes the style of the block */
+.card--featured {
+    background: #f7f7f7;
+    border: 2px solid gold;
+}
+```
+
+## Performance Optimizations
+
+### 1. Selector Performance
+
+#### Avoid Deep Nesting
+```css
+/* Bad - Deep nesting */
+.header .nav .nav-item .link a { }
+
+/* Good - Flat structure */
+.header__nav-link { }
+```
+
+#### Minimize Selector Complexity
+```css
+/* Bad - Complex selector */
+div.container > div.content article.post > h2.title span { }
+
+/* Good - Direct and simple */
+.post__title-text { }
+```
+
+### 2. CSS Property Performance
+
+#### Use Transform Instead of Position
+```css
+/* Bad - Triggers layout */
+.modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+}
+
+/* Good - Uses GPU acceleration */
+.modal {
+    position: absolute;
+    transform: translate(-50%, -50%);
+}
+```
+
+#### Optimize Animations
+```css
+/* Good - GPU-accelerated properties */
+.element {
+    transform: translateX(100px);
+    opacity: 0.5;
+    will-change: transform, opacity;
+}
+
+/* Avoid animating */
+.element--avoid {
+    width: 100px;    /* Triggers layout */
+    height: 100px;   /* Triggers layout */
+    top: 50px;       /* Triggers layout */
+}
+```
+
+### 3. Media Optimization
+
+#### Progressive Loading
+```css
+/* Load critical styles first */
+.header {
+    /* Critical styles */
+}
+
+/* Then load larger background images */
+@media (min-width: 768px) {
+    .header {
+        background-image: url('large-bg.jpg');
+    }
+}
+```
+
+### 4. File Organization
+
+#### Component-Based Structure
+```css
+/* components/_card.css */
+.card { }
+.card__title { }
+.card__content { }
+.card--featured { }
+
+/* components/_button.css */
+.button { }
+.button__icon { }
+.button--primary { }
+```
+
+### 5. Performance Best Practices
+
+#### CSS Loading
+```html
+<!-- Critical CSS inline -->
+<style>
+    /* Critical path CSS here */
+</style>
+
+<!-- Non-critical CSS deferred -->
+<link rel="preload" href="styles.css" as="style" onload="this.rel='stylesheet'">
+```
+
+#### Reduce Redundancy
+```css
+/* Bad - Repetitive */
+.button--primary {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 4px;
+    background: blue;
+}
+
+.button--secondary {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 4px;
+    background: gray;
+}
+
+/* Good - Using common base class */
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 4px;
+}
+
+.button--primary {
+    background: blue;
+}
+
+.button--secondary {
+    background: gray;
+}
+```
+
+## Common BEM Patterns
+
+### Form Components
+```css
+.form { }
+.form__group { }
+.form__input { }
+.form__input--error { }
+.form__label { }
+.form__submit { }
+```
+
+### Navigation
+```css
+.nav { }
+.nav__item { }
+.nav__link { }
+.nav__link--active { }
+.nav--vertical { }
+```
+
+### Modal
+```css
+.modal { }
+.modal__overlay { }
+.modal__content { }
+.modal__header { }
+.modal__close { }
+.modal--large { }
+```
+
+## Performance Testing Tips
+
+1. **Browser Dev Tools**
+   - Use Paint Flashing to identify repaints
+   - Check Layout Shifts in Performance panel
+   - Monitor FPS during animations
+
+2. **CSS Stats**
+   - Monitor selector complexity
+   - Track declaration count
+   - Identify redundant rules
+
+3. **Rendering Performance**
+   ```css
+   /* Use content-visibility for long pages */
+   .content-block {
+       content-visibility: auto;
+       contain-intrinsic-size: 0 500px;
+   }
+   ```
+
+4. **Layout Thrashing Prevention**
+   ```javascript
+   // Bad - Causes layout thrashing
+   elements.forEach(el => {
+       const height = el.offsetHeight;
+       el.style.height = `${height + 10}px`;
+   });
+
+   // Good - Batch read/write operations
+   const heights = elements.map(el => el.offsetHeight);
+   elements.forEach((el, i) => {
+       el.style.height = `${heights[i] + 10}px`;
+   });
+   ```
