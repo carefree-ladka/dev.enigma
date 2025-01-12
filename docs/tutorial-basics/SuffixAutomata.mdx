@@ -1,0 +1,127 @@
+# Suffix Automaton
+
+A Suffix Automaton is a state machine that represents all substrings of a given string efficiently. It's used primarily in string processing problems, such as substring matching, pattern matching, and finding repeated substrings, among others. It builds a minimal deterministic finite automaton (DFA) to recognize all the suffixes of a string.
+
+## Key Concepts
+
+**1. State:** Each state in a suffix automaton represents a set of substrings that can be recognized from that state.
+
+**2. Transition:** A transition between two states is labeled with a character, and it represents moving from one state to another when that character is read.
+
+**3. Minimality:** The suffix automaton is built to minimize the number of states while still representing all suffixes of the string.
+
+**4. Suffix Link:** A suffix link is a special kind of transition that allows you to move from a state to another state that represents a "shorter" suffix of the string. This link plays a crucial role in efficiently constructing and using suffix automata.
+
+## Properties
+
+**Number of States:** For a string of length n, a suffix automaton has at most 2n - 1 states.
+
+**Time Complexity:** Constructing a suffix automaton takes O(n) time, where n is the length of the string.
+
+**Space Complexity:** The space complexity is O(n) in terms of the number of states and transitions.
+
+## Construction
+A suffix automaton can be constructed by iteratively adding characters from the string and adjusting the automaton as follows:
+
+**Start State:** Initially, there’s one state, representing the empty string.
+
+**Adding Characters:** For each character of the string, add a new state and connect it to the current state with a transition labeled by the character.
+
+**Suffix Links:** As new states are added, suffix links are used to connect states that represent similar suffixes.
+
+
+## Suffix Automaton Implementation
+
+```JavaScript
+class State {
+  length = 0;  // Length of the longest string in this state
+  transitions = new Map();  // Transitions to other states
+  link = null;  // Suffix link
+  endpos = -1;  // Position where this state ends
+}
+
+
+class SuffixAutomaton {
+  states = Array.of(new State());
+  last = 0;  // Index of last state
+  size = 1;  // Total number of states
+
+
+  // Add a character to the automaton
+  addChar(c) {
+    let curr = this.size++;
+    this.states[curr] = new State();
+    this.states[curr].length = this.states[this.last].length + 1;
+    this.states[curr].endpos = this.states[curr].length - 1;
+
+    // Add transitions from previous states
+    let p = this.last;
+    while (p !== null && !this.states[p].transitions.has(c)) {
+      this.states[p].transitions.set(c, curr);
+      p = this.states[p].link;
+    }
+
+    if (p === null) {
+      this.states[curr].link = 0;
+    } else {
+      let q = this.states[p].transitions.get(c);
+      if (this.states[p].length + 1 === this.states[q].length) {
+        this.states[curr].link = q;
+      } else {
+        // Clone state q
+        let clone = this.size++;
+        this.states[clone] = new State();
+        this.states[clone].length = this.states[p].length + 1;
+        this.states[clone].transitions = new Map(this.states[q].transitions);
+        this.states[clone].link = this.states[q].link;
+
+        while (p !== null && this.states[p].transitions.get(c) === q) {
+          this.states[p].transitions.set(c, clone);
+          p = this.states[p].link;
+        }
+
+        this.states[q].link = this.states[curr].link = clone;
+      }
+    }
+    this.last = curr;
+  }
+
+  // Build automaton from string
+  build(str) {
+    for (let char of str) {
+      this.addChar(char);
+    }
+  }
+
+  // Check if a string is a substring
+  contains(str) {
+    let state = 0;
+    for (let char of str) {
+      if (!this.states[state].transitions.has(char)) {
+        return false;
+      }
+      state = this.states[state].transitions.get(char);
+    }
+    return true;
+  }
+}
+
+
+const sa = new SuffixAutomaton();
+sa.build("banana");
+
+console.log(sa.contains("ana")); // true
+console.log(sa.contains("nan")); // true
+console.log(sa.contains("ban")); // true
+console.log(sa.contains("xyz")); // false
+console.log(sa.contains("baa")); // false
+```
+
+## Problems on Leetcode
+
+ - 214 - Shortest Palindrome
+ - 459 - Repeated Substring Pattern
+ - 1316 - Distinct Echo Substrings
+ - 1698 - Number of Distinct Substrings
+ - 1044 - Longest Duplicate Substring
+ - 1181 - Before and After Puzzle
