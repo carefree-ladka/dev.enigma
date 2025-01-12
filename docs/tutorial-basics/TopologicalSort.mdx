@@ -77,3 +77,135 @@ const graph = [
 ];
 
 console.log(topologicalSortKahn(graph)); // Output: [0, 1, 2] or [0, 2, 1]
+```
+
+## Topological sorting using DFS 
+
+```JavaScript
+function topologicalSort(graph) {
+  const visited = new Set(); // Tracks visited nodes
+  const stack = []; // Stores the topological order
+
+  // Helper function for DFS
+  function dfs(node) {
+    if (visited.has(node)) return; // If already visited, skip
+    visited.add(node); // Mark node as visited
+
+    // Visit all its neighbors
+    for (const neighbor of graph[node]) {
+      dfs(neighbor);
+    }
+
+    // Add the node to the stack when finished
+    stack.push(node);
+  }
+
+  // Iterate through all nodes in the graph
+  for (const node of Object.keys(graph).map(Number)) {
+    if (!visited.has(node)) {
+      dfs(node);
+    }
+  }
+
+  // Reverse the stack to get the correct topological order
+  return stack.reverse();
+}
+
+// Example usage
+const graph = {
+  5: [2, 0],
+  4: [0, 1],
+  2: [3],
+  3: [1],
+  0: [],
+  1: []
+};
+
+console.log(topologicalSort(graph));
+// Output: [5, 4, 2, 3, 1, 0] (One valid order)
+```
+
+## 207. Course Schedule
+
+/* 
+0: Not visited
+1: Visiting (current DFS path)
+2: Fully visited (processed)
+*/
+
+```JavaScript
+function canFinish(numCourses, prerequisites) {
+  const graph = Array.from({ length: numCourses }, () => []);
+  const visited = new Array(numCourses).fill(0);
+
+  // Build adjacency list
+  for (const [course, prereq] of prerequisites) {
+    graph[prereq].push(course);
+  }
+
+  // Helper function for DFS
+  function dfs(course) {
+    if (visited[course] === 1) return false; // Cycle detected
+    if (visited[course] === 2) return true;  // Already processed
+
+    visited[course] = 1; // Mark as visiting
+
+    for (const nextCourse of graph[course]) {
+      if (!dfs(nextCourse)) return false;
+    }
+
+    visited[course] = 2; // Mark as fully visited
+    return true;
+  }
+
+  // Check all courses
+  for (let i = 0; i < numCourses; i++) {
+    if (!dfs(i)) return false;
+  }
+
+  return true;
+}
+```
+
+## 210. Course Schedule II
+
+```JavaScript
+/**
+ * @param {number} numCourses
+ * @param {number[][]} prerequisites
+ * @return {boolean}
+ */
+var findOrder = function (numCourses, prerequisites) {
+  const visited = {}
+  const graph = {}
+  const res = []
+
+  for (let i = 0; i < numCourses; i++) {
+    visited[i] = 0 //Unvisited
+    graph[i] = []
+  }
+
+  for (const [u, v] of prerequisites) {
+    graph[v].push(u)
+  }
+
+  const dfs = (node) => {
+    if (visited[node] === 1) return false //Visiting
+    if (visited[node] === -1) return true //Visited
+    visited[node] = 1
+
+    for (const nbr of graph[node]) {
+      if (!dfs(nbr)) return false
+    }
+
+    visited[node] = -1
+    res.push(node)
+    return true
+  }
+
+  for (let i = 0; i < numCourses; i++) {
+    if (visited[i] === 0 && !dfs(i)) return []
+  }
+  return res.reverse()
+};
+```
