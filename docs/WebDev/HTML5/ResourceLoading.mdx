@@ -1,0 +1,205 @@
+# Resource Loading & Performance Optimization
+
+## Resource Hints
+
+### dns-prefetch
+Performs early DNS resolution for domain names.
+```html
+<link rel="dns-prefetch" href="https://api.example.com">
+```
+**Best for:**
+- Third-party domains you'll connect to soon
+- Analytics, social media widgets, CDNs
+- When you know you'll need resources from a domain later
+
+**Notes:**
+- Useful for HTTP/1.1
+- Most beneficial for cross-origin domains
+- Very low resource cost
+
+### preconnect
+Establishes early connections, including DNS lookup, TCP handshake, and optional TLS negotiation.
+```html
+<link rel="preconnect" href="https://api.example.com" crossorigin>
+```
+**Best for:**
+- Critical third-party origins where you'll request resources soon
+- When you know the exact domain but not the exact files
+- Font services, API endpoints
+
+**Notes:**
+- More resource-intensive than dns-prefetch
+- Connections kept open for 10 seconds
+- Use sparingly (no more than 3-4 domains)
+
+### prefetch
+Fetches resources that will be needed for subsequent pages/navigation.
+```html
+<link rel="prefetch" href="/images/large-hero.jpg">
+<link rel="prefetch" href="/js/next-page.js">
+```
+**Best for:**
+- Resources needed on the next page
+- Assets for the next likely user action
+- Low-priority resources for future use
+
+**Notes:**
+- Browser idle time only
+- Useful for Single Page Applications (SPA)
+- Doesn't execute JavaScript, only downloads
+
+### preload
+Declares high-priority resources needed for current page.
+```html
+<link rel="preload" href="/fonts/main.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/css/critical.css" as="style">
+<link rel="preload" href="/js/important.js" as="script">
+```
+**Best for:**
+- Critical resources needed ASAP
+- Late-discovered resources in CSS/JS
+- Custom fonts, hero images
+- Critical CSS/JS
+
+**Notes:**
+- Must use `as` attribute
+- Mandatory fetch, high priority
+- Browser MUST download resource
+
+## Script Loading
+
+### async
+Downloads script asynchronously and executes when ready.
+```html
+<script async src="/js/analytics.js"></script>
+<script async src="/js/widget.js"></script>
+```
+**Best for:**
+- Independent scripts
+- Analytics
+- Tracking scripts
+- Social media widgets
+
+**Notes:**
+- Downloads during HTML parsing
+- Executes immediately after download
+- Order not guaranteed
+- DOMContentLoaded not blocked
+
+### defer
+Downloads script asynchronously but defers execution.
+```html
+<script defer src="/js/main.js"></script>
+<script defer src="/js/dependencies.js"></script>
+```
+**Best for:**
+- Scripts that need DOM
+- Scripts with dependencies
+- Most application scripts
+- Scripts that need to run in order
+
+**Notes:**
+- Downloads during HTML parsing
+- Executes after HTML parsing
+- Maintains script order
+- Executes before DOMContentLoaded
+
+### module
+Loads JavaScript as an ES module.
+```html
+<script type="module" src="/js/app.mjs"></script>
+```
+**Best for:**
+- Modern JavaScript applications
+- Code splitting
+- ES6+ features
+
+**Notes:**
+- Deferred by default
+- Always executed in strict mode
+- Cross-origin requires CORS
+- Can use import/export
+
+## Best Practices
+
+### Resource Hint Combinations
+```html
+<!-- For critical third-party resources -->
+<link rel="preconnect" href="https://api.example.com" crossorigin>
+
+<!-- For future third-party resources -->
+<link rel="dns-prefetch" href="https://api.example.com">
+<link rel="prefetch" href="https://api.example.com/data.json">
+
+<!-- For critical fonts -->
+<link rel="preload" href="/fonts/main.woff2" as="font" type="font/woff2" crossorigin>
+```
+
+### Priority Patterns
+1. Critical Resources
+```html
+<!-- Highest priority - needed immediately -->
+<link rel="preload" href="/css/critical.css" as="style">
+<link rel="stylesheet" href="/css/critical.css">
+```
+
+2. Important but Not Critical
+```html
+<!-- Load soon but not blocking -->
+<script defer src="/js/main.js"></script>
+```
+
+3. Non-Critical Resources
+```html
+<!-- Load when convenient -->
+<link rel="prefetch" href="/images/optional.jpg">
+```
+
+### Loading Strategies
+
+#### Critical CSS
+```html
+<link rel="preload" href="/css/critical.css" as="style">
+<link rel="stylesheet" href="/css/critical.css">
+<link rel="prefetch" href="/css/non-critical.css">
+```
+
+#### Progressive Font Loading
+```html
+<link rel="preload" href="/fonts/main.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="prefetch" href="/fonts/bold.woff2" as="font" type="font/woff2" crossorigin>
+```
+
+#### Script Loading
+```html
+<!-- Critical functionality -->
+<script defer src="/js/critical.js"></script>
+
+<!-- Enhancement scripts -->
+<script async src="/js/enhancement.js"></script>
+
+<!-- Next page scripts -->
+<link rel="prefetch" href="/js/next-page.js">
+```
+
+## Performance Tips
+
+1. **Prioritize Critical Resources**
+   - Use `preload` for above-the-fold content
+   - Defer non-critical scripts
+   - Prefetch likely next actions
+
+2. **Optimize Connection Management**
+   - Limit preconnect to 3-4 domains
+   - Combine with dns-prefetch for wider support
+   - Close unused preconnections
+
+3. **Balance Resource Hints**
+   - Don't preload too much
+   - Prefetch only highly probable resources
+   - Monitor impact on bandwidth
+
+4. **Script Loading Strategies**
+   - Use `defer` for most scripts
+   - `async` for independent scripts
+   - Modules for modern applications

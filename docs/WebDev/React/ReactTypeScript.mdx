@@ -1,0 +1,296 @@
+# React TypeScript Cheatsheet
+
+## Basic Component Types
+
+### Function Components
+```typescript
+// Basic Function Component
+const Button: React.FC<{
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ onClick, children }) => (
+  <button onClick={onClick}>{children}</button>
+);
+
+// Alternative syntax (preferred)
+interface ButtonProps {
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function Button({ onClick, children }: ButtonProps) {
+  return <button onClick={onClick}>{children}</button>;
+}
+```
+
+### Props Types
+```typescript
+// Basic props
+interface UserProps {
+  name: string;
+  age: number;
+  email?: string; // Optional prop
+  children?: React.ReactNode; // Children prop
+}
+
+// Props with functions
+interface ButtonProps {
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onHover?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+// Props with generics
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}
+```
+
+### Event Handlers
+```typescript
+// Common Event Types
+interface InputProps {
+  // Mouse events
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseOver: (event: React.MouseEvent<HTMLDivElement>) => void;
+  
+  // Keyboard events
+  onKeyPress: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  
+  // Form events
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  
+  // Focus events
+  onFocus: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur: (event: React.FocusEvent<HTMLInputElement>) => void;
+}
+
+// Event handler implementations
+const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const value = event.target.value;
+};
+
+const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+};
+```
+
+## Hooks with TypeScript
+
+### useState
+```typescript
+// Basic types
+const [count, setCount] = useState<number>(0);
+const [name, setName] = useState<string>('');
+const [isLoading, setIsLoading] = useState<boolean>(false);
+
+// Complex types
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const [user, setUser] = useState<User | null>(null);
+
+// Array state
+const [items, setItems] = useState<string[]>([]);
+```
+
+### useRef
+```typescript
+// DOM refs
+const inputRef = useRef<HTMLInputElement>(null);
+const buttonRef = useRef<HTMLButtonElement>(null);
+
+// Mutable refs
+const countRef = useRef<number>(0);
+const timerRef = useRef<NodeJS.Timeout>();
+```
+
+### useEffect
+```typescript
+// Basic effect
+useEffect(() => {
+  document.title = `Count: ${count}`;
+}, [count]);
+
+// Cleanup function
+useEffect(() => {
+  const handler = (event: MouseEvent) => {
+    console.log(event.clientX, event.clientY);
+  };
+  
+  window.addEventListener('mousemove', handler);
+  
+  return () => {
+    window.removeEventListener('mousemove', handler);
+  };
+}, []);
+```
+
+### useReducer
+```typescript
+interface State {
+  count: number;
+  error: string | null;
+  loading: boolean;
+}
+
+type Action = 
+  | { type: 'INCREMENT' }
+  | { type: 'DECREMENT' }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_LOADING'; payload: boolean };
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'INCREMENT':
+      return { ...state, count: state.count + 1 };
+    case 'DECREMENT':
+      return { ...state, count: state.count - 1 };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    default:
+      return state;
+  }
+};
+
+// Usage
+const [state, dispatch] = useReducer(reducer, {
+  count: 0,
+  error: null,
+  loading: false
+});
+```
+
+## Context with TypeScript
+
+```typescript
+// Create context with type
+interface ThemeContextType {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+// Provider component
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+  
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+// Custom hook for context
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+```
+
+## Generic Components
+
+```typescript
+// Generic list component
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}
+
+function List<T>({ items, renderItem }: ListProps<T>) {
+  return (
+    <ul>
+      {items.map((item, index) => (
+        <li key={index}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Usage
+interface User {
+  id: number;
+  name: string;
+}
+
+<List<User>
+  items={users}
+  renderItem={(user) => <span>{user.name}</span>}
+/>
+```
+
+## Utility Types
+
+```typescript
+// Partial - Makes all properties optional
+type PartialUser = Partial<User>;
+
+// Required - Makes all properties required
+type RequiredUser = Required<User>;
+
+// Pick - Selects specific properties
+type NameAndEmail = Pick<User, 'name' | 'email'>;
+
+// Omit - Removes specific properties
+type UserWithoutId = Omit<User, 'id'>;
+
+// Record - Creates an object type with specific key and value types
+type UserRoles = Record<string, 'admin' | 'user' | 'guest'>;
+
+// Readonly - Makes all properties readonly
+type ReadonlyUser = Readonly<User>;
+```
+
+## Type Assertions and Guards
+
+```typescript
+// Type assertions
+const input = event.target as HTMLInputElement;
+const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+
+// Type guards
+function isUser(obj: any): obj is User {
+  return 'id' in obj && 'name' in obj && 'email' in obj;
+}
+
+// Usage with type guard
+if (isUser(data)) {
+  console.log(data.name); // TypeScript knows data is User
+}
+```
+
+## Best Practices
+
+1. **Props Types**:
+   - Use interfaces for props
+   - Make props readonly when possible
+   - Use discriminated unions for complex props
+
+2. **Event Handlers**:
+   - Use the most specific event type possible
+   - Provide proper types for event.target
+
+3. **State Management**:
+   - Define explicit types for state
+   - Use discriminated unions for actions
+   - Leverage TypeScript's inference when possible
+
+4. **Performance**:
+   - Use proper dependency types in useCallback/useMemo
+   - Avoid unnecessary type assertions
+   - Utilize const assertions where appropriate
