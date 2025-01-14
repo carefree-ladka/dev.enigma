@@ -1,0 +1,461 @@
+# Redux Toolkit Complete Cheatsheet
+
+## Core Concepts
+
+### Store
+The central state container that holds the complete state tree of your application.
+
+```javascript
+import { configureStore } from '@reduxjs/toolkit';
+import rootReducer from './reducers';
+
+const store = configureStore({
+  reducer: rootReducer,
+  middleware: (getDefaultMiddleware) => 
+    getDefaultMiddleware().concat(customMiddleware),
+  devTools: process.env.NODE_ENV !== 'production',
+  preloadedState: initialState,
+  enhancers: [customEnhancer],
+});
+
+export default store;
+```
+
+### Slice
+A collection of Redux reducer logic and actions for a single feature.
+
+```javascript
+import { createSlice } from '@reduxjs/toolkit';
+
+const todoSlice = createSlice({
+  name: 'todos',
+  initialState: [],
+  reducers: {
+    addTodo: (state, action) => {
+      state.push(action.payload);
+    },
+    toggleTodo: (state, action) => {
+      const todo = state.find(todo => todo.id === action.payload);
+      if (todo) {
+        todo.completed = !todo.completed;
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchTodos.fulfilled, (state, action) => {
+        return action.payload;
+      })
+      .addCase(fetchTodos.rejected, (state, action) => {
+        state.error = action.error.message;
+      });
+  },
+});
+
+export const { addTodo, toggleTodo } = todoSlice.actions;
+export default todoSlice.reducer;
+```
+
+## State Management
+
+### Creating a Slice with Initial State
+
+```javascript
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+interface UserState {
+  name: string;
+  email: string;
+  isAuthenticated: boolean;
+}
+
+const initialState: UserState = {
+  name: '',
+  email: '',
+  isAuthenticated: false,
+};
+
+const userSlice = createSlice({
+  name: 'user',
+  initialState,
+  reducers: {
+    setUser: (state, action: PayloadAction<UserState>) => {
+      return { ...state, ...action.payload };
+    },
+    clearUser: (state) => {
+      return initialState;
+    },
+    updateUserField: (
+      state,
+      action: PayloadAction<{ field: keyof UserState; value: any }>
+    ) => {
+      const { field, value } = action.payload;
+      state[field] = value;
+    },
+  },
+});
+
+export const { setUser, clearUser, updateUserField } = userSlice.actions;
+export default userSlice.reducer;
+```
+
+### Combining Reducers
+
+```javascript
+import { combineReducers } from '@reduxjs/toolkit';
+import userReducer from './userSlice';
+import todoReducer from './todoSlice';
+import authReducer from './authSlice';
+
+const rootReducer = combineReducers({
+  user: userReducer,
+  todos: todoReducer,
+  auth: authReducer,
+});
+
+export type RootState = ReturnType<typeof rootReducer>;
+export default rootReducer;
+```
+
+## Async Operations
+
+### Creating Thunks
+
+```javascript
+import { createAsyncThunk } from '@reduxjs/toolkit';
+
+export const fetchUserById = createAsyncThunk(
+  'users/fetchByIdStatus',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Usage in slice
+const userSlice = createSlice({
+  name: 'user',
+  initialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUserById.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchUserById.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.data = action.payload;
+      })
+      .addCase(fetchUserById.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      });
+  },
+});
+```
+
+### RTK Query Setup
+
+```javascript
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+export const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  endpoints: (builder) => ({
+    getUsers: builder.query({
+      query: () => 'users',
+      providesTags: ['Users'],
+    }),
+    getUserById: builder.query({
+      query: (id) => `users/${id}`,
+      providesTags: (_result, _err, id) => [{ type: 'Users', id }],
+    }),
+    updateUser: builder.mutation({
+      query: ({ id, ...patch }) => ({
+        url: `users/${id}`,
+        method: 'PATCH',
+        body: patch,
+      }),
+      invalidatesTags: (_result, _err, { id }) => [
+        { type: 'Users', id },
+        'Users',
+      ],
+    }),
+  }),
+});
+
+export const {
+  useGetUsersQuery,
+  useGetUserByIdQuery,
+  useUpdateUserMutation,
+} = api;
+```
+
+## Selectors
+
+### Creating and Using Selectors
+
+```javascript
+import { createSelector } from '@reduxjs/toolkit';
+
+// Basic selector
+const selectTodos = (state: RootState) => state.todos;
+
+// Complex selector
+export const selectCompletedTodos = createSelector(
+  [selectTodos],
+  (todos) => todos.filter(todo => todo.completed)
+);
+
+// Multiple input selectors
+export const selectTodosByUser = createSelector(
+  [selectTodos, (state, userId) => userId],
+  (todos, userId) => todos.filter(todo => todo.userId === userId)
+);
+
+// Using with hooks
+const CompletedTodosList = () => {
+  const completedTodos = useSelector(selectCompletedTodos);
+  return (
+    <ul>
+      {completedTodos.map(todo => (
+        <li key={todo.id}>{todo.text}</li>
+      ))}
+    </ul>
+  );
+};
+```
+
+## Middleware
+
+### Custom Middleware
+
+```javascript
+import { createListenerMiddleware } from '@reduxjs/toolkit';
+
+export const listenerMiddleware = createListenerMiddleware();
+
+listenerMiddleware.startListening({
+  actionCreator: userSlice.actions.setUser,
+  effect: async (action, listenerApi) => {
+    // Do something when setUser action is dispatched
+    localStorage.setItem('user', JSON.stringify(action.payload));
+  },
+});
+
+// Add to store
+const store = configureStore({
+  reducer: rootReducer,
+  middleware: (getDefault) =>
+    getDefault().concat(listenerMiddleware.middleware),
+});
+```
+
+## React Integration
+
+### Provider Setup
+
+```javascript
+import { Provider } from 'react-redux';
+import { store } from './store';
+
+const App = () => {
+  return (
+    <Provider store={store}>
+      <YourApp />
+    </Provider>
+  );
+};
+```
+
+### Hooks Usage
+
+```javascript
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from './store';
+import { addTodo, toggleTodo } from './todoSlice';
+
+const TodoComponent = () => {
+  const dispatch = useDispatch();
+  const todos = useSelector((state: RootState) => state.todos);
+  const status = useSelector((state: RootState) => state.todos.status);
+
+  const handleAddTodo = (text: string) => {
+    dispatch(addTodo({ id: Date.now(), text, completed: false }));
+  };
+
+  const handleToggle = (id: number) => {
+    dispatch(toggleTodo(id));
+  };
+
+  if (status === 'loading') return <div>Loading...</div>;
+
+  return (
+    <div>
+      {/* Your JSX */}
+    </div>
+  );
+};
+```
+
+## Best Practices
+
+### Type Safety
+
+```javascript
+// Define types for state
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+}
+
+interface TodoState {
+  items: Todo[];
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
+}
+
+// Use in slice
+const todoSlice = createSlice({
+  name: 'todos',
+  initialState: {
+    items: [],
+    status: 'idle',
+    error: null,
+  } as TodoState,
+  reducers: {
+    addTodo: (state, action: PayloadAction<Todo>) => {
+      state.items.push(action.payload);
+    },
+  },
+});
+```
+
+### Performance Optimization
+
+```javascript
+// Memoized Selectors
+const selectFilteredTodos = createSelector(
+  [
+    (state: RootState) => state.todos.items,
+    (state: RootState) => state.filters.status,
+  ],
+  (todos, status) => {
+    switch (status) {
+      case 'completed':
+        return todos.filter(todo => todo.completed);
+      case 'active':
+        return todos.filter(todo => !todo.completed);
+      default:
+        return todos;
+    }
+  }
+);
+
+// Component optimization
+const TodoItem = memo(({ todo, onToggle }: TodoItemProps) => {
+  return (
+    <li onClick={() => onToggle(todo.id)}>
+      {todo.text}
+    </li>
+  );
+});
+```
+
+### Error Handling
+
+```javascript
+const fetchTodos = createAsyncThunk(
+  'todos/fetchTodos',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch('/api/todos');
+      if (!response.ok) {
+        throw new Error('Server Error');
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Handle in slice
+extraReducers: (builder) => {
+  builder
+    .addCase(fetchTodos.rejected, (state, action) => {
+      state.status = 'failed';
+      state.error = action.payload as string;
+      // Log error or show notification
+    });
+};
+```
+
+## Testing
+
+### Unit Testing Reducers
+
+```javascript
+import todoReducer, { addTodo, toggleTodo } from './todoSlice';
+
+describe('todo reducer', () => {
+  const initialState = {
+    items: [],
+    status: 'idle',
+    error: null,
+  };
+
+  test('should handle initial state', () => {
+    expect(todoReducer(undefined, { type: 'unknown' })).toEqual(initialState);
+  });
+
+  test('should handle addTodo', () => {
+    const actual = todoReducer(initialState, addTodo({
+      id: 1,
+      text: 'Test Todo',
+      completed: false,
+    }));
+    expect(actual.items.length).toEqual(1);
+    expect(actual.items[0].text).toEqual('Test Todo');
+  });
+});
+```
+
+### Testing Async Thunks
+
+```javascript
+import { fetchTodos } from './todoSlice';
+import { store } from './store';
+
+describe('todo async actions', () => {
+  beforeEach(() => {
+    fetch.resetMocks();
+  });
+
+  test('fetches todos successfully', async () => {
+    const todos = [{ id: 1, text: 'Test', completed: false }];
+    fetch.mockResponseOnce(JSON.stringify(todos));
+
+    const result = await store.dispatch(fetchTodos());
+    
+    expect(result.payload).toEqual(todos);
+    expect(store.getState().todos.items).toEqual(todos);
+  });
+
+  test('handles fetch error', async () => {
+    fetch.mockRejectOnce(new Error('API Error'));
+
+    const result = await store.dispatch(fetchTodos());
+    
+    expect(result.payload).toEqual('API Error');
+    expect(store.getState().todos.error).toEqual('API Error');
+  });
+});
+```
