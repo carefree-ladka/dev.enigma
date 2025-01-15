@@ -116,3 +116,291 @@ class DSU {
   }
 }
 ```
+
+## Find all Connected Components in a Graph
+```JavaScript
+/**
+ * Finds all connected components in a graph using DFS.
+ * @param {number} n - Number of nodes (0 to n-1).
+ * @param {number[][]} edges - Edges of the graph [u, v].
+ * @return {number[][]} - Array of connected components.
+ */
+function findConnectedComponents(n, edges) {
+  // Build adjacency list
+  const graph = Array.from({ length: n }, () => []);
+  for (const [u, v] of edges) {
+    graph[u].push(v);
+    graph[v].push(u);
+  }
+
+  const visited = Array(n).fill(false); // Track visited nodes
+  const components = []; // List of connected components
+
+  // DFS function to collect nodes in a component
+  function dfs(node, component) {
+    visited[node] = true;
+    component.push(node);
+    for (const neighbor of graph[node]) {
+      if (!visited[neighbor]) {
+        dfs(neighbor, component);
+      }
+    }
+  }
+
+  // Traverse all nodes
+  for (let i = 0; i < n; i++) {
+    if (!visited[i]) {
+      const component = [];
+      dfs(i, component); // Find all nodes in the current component
+      components.push(component); // Save the component
+    }
+  }
+
+  return components;
+}
+
+// Example usage
+const n = 6;
+const edges = [
+  [0, 1],
+  [1, 2],
+  [3, 4],
+];
+const result = findConnectedComponents(n, edges);
+console.log(result); // Example output: [[0, 1, 2], [3, 4], [5]]
+```
+
+## Find all Connected Components in a Graph: Using Union-Find
+
+```JavaScript
+/**
+ * Finds all connected components in a graph using Union-Find.
+ * @param {number} n - Number of nodes (0 to n-1).
+ * @param {number[][]} edges - Edges of the graph [u, v].
+ * @return {number[][]} - Array of connected components.
+ */
+function findConnectedComponents(n, edges) {
+  const parent = Array.from({ length: n }, (_, i) => i); // Parent array
+  const rank = Array(n).fill(0); // Rank array for optimization
+
+  // Find operation with path compression
+  function find(x) {
+    if (parent[x] !== x) {
+      parent[x] = find(parent[x]); // Path compression
+    }
+    return parent[x];
+  }
+
+  // Union operation with rank optimization
+  function union(x, y) {
+    const rootX = find(x);
+    const rootY = find(y);
+    if (rootX !== rootY) {
+      if (rank[rootX] > rank[rootY]) {
+        parent[rootY] = rootX;
+      } else if (rank[rootX] < rank[rootY]) {
+        parent[rootX] = rootY;
+      } else {
+        parent[rootY] = rootX;
+        rank[rootX]++;
+      }
+    }
+  }
+
+  // Process all edges
+  for (const [u, v] of edges) {
+    union(u, v);
+  }
+
+  // Group nodes by their root
+  const componentsMap = new Map();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    if (!componentsMap.has(root)) {
+      componentsMap.set(root, []);
+    }
+    componentsMap.get(root).push(i);
+  }
+
+  // Convert map to an array of components
+  return Array.from(componentsMap.values());
+}
+
+// Example usage
+const n = 6;
+const edges = [
+  [0, 1],
+  [1, 2],
+  [3, 4],
+];
+const result = findConnectedComponents(n, edges);
+console.log(result); // Example output: [[0, 1, 2], [3, 4], [5]]
+
+/*
+This means:
+
+Nodes [0, 1, 2] are connected.
+Nodes [3, 4] are connected.
+Node [5] is isolated. 
+ */
+```
+
+
+## Compute the size of Each Connected Component
+
+```JavaScript
+class UnionFind {
+  constructor(n) {
+    this.parent = Array.from({ length: n }, (_, i) => i); // Each node is its own parent initially
+    this.size = Array(n).fill(1); // Each component initially has size 1
+  }
+
+  // Find operation with path compression
+  find(x) {
+    if (this.parent[x] !== x) {
+      this.parent[x] = this.find(this.parent[x]); // Path compression
+    }
+    return this.parent[x];
+  }
+
+  // Union operation with size tracking
+  union(x, y) {
+    const rootX = this.find(x);
+    const rootY = this.find(y);
+
+    if (rootX !== rootY) {
+      // Merge smaller tree into larger tree
+      if (this.size[rootX] > this.size[rootY]) {
+        this.parent[rootY] = rootX;
+        this.size[rootX] += this.size[rootY];
+      } else {
+        this.parent[rootX] = rootY;
+        this.size[rootY] += this.size[rootX];
+      }
+    }
+  }
+
+  // Get sizes of all components
+  getComponentSizes() {
+    const componentSizes = new Map();
+    for (let i = 0; i < this.parent.length; i++) {
+      const root = this.find(i);
+      if (!componentSizes.has(root)) {
+        componentSizes.set(root, this.size[root]);
+      }
+    }
+    return Array.from(componentSizes.values());
+  }
+}
+
+// Function to find the sizes of all connected components
+function connectedComponentSizes(n, edges) {
+  const uf = new UnionFind(n);
+
+  // Process all edges
+  for (const [u, v] of edges) {
+    uf.union(u, v);
+  }
+
+  // Get sizes of connected components
+  return uf.getComponentSizes();
+}
+
+// Example usage
+const n = 6;
+const edges = [
+  [0, 1],
+  [1, 2],
+  [3, 4],
+];
+const result = connectedComponentSizes(n, edges);
+console.log(result); // Example output: [3, 2, 1]
+
+/* 
+This indicates:
+
+A component of size 3 (nodes [0, 1, 2]).
+A component of size 2 (nodes [3, 4]).
+A component of size 1 (node [5], isolated).
+*/
+```
+
+## Find Maximum in Each Component
+
+```JavaScript
+class UnionFind {
+  constructor(n) {
+    this.parent = Array.from({ length: n }, (_, i) => i); // Each node is its own parent initially
+    this.size = Array(n).fill(1); // Each component initially has size 1
+    this.max = Array.from({ length: n }, (_, i) => i); // Maximum value in each component
+  }
+
+  // Find operation with path compression
+  find(x) {
+    if (this.parent[x] !== x) {
+      this.parent[x] = this.find(this.parent[x]); // Path compression
+    }
+    return this.parent[x];
+  }
+
+  // Union operation with size and max tracking
+  union(x, y) {
+    const rootX = this.find(x);
+    const rootY = this.find(y);
+
+    if (rootX !== rootY) {
+      // Merge smaller tree into larger tree
+      if (this.size[rootX] > this.size[rootY]) {
+        this.parent[rootY] = rootX;
+        this.size[rootX] += this.size[rootY];
+        this.max[rootX] = Math.max(this.max[rootX], this.max[rootY]);
+      } else {
+        this.parent[rootX] = rootY;
+        this.size[rootY] += this.size[rootX];
+        this.max[rootY] = Math.max(this.max[rootX], this.max[rootY]);
+      }
+    }
+  }
+
+  // Get maximum in each component
+  getComponentMax() {
+    const componentMax = new Map();
+    for (let i = 0; i < this.parent.length; i++) {
+      const root = this.find(i);
+      if (!componentMax.has(root)) {
+        componentMax.set(root, this.max[root]);
+      }
+    }
+    return Array.from(componentMax.values());
+  }
+}
+
+// Function to find the maximum in each connected component
+function maxInEachComponent(n, edges) {
+  const uf = new UnionFind(n);
+
+  // Process all edges
+  for (const [u, v] of edges) {
+    uf.union(u, v);
+  }
+
+  // Get maximum in each connected component
+  return uf.getComponentMax();
+}
+
+// Example usage
+const n = 6;
+const edges = [
+  [0, 1],
+  [1, 2],
+  [3, 4],
+];
+const result = maxInEachComponent(n, edges);
+console.log(result); // Example output: [2, 4, 5]
+
+/* 
+Component {0, 1, 2}: Maximum is 2.
+Component {3, 4}: Maximum is 4.
+Component {5}: Maximum is 5.
+*/
+```
