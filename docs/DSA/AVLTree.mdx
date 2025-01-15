@@ -1,0 +1,303 @@
+# AVL Tree
+
+The implementation maintains the AVL tree properties:
+
+1. Balance factor of every node is -1, 0, or 1
+2. For each node, the heights of its left and right subtrees differ by at most 1
+3. All BST properties are maintained
+
+
+## Key features and optimizations:
+
+**1. Self-Balancing:**
+
+   - Maintains height balance property (difference in heights ≤ 1) 
+   - Four types of rotations: Left-Left, Right-Right, Left-Right, Right-Left
+
+
+**2. Performance:**
+
+   - Insert: O(log n)
+   - Delete: O(log n)
+   - Search: O(log n)
+   - Space: O(n)
+
+
+**3. Balanced Operations:**
+
+   - Automatic rebalancing after insertions and deletions
+   - Height tracking for efficient balance factor calculation
+
+
+**4. Memory Efficient:**
+
+   - Minimal node structure with just value, height, and child pointers
+   - Size tracking for quick size queries
+
+
+**5. Complete API:**
+
+   - Insert, delete, search operations
+   - Traversal methods
+   - Size and emptiness checks
+
+
+## Implementation
+```JavaScript
+class Node {
+  constructor(value) {
+    this.value = value;
+    this.left = null;
+    this.right = null;
+    this.height = 1;  // Height of the node (used for balancing)
+  }
+}
+
+class AVLTree {
+  constructor() {
+    this.root = null;
+    this.size = 0;
+  }
+
+  // Get height of a node
+  getHeight(node) {
+    return node ? node.height : 0;
+  }
+
+  // Get balance factor of a node
+  getBalanceFactor(node) {
+    return node ? this.getHeight(node.left) - this.getHeight(node.right) : 0;
+  }
+
+  // Update height of a node
+  updateHeight(node) {
+    if (node) {
+      node.height = 1 + Math.max(
+        this.getHeight(node.left),
+        this.getHeight(node.right)
+      );
+    }
+  }
+
+  // Right rotation
+  rightRotate(y) {
+    const x = y.left;
+    const T2 = x.right;
+
+    x.right = y;
+    y.left = T2;
+
+    // Update heights
+    this.updateHeight(y);
+    this.updateHeight(x);
+
+    return x;
+  }
+
+  // Left rotation
+  leftRotate(x) {
+    const y = x.right;
+    const T2 = y.left;
+
+    y.left = x;
+    x.right = T2;
+
+    // Update heights
+    this.updateHeight(x);
+    this.updateHeight(y);
+
+    return y;
+  }
+
+  // Insert a value into the tree
+  insert(value) {
+    this.root = this.#insert(this.root, value);
+    this.size++;
+  }
+
+  #insert(node, value) {
+    // Normal BST insertion
+    if (!node) {
+      return new Node(value);
+    }
+
+    if (value < node.value) {
+      node.left = this.#insert(node.left, value);
+    } else if (value > node.value) {
+      node.right = this.#insert(node.right, value);
+    } else {
+      return node; // Duplicate values not allowed
+    }
+
+    // Update height
+    this.updateHeight(node);
+
+    // Get balance factor
+    const balance = this.getBalanceFactor(node);
+
+    // Left Left Case
+    if (balance > 1 && value < node.left.value) {
+      return this.rightRotate(node);
+    }
+
+    // Right Right Case
+    if (balance < -1 && value > node.right.value) {
+      return this.leftRotate(node);
+    }
+
+    // Left Right Case
+    if (balance > 1 && value > node.left.value) {
+      node.left = this.leftRotate(node.left);
+      return this.rightRotate(node);
+    }
+
+    // Right Left Case
+    if (balance < -1 && value < node.right.value) {
+      node.right = this.rightRotate(node.right);
+      return this.leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Delete a value from the tree
+  delete(value) {
+    this.root = this.#delete(this.root, value);
+  }
+
+  #delete(node, value) {
+    if (!node) {
+      return null;
+    }
+
+    if (value < node.value) {
+      node.left = this.#delete(node.left, value);
+    } else if (value > node.value) {
+      node.right = this.#delete(node.right, value);
+    } else {
+      // Node with only one child or no child
+      if (!node.left || !node.right) {
+        const temp = node.left || node.right;
+        if (!temp) {
+          // No child case
+          node = null;
+        } else {
+          // One child case
+          node = temp;
+        }
+        this.size--;
+      } else {
+        // Node with two children
+        const temp = this.getMinNode(node.right);
+        node.value = temp.value;
+        node.right = this.#delete(node.right, temp.value);
+      }
+    }
+
+    if (!node) {
+      return null;
+    }
+
+    // Update height
+    this.updateHeight(node);
+
+    // Get balance factor
+    const balance = this.getBalanceFactor(node);
+
+    // Left Left Case
+    if (balance > 1 && this.getBalanceFactor(node.left) >= 0) {
+      return this.rightRotate(node);
+    }
+
+    // Left Right Case
+    if (balance > 1 && this.getBalanceFactor(node.left) < 0) {
+      node.left = this.leftRotate(node.left);
+      return this.rightRotate(node);
+    }
+
+    // Right Right Case
+    if (balance < -1 && this.getBalanceFactor(node.right) <= 0) {
+      return this.leftRotate(node);
+    }
+
+    // Right Left Case
+    if (balance < -1 && this.getBalanceFactor(node.right) > 0) {
+      node.right = this.rightRotate(node.right);
+      return this.leftRotate(node);
+    }
+
+    return node;
+  }
+
+  // Find minimum value node in the tree
+  getMinNode(node) {
+    let current = node;
+    while (current.left) {
+      current = current.left;
+    }
+    return current;
+  }
+
+  // Search for a value
+  search(value) {
+    return this.#search(this.root, value);
+  }
+
+  #search(node, value) {
+    if (!node || node.value === value) {
+      return node;
+    }
+
+    if (value < node.value) {
+      return this.#search(node.left, value);
+    }
+    return this.#search(node.right, value);
+  }
+
+  // Traversal methods
+  inorder() {
+    const result = [];
+    this.#inorder(this.root, result);
+    return result;
+  }
+
+  #inorder(node, result) {
+    if (node) {
+      this.#inorder(node.left, result);
+      result.push(node.value);
+      this.#inorder(node.right, result);
+    }
+  }
+
+  // Get tree size
+  getSize() {
+    return this.size;
+  }
+
+  // Check if tree is empty
+  isEmpty() {
+    return this.size === 0;
+  }
+}
+
+// Create AVL Tree
+const avl = new AVLTree();
+
+// Insert values
+avl.insert(10);
+avl.insert(20);
+avl.insert(30);
+avl.insert(40);
+avl.insert(50);
+avl.insert(25);
+
+// Search
+console.log(avl.search(30));  // Node { value: 30, ... }
+console.log(avl.search(100)); // null
+
+// Delete
+avl.delete(30);
+
+// Get sorted array
+console.log(avl.inorder()); // [10, 20, 25, 40, 50]
+```

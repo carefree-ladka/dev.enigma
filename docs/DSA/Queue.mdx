@@ -74,6 +74,151 @@ console.log(queue.getSize()); // 2
 console.log(queue.isEmpty()); // false
 ```
 
+## Queue Implementation
+
+**1. Circular Array:** 
+   - Uses a circular array to avoid shifting elements
+
+**2. Dynamic Resizing:**
+
+   - Doubles capacity when full
+   - Shrinks when size < 25% of capacity
+   - Minimum capacity of 10 to avoid excessive resizing
+
+
+**3. Memory Management:**
+
+   - Efficiently reuses array space
+   - Prevents memory leaks by clearing references
+
+
+**4. Operations:**
+
+   - enqueue: O(1) amortized
+   - dequeue: O(1) amortized
+   - peek: O(1)
+   - isEmpty/isFull: O(1)
+   - getSize: O(1)
+
+
+```JavaScript
+class Queue {
+  constructor(capacity = 10) {
+    this.capacity = capacity;
+    this.items = new Array(capacity);
+    this.front = 0;
+    this.rear = 0;
+    this.size = 0;
+  }
+
+  // Add element to queue
+  enqueue(element) {
+    if (this.isFull()) {
+      this.resize();
+    }
+    this.items[this.rear] = element;
+    this.rear = (this.rear + 1) % this.capacity;
+    this.size++;
+    return this.size;
+  }
+
+  // Remove and return front element
+  dequeue() {
+    if (this.isEmpty()) {
+      throw new Error("Queue Underflow");
+    }
+    const item = this.items[this.front];
+    this.items[this.front] = undefined;
+    this.front = (this.front + 1) % this.capacity;
+    this.size--;
+
+    // Shrink array if it's too sparse
+    if (this.size < this.capacity / 4 && this.capacity > 10) {
+      this.shrink();
+    }
+    return item;
+  }
+
+  // Return front element without removing
+  peek() {
+    if (this.isEmpty()) {
+      throw new Error("Queue is empty");
+    }
+    return this.items[this.front];
+  }
+
+  // Check if queue is empty
+  isEmpty() {
+    return this.size === 0;
+  }
+
+  // Check if queue is full
+  isFull() {
+    return this.size === this.capacity;
+  }
+
+  // Get current size
+  getSize() {
+    return this.size;
+  }
+
+  // Double the capacity when full
+  resize() {
+    const newCapacity = this.capacity * 2;
+    const newItems = new Array(newCapacity);
+
+    // Copy elements to new array
+    for (let i = 0; i < this.size; i++) {
+      newItems[i] = this.items[(this.front + i) % this.capacity];
+    }
+
+    this.items = newItems;
+    this.capacity = newCapacity;
+    this.front = 0;
+    this.rear = this.size;
+  }
+
+  // Halve the capacity when sparse
+  shrink() {
+    const newCapacity = Math.max(10, Math.floor(this.capacity / 2));
+    const newItems = new Array(newCapacity);
+
+    // Copy elements to new array
+    for (let i = 0; i < this.size; i++) {
+      newItems[i] = this.items[(this.front + i) % this.capacity];
+    }
+
+    this.items = newItems;
+    this.capacity = newCapacity;
+    this.front = 0;
+    this.rear = this.size;
+  }
+
+  // Clear queue
+  clear() {
+    this.items = new Array(this.capacity);
+    this.front = 0;
+    this.rear = 0;
+    this.size = 0;
+  }
+
+  // Convert queue to array
+  toArray() {
+    const result = new Array(this.size);
+    for (let i = 0; i < this.size; i++) {
+      result[i] = this.items[(this.front + i) % this.capacity];
+    }
+    return result;
+  }
+}
+
+const queue = new Queue();
+queue.enqueue(1);
+queue.enqueue(2);
+console.log(queue.dequeue()); // 1
+console.log(queue.peek());    // 2
+```
+
 ### Example Problems
 
 - [Implement Queue using Stacks](https://leetcode.com/problems/implement-queue-using-stacks/)

@@ -4,82 +4,227 @@ A **Multiset** (also known as a **bag**) is a data structure similar to a set, b
 
 This implementation of a multiset is built using a JavaScript `Map`, where each element is stored as a key, and the number of times it appears is stored as the corresponding value.
 
+**1. Efficient Storage:**
+
+   - Uses Map to store element-frequency pairs
+   - O(1) lookup and modification operations
+
+
+**2. Complete Operations Set:**
+
+   - **Basic:** add, remove, count, has
+   - **Set operations:** union, intersection, difference
+   - **Utility:** toArray, uniqueElements, toString
+
+
+**3. Performance:**
+
+   - add/remove: O(1)
+   - count/has: O(1)
+   - union/intersection/difference: O(n)
+   - toArray: O(n)
+   - where n is number of unique elements
+
+
+**4. Memory Efficient:**
+
+   - Only stores unique elements with their counts
+   - Automatically cleans up when count reaches 0
+
+
+**5. Iterator Support:**
+
+   - Can be used in for...of loops
+   - Yields each element according to its multiplicity
+
+
+**6. Flexible API:**
+
+   - Supports multiple element addition/removal
+   - Provides both multiset and set-like operations
+
+
+## Implementation
 
 ```JavaScript
-class Multiset {
-  constructor() {
-    this.set = new Map();
+class MultiSet {
+  constructor(iterable = []) {
+    // Using Map to store element frequencies
+    this.elements = new Map();
+    this.size = 0;
+
+    // Initialize with iterable if provided
+    for (const item of iterable) {
+      this.add(item);
+    }
   }
 
-  // Adds an element to the multiset
-  add(element) {
-    this.set.set(element, (this.set.get(element) ?? 0) + 1);
+  // Add element to multiset
+  add(element, count = 1) {
+    if (count <= 0) return false;
+
+    const currentCount = this.elements.get(element) || 0;
+    this.elements.set(element, currentCount + count);
+    this.size += count;
+    return true;
   }
 
-  // Removes one occurrence of the element from the multiset
-  remove(element) {
-    if (this.set.has(element)) {
-      const count = this.set.get(element);
-      if (count > 1) {
-        this.set.set(element, count - 1);
-      } else {
-        this.set.delete(element);
+  // Remove element from multiset
+  remove(element, count = 1) {
+    if (count <= 0) return false;
+
+    const currentCount = this.elements.get(element) || 0;
+    if (currentCount === 0) return false;
+
+    const newCount = Math.max(0, currentCount - count);
+    if (newCount === 0) {
+      this.elements.delete(element);
+    } else {
+      this.elements.set(element, newCount);
+    }
+
+    this.size -= (currentCount - newCount);
+    return true;
+  }
+
+  // Remove all occurrences of an element
+  removeAll(element) {
+    const count = this.elements.get(element) || 0;
+    if (count > 0) {
+      this.size -= count;
+      this.elements.delete(element);
+      return true;
+    }
+    return false;
+  }
+
+  // Get count of element
+  count(element) {
+    return this.elements.get(element) || 0;
+  }
+
+  // Check if element exists
+  has(element) {
+    return this.elements.has(element);
+  }
+
+  // Get total number of elements (including duplicates)
+  getSize() {
+    return this.size;
+  }
+
+  // Get number of unique elements
+  getUniqueSize() {
+    return this.elements.size;
+  }
+
+  // Clear the multiset
+  clear() {
+    this.elements.clear();
+    this.size = 0;
+  }
+
+  // Convert to array (with duplicates)
+  toArray() {
+    const result = [];
+    for (const [element, count] of this.elements) {
+      result.push(...Array(count).fill(element));
+    }
+    return result;
+  }
+
+  // Get array of unique elements
+  uniqueElements() {
+    return Array.from(this.elements.keys());
+  }
+
+  // Union with another multiset
+  union(other) {
+    const result = new MultiSet(this.toArray());
+    for (const [element, count] of other.elements) {
+      const currentCount = this.count(element);
+      if (count > currentCount) {
+        result.add(element, count - currentCount);
+      }
+    }
+    return result;
+  }
+
+  // Intersection with another multiset
+  intersection(other) {
+    const result = new MultiSet();
+    for (const [element, count] of this.elements) {
+      const otherCount = other.count(element);
+      if (otherCount > 0) {
+        result.add(element, Math.min(count, otherCount));
+      }
+    }
+    return result;
+  }
+
+  // Difference with another multiset
+  difference(other) {
+    const result = new MultiSet();
+    for (const [element, count] of this.elements) {
+      const otherCount = other.count(element);
+      const diffCount = count - otherCount;
+      if (diffCount > 0) {
+        result.add(element, diffCount);
+      }
+    }
+    return result;
+  }
+
+  // Check if this multiset is subset of another
+  isSubsetOf(other) {
+    for (const [element, count] of this.elements) {
+      if (other.count(element) < count) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Iterator implementation
+  *[Symbol.iterator]() {
+    for (const [element, count] of this.elements) {
+      for (let i = 0; i < count; i++) {
+        yield element;
       }
     }
   }
 
-  // Returns the count of occurrences of the element
-  count(element) {
-    return this.set.get(element) ?? 0;
-  }
-
-  // Checks if an element exists in the multiset
-  has(element) {
-    return this.set.has(element);
-  }
-
-  // Returns the size of the multiset (unique elements count)
-  size() {
-    return this.set.size;
-  }
-
-  // Removes all elements from the multiset
-  clear() {
-    this.set.clear();
-  }
-
-  // Returns the entire multiset as a plain object (for inspection)
-  toObject() {
-    return Object.fromEntries(this.set);
+  // Create string representation
+  toString() {
+    const elements = Array.from(this.elements.entries())
+      .map(([element, count]) => `${element}${count > 1 ? `(${count})` : ''}`)
+      .join(', ');
+    return `[${elements}]`;
   }
 }
 
-const multiset = new Multiset();
+// Create a new MultiSet
+const ms = new MultiSet([1, 2, 2, 3, 3, 3]);
 
-// Add elements to the multiset
-multiset.add('apple');
-multiset.add('banana');
-multiset.add('apple');
+// Basic operations
+console.log(ms.toString());        // [1(1), 2(2), 3(3)]
+console.log(ms.count(2));          // 2
+console.log(ms.getSize());         // 6
+console.log(ms.getUniqueSize());   // 3
 
-// Check the count of occurrences
-console.log(multiset.count('apple'));  // 2
-console.log(multiset.count('banana')); // 1
+// Add and remove elements
+ms.add(4, 2);                      // Add 2 occurrences of 4
+ms.remove(2, 1);                   // Remove 1 occurrence of 2
+console.log(ms.toString());        // [1(1), 2(1), 3(3), 4(2)]
 
-// Remove one occurrence of 'apple'
-multiset.remove('apple');
-console.log(multiset.count('apple'));  // 1
+// Set operations
+const ms2 = new MultiSet([2, 2, 3, 4]);
+const union = ms.union(ms2);
+const intersection = ms.intersection(ms2);
+const difference = ms.difference(ms2);
 
-// Check if an element exists
-console.log(multiset.has('apple'));    // true
-console.log(multiset.has('orange'));  // false
-
-// Get the size (number of unique elements)
-console.log(multiset.size()); // 2 (apple and banana)
-
-// Get the entire multiset
-console.log(multiset.toObject()); // { apple: 1, banana: 1 }
-
-// Clear the multiset
-multiset.clear();
-console.log(multiset.toObject()); // {}
+// Iterate over elements (including duplicates)
+for (const element of ms) {
+  console.log(element);
+}
 ```
