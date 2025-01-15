@@ -1,0 +1,377 @@
+# Binary Search Tree (BST)
+
+## Basic Structure
+
+```javascript
+class Node {
+    constructor(data) {
+        this.data = data;
+        this.left = null;
+        this.right = null;
+    }
+}
+
+class BinarySearchTree {
+    constructor() {
+        this.root = null;
+    }
+}
+```
+
+## BST Core Operations
+
+### 1. Insert Node
+
+```javascript
+insert(data) {
+    const newNode = new Node(data);
+    
+    if (!this.root) {
+        this.root = newNode;
+        return;
+    }
+    
+    function insertNode(node, newNode) {
+        if (newNode.data < node.data) {
+            if (!node.left) {
+                node.left = newNode;
+            } else {
+                insertNode(node.left, newNode);
+            }
+        } else {
+            if (!node.right) {
+                node.right = newNode;
+            } else {
+                insertNode(node.right, newNode);
+            }
+        }
+    }
+    
+    insertNode(this.root, newNode);
+}
+```
+
+Time Complexity: O(log n) average, O(n) worst case
+
+### 2. Search Node
+
+```javascript
+search(data) {
+    function searchNode(node, data) {
+        if (!node || node.data === data) {
+            return node;
+        }
+        
+        if (data < node.data) {
+            return searchNode(node.left, data);
+        }
+        return searchNode(node.right, data);
+    }
+    
+    return searchNode(this.root, data);
+}
+```
+
+Time Complexity: O(log n) average, O(n) worst case
+
+### 3. Delete Node
+
+```javascript
+delete(data) {
+    function findMin(node) {
+        while (node.left) {
+            node = node.left;
+        }
+        return node;
+    }
+    
+    function deleteNode(node, data) {
+        if (!node) return null;
+        
+        if (data < node.data) {
+            node.left = deleteNode(node.left, data);
+        } else if (data > node.data) {
+            node.right = deleteNode(node.right, data);
+        } else {
+            // Node with only one child or no child
+            if (!node.left) return node.right;
+            if (!node.right) return node.left;
+            
+            // Node with two children
+            const temp = findMin(node.right);
+            node.data = temp.data;
+            node.right = deleteNode(node.right, temp.data);
+        }
+        return node;
+    }
+    
+    this.root = deleteNode(this.root, data);
+}
+```
+
+Time Complexity: O(log n) average, O(n) worst case
+
+## Tree Traversal Methods
+
+### 1. Inorder Traversal (Left-Root-Right)
+
+```javascript
+inorderTraversal() {
+    const result = [];
+    
+    function inorder(node) {
+        if (node) {
+            inorder(node.left);
+            result.push(node.data);
+            inorder(node.right);
+        }
+    }
+    
+    inorder(this.root);
+    return result;
+}
+```
+
+### 2. Preorder Traversal (Root-Left-Right)
+
+```javascript
+preorderTraversal() {
+    const result = [];
+    
+    function preorder(node) {
+        if (node) {
+            result.push(node.data);
+            preorder(node.left);
+            preorder(node.right);
+        }
+    }
+    
+    preorder(this.root);
+    return result;
+}
+```
+
+### 3. Postorder Traversal (Left-Right-Root)
+
+```javascript
+postorderTraversal() {
+    const result = [];
+    
+    function postorder(node) {
+        if (node) {
+            postorder(node.left);
+            postorder(node.right);
+            result.push(node.data);
+        }
+    }
+    
+    postorder(this.root);
+    return result;
+}
+```
+
+### 4. Level Order Traversal (BFS)
+
+```javascript
+levelOrderTraversal() {
+    if (!this.root) return [];
+    
+    const result = [];
+    const queue = [this.root];
+    
+    while (queue.length) {
+        const level = [];
+        const levelSize = queue.length;
+        
+        for (let i = 0; i < levelSize; i++) {
+            const node = queue.shift();
+            level.push(node.data);
+            
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+        }
+        
+        result.push(level);
+    }
+    
+    return result;
+}
+```
+
+## Common Tree Operations
+
+### 1. Find Height
+
+```javascript
+getHeight() {
+    function height(node) {
+        if (!node) return 0;
+        return 1 + Math.max(height(node.left), height(node.right));
+    }
+    
+    return height(this.root);
+}
+```
+
+### 2. Check if BST is Valid
+
+```javascript
+isValidBST() {
+    function validate(node, min, max) {
+        if (!node) return true;
+        
+        if (node.data <= min || node.data >= max) {
+            return false;
+        }
+        
+        return validate(node.left, min, node.data) && 
+               validate(node.right, node.data, max);
+    }
+    
+    return validate(this.root, -Infinity, Infinity);
+}
+```
+
+### 3. Find Lowest Common Ancestor
+
+```javascript
+findLCA(n1, n2) {
+    function findLCANode(node, n1, n2) {
+        if (!node) return null;
+        
+        if (node.data > n1 && node.data > n2) {
+            return findLCANode(node.left, n1, n2);
+        }
+        
+        if (node.data < n1 && node.data < n2) {
+            return findLCANode(node.right, n1, n2);
+        }
+        
+        return node;
+    }
+    
+    return findLCANode(this.root, n1, n2);
+}
+```
+
+### 4. Check if Tree is Balanced
+
+```javascript
+isBalanced() {
+    function checkBalance(node) {
+        if (!node) return 0;
+        
+        const leftHeight = checkBalance(node.left);
+        if (leftHeight === -1) return -1;
+        
+        const rightHeight = checkBalance(node.right);
+        if (rightHeight === -1) return -1;
+        
+        if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+        
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+    
+    return checkBalance(this.root) !== -1;
+}
+```
+
+## Common Interview Questions
+
+### 1. Serialize and Deserialize Binary Tree
+
+```javascript
+// Serialize
+serialize() {
+    if (!this.root) return '[]';
+    
+    const result = [];
+    const queue = [this.root];
+    
+    while (queue.length) {
+        const node = queue.shift();
+        if (node) {
+            result.push(node.data);
+            queue.push(node.left);
+            queue.push(node.right);
+        } else {
+            result.push(null);
+        }
+    }
+    
+    while (result[result.length - 1] === null) {
+        result.pop();
+    }
+    
+    return JSON.stringify(result);
+}
+
+// Deserialize
+static deserialize(data) {
+    const values = JSON.parse(data);
+    if (!values.length) return null;
+    
+    const tree = new BinarySearchTree();
+    tree.root = new Node(values[0]);
+    const queue = [tree.root];
+    let i = 1;
+    
+    while (queue.length && i < values.length) {
+        const node = queue.shift();
+        
+        if (i < values.length && values[i] !== null) {
+            node.left = new Node(values[i]);
+            queue.push(node.left);
+        }
+        i++;
+        
+        if (i < values.length && values[i] !== null) {
+            node.right = new Node(values[i]);
+            queue.push(node.right);
+        }
+        i++;
+    }
+    
+    return tree;
+}
+```
+
+## Time Complexity Summary
+
+| Operation               | Average    | Worst Case |
+|------------------------|------------|------------|
+| Insert                 | O(log n)   | O(n)       |
+| Delete                 | O(log n)   | O(n)       |
+| Search                 | O(log n)   | O(n)       |
+| Traversal (any)        | O(n)       | O(n)       |
+| Height                 | O(n)       | O(n)       |
+| Validate BST          | O(n)       | O(n)       |
+| Find LCA               | O(log n)   | O(n)       |
+| Check Balance         | O(n)       | O(n)       |
+
+## Usage Example
+
+```javascript
+const bst = new BinarySearchTree();
+
+// Insert nodes
+bst.insert(8);
+bst.insert(3);
+bst.insert(10);
+bst.insert(1);
+bst.insert(6);
+
+// Traverse
+console.log(bst.inorderTraversal());    // [1, 3, 6, 8, 10]
+console.log(bst.preorderTraversal());   // [8, 3, 1, 6, 10]
+console.log(bst.postorderTraversal());  // [1, 6, 3, 10, 8]
+
+// Search
+console.log(bst.search(6));  // Node { data: 6, left: null, right: null }
+
+// Check if valid BST
+console.log(bst.isValidBST());  // true
+
+// Get height
+console.log(bst.getHeight());  // 3
+```

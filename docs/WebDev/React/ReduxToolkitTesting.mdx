@@ -1,0 +1,235 @@
+# Redux Toolkit Testing
+
+```JavaScript
+// Redux Toolkit Testing Guide
+
+// 1. Setting Up Test Environment
+import { configureStore } from '@reduxjs/toolkit';
+import { render } from '@testing-library/react';
+import { Provider } from 'react-redux';
+
+// Sample slice
+import { createSlice } from '@reduxjs/toolkit';
+
+const counterSlice = createSlice({
+  name: 'counter',
+  initialState: { value: 0 },
+  reducers: {
+    increment: (state) => {
+      state.value += 1;
+    },
+    decrementByAmount: (state, action) => {
+      state.value -= action.payload;
+    },
+  },
+});
+
+// 2. Testing Reducers
+describe('counterSlice reducers', () => {
+  const initialState = { value: 0 };
+
+  test('should handle increment', () => {
+    expect(
+      counterSlice.reducer(initialState, counterSlice.actions.increment())
+    ).toEqual({ value: 1 });
+  });
+
+  test('should handle decrementByAmount', () => {
+    expect(
+      counterSlice.reducer(initialState, counterSlice.actions.decrementByAmount(2))
+    ).toEqual({ value: -2 });
+  });
+
+  test('should handle unknown action', () => {
+    expect(
+      counterSlice.reducer(initialState, { type: 'unknown' })
+    ).toEqual(initialState);
+  });
+});
+
+// 3. Testing Async Thunks
+// Example thunk
+const fetchUserById = createAsyncThunk(
+  'users/fetchById',
+  async (userId, thunkAPI) => {
+    const response = await fetch(`/api/users/${userId}`);
+    return response.json();
+  }
+);
+
+// Testing thunk
+describe('fetchUserById thunk', () => {
+  test('successful fetch', async () => {
+    const user = { id: 1, name: 'John' };
+    
+    // Mock fetch
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        json: () => Promise.resolve(user),
+      })
+    );
+
+    const dispatch = jest.fn();
+    const thunk = fetchUserById(1);
+    
+    await thunk(dispatch, () => ({}));
+    
+    const { calls } = dispatch.mock;
+    expect(calls[0][0].type).toBe('users/fetchById/pending');
+    expect(calls[1][0].type).toBe('users/fetchById/fulfilled');
+    expect(calls[1][0].payload).toEqual(user);
+  });
+
+  test('failed fetch', async () => {
+    const error = new Error('Network error');
+    
+    global.fetch = jest.fn(() => Promise.reject(error));
+
+    const dispatch = jest.fn();
+    const thunk = fetchUserById(1);
+    
+    await thunk(dispatch, () => ({}));
+    
+    const { calls } = dispatch.mock;
+    expect(calls[0][0].type).toBe('users/fetchById/pending');
+    expect(calls[1][0].type).toBe('users/fetchById/rejected');
+    expect(calls[1][0].error.message).toBe('Network error');
+  });
+});
+
+// 4. Testing Selectors
+const selectCount = (state) => state.counter.value;
+
+describe('selectors', () => {
+  const state = {
+    counter: { value: 42 }
+  };
+
+  test('should select counter value', () => {
+    expect(selectCount(state)).toBe(42);
+  });
+});
+
+// 5. Testing Connected Components
+function renderWithProviders(
+  ui,
+  {
+    preloadedState = {},
+    store = configureStore({
+      reducer: { counter: counterSlice.reducer },
+      preloadedState,
+    }),
+    ...renderOptions
+  } = {}
+) {
+  function Wrapper({ children }) {
+    return <Provider store={store}>{children}</Provider>;
+  }
+
+  return {
+    store,
+    ...render(ui, { wrapper: Wrapper, ...renderOptions }),
+  };
+}
+
+// Example component test
+import { screen, fireEvent } from '@testing-library/react';
+
+describe('Counter component', () => {
+  test('renders with redux provider', () => {
+    renderWithProviders(<Counter />, {
+      preloadedState: {
+        counter: { value: 5 },
+      },
+    });
+
+    expect(screen.getByText('Count: 5')).toBeInTheDocument();
+  });
+
+  test('increments value', () => {
+    const { store } = renderWithProviders(<Counter />, {
+      preloadedState: {
+        counter: { value: 5 },
+      },
+    });
+
+    fireEvent.click(screen.getByText('Increment'));
+    
+    expect(store.getState().counter.value).toBe(6);
+  });
+});
+
+// 6. Testing Store Configuration
+describe('store configuration', () => {
+  test('should handle initial state', () => {
+    const store = configureStore({
+      reducer: {
+        counter: counterSlice.reducer,
+      },
+    });
+
+    expect(store.getState().counter.value).toBe(0);
+  });
+
+  test('should handle multiple dispatches', () => {
+    const store = configureStore({
+      reducer: {
+        counter: counterSlice.reducer,
+      },
+    });
+
+    store.dispatch(counterSlice.actions.increment());
+    store.dispatch(counterSlice.actions.increment());
+    store.dispatch(counterSlice.actions.decrementByAmount(1));
+
+    expect(store.getState().counter.value).toBe(1);
+  });
+});
+
+// 7. Testing Middleware
+const customMiddleware = (store) => (next) => (action) => {
+  if (action.type === 'counter/increment') {
+    // Custom logic
+    console.log('Increment detected');
+  }
+  return next(action);
+};
+
+describe('middleware', () => {
+  test('custom middleware intercepts actions', () => {
+    const consoleSpy = jest.spyOn(console, 'log');
+    
+    const store = configureStore({
+      reducer: { counter: counterSlice.reducer },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(customMiddleware),
+    });
+
+    store.dispatch(counterSlice.actions.increment());
+    
+    expect(consoleSpy).toHaveBeenCalledWith('Increment detected');
+  });
+});
+
+// 8. Testing RTK Query
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+const api = createApi({
+  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  endpoints: (builder) => ({
+    getUser: builder.query({
+      query: (id) => `users/${id}`,
+    }),
+  }),
+});
+
+describe('RTK Query', () => {
+  test('endpoint definition', () => {
+    expect(api.endpoints.getUser.query(1)).toBe('users/1');
+  });
+
+  test('should generate hooks', () => {
+    expect(typeof api.useGetUserQuery).toBe('function');
+  });
+});
+```
