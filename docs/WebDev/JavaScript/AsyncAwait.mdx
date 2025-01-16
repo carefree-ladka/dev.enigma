@@ -41,3 +41,324 @@ async function printAfterNumber(nums) {
 
 printAfterNumber(nums);
 ```
+
+
+```JavaScript
+// Problem 1: Mixing Promises and setTimeout
+console.log('🚀 Problem 1: Promise vs setTimeout');
+
+async function asyncOrder() {
+    console.log('1');
+    
+    setTimeout(() => {
+        console.log('2');
+    }, 0);
+    
+    await Promise.resolve().then(() => console.log('3'));
+    
+    console.log('4');
+}
+
+asyncOrder();
+console.log('5');
+
+/* Output:
+1
+5
+3
+4
+2
+Explanation: 
+- Microtasks (Promises) have priority over macrotasks (setTimeout)
+- Even with 0ms timeout, setTimeout callback goes to macrotask queue
+*/
+
+// Problem 2: Multiple Awaits
+console.log('\n🚀 Problem 2: Multiple Awaits');
+
+async function parallel() {
+    const promise1 = Promise.resolve('First');
+    const promise2 = Promise.resolve('Second');
+    
+    const promise3 = await promise1;
+    console.log(promise3);
+    
+    const promise4 = await promise2;
+    console.log(promise4);
+}
+
+async function concurrent() {
+    const [first, second] = await Promise.all([
+        Promise.resolve('First'),
+        Promise.resolve('Second')
+    ]);
+    
+    console.log(first);
+    console.log(second);
+}
+
+console.log('Start');
+parallel();
+console.log('End');
+
+/* Output:
+Start
+End
+First
+Second
+
+Explanation:
+- sequential execution of awaits
+- Promise.all would be more efficient for concurrent execution
+*/
+
+// Problem 3: Error Handling
+console.log('\n🚀 Problem 3: Error Handling');
+
+async function errorHandling() {
+    try {
+        console.log('1');
+        await Promise.reject('Error!');
+        console.log('2'); // Never reached
+    } catch (error) {
+        console.log('3');
+    } finally {
+        console.log('4');
+    }
+    console.log('5');
+}
+
+errorHandling();
+console.log('6');
+
+/* Output:
+1
+6
+3
+4
+5
+
+Explanation:
+- Error causes jump to catch block
+- finally always executes
+- async function continues after try-catch
+*/
+
+// Problem 4: Promise Race Conditions
+console.log('\n🚀 Problem 4: Race Conditions');
+
+async function raceCondition() {
+    const getData = () => new Promise(resolve => 
+        setTimeout(() => resolve('Data'), Math.random() * 100)
+    );
+    
+    const results = [];
+    
+    // Wrong way - race condition
+    for (let i = 0; i < 3; i++) {
+        getData().then(result => results.push(result));
+    }
+    
+    await Promise.all(results); // This won't work as expected!
+    console.log(results); // May not have all results
+    
+    // Correct way
+    const correctResults = await Promise.all(
+        Array(3).fill(null).map(() => getData())
+    );
+    console.log(correctResults); // Guaranteed to have all results
+}
+
+raceCondition();
+
+// Problem 5: Async Loop Trap
+console.log('\n🚀 Problem 5: Async Loop Trap');
+
+async function asyncLoop() {
+    const items = [1, 2, 3];
+    
+    // Wrong way - all requests fire at once
+    items.forEach(async (item) => {
+        const result = await Promise.resolve(item * 2);
+        console.log(result);
+    });
+    
+    console.log('Done forEach');
+    
+    // Correct way - sequential processing
+    for (const item of items) {
+        const result = await Promise.resolve(item * 2);
+        console.log(result);
+    }
+    
+    console.log('Done for...of');
+}
+
+asyncLoop();
+
+/* Output:
+Done forEach
+2
+4
+6
+2
+4
+6
+Done for...of
+
+Explanation:
+- forEach doesn't wait for async operations
+- for...of allows proper sequential processing
+*/
+
+// Problem 6: Return Value Trap
+console.log('\n🚀 Problem 6: Return Value Trap');
+
+async function returnValue() {
+    return await Promise.resolve('Done');
+}
+
+async function unnecessaryAwait() {
+    // Unnecessary await - just return the promise
+    return await Promise.resolve('Done');
+}
+
+const result1 = returnValue();
+const result2 = unnecessaryAwait();
+
+console.log(result1); // Promise { 'Done' }
+console.log(result2); // Promise { 'Done' }
+
+/* Explanation:
+- Both functions return a Promise
+- await in return is usually unnecessary
+- Need to await the function call to get the value
+*/
+
+// Problem 7: Async IIFE Confusion
+console.log('\n🚀 Problem 7: Async IIFE');
+
+(async () => {
+    console.log('1');
+    await Promise.resolve();
+    console.log('2');
+})();
+
+console.log('3');
+
+/* Output:
+1
+3
+2
+
+Explanation:
+- Async IIFE is still async
+- Code outside continues executing
+*/
+
+// Problem 8: Promise Chain vs Async/Await
+console.log('\n🚀 Problem 8: Promise Chain vs Async/Await');
+
+// Promise chain
+Promise.resolve('Start')
+    .then(result => {
+        console.log(result);
+        return 'Middle';
+    })
+    .then(result => {
+        console.log(result);
+        return 'End';
+    })
+    .then(result => {
+        console.log(result);
+    });
+
+// Equivalent async/await
+async function asyncChain() {
+    const start = await Promise.resolve('Start');
+    console.log(start);
+    
+    const middle = await Promise.resolve('Middle');
+    console.log(middle);
+    
+    const end = await Promise.resolve('End');
+    console.log(end);
+}
+
+/* Output (both produce):
+Start
+Middle
+End
+
+Explanation:
+- Both approaches are equivalent
+- Async/await is more readable for complex chains
+*/
+
+// Problem 9: Concurrent vs Sequential
+console.log('\n🚀 Problem 9: Concurrent vs Sequential');
+
+async function sequential() {
+    console.time('sequential');
+    const first = await new Promise(r => setTimeout(() => r('first'), 1000));
+    const second = await new Promise(r => setTimeout(() => r('second'), 1000));
+    console.timeEnd('sequential'); // ~2000ms
+    return [first, second];
+}
+
+async function concurrent() {
+    console.time('concurrent');
+    const [first, second] = await Promise.all([
+        new Promise(r => setTimeout(() => r('first'), 1000)),
+        new Promise(r => setTimeout(() => r('second'), 1000))
+    ]);
+    console.timeEnd('concurrent'); // ~1000ms
+    return [first, second];
+}
+
+/* Explanation:
+- Sequential: Each promise waits for previous
+- Concurrent: All promises run at the same time
+- Promise.all is more efficient for independent operations
+*/
+
+// Problem 10: Event Loop Order
+console.log('\n🚀 Problem 10: Event Loop Order');
+
+async function eventLoop() {
+    console.log('1'); // Synchronous
+    
+    setTimeout(() => {
+        console.log('2'); // Macrotask
+    }, 0);
+    
+    new Promise(resolve => resolve('3'))
+        .then(console.log); // Microtask
+    
+    await Promise.resolve('4');
+    console.log('5'); // After await
+    
+    queueMicrotask(() => {
+        console.log('6'); // Microtask
+    });
+}
+
+eventLoop();
+console.log('7'); // Synchronous
+
+/* Output:
+1
+7
+3
+4
+5
+6
+2
+
+Explanation:
+1. Synchronous code executes first
+2. Microtasks (Promises, queueMicrotask) execute next
+3. Macrotasks (setTimeout, setInterval) execute last
+4. Each await creates a new microtask
+*/
+```

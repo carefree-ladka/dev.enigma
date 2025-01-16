@@ -1,0 +1,211 @@
+#  DFS & BFS on HTML
+
+```JavaScript
+// DFS Implementation for DOM traversal
+function dfsTraversal(rootNode, callback) {
+    if (!rootNode) return;
+    
+    // Process current node
+    callback(rootNode);
+    
+    // Recursively process all child nodes
+    const children = rootNode.children;
+    for (let i = 0; i < children.length; i++) {
+        dfsTraversal(children[i], callback);
+    }
+}
+
+// BFS Implementation for DOM traversal
+function bfsTraversal(rootNode, callback) {
+    if (!rootNode) return;
+    
+    const queue = [rootNode];
+    
+    while (queue.length > 0) {
+        const currentNode = queue.shift();
+        callback(currentNode);
+        
+        // Add all children to queue
+        const children = currentNode.children;
+        for (let i = 0; i < children.length; i++) {
+            queue.push(children[i]);
+        }
+    }
+}
+
+// Utility function to get element path
+function getElementPath(element) {
+    if (!element) return '';
+    
+    let path = element.tagName.toLowerCase();
+    if (element.id) {
+        path += `#${element.id}`;
+    } else if (element.className) {
+        path += `.${element.className.split(' ').join('.')}`;
+    }
+    return path;
+}
+
+// Example usage with practical applications
+
+// 1. Find all elements with a specific class
+function findElementsByClass(rootNode, className) {
+    const results = [];
+    
+    bfsTraversal(rootNode, (node) => {
+        if (node.classList && node.classList.contains(className)) {
+            results.push(node);
+        }
+    });
+    
+    return results;
+}
+
+// 2. Create a DOM tree structure representation
+function createDOMTree(rootNode) {
+    let tree = '';
+    let depth = 0;
+    
+    dfsTraversal(rootNode, (node) => {
+        const indent = '  '.repeat(depth);
+        tree += `${indent}${getElementPath(node)}\n`;
+        depth++;
+        
+        // Decrease depth after processing all children
+        setTimeout(() => depth--, 0);
+    });
+    
+    return tree;
+}
+
+// 3. Find the deepest nested element
+function findDeepestElement(rootNode) {
+    let maxDepth = 0;
+    let deepestElement = null;
+    
+    function dfsWithDepth(node, depth) {
+        if (depth > maxDepth) {
+            maxDepth = depth;
+            deepestElement = node;
+        }
+        
+        const children = node.children;
+        for (let i = 0; i < children.length; i++) {
+            dfsWithDepth(children[i], depth + 1);
+        }
+    }
+    
+    dfsWithDepth(rootNode, 0);
+    return { element: deepestElement, depth: maxDepth };
+}
+
+// 4. Find all text nodes
+function findTextNodes(rootNode) {
+    const textNodes = [];
+    
+    function dfsText(node) {
+        // Check for text nodes
+        if (node.nodeType === 3 && node.textContent.trim().length > 0) {
+            textNodes.push(node);
+        }
+        
+        // Process child nodes
+        for (let i = 0; i < node.childNodes.length; i++) {
+            dfsText(node.childNodes[i]);
+        }
+    }
+    
+    dfsText(rootNode);
+    return textNodes;
+}
+
+// 5. Calculate DOM tree metrics
+function getDOMMetrics(rootNode) {
+    let metrics = {
+        totalElements: 0,
+        maxDepth: 0,
+        totalTextNodes: 0,
+        elementTypes: {}
+    };
+    
+    function dfsMetrics(node, depth) {
+        metrics.totalElements++;
+        metrics.maxDepth = Math.max(metrics.maxDepth, depth);
+        
+        // Count element types
+        const tagName = node.tagName?.toLowerCase();
+        if (tagName) {
+            metrics.elementTypes[tagName] = (metrics.elementTypes[tagName] || 0) + 1;
+        }
+        
+        // Count text nodes
+        if (node.nodeType === 3 && node.textContent.trim().length > 0) {
+            metrics.totalTextNodes++;
+        }
+        
+        // Process children
+        const children = node.childNodes;
+        for (let i = 0; i < children.length; i++) {
+            dfsMetrics(children[i], depth + 1);
+        }
+    }
+    
+    dfsMetrics(rootNode, 0);
+    return metrics;
+}
+
+// Example Usage:
+// HTML structure for testing
+const sampleHTML = `
+<div id="root">
+    <header class="header">
+        <nav>
+            <ul>
+                <li>Home</li>
+                <li>About</li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <article>
+            <h1>Title</h1>
+            <p>Content</p>
+        </article>
+    </main>
+</div>
+`;
+
+// Create a DOM parser for testing
+const parser = new DOMParser();
+const doc = parser.parseFromString(sampleHTML, 'text/html');
+const root = doc.querySelector('#root');
+
+// Test examples
+console.log('DFS Traversal:');
+dfsTraversal(root, node => {
+    console.log(getElementPath(node));
+});
+
+console.log('\nBFS Traversal:');
+bfsTraversal(root, node => {
+    console.log(getElementPath(node));
+});
+
+console.log('\nDOM Tree Structure:');
+console.log(createDOMTree(root));
+
+console.log('\nDOM Metrics:');
+console.log(getDOMMetrics(root));
+
+// Find elements with class
+const headerElements = findElementsByClass(root, 'header');
+console.log('\nHeader Elements:', headerElements);
+
+// Find deepest element
+const deepest = findDeepestElement(root);
+console.log('\nDeepest Element:', getElementPath(deepest.element), 'at depth:', deepest.depth);
+
+// Find text nodes
+const textNodes = findTextNodes(root);
+console.log('\nText Nodes:', textNodes.map(node => node.textContent.trim()));
+```
