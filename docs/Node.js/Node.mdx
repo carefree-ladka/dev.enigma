@@ -1,0 +1,497 @@
+# Express.js & Node.js
+
+## Directory Structure
+```
+project-root/
+├── src/
+│   ├── config/
+│   │   ├── database.js
+│   │   ├── constants.js
+│   │   └── env.js
+│   ├── controllers/
+│   │   ├── userController.js
+│   │   └── authController.js
+│   ├── middlewares/
+│   │   ├── auth.js
+│   │   ├── error.js
+│   │   └── validate.js
+│   ├── models/
+│   │   └── User.js
+│   ├── routes/
+│   │   ├── index.js
+│   │   └── userRoutes.js
+│   ├── services/
+│   │   └── userService.js
+│   ├── utils/
+│   │   ├── logger.js
+│   │   └── helpers.js
+│   └── app.js
+├── tests/
+├── .env
+├── .gitignore
+└── package.json
+```
+
+## Basic Server Setup
+
+```javascript
+// app.js
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const helmet = require('helmet');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(helmet());
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/users', require('./routes/userRoutes'));
+
+// Error handling
+app.use((err, req, res, next) => {
+    res.status(err.status || 500).json({
+        error: {
+            message: err.message
+        }
+    });
+});
+
+module.exports = app;
+```
+
+## Environment Configuration
+
+```javascript
+// config/env.js
+require('dotenv').config();
+
+module.exports = {
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    PORT: process.env.PORT || 3000,
+    DATABASE_URL: process.env.DATABASE_URL,
+    JWT_SECRET: process.env.JWT_SECRET,
+    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d'
+};
+```
+
+## Controllers
+
+```javascript
+// controllers/userController.js
+class UserController {
+    constructor(userService) {
+        this.userService = userService;
+    }
+
+    // Wrap controller methods in try-catch
+    async getUsers(req, res, next) {
+        try {
+            const users = await this.userService.getAllUsers();
+            res.json({ data: users });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async getUserById(req, res, next) {
+        try {
+            const { id } = req.params;
+            const user = await this.userService.getUserById(id);
+            
+            if (!user) {
+                return res.status(404).json({ 
+                    error: 'User not found' 
+                });
+            }
+            
+            res.json({ data: user });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async createUser(req, res, next) {
+        try {
+            const userData = req.body;
+            const user = await this.userService.createUser(userData);
+            res.status(201).json({ data: user });
+        } catch (error) {
+            next(error);
+        }
+    }
+}
+
+module.exports = UserController;
+```
+
+## Routes
+
+```javascript
+// routes/userRoutes.js
+const express = require('express');
+const router = express.Router();
+const UserController = require('../controllers/userController');
+const UserService = require('../services/userService');
+const auth = require('../middlewares/auth');
+const validate = require('../middlewares/validate');
+const userValidation = require('../validations/userValidation');
+
+const userController = new UserController(new UserService());
+
+router
+    .route('/')
+    .get(auth, userController.getUsers.bind(userController))
+    .post(
+        auth, 
+        validate(userValidation.createUser), 
+        userController.createUser.bind(userController)
+    );
+
+router
+    .route('/:id')
+    .get(auth, userController.getUserById.bind(userController))
+    .put(
+        auth, 
+        validate(userValidation.updateUser), 
+        userController.updateUser.bind(userController)
+    )
+    .delete(auth, userController.deleteUser.bind(userController));
+
+module.exports = router;
+```
+
+## Middleware
+
+```javascript
+// middlewares/auth.js
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/env');
+
+module.exports = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({
+                error: 'Authorization token required'
+            });
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(401).json({
+            error: 'Invalid token'
+        });
+    }
+};
+
+// middlewares/validate.js
+const Joi = require('joi');
+
+module.exports = (schema) => (req, res, next) => {
+    const { error } = schema.validate(req.body);
+    
+    if (error) {
+        return res.status(400).json({
+            error: error.details[0].message
+        });
+    }
+    
+    next();
+};
+```
+
+## Services
+
+```javascript
+// services/userService.js
+class UserService {
+    constructor(userModel) {
+        this.userModel = userModel;
+    }
+
+    async getAllUsers() {
+        return this.userModel.find();
+    }
+
+    async getUserById(id) {
+        return this.userModel.findById(id);
+    }
+
+    async createUser(userData) {
+        return this.userModel.create(userData);
+    }
+
+    async updateUser(id, userData) {
+        return this.userModel.findByIdAndUpdate(
+            id, 
+            userData,
+            { new: true }
+        );
+    }
+
+    async deleteUser(id) {
+        return this.userModel.findByIdAndDelete(id);
+    }
+}
+
+module.exports = UserService;
+```
+
+## Database Configuration (MongoDB with Mongoose)
+
+```javascript
+// config/database.js
+const mongoose = require('mongoose');
+const { DATABASE_URL } = require('./env');
+
+module.exports = {
+    connect: async () => {
+        try {
+            await mongoose.connect(DATABASE_URL, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true
+            });
+            console.log('Database connected successfully');
+        } catch (error) {
+            console.error('Database connection error:', error);
+            process.exit(1);
+        }
+    }
+};
+```
+
+## Models (Mongoose Example)
+
+```javascript
+// models/User.js
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema({
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true
+    },
+    password: {
+        type: String,
+        required: true,
+        minlength: 6,
+        select: false
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user'
+    }
+}, {
+    timestamps: true
+});
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+    if (!this.isModified('password')) return next();
+    
+    this.password = await bcrypt.hash(this.password, 12);
+    next();
+});
+
+// Method to check password
+userSchema.methods.comparePassword = async function(candidatePassword) {
+    return bcrypt.compare(candidatePassword, this.password);
+};
+
+module.exports = mongoose.model('User', userSchema);
+```
+
+## Error Handling
+
+```javascript
+// utils/AppError.js
+class AppError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.statusCode = statusCode;
+        this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+        this.isOperational = true;
+
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
+
+// middlewares/error.js
+const AppError = require('../utils/AppError');
+
+module.exports = (err, req, res, next) => {
+    err.statusCode = err.statusCode || 500;
+    err.status = err.status || 'error';
+
+    if (process.env.NODE_ENV === 'development') {
+        res.status(err.statusCode).json({
+            status: err.status,
+            error: err,
+            message: err.message,
+            stack: err.stack
+        });
+    } else {
+        // Production
+        if (err.isOperational) {
+            res.status(err.statusCode).json({
+                status: err.status,
+                message: err.message
+            });
+        } else {
+            console.error('ERROR 💥', err);
+            res.status(500).json({
+                status: 'error',
+                message: 'Something went wrong!'
+            });
+        }
+    }
+};
+```
+
+## Request Validation
+
+```javascript
+// validations/userValidation.js
+const Joi = require('joi');
+
+module.exports = {
+    createUser: Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().min(6).required(),
+        name: Joi.string().required(),
+        role: Joi.string().valid('user', 'admin')
+    }),
+
+    updateUser: Joi.object({
+        email: Joi.string().email(),
+        name: Joi.string(),
+        role: Joi.string().valid('user', 'admin')
+    })
+};
+```
+
+## Logger Configuration
+
+```javascript
+// utils/logger.js
+const winston = require('winston');
+
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+    ),
+    transports: [
+        new winston.transports.File({ 
+            filename: 'logs/error.log', 
+            level: 'error' 
+        }),
+        new winston.transports.File({ 
+            filename: 'logs/combined.log' 
+        })
+    ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.Console({
+        format: winston.format.simple()
+    }));
+}
+
+module.exports = logger;
+```
+
+## Testing Setup (Jest)
+
+```javascript
+// tests/user.test.js
+const request = require('supertest');
+const app = require('../src/app');
+const User = require('../src/models/User');
+
+describe('User API', () => {
+    beforeEach(async () => {
+        await User.deleteMany();
+    });
+
+    describe('POST /api/users', () => {
+        it('should create a new user', async () => {
+            const res = await request(app)
+                .post('/api/users')
+                .send({
+                    email: 'test@example.com',
+                    password: 'password123',
+                    name: 'Test User'
+                });
+
+            expect(res.statusCode).toBe(201);
+            expect(res.body.data).toHaveProperty('email', 'test@example.com');
+        });
+    });
+});
+```
+
+## Common NPM Scripts
+
+```json
+{
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --watchAll",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  }
+}
+```
+
+## Security Best Practices
+
+1. Use security middleware:
+```javascript
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+
+app.use(helmet());
+app.use(mongoSanitize());
+app.use(xss());
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api', limiter);
+```
+
+2. Configure CORS:
+```javascript
+const cors = require('cors');
+
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS.split(','),
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+```
