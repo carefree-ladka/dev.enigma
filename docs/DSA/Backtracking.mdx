@@ -63,53 +63,166 @@ console.log([functionName]([testParameters]));
 */
 ```
 
-**Code Example**:
+## Rat in a Maze
+
+```Javascript
+const ratInMaze = (maze) => {
+  const n = maze.length;
+  const paths = [];
+  const path = [];
+  const directions = [
+    [1, 0, "D"], // Down
+    [0, -1, "L"], // Left
+    [0, 1, "R"], // Right
+    [-1, 0, "U"] // Up
+  ];
+
+  const isSafe = (row, col, visited) => {
+    return (
+      row >= 0 && row < n &&
+      col >= 0 && col < n &&
+      maze[row][col] === 1 &&
+      !visited[row][col]
+    );
+  };
+
+  const backtrack = (row, col, visited) => {
+    if (row === n - 1 && col === n - 1) {
+      paths.push(path.join(""));
+      return;
+    }
+
+    visited[row][col] = true;
+
+    for (const [dx, dy, dir] of directions) {
+      const newRow = row + dx;
+      const newCol = col + dy;
+
+      if (isSafe(newRow, newCol, visited)) {
+        path.push(dir);
+        backtrack(newRow, newCol, visited);
+        path.pop(); // Backtrack
+      }
+    }
+
+    visited[row][col] = false;
+  };
+
+  if (maze[0][0] === 1) {
+    const visited = Array.from({ length: n }, () => Array(n).fill(false));
+    backtrack(0, 0, visited);
+  }
+
+  return paths;
+};
+
+// Example Usage
+const maze = [
+  [1, 1, 1, 1],
+  [1, 1, 0, 1],
+  [0, 1, 0, 1],
+  [1, 1, 1, 1],
+];
+
+const result = ratInMaze(maze);
+console.log(result);
+/* 
+["DRDDRR", "DRURRDDD", "RDDDRR", "RRRDDD"]
+ */
+```
+## Count the Number of Paths
+  - Instead of listing all paths, count how many distinct paths exist from the top-left to the bottom-right corner. 
+
+```Javascript
+const countPathsInMaze = (maze) => {
+  const n = maze.length;
+  let count = 0;
+
+  const isSafe = (row, col, visited) => {
+    return (
+      row >= 0 && row < n &&
+      col >= 0 && col < n &&
+      maze[row][col] === 1 &&
+      !visited[row][col]
+    );
+  };
+
+  const backtrack = (row, col, visited) => {
+    if (row === n - 1 && col === n - 1) {
+      count++;
+      return;
+    }
+
+    visited[row][col] = true;
+
+    const directions = [
+      [1, 0],  // Down
+      [0, -1], // Left
+      [0, 1],  // Right
+      [-1, 0], // Up
+    ];
+
+    for (const [dr, dc] of directions) {
+      const newRow = row + dr;
+      const newCol = col + dc;
+
+      if (isSafe(newRow, newCol, visited)) {
+        backtrack(newRow, newCol, visited);
+      }
+    }
+
+    visited[row][col] = false; // Backtrack
+  };
+
+  if (maze[0][0] === 1) {
+    const visited = Array.from({ length: n }, () => Array(n).fill(false));
+    backtrack(0, 0, visited);
+  }
+
+  return count;
+};
+
+// Test Usage
+const maze = [
+  [1, 1, 0, 0],
+  [1, 1, 0, 1],
+  [0, 1, 0, 0],
+  [1, 1, 1, 1],
+];
+
+console.log(countPathsInMaze(maze)); // Output: 2
+```
+
+## N Queens
+
 
 ```Javascript
 /**
- * Solve the N-Queens problem using Backtracking.
- * @param {number} n - The size of the chessboard (n x n).
- * @return {number[][]} - All possible solutions to the N-Queens problem.
+ * @param {number} n
+ * @return {string[][]}
  */
-const solveNQueens = (n) => {
-  const result = [];
-  const board = Array(n).fill().map(() => Array(n).fill('.'));
-  
-  const isSafe = (row, col) => {
-    // Check the column and diagonals
-    for (let i = 0; i < row; i++) {
-      if (board[i][col] === 'Q') return false;
-      if (col - (row - i) >= 0 && board[i][col - (row - i)] === 'Q') return false;
-      if (col + (row - i) < n && board[i][col + (row - i)] === 'Q') return false;
-    }
-    return true;
-  };
-  
-  const backtrack = (row) => {
+function solveNQueens(n) {
+  const solutions = [];
+
+  function solve(queens = [], row = 0) {
     if (row === n) {
-      result.push(board.map(r => r.join('')));
+      solutions.push(queens.map(col => '.'.repeat(col) + 'Q' + '.'.repeat(n - col - 1)));
       return;
     }
+
     for (let col = 0; col < n; col++) {
-      if (isSafe(row, col)) {
-        board[row][col] = 'Q';
-        backtrack(row + 1);
-        board[row][col] = '.'; // Undo the move
+      if (queens.every((queenCol, queenRow) =>
+        queenCol !== col &&
+        Math.abs(queenCol - col) !== Math.abs(queenRow - row)
+      )) {
+        solve([...queens, col], row + 1);
       }
     }
-  };
+  }
 
-  backtrack(0);
-  return result;
-};
-
-// Example usage:
-console.log(solveNQueens(4));
-/* Output:
-[
-  [ '.Q..',  '...Q',  'Q...',  '..Q.' ],
-  [ '..Q.',  'Q...',  '...Q',  '.Q..' ]
-]*/
+  solve();
+  return solutions;
+}
 ```
 
 ### Permutation
