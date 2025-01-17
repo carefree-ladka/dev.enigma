@@ -161,6 +161,253 @@ segTree.update(2, 6);
 // Querying the sum from index 1 to 4 again (3 + 6 + 7)
 console.log(segTree.query(1, 4)); // Output: 16
 ```
+## Segment Tree implementation for both minimum and maximum
+
+```JavaScript
+class SegmentTree {
+  constructor(arr) {
+    this.n = arr.length;
+    // Size 4n to ensure enough space for both min and max trees
+    this.minTree = new Array(4 * this.n).fill(Infinity);
+    this.maxTree = new Array(4 * this.n).fill(-Infinity);
+    this.buildTree(arr, 0, this.n - 1, 1);
+  }
+
+  // Build both min and max trees simultaneously
+  buildTree(arr, start, end, node) {
+    if (start === end) {
+      this.minTree[node] = arr[start];
+      this.maxTree[node] = arr[start];
+      return;
+    }
+
+    const mid = Math.floor((start + end) / 2);
+    // Build left subtree
+    this.buildTree(arr, start, mid, 2 * node);
+    // Build right subtree
+    this.buildTree(arr, mid + 1, end, 2 * node + 1);
+
+    // Update current node
+    this.minTree[node] = Math.min(this.minTree[2 * node], this.minTree[2 * node + 1]);
+    this.maxTree[node] = Math.max(this.maxTree[2 * node], this.maxTree[2 * node + 1]);
+  }
+
+  // Update value at index
+  update(index, value) {
+    this.#update(index, value, 0, this.n - 1, 1);
+  }
+
+  #update(index, value, start, end, node) {
+    // Found the leaf node to update
+    if (start === end) {
+      this.minTree[node] = value;
+      this.maxTree[node] = value;
+      return;
+    }
+
+    const mid = Math.floor((start + end) / 2);
+    if (index <= mid) {
+      this.#update(index, value, start, mid, 2 * node);
+    } else {
+      this.#update(index, value, mid + 1, end, 2 * node + 1);
+    }
+
+    // Update the current node after child updates
+    this.minTree[node] = Math.min(this.minTree[2 * node], this.minTree[2 * node + 1]);
+    this.maxTree[node] = Math.max(this.maxTree[2 * node], this.maxTree[2 * node + 1]);
+  }
+
+  // Query minimum in range [left, right]
+  queryMin(left, right) {
+    return this.#queryMin(left, right, 0, this.n - 1, 1);
+  }
+
+  #queryMin(left, right, start, end, node) {
+    // No overlap
+    if (right < start || left > end) return Infinity;
+
+    // Complete overlap
+    if (left <= start && right >= end) return this.minTree[node];
+
+    // Partial overlap - split the query
+    const mid = Math.floor((start + end) / 2);
+    const leftMin = this.#queryMin(left, right, start, mid, 2 * node);
+    const rightMin = this.#queryMin(left, right, mid + 1, end, 2 * node + 1);
+    return Math.min(leftMin, rightMin);
+  }
+
+  // Query maximum in range [left, right]
+  queryMax(left, right) {
+    return this.#queryMax(left, right, 0, this.n - 1, 1);
+  }
+
+  #queryMax(left, right, start, end, node) {
+    // No overlap
+    if (right < start || left > end) return -Infinity;
+
+    // Complete overlap
+    if (left <= start && right >= end) return this.maxTree[node];
+
+    // Partial overlap - split the query
+    const mid = Math.floor((start + end) / 2);
+    const leftMax = this.#queryMax(left, right, start, mid, 2 * node);
+    const rightMax = this.#queryMax(left, right, mid + 1, end, 2 * node + 1);
+    return Math.max(leftMax, rightMax);
+  }
+}
+
+// Example usage:
+const arr = [1, 3, 2, 7, 9, 11, 8, 4];
+const segTree = new SegmentTree(arr);
+
+// Test cases
+console.log("Min in range [0, 3]:", segTree.queryMin(0, 3));  // Should output 1
+console.log("Max in range [0, 3]:", segTree.queryMax(0, 3));  // Should output 7
+console.log("Min in range [4, 7]:", segTree.queryMin(4, 7));  // Should output 4
+console.log("Max in range [4, 7]:", segTree.queryMax(4, 7));  // Should output 11
+
+// Update value and test again
+segTree.update(2, 10);
+console.log("Min in range [0, 3] after update:", segTree.queryMin(0, 3));  // Should output 1
+console.log("Max in range [0, 3] after update:", segTree.queryMax(0, 3));  // Should output 10
+```
+
+
+## Segment Tree implementation with ``Lazy Propagation`` for ``Range Updates`` and ``Point Sum Tracking``
+
+```JavaScript
+class LazySegmentTree {
+  constructor(arr) {
+    this.n = arr.length;
+    this.tree = new Array(4 * this.n).fill(0);
+    this.lazy = new Array(4 * this.n).fill(0);
+    this.buildTree(arr, 0, this.n - 1, 1);
+  }
+
+  // Build the initial segment tree
+  buildTree(arr, start, end, node) {
+    if (start === end) {
+      this.tree[node] = arr[start];
+      return;
+    }
+
+    const mid = Math.floor((start + end) / 2);
+    this.buildTree(arr, start, mid, 2 * node);
+    this.buildTree(arr, mid + 1, end, 2 * node + 1);
+    this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  }
+
+  // Push lazy updates down to children
+  pushDown(node, start, end) {
+    if (this.lazy[node] !== 0) {
+      this.tree[node] += (end - start + 1) * this.lazy[node];
+
+      if (start !== end) {
+        this.lazy[2 * node] += this.lazy[node];
+        this.lazy[2 * node + 1] += this.lazy[node];
+      }
+
+      this.lazy[node] = 0;
+    }
+  }
+
+  // Range update: Add 'value' to all elements in range [left, right]
+  rangeUpdate(left, right, value) {
+    this.#rangeUpdate(left, right, value, 0, this.n - 1, 1);
+  }
+
+  #rangeUpdate(left, right, value, start, end, node) {
+    this.pushDown(node, start, end);
+
+    // No overlap
+    if (end < left || right < start) return;
+
+    // Complete overlap
+    if (left <= start && end <= right) {
+      this.lazy[node] += value;
+      this.pushDown(node, start, end);
+      return;
+    }
+
+    // Partial overlap
+    const mid = Math.floor((start + end) / 2);
+    this.#rangeUpdate(left, right, value, start, mid, 2 * node);
+    this.#rangeUpdate(left, right, value, mid + 1, end, 2 * node + 1);
+    this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  }
+
+  // Point update: Set value at index
+  pointUpdate(index, value) {
+    this.#pointUpdate(index, value, 0, this.n - 1, 1);
+  }
+
+  #pointUpdate(index, value, start, end, node) {
+    this.pushDown(node, start, end);
+
+    if (start === end) {
+      this.tree[node] = value;
+      return;
+    }
+
+    const mid = Math.floor((start + end) / 2);
+    if (index <= mid) {
+      this.#pointUpdate(index, value, start, mid, 2 * node);
+    } else {
+      this.#pointUpdate(index, value, mid + 1, end, 2 * node + 1);
+    }
+
+    this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  }
+
+  // Query sum in range [left, right]
+  querySum(left, right) {
+    return this.#querySum(left, right, 0, this.n - 1, 1);
+  }
+
+  #querySum(left, right, start, end, node) {
+    if (end < left || right < start) return 0;
+
+    this.pushDown(node, start, end);
+
+    if (left <= start && end <= right) return this.tree[node];
+
+    const mid = Math.floor((start + end) / 2);
+    const leftSum = this.#querySum(left, right, start, mid, 2 * node);
+    const rightSum = this.#querySum(left, right, mid + 1, end, 2 * node + 1);
+    return leftSum + rightSum;
+  }
+
+  // Get value at a specific index
+  getValue(index) {
+    return this.querySum(index, index);
+  }
+}
+
+// Example usage and test cases
+const arr = [1, 3, 5, 7, 9, 11];
+const segTree = new LazySegmentTree(arr);
+
+// Test 1: Basic sum query
+console.log("Initial sum [0, 2]:", segTree.querySum(0, 2));  // Should be 9 (1 + 3 + 5)
+
+// Test 2: Range update
+segTree.rangeUpdate(1, 3, 2);  // Add 2 to elements at indices 1, 2, 3
+console.log("Sum [0, 2] after range update:", segTree.querySum(0, 2));  // Should be 13 (1 + 5 + 7)
+
+// Test 3: Point update
+segTree.pointUpdate(0, 10);  // Set element at index 0 to 10
+console.log("Sum [0, 2] after point update:", segTree.querySum(0, 2));  // Should be 22 (10 + 5 + 7)
+
+// Test 4: Combined operations
+segTree.rangeUpdate(0, 5, 1);  // Add 1 to all elements
+console.log("Value at index 2:", segTree.getValue(2));  // Should be 8 (7 + 1)
+console.log("Sum of entire array:", segTree.querySum(0, 5));  // Sum of all elements after updates
+
+// Test 5: Multiple range updates
+segTree.rangeUpdate(2, 4, 3);  // Add 3 to elements at indices 2, 3, 4
+segTree.rangeUpdate(1, 3, 2);  // Add 2 to elements at indices 1, 2, 3
+console.log("Final sum [1, 3]:", segTree.querySum(1, 3));  // Sum after multiple updates
+```
 
 ## Segment Tree on 2D Matrix
 
