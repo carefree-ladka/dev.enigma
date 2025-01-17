@@ -1,0 +1,51 @@
+# 10. Regular Expression Matching
+
+
+https://leetcode.com/problems/regular-expression-matching/description/
+
+
+```JavaScript
+/**
+ * @param {string} s
+ * @param {string} p
+ * @return {boolean}
+ */
+function isMatch(s, p) {
+  const m = s.length;
+  const n = p.length;
+
+  // dp[i][j] represents if s[0...i-1] matches p[0...j-1]
+  const dp = Array(m + 1).fill().map(() => Array(n + 1).fill(false));
+
+  // Empty pattern matches empty string
+  dp[0][0] = true;
+
+  // Handle patterns with *
+  for (let j = 1; j <= n; j++) {
+    if (p[j - 1] === '*') {
+      dp[0][j] = dp[0][j - 2];
+    }
+  }
+
+  // Fill the dp table
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (p[j - 1] === '*') {
+        // Two cases for '*':
+        // 1. Don't use the '*' and its preceding char (use zero times)
+        // 2. Use the '*' by matching the preceding char with current char in s
+        dp[i][j] = dp[i][j - 2] || // Case 1: Skip both * and its preceding char
+          (dp[i - 1][j] && // Case 2: Use * to match current char
+            (p[j - 2] === '.' || p[j - 2] === s[i - 1]));
+      } else {
+        // For non-'*' characters, check if current characters match
+        // and if previous characters matched
+        dp[i][j] = dp[i - 1][j - 1] &&
+          (p[j - 1] === '.' || p[j - 1] === s[i - 1]);
+      }
+    }
+  }
+
+  return dp[m][n];
+}
+```

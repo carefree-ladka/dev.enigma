@@ -28,16 +28,19 @@ class TrieNode {
   constructor() {
     this.children = {};
     this.isEndOfWord = false;
+    this.frequency = 0;    // Track word frequency
+    this.lastAccessed = 0; // Track last access timestamp
   }
 }
 
 class Trie {
   constructor() {
     this.root = new TrieNode();
+    this.wordCount = 0;    // Track total number of words
   }
 
-  // Insert a word into the Trie
   insert(word) {
+    if (!word) return;
     let node = this.root;
     for (const char of word) {
       if (!node.children[char]) {
@@ -45,35 +48,180 @@ class Trie {
       }
       node = node.children[char];
     }
+    if (!node.isEndOfWord) {
+      this.wordCount++;
+    }
     node.isEndOfWord = true;
+    node.frequency++;
+    node.lastAccessed = Date.now();
   }
 
-  // Search for a word in the Trie
   search(word) {
-    let node = this.root;
-    for (const char of word) {
-      if (!node.children[char]) {
-        return false;
-      }
-      node = node.children[char];
+    let node = this.traverse(word);
+    if (node && node.isEndOfWord) {
+      node.lastAccessed = Date.now();
+      return true;
     }
-    return node.isEndOfWord;
+    return false;
   }
 
-  // Search for words with a given prefix
   startsWith(prefix) {
+    return this.traverse(prefix) !== null;
+  }
+
+  // Helper method to traverse to a node
+  traverse(str) {
     let node = this.root;
-    for (const char of prefix) {
+    for (const char of str) {
       if (!node.children[char]) {
-        return false;
+        return null;
       }
       node = node.children[char];
     }
-    return true;
+    return node;
   }
 
-  // Helper function to perform DFS and collect all words
-  #collectAllWords = (node, prefix, results) => {
+  // Delete a word from the trie
+  delete(word) {
+    return this.#deleteHelper(this.root, word, 0);
+  }
+
+  #deleteHelper(node, word, depth) {
+    if (!node) return false;
+
+    // If we've reached the end of the word
+    if (depth === word.length) {
+      if (!node.isEndOfWord) return false;
+      
+      node.isEndOfWord = false;
+      node.frequency = 0;
+      this.wordCount--;
+      
+      // Return true if node has no children
+      return Object.keys(node.children).length === 0;
+    }
+
+    const char = word[depth];
+    const shouldDeleteChild = this.#deleteHelper(node.children[char], word, depth + 1);
+
+    // If child should be deleted, remove it
+    if (shouldDeleteChild) {
+      delete node.children[char];
+      // Return true if this node should also be deleted
+      return !node.isEndOfWord && Object.keys(node.children).length === 0;
+    }
+
+    return false;
+  }
+
+  // Get word frequency
+  getFrequency(word) {
+    const node = this.traverse(word);
+    return node ? node.frequency : 0;
+  }
+
+  // Get all words in the trie
+  getAllWords() {
+    const words = [];
+    this.#collectAllWords(this.root, '', words);
+    return words;
+  }
+
+  // Get words sorted by frequency
+  getWordsByFrequency() {
+    const words = this.getAllWords();
+    return words.sort((a, b) => {
+      const nodeA = this.traverse(a);
+      const nodeB = this.traverse(b);
+      return nodeB.frequency - nodeA.frequency;
+    });
+  }
+
+  // Get recently accessed words
+  getRecentWords(limit = 10) {
+    const words = this.getAllWords();
+    return words.sort((a, b) => {
+      const nodeA = this.traverse(a);
+      const nodeB = this.traverse(b);
+      return nodeB.lastAccessed - nodeA.lastAccessed;
+    }).slice(0, limit);
+  }
+
+  // Get words with wildcard pattern (? for single char, * for multiple chars)
+  searchWithWildcard(pattern) {
+    const results = [];
+    this.#searchWithWildcardHelper(this.root, '', pattern, 0, results);
+    return results;
+  }
+
+  #searchWithWildcardHelper(node, current, pattern, index, results) {
+    if (index === pattern.length) {
+      if (node.isEndOfWord) {
+        results.push(current);
+      }
+      return;
+    }
+
+    const char = pattern[index];
+    if (char === '?') {
+      // Match any single character
+      for (const nextChar in node.children) {
+        this.#searchWithWildcardHelper(
+          node.children[nextChar],
+          current + nextChar,
+          pattern,
+          index + 1,
+          results
+        );
+      }
+    } else if (char === '*') {
+      // Match zero or more characters
+      // Match zero characters
+      this.#searchWithWildcardHelper(node, current, pattern, index + 1, results);
+      // Match one or more characters
+      for (const nextChar in node.children) {
+        this.#searchWithWildcardHelper(
+          node.children[nextChar],
+          current + nextChar,
+          pattern,
+          index,
+          results
+        );
+      }
+    } else {
+      // Match exact character
+      if (node.children[char]) {
+        this.#searchWithWildcardHelper(
+          node.children[char],
+          current + char,
+          pattern,
+          index + 1,
+          results
+        );
+      }
+    }
+  }
+
+  // Find longest word in trie
+  getLongestWord() {
+    return this.#findLongestWord(this.root, '');
+  }
+
+  #findLongestWord(node, current) {
+    let longest = node.isEndOfWord ? current : '';
+
+    for (const char in node.children) {
+      const childResult = this.#findLongestWord(node.children[char], current + char);
+      if (childResult.length > longest.length) {
+        longest = childResult;
+      }
+    }
+
+    return longest;
+  }
+
+  // Helper function for autocomplete and collecting words
+  #collectAllWords(node, prefix, results) {
     if (node.isEndOfWord) {
       results.push(prefix);
     }
@@ -82,65 +230,75 @@ class Trie {
     }
   }
 
-  // Autocomplete function
-  autocomplete(prefix) {
-    let node = this.root;
-    for (let char of prefix) {
-      if (!node.children[char]) {
-        return []; // If prefix doesn't exist, return an empty array
-      }
-      node = node.children[char];
-    }
-
-    let results = [];
-    this.#collectAllWords(node, prefix, results);
-    return results;
+  // Get size statistics
+  getStats() {
+    return {
+      totalWords: this.wordCount,
+      totalNodes: this.#countNodes(this.root),
+      maxDepth: this.#getMaxDepth(this.root),
+      memoryUsage: this.#approximateMemoryUsage()
+    };
   }
 
-// Longest common prefix function
-  longestPrefix() {
-    let node = this.root;
-    let prefix = '';
-
-    while (node && !node.isEndOfWord) {
-      const keys = Object.keys(node.children);
-
-      // If there is more than one child or no children, break the loop
-      if (keys.length !== 1) {
-        break;
-      }
-
-      // Move to the next child
-      const nextChar = keys[0];
-      prefix += nextChar;
-      node = node.children[nextChar];
+  #countNodes(node) {
+    let count = 1;
+    for (const child in node.children) {
+      count += this.#countNodes(node.children[child]);
     }
+    return count;
+  }
 
-    return prefix;
+  #getMaxDepth(node, depth = 0) {
+    if (Object.keys(node.children).length === 0) {
+      return depth;
+    }
+    let maxDepth = depth;
+    for (const child in node.children) {
+      maxDepth = Math.max(maxDepth, this.#getMaxDepth(node.children[child], depth + 1));
+    }
+    return maxDepth;
+  }
+
+  #approximateMemoryUsage() {
+    // Rough approximation in bytes
+    return this.#countNodes(this.root) * 
+           (8 + // references to children object
+            4 + // isEndOfWord boolean
+            8 + // frequency number
+            8); // lastAccessed timestamp
   }
 }
 
-// Example usage
+// Example usage with new features
 const trie = new Trie();
+
+// Insert words with multiple occurrences
 trie.insert("hello");
+trie.insert("hello");  // inserted twice
 trie.insert("world");
-trie.insert("apple");
-trie.insert("app");
-trie.insert("apply");
-trie.insert("banana");
-trie.insert("bat");
-trie.insert("ball");
+trie.insert("wonderful");
+trie.insert("win");
+trie.insert("wine");
 
-console.log(trie.search("hello")); // Output: true
-console.log(trie.search("hell")); // Output: false
-console.log(trie.startsWith("hell")); // Output: true
-console.log(trie.startsWith("worl")); // Output: true
+// Test deletion
+console.log(trie.search("hello"));  // true
+trie.delete("hello");
+console.log(trie.search("hello"));  // false
 
-console.log(trie.autocomplete("app")); // ["apple", "apply", "app"]
-console.log(trie.autocomplete("ba"));  // ["banana", "bat", "ball"]
-console.log(trie.autocomplete("c"));   // []
-console.log(trie.longestPrefix());  // Output: ""
+// Test wildcard search
+console.log(trie.searchWithWildcard("w?n"));     // ["win"]
+console.log(trie.searchWithWildcard("w*"));      // ["world", "wonderful", "win", "wine"]
 
+// Test frequency and recent words
+console.log(trie.getFrequency("hello"));     // 0 (deleted)
+console.log(trie.getWordsByFrequency());     // Shows words sorted by frequency
+console.log(trie.getRecentWords(3));         // Shows 3 most recently accessed words
+
+// Get statistics
+console.log(trie.getStats());                // Shows trie statistics
+
+// Get longest word
+console.log(trie.getLongestWord());          // "wonderful"
 ```
 
 ## XOR Trie

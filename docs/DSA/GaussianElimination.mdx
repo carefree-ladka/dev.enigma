@@ -1,0 +1,157 @@
+# Gaussian Elimination 
+
+## Introduction
+Gaussian elimination is a fundamental algorithm in linear algebra used to solve systems of linear equations. It transforms a matrix into row echelon form through a sequence of elementary row operations.
+
+## Theory
+
+### Key Concepts
+
+1. **Row Echelon Form (REF)**
+   A matrix is in row echelon form when:
+   - All zero rows are at the bottom
+   - The leading coefficient (pivot) of each nonzero row is to the right of the pivot above it
+   - All entries below a pivot are zero
+
+2. **Elementary Row Operations**
+   - Swapping two rows
+   - Multiplying a row by a nonzero scalar
+   - Adding a multiple of one row to another
+
+### Algorithm Steps
+1. Forward Elimination (Converting to REF)
+   - Start from the leftmost column
+   - Find the pivot element
+   - Make all elements below the pivot zero
+   - Repeat for remaining submatrix
+
+2. Back Substitution
+   - Start from the bottom row
+   - Solve for each variable
+   - Substitute back into previous equations
+
+For more : https://linearalgebra.math.umanitoba.ca/math1220/section-12.html
+
+
+## Implementation
+
+```JavaScript
+/**
+ * Gaussian elimination method
+ * @param {Array} A - Augmented matrix (includes the constants in the last column)
+ * @return {Array} x - Solution vector
+ */
+function gauss(A) {
+  const n = A.length;
+
+  // Perform Gaussian elimination
+  for (let i = 0; i < n; i++) {
+    // Find the pivot row with the largest element in the current column
+    let maxRow = i;
+    let maxEl = Math.abs(A[i][i]);
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(A[k][i]) > maxEl) {
+        maxEl = Math.abs(A[k][i]);
+        maxRow = k;
+      }
+    }
+
+    // Swap the pivot row with the current row
+    [A[i], A[maxRow]] = [A[maxRow], A[i]];
+
+    // Eliminate all rows below this one
+    for (let k = i + 1; k < n; k++) {
+      const c = -A[k][i] / A[i][i];
+      for (let j = i; j < n + 1; j++) {
+        A[k][j] += c * A[i][j];
+      }
+    }
+  }
+
+  // Back substitution to solve for the values in the solution vector
+  const res = Array(n).fill(0)
+  for (let i = n - 1; i >= 0; i--) {
+    res[i] = parseFloat((A[i][n] / A[i][i]).toFixed(6)); // Round to 6 decimal places
+    for (let k = i - 1; k >= 0; k--) {
+      A[k][n] -= A[k][i] * res[i];
+    }
+  }
+
+  return res;
+}
+
+// Test Cases
+
+function runTestCases() {
+  const testCases = [
+    {
+      testcase: 'am1',
+      am: [
+        [2, 1, -1, 8],    //  2x + y -z = 8
+        [-3, -1, 2, -11], // -3x - y +2z = -11
+        [-2, 1, 2, -3],   // -2x + y +2z = -3
+      ],
+      expected: [2, 3, -1]
+    },
+    {
+      testcase: 'am2',
+      am: [
+        [1, 2, -1, 2],  // x + 2y - z = 2
+        [1, 1, -1, 0],  // x + y - z = 0
+        [2, -1, 1, 3]   // 2x - y + z = 3
+      ],
+      expected: [1, 2, 3]
+    }
+  ];
+
+  testCases.forEach(({ testcase, am, expected }) => {
+    const result = gauss(am);
+    console.log(`${testcase}:`, JSON.stringify(result), 'Expected:', JSON.stringify(expected));
+    console.log(`Pass: ${JSON.stringify(result) === JSON.stringify(expected)}`);
+  });
+}
+
+runTestCases();
+
+/* 
+"am1:" "[2,3,-1]" "Expected:" "[2,3,-1]"
+"Pass: true"
+"am2:" "[1,2,3]" "Expected:" "[1,2,3]"
+"Pass: true"
+ */
+```
+
+## Performance Considerations
+
+1. **Time Complexity**
+   - Forward Elimination: O(n³)
+   - Back Substitution: O(n²)
+   - Overall: O(n³)
+
+2. **Space Complexity**
+   - O(n²) for storing the matrix
+
+3. **Optimization Tips**
+   - Use partial pivoting for numerical stability
+   - Implement sparse matrix optimizations for large, sparse systems
+   - Consider using WebAssembly for large matrices
+   - Use typed arrays for better performance with large datasets
+
+
+## Applications and Extensions
+
+### 1. Linear System Applications
+- Circuit analysis
+- Economic models
+- Computer graphics transformations
+- Chemical reaction balancing
+
+### 2. Extensions
+- LU Decomposition
+- QR Factorization
+- Iterative methods for large systems
+
+### 3. Related Algorithms
+- Gauss-Jordan Elimination
+- Crout's Method
+- Cholesky Decomposition
