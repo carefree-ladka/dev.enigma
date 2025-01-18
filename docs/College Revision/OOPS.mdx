@@ -137,3 +137,432 @@ const calc = new Calculator();
 console.log(calc.add(5));  // 10 (overloaded behavior)
 console.log(calc.add(5, 3));  // 8
 ```
+
+## Key Points
+
+   - **Single Responsibility Principle (SRP)**
+   - **Don't Repeat Yourself (DRY)**
+   - **Composition over Inheritance**
+   - **Avoid Tight Coupling**
+   - **Favor Interfaces for Flexibility**
+   - **Keep Classes Focused and Modular**
+
+## Problem: Design a Parking Lot System
+A parking lot has multiple parking spaces, each can either be free or occupied. We want to manage the parking spaces, allow parking a car, and retrieve a car when the parking lot is full or when a car is retrieved.
+
+```JavaScript
+// Car Class
+class Car {
+  constructor(licensePlate, model) {
+    this.licensePlate = licensePlate;
+    this.model = model;
+  }
+}
+
+// ParkingSpot Class
+class ParkingSpot {
+  constructor(number) {
+    this.number = number;
+    this.isOccupied = false;
+    this.car = null;
+  }
+
+  // Park a car in this spot
+  parkCar(car) {
+    if (this.isOccupied) {
+      console.log(`Spot ${this.number} is already occupied.`);
+      return false;
+    }
+    this.isOccupied = true;
+    this.car = car;
+    console.log(`Car with license plate ${car.licensePlate} is parked in spot ${this.number}.`);
+    return true;
+  }
+
+  // Remove the car from this spot
+  removeCar() {
+    if (!this.isOccupied) {
+      console.log(`Spot ${this.number} is empty.`);
+      return false;
+    }
+    console.log(`Car with license plate ${this.car.licensePlate} is removed from spot ${this.number}.`);
+    this.isOccupied = false;
+    this.car = null;
+    return true;
+  }
+}
+
+// ParkingLot Class
+class ParkingLot {
+  constructor(totalSpots) {
+    this.spots = [];
+    this.availableSpots = totalSpots;
+    // Create the parking spots
+    for (let i = 0; i < totalSpots; i++) {
+      this.spots.push(new ParkingSpot(i + 1)); // Create spots numbered 1 to totalSpots
+    }
+  }
+
+  // Find an available parking spot
+  findAvailableSpot() {
+    for (let spot of this.spots) {
+      if (!spot.isOccupied) {
+        return spot;
+      }
+    }
+    return null; // No available spots
+  }
+
+  // Park a car in the parking lot
+  parkCar(car) {
+    const spot = this.findAvailableSpot();
+    if (spot) {
+      return spot.parkCar(car);
+    } else {
+      console.log("Parking Lot is full!");
+      return false;
+    }
+  }
+
+  // Retrieve a car from the parking lot
+  retrieveCar(licensePlate) {
+    for (let spot of this.spots) {
+      if (spot.isOccupied && spot.car.licensePlate === licensePlate) {
+        return spot.removeCar();
+      }
+    }
+    console.log(`Car with license plate ${licensePlate} not found.`);
+    return false;
+  }
+
+  // Display parking lot status
+  displayStatus() {
+    console.log("Parking Lot Status:");
+    for (let spot of this.spots) {
+      console.log(`Spot ${spot.number}: ${spot.isOccupied ? 'Occupied' : 'Available'}`);
+    }
+  }
+}
+
+// Example Usage
+const myParkingLot = new ParkingLot(3); // Create a parking lot with 3 spots
+
+const car1 = new Car("ABC123", "Toyota");
+const car2 = new Car("XYZ456", "Honda");
+const car3 = new Car("LMN789", "Ford");
+
+myParkingLot.parkCar(car1); // Park car1
+myParkingLot.parkCar(car2); // Park car2
+myParkingLot.parkCar(car3); // Park car3 (Parking Lot is full)
+
+myParkingLot.displayStatus(); // Show current parking lot status
+
+myParkingLot.retrieveCar("XYZ456"); // Retrieve car2
+myParkingLot.displayStatus(); // Show updated parking lot status
+
+/* 
+Car with license plate ABC123 is parked in spot 1.
+Car with license plate XYZ456 is parked in spot 2.
+Car with license plate LMN789 is parked in spot 3.
+Parking Lot Status:
+Spot 1: Occupied
+Spot 2: Occupied
+Spot 3: Occupied
+Parking Lot is full!
+Car with license plate XYZ456 is removed from spot 2.
+Parking Lot Status:
+Spot 1: Occupied
+Spot 2: Available
+Spot 3: Occupied
+*/
+```
+
+## Problem: Design a Library Management System
+In this system:
+
+   - We have Books that can be borrowed or returned by Members.
+  - A Library manages the collection of books and the members who can borrow them.
+
+```JavaScript
+// Book Class
+class Book {
+  constructor(title, author) {
+    this.title = title;
+    this.author = author;
+    this.isAvailable = true; // A book can either be available or borrowed
+  }
+
+  borrow() {
+    if (this.isAvailable) {
+      this.isAvailable = false;
+      console.log(`You have borrowed "${this.title}" by ${this.author}.`);
+    } else {
+      console.log(`Sorry, "${this.title}" is currently unavailable.`);
+    }
+  }
+
+  returnBook() {
+    this.isAvailable = true;
+    console.log(`You have returned "${this.title}" by ${this.author}.`);
+  }
+}
+
+// Member Class
+class Member {
+  constructor(name, memberId) {
+    this.name = name;
+    this.memberId = memberId;
+    this.borrowedBooks = [];
+  }
+
+  borrowBook(book) {
+    if (book.isAvailable) {
+      book.borrow();
+      this.borrowedBooks.push(book);
+    } else {
+      console.log(`${this.name} cannot borrow "${book.title}". It is unavailable.`);
+    }
+  }
+
+  returnBook(book) {
+    if (this.borrowedBooks.includes(book)) {
+      book.returnBook();
+      this.borrowedBooks = this.borrowedBooks.filter(b => b !== book);
+    } else {
+      console.log(`${this.name} didn't borrow "${book.title}".`);
+    }
+  }
+
+  viewBorrowedBooks() {
+    if (this.borrowedBooks.length > 0) {
+      console.log(`${this.name} has borrowed the following books:`);
+      this.borrowedBooks.forEach(book => {
+        console.log(`- "${book.title}" by ${book.author}`);
+      });
+    } else {
+      console.log(`${this.name} has not borrowed any books.`);
+    }
+  }
+}
+
+// Library Class
+class Library {
+  constructor() {
+    this.books = [];
+    this.members = [];
+  }
+
+  addBook(book) {
+    this.books.push(book);
+    console.log(`"${book.title}" by ${book.author} added to the library.`);
+  }
+
+  addMember(member) {
+    this.members.push(member);
+    console.log(`New member ${member.name} added to the library.`);
+  }
+
+  listBooks() {
+    if (this.books.length > 0) {
+      console.log("Library Books:");
+      this.books.forEach(book => {
+        console.log(`- "${book.title}" by ${book.author} (${book.isAvailable ? 'Available' : 'Unavailable'})`);
+      });
+    } else {
+      console.log("No books in the library.");
+    }
+  }
+}
+
+// Example Usage
+const library = new Library();
+
+const book1 = new Book("The Great Gatsby", "F. Scott Fitzgerald");
+const book2 = new Book("1984", "George Orwell");
+const book3 = new Book("Moby Dick", "Herman Melville");
+
+library.addBook(book1);
+library.addBook(book2);
+library.addBook(book3);
+
+const member1 = new Member("John Doe", 1);
+const member2 = new Member("Jane Smith", 2);
+
+library.addMember(member1);
+library.addMember(member2);
+
+library.listBooks(); // Show all books in the library
+
+member1.borrowBook(book1); // John borrows "The Great Gatsby"
+member2.borrowBook(book1); // Jane tries to borrow "The Great Gatsby" but it's unavailable
+member1.viewBorrowedBooks(); // View John's borrowed books
+
+member1.returnBook(book1); // John returns "The Great Gatsby"
+member2.borrowBook(book1); // Now Jane can borrow "The Great Gatsby"
+member2.viewBorrowedBooks(); // View Jane's borrowed books
+
+library.listBooks(); // Show all books in the library again
+/* 
+"The Great Gatsby" by F. Scott Fitzgerald added to the library.
+"1984" by George Orwell added to the library.
+"Moby Dick" by Herman Melville added to the library.
+New member John Doe added to the library.
+New member Jane Smith added to the library.
+Library Books:
+- "The Great Gatsby" by F. Scott Fitzgerald (Available)
+- "1984" by George Orwell (Available)
+- "Moby Dick" by Herman Melville (Available)
+You have borrowed "The Great Gatsby" by F. Scott Fitzgerald.
+Jane Smith cannot borrow "The Great Gatsby". It is unavailable.
+John Doe has borrowed the following books:
+- "The Great Gatsby" by F. Scott Fitzgerald
+You have returned "The Great Gatsby" by F. Scott Fitzgerald.
+You have borrowed "The Great Gatsby" by F. Scott Fitzgerald.
+Jane Smith has borrowed the following books:
+- "The Great Gatsby" by F. Scott Fitzgerald
+Library Books:
+- "The Great Gatsby" by F. Scott Fitzgerald (Unavailable)
+- "1984" by George Orwell (Available)
+- "Moby Dick" by Herman Melville (Available)
+*/
+```
+
+## Problem: Design an Online Shopping Cart System
+This system will involve:
+
+   - Products that can be added to the cart.
+   - Cart to manage the products and calculate the total price.
+   - Customer to manage the customer information and checkout process
+
+```JavaScript
+// Product Class
+class Product {
+  constructor(id, name, price, stockQuantity) {
+    this.id = id;
+    this.name = name;
+    this.price = price;
+    this.stockQuantity = stockQuantity;
+  }
+
+  // Decrease the stock quantity when a product is added to the cart
+  reduceStock(quantity) {
+    if (quantity <= this.stockQuantity) {
+      this.stockQuantity -= quantity;
+      console.log(`${quantity} ${this.name}(s) added to the cart.`);
+    } else {
+      console.log(`Not enough stock for ${this.name}. Only ${this.stockQuantity} left.`);
+    }
+  }
+
+  // Restock the product when it is returned or replenished
+  restock(quantity) {
+    this.stockQuantity += quantity;
+    console.log(`${quantity} ${this.name}(s) restocked.`);
+  }
+}
+
+// Cart Class
+class Cart {
+  constructor() {
+    this.products = [];
+  }
+
+  // Add a product to the cart
+  addProduct(product, quantity) {
+    product.reduceStock(quantity);
+    this.products.push({ product, quantity });
+  }
+
+  // Remove a product from the cart
+  removeProduct(productId) {
+    const index = this.products.findIndex(item => item.product.id === productId);
+    if (index !== -1) {
+      this.products.splice(index, 1);
+      console.log(`Product with ID ${productId} removed from the cart.`);
+    } else {
+      console.log(`Product with ID ${productId} not found in the cart.`);
+    }
+  }
+
+  // Calculate the total price of the products in the cart
+  calculateTotal() {
+    let total = 0;
+    this.products.forEach(item => {
+      total += item.product.price * item.quantity;
+    });
+    return total;
+  }
+
+  // View the cart's contents
+  viewCart() {
+    if (this.products.length === 0) {
+      console.log("Your cart is empty.");
+    } else {
+      console.log("Your cart contains:");
+      this.products.forEach(item => {
+        console.log(`${item.quantity} x ${item.product.name} - $${item.product.price} each`);
+      });
+    }
+  }
+}
+
+// Customer Class
+class Customer {
+  constructor(name) {
+    this.name = name;
+    this.cart = new Cart();
+  }
+
+  // Checkout the cart
+  checkout() {
+    const total = this.cart.calculateTotal();
+    console.log(`Checkout for ${this.name}:`);
+    console.log(`Total price: $${total}`);
+    if (total > 0) {
+      console.log("Thank you for shopping with us!");
+    } else {
+      console.log("Your cart is empty. Add some products before checking out.");
+    }
+  }
+}
+
+// Example Usage
+const product1 = new Product(1, "Laptop", 1000, 10);
+const product2 = new Product(2, "Phone", 500, 20);
+const product3 = new Product(3, "Headphones", 100, 50);
+
+const customer = new Customer("John Doe");
+
+customer.cart.addProduct(product1, 2); // Add 2 laptops to the cart
+customer.cart.addProduct(product2, 3); // Add 3 phones to the cart
+customer.cart.addProduct(product3, 5); // Add 5 headphones to the cart
+
+customer.cart.viewCart(); // View the cart
+
+customer.checkout(); // Checkout and view the total
+
+// Remove a product from the cart and checkout again
+customer.cart.removeProduct(2); // Remove the phone from the cart
+customer.cart.viewCart(); // View the updated cart
+
+customer.checkout(); // Checkout again
+/* 
+2 Laptop(s) added to the cart.
+3 Phone(s) added to the cart.
+5 Headphones(s) added to the cart.
+Your cart contains:
+2 x Laptop - $1000 each
+3 x Phone - $500 each
+5 x Headphones - $100 each
+Checkout for John Doe:
+Total price: $4000
+Thank you for shopping with us!
+Product with ID 2 removed from the cart.
+Your cart contains:
+2 x Laptop - $1000 each
+5 x Headphones - $100 each
+Checkout for John Doe:
+Total price: $2500
+Thank you for shopping with us!
+*/
+```
