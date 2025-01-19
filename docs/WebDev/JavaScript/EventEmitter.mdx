@@ -1,0 +1,64 @@
+# Event Emitter
+
+```JavaScript
+class Emitter {
+  constructor() {
+    this.events = {}; // Store event name and their corresponding callbacks
+  }
+
+  // Subscribe to an event with a callback
+  subscribe(eventName, callback) {
+    if (!this.events[eventName]) {
+      this.events[eventName] = []; // If no callbacks for this event, initialize an array
+    }
+
+    // Add the callback to the event's array of listeners
+    this.events[eventName].push(callback);
+
+    // Return an object that allows unsubscribing
+    return {
+      release: () => {
+        this.events[eventName] = this.events[eventName].filter(
+          (cb) => cb !== callback
+        );
+      },
+    };
+  }
+
+  // Emit an event, calling all the callbacks with the passed arguments
+  emit(eventName, ...args) {
+    if (this.events[eventName]) {
+      this.events[eventName].forEach((callback) => {
+        callback(...args); // Call each subscribed callback with the arguments
+      });
+    }
+  }
+}
+
+// Example usage:
+const emitter = new Emitter();
+
+// Subscribing to events
+const callback1 = (a, b) => console.log('callback1', a, b);
+const callback2 = (a, b) => console.log('callback2', a, b);
+
+const sub1 = emitter.subscribe('event1', callback1);
+const sub2 = emitter.subscribe('event2', callback2);
+const sub3 = emitter.subscribe('event1', callback1); // Same callback1 again for event1
+
+// Emitting events
+emitter.emit('event1', 1, 2);  // callback1 will be called twice
+emitter.emit('event2', 3, 4);  // callback2 will be called once
+
+// Unsubscribing
+sub1.release(); // Unsubscribe callback1 from event1
+sub3.release(); // Unsubscribe callback1 from event1 again
+
+// Emitting event1 again (callback1 should not be called anymore)
+emitter.emit('event1', 5, 6);  // callback1 will not be called anymore
+/*
+callback1 1 2
+callback1 1 2
+callback2 3 4 
+ */
+```
