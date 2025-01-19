@@ -1,0 +1,594 @@
+# JavaScript Execution in Browser
+
+## 1. Loading Phase
+
+### HTML Parsing
+```javascript
+// Regular script loading - blocks parsing
+<script src="app.js"></script>
+
+// Async loading - doesn't block parsing
+<script async src="app.js"></script>
+
+// Defer loading - executes after HTML parsing
+<script defer src="app.js"></script>
+```
+
+### Loading Sequence
+1. Browser receives HTML
+2. HTML parser starts parsing HTML document
+3. Creates DOM (Document Object Model)
+4. Encounters `<script>` tag
+   - Without async/defer: Stops parsing, downloads, executes
+   - With async: Downloads in parallel, executes when ready
+   - With defer: Downloads in parallel, executes after parsing
+
+## 2. Compilation Phase
+
+### Just-In-Time (JIT) Compilation
+```javascript
+// V8 Engine Phases:
+// 1. Source Code
+function add(a, b) {
+    return a + b;
+}
+
+// 2. Abstract Syntax Tree (AST)
+{
+    "type": "FunctionDeclaration",
+    "id": { "type": "Identifier", "name": "add" },
+    "params": [
+        { "type": "Identifier", "name": "a" },
+        { "type": "Identifier", "name": "b" }
+    ],
+    // ... more AST nodes
+}
+
+// 3. Bytecode
+// 4. Machine Code (for hot functions)
+```
+
+## 3. Creation Phase (Memory Allocation)
+
+### Global Execution Context Creation
+```javascript
+// 1. Global Object Creation
+window; // or global in Node.js
+
+// 2. this Binding
+this === window; // true in browser's global scope
+
+// 3. Variable Hoisting
+console.log(name); // undefined
+var name = "John";
+
+// 4. Function Hoisting
+sayHello(); // "Hello"
+function sayHello() {
+    console.log("Hello");
+}
+```
+
+### Scope Chain Creation
+```javascript
+// Lexical Scope Example
+const global = "I'm global";
+
+function outer() {
+    const outer = "I'm outer";
+    
+    function inner() {
+        const inner = "I'm inner";
+        console.log(global, outer, inner);
+    }
+    
+    inner();
+}
+
+// Scope Chain: inner -> outer -> global
+```
+
+## 4. Execution Phase
+
+### Call Stack Operations
+```javascript
+function first() {
+    console.log('First');
+    second();
+}
+
+function second() {
+    console.log('Second');
+    third();
+}
+
+function third() {
+    console.log('Third');
+}
+
+first();
+
+// Call Stack Sequence:
+// 1. main()
+// 2. first()
+// 3. second()
+// 4. third()
+// Then unwinding...
+```
+
+### Event Loop and Task Queues
+```javascript
+// 1. Synchronous Code
+console.log('Start');
+
+// 2. Macrotask (setTimeout)
+setTimeout(() => {
+    console.log('Timeout');
+}, 0);
+
+// 3. Microtask (Promise)
+Promise.resolve()
+    .then(() => console.log('Promise'));
+
+console.log('End');
+
+// Output:
+// Start
+// End
+// Promise
+// Timeout
+```
+
+## 5. Memory Management
+
+### Garbage Collection
+```javascript
+// Reference Counting
+let obj = { data: "some data" };
+obj = null; // Object becomes eligible for GC
+
+// Mark and Sweep
+function process() {
+    const temp = { x: 123 };
+    // temp is only reachable within this function
+} // temp becomes eligible for GC
+```
+
+### Memory Leaks
+```javascript
+// 1. Global Variables
+window.globalData = { /* large data */ };
+
+// 2. Forgotten Timers
+setInterval(() => {
+    const data = { /* large data */ };
+}, 1000);
+
+// 3. Closures
+function createLeak() {
+    const largeData = { /* large data */ };
+    return () => console.log(largeData);
+}
+```
+
+## 6. Error Handling
+
+### Error Propagation
+```javascript
+try {
+    throw new Error('Something went wrong');
+} catch (error) {
+    console.error(error);
+} finally {
+    console.log('Cleanup');
+}
+
+// Async Error Handling
+async function fetchData() {
+    try {
+        const response = await fetch('api/data');
+        return await response.json();
+    } catch (error) {
+        console.error('Fetch error:', error);
+    }
+}
+```
+
+## 7. Browser APIs and Web APIs
+
+### DOM Manipulation
+```javascript
+// Batched DOM Updates
+requestAnimationFrame(() => {
+    element.style.transform = 'translateX(100px)';
+});
+
+// MutationObserver
+const observer = new MutationObserver(mutations => {
+    console.log('DOM changed');
+});
+
+observer.observe(document.body, {
+    childList: true,
+    subtree: true
+});
+```
+
+### Event Handling
+```javascript
+// Event Bubbling
+document.body.addEventListener('click', function(event) {
+    console.log('Body clicked');
+}, false);
+
+// Event Capturing
+document.body.addEventListener('click', function(event) {
+    console.log('Capture phase');
+}, true);
+```
+
+## 8. Performance Optimization
+
+### Critical Rendering Path
+```javascript
+// Optimize loading
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM is ready
+});
+
+window.addEventListener('load', () => {
+    // Everything is loaded
+});
+
+// Avoid layout thrashing
+const height = element.offsetHeight; // Read
+element.style.height = height + 100 + 'px'; // Write
+```
+
+### Code Splitting
+```javascript
+// Dynamic Import
+button.addEventListener('click', async () => {
+    const module = await import('./feature.js');
+    module.doSomething();
+});
+```
+
+## 9. Debugging Tips
+
+### Console Methods
+```javascript
+// Performance Measurement
+console.time('operation');
+// ... some operations
+console.timeEnd('operation');
+
+// Stack Trace
+console.trace('Trace message');
+
+// Memory Snapshot
+console.memory
+```
+
+### Source Maps
+```javascript
+// Enable source maps
+{
+    "version": 3,
+    "sources": ["original.js"],
+    "names": ["add", "a", "b"],
+    "mappings": "AAAA,SAASA,IAAIC,EAAGC"
+}
+```
+
+## 10. Common Pitfalls and Solutions
+
+### Performance Issues
+```javascript
+// Bad
+for (let i = 0; i < array.length; i++) {}
+
+// Good
+const length = array.length;
+for (let i = 0; i < length; i++) {}
+
+// Better
+array.forEach(item => {});
+```
+
+### Memory Management
+```javascript
+// Bad - Memory Leak
+class Component {
+    constructor() {
+        this.listener = () => this.update();
+        window.addEventListener('resize', this.listener);
+    }
+}
+
+// Good - Cleanup
+class Component {
+    constructor() {
+        this.listener = () => this.update();
+        window.addEventListener('resize', this.listener);
+    }
+    
+    destroy() {
+        window.removeEventListener('resize', this.listener);
+    }
+}
+```
+
+# JavaScript Engine Execution Process
+
+## 1. Engine Components
+
+### Main Components
+```javascript
+// JavaScript Engine Architecture
+┌─────────────────────────────────────┐
+│ JavaScript Engine (e.g., V8)        │
+├─────────────────────────────────────┤
+│ Parser → AST → Interpreter (Ignition)│
+│          ↓                          │
+│    Compiler (TurboFan)              │
+└─────────────────────────────────────┘
+```
+
+## 2. Parsing Phase
+
+### Lexical Analysis (Tokenization)
+```javascript
+// Source Code
+function sum(a, b) { return a + b; }
+
+// Tokens
+[
+    { type: 'keyword', value: 'function' },
+    { type: 'identifier', value: 'sum' },
+    { type: 'punctuation', value: '(' },
+    { type: 'identifier', value: 'a' },
+    { type: 'punctuation', value: ',' },
+    { type: 'identifier', value: 'b' },
+    { type: 'punctuation', value: ')' },
+    { type: 'punctuation', value: '{' },
+    { type: 'keyword', value: 'return' },
+    { type: 'identifier', value: 'a' },
+    { type: 'operator', value: '+' },
+    { type: 'identifier', value: 'b' },
+    { type: 'punctuation', value: ';' },
+    { type: 'punctuation', value: '}' }
+]
+```
+
+### Abstract Syntax Tree (AST)
+```javascript
+// AST Structure
+{
+    "type": "Program",
+    "body": [{
+        "type": "FunctionDeclaration",
+        "id": {
+            "type": "Identifier",
+            "name": "sum"
+        },
+        "params": [
+            {
+                "type": "Identifier",
+                "name": "a"
+            },
+            {
+                "type": "Identifier",
+                "name": "b"
+            }
+        ],
+        "body": {
+            "type": "BlockStatement",
+            "body": [{
+                "type": "ReturnStatement",
+                "argument": {
+                    "type": "BinaryExpression",
+                    "operator": "+",
+                    "left": {
+                        "type": "Identifier",
+                        "name": "a"
+                    },
+                    "right": {
+                        "type": "Identifier",
+                        "name": "b"
+                    }
+                }
+            }]
+        }
+    }]
+}
+```
+
+## 3. Compilation Pipeline
+
+### Interpreter (Ignition in V8)
+```javascript
+// Bytecode Generation
+function example() {
+    let x = 1;
+    x += 2;
+    return x;
+}
+
+// Simplified Bytecode
+LdaZero            // Load accumulator with 0
+Star r0           // Store accumulator to register 0
+LdaSmi #1         // Load small integer 1
+Add r0            // Add register 0 to accumulator
+Return            // Return accumulator
+```
+
+### JIT Compilation (TurboFan in V8)
+```javascript
+// Hot Function Detection
+function hotFunction(a, b) {
+    return a + b;  // Called many times
+}
+
+// Optimization Tiers
+// Tier 1: Interpreted
+// Tier 2: Baseline compiled
+// Tier 3: Optimized machine code
+```
+
+## 4. Memory Management
+
+### Memory Spaces
+```javascript
+// Memory Layout
+┌─────────────────┐
+│ Code Space      │ // Executable code
+├─────────────────┤
+│ New Space       │ // Young objects
+├─────────────────┤
+│ Old Space       │ // Long-lived objects
+├─────────────────┤
+│ Large Object    │ // Objects > 1MB
+└─────────────────┘
+```
+
+### Garbage Collection Process
+```javascript
+// Mark and Sweep Algorithm
+function createObjects() {
+    let obj1 = { name: 'obj1' };
+    let obj2 = { name: 'obj2' };
+    obj1.ref = obj2;  // Create reference
+    obj2 = null;      // Break reference
+    return obj1;      // obj2 eligible for GC
+}
+
+// Generation-based Collection
+// Young Generation (Minor GC)
+// Old Generation (Major GC)
+```
+
+## 5. Execution Context
+
+### Context Creation
+```javascript
+// Global Execution Context
+GlobalExecutionContext = {
+    ThisBinding: window, // or global
+    VariableEnvironment: { /* variables */ },
+    LexicalEnvironment: { /* let/const */ }
+}
+
+// Function Execution Context
+FunctionExecutionContext = {
+    ThisBinding: <determined by call>,
+    VariableEnvironment: { /* variables */ },
+    LexicalEnvironment: { /* let/const */ }
+}
+```
+
+### Scope Chain
+```javascript
+function outer() {
+    const a = 1;
+    function inner() {
+        const b = 2;
+        console.log(a, b);
+    }
+    inner();
+}
+
+// Scope Chain: inner → outer → global
+```
+
+## 6. Optimization Techniques
+
+### Inline Caching
+```javascript
+// Before Optimization
+function getProperty(obj, prop) {
+    return obj[prop];
+}
+
+// After Inline Caching
+// Engine caches the location of prop
+// for subsequent lookups
+```
+
+### Hidden Classes
+```javascript
+// Bad for optimization
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+}
+let p1 = new Point(1, 2);
+p1.z = 3;  // Creates new hidden class
+
+// Good for optimization
+function Point(x, y) {
+    this.x = x;
+    this.y = y;
+    this.z = undefined;  // Declare all properties upfront
+}
+```
+
+## 7. Performance Monitoring
+
+### Profiling
+```javascript
+// CPU Profiling
+console.profile('MyProfile');
+// ... code to profile
+console.profileEnd('MyProfile');
+
+// Memory Profiling
+const heap = process.memoryUsage();
+console.log(heap);
+```
+
+## 8. Common Optimizations
+
+### Function Inlining
+```javascript
+// Before Inlining
+function add(a, b) {
+    return a + b;
+}
+let result = add(1, 2);
+
+// After Inlining (Internal)
+let result = 1 + 2;  // Function call removed
+```
+
+### Deoptimization
+```javascript
+function add(a, b) {
+    // Optimized for numbers
+    return a + b;
+}
+
+add(1, 2);        // Optimized
+add("1", "2");    // Deoptimized due to type change
+```
+
+## 9. Engine-specific Features (V8)
+
+### Turbofan Optimizations
+```javascript
+// Type Specialization
+function add(a, b) {
+    return a + b;
+}
+
+// After many number-only calls
+// Engine creates specialized version for numbers
+```
+
+### Orinoco Garbage Collector
+```javascript
+// Concurrent Marking
+// Incremental Marking
+// Lazy Sweeping
+// Parallel Scavenging
+```

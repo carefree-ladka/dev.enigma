@@ -1,0 +1,266 @@
+# `__proto__` vs `prototype`
+
+## Quick Reference
+
+| Feature | `__proto__` | `prototype` |
+|---------|-------------|-------------|
+| Purpose | Links an object to its prototype | Contains properties that will become `__proto__` for instances |
+| Found On | All objects | Function objects only |
+| Modifiable | Yes (but not recommended) | Yes |
+| Standard | No (deprecated) | Yes |
+| Creation Time | Object instantiation | Function definition |
+
+## `__proto__` Deep Dive
+
+### What is `__proto__`?
+```javascript
+// Every object has a __proto__ property
+const obj = {};
+console.log(obj.__proto__ === Object.prototype); // true
+
+// Creating object with specific prototype
+const parent = { name: 'parent' };
+const child = Object.create(parent);
+console.log(child.__proto__ === parent); // true
+```
+
+### Prototype Chain Example
+```javascript
+const grandparent = { family: 'Smith' };
+const parent = Object.create(grandparent);
+const child = Object.create(parent);
+
+console.log(child.__proto__ === parent); // true
+console.log(child.__proto__.__proto__ === grandparent); // true
+console.log(child.__proto__.__proto__.__proto__ === Object.prototype); // true
+console.log(child.__proto__.__proto__.__proto__.__proto__ === null); // true
+```
+
+### Modern Alternatives to `__proto__`
+```javascript
+// Instead of obj.__proto__
+Object.getPrototypeOf(obj);
+
+// Instead of obj.__proto__ = value
+Object.setPrototypeOf(obj, value);
+
+// Creating objects with specific prototype
+Object.create(protoObj);
+```
+
+## `prototype` Deep Dive
+
+### Function's Prototype
+```javascript
+function Person(name) {
+    this.name = name;
+}
+
+// Adding methods to prototype
+Person.prototype.sayHello = function() {
+    return `Hello, I'm ${this.name}`;
+};
+
+const john = new Person('John');
+console.log(john.sayHello()); // "Hello, I'm John"
+```
+
+### Constructor Functions vs Classes
+```javascript
+// Constructor Function
+function Animal(name) {
+    this.name = name;
+}
+Animal.prototype.makeSound = function() {
+    console.log('Some sound');
+};
+
+// Equivalent Class
+class Animal {
+    constructor(name) {
+        this.name = name;
+    }
+    
+    makeSound() {
+        console.log('Some sound');
+    }
+}
+```
+
+## Prototype Chain Relationships
+
+### Understanding the Chain
+```javascript
+function Dog(name) {
+    this.name = name;
+}
+
+const max = new Dog('Max');
+
+console.log(
+    max.__proto__ === Dog.prototype, // true
+    Dog.prototype.__proto__ === Object.prototype, // true
+    Dog.__proto__ === Function.prototype, // true
+    Function.prototype.__proto__ === Object.prototype // true
+);
+```
+
+### Inheritance Patterns
+
+#### Classical Inheritance
+```javascript
+function Animal(name) {
+    this.name = name;
+}
+
+function Dog(name, breed) {
+    Animal.call(this, name);
+    this.breed = breed;
+}
+
+// Set up inheritance
+Dog.prototype = Object.create(Animal.prototype);
+Dog.prototype.constructor = Dog;
+
+const max = new Dog('Max', 'Labrador');
+```
+
+#### Class-based Inheritance
+```javascript
+class Animal {
+    constructor(name) {
+        this.name = name;
+    }
+}
+
+class Dog extends Animal {
+    constructor(name, breed) {
+        super(name);
+        this.breed = breed;
+    }
+}
+```
+
+## Common Patterns and Best Practices
+
+### Method Borrowing
+```javascript
+const methods = {
+    sayHello() {
+        return `Hello, ${this.name}`;
+    }
+};
+
+function Person(name) {
+    this.name = name;
+}
+
+Person.prototype = Object.create(methods);
+```
+
+### Mixins
+```javascript
+const speakerMixin = {
+    speak() {
+        console.log(`${this.name} is speaking`);
+    }
+};
+
+const walkerMixin = {
+    walk() {
+        console.log(`${this.name} is walking`);
+    }
+};
+
+function Person(name) {
+    this.name = name;
+}
+
+Object.assign(Person.prototype, speakerMixin, walkerMixin);
+```
+
+## Performance Considerations
+
+### Property Lookup Chain
+```javascript
+const obj = {
+    prop: 'own property'
+};
+
+// Fast - direct property access
+obj.prop;
+
+// Slower - must traverse prototype chain
+obj.toString();
+```
+
+### Optimizing Property Access
+```javascript
+// Cache prototype methods in local scope
+const toString = Object.prototype.toString;
+
+// Faster than repeatedly accessing through prototype chain
+toString.call(obj);
+```
+
+## Debugging Tips
+
+### Inspecting Prototypes
+```javascript
+// View prototype chain
+function getPrototypeChain(obj) {
+    const chain = [];
+    let current = obj;
+    
+    while (current) {
+        chain.push(current);
+        current = Object.getPrototypeOf(current);
+    }
+    
+    return chain;
+}
+
+// Check if property exists in prototype chain
+function hasInPrototypeChain(obj, prop) {
+    let current = obj;
+    
+    while (current) {
+        if (current.hasOwnProperty(prop)) return true;
+        current = Object.getPrototypeOf(current);
+    }
+    
+    return false;
+}
+```
+
+## Common Gotchas
+
+### Property Shadowing
+```javascript
+function Person() {}
+Person.prototype.skills = ['reading'];
+
+const person1 = new Person();
+const person2 = new Person();
+
+// Modifies prototype property
+person1.skills.push('writing');
+console.log(person2.skills); // ['reading', 'writing']
+
+// Creates own property
+person1.skills = ['coding'];
+console.log(person2.skills); // ['reading', 'writing']
+```
+
+### `instanceof` vs `isPrototypeOf`
+```javascript
+function Parent() {}
+function Child() {}
+Child.prototype = Object.create(Parent.prototype);
+
+const child = new Child();
+
+console.log(child instanceof Child); // true
+console.log(child instanceof Parent); // true
+console.log(Parent.prototype.isPrototypeOf(child)); // true
+```
