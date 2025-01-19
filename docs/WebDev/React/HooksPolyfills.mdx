@@ -1,0 +1,116 @@
+# React Hooks Polyfills
+
+## useState
+
+```JavaScript
+  const useMyState = (initialValue) => {
+    const hookIdTrackerRef = useRef(0); // Component-specific tracker
+    const statesRef = useRef([]); // Component-specific state storage
+
+    const localHookId = hookIdTrackerRef.current++; // Assign unique ID for this hook
+
+    // Initialize state lazily
+    if (statesRef.current[localHookId] === undefined) {
+      statesRef.current[localHookId] =
+        typeof initialValue === "function" ? initialValue() : initialValue;
+    }
+
+    const currentState = statesRef.current[localHookId]; // Get the current state
+
+    const [, rerender] = useReducer(() => ({}), {}); // Trigger re-render
+
+    const setValue = (newValue) => {
+      // If newValue is a function, compute based on the current state
+      if (typeof newValue === "function") {
+        newValue = newValue(statesRef.current[localHookId]);
+      }
+
+      // Check for state change
+      const isValueChanged = !Object.is(newValue, statesRef.current[localHookId]);
+      if (isValueChanged) {
+        statesRef.current[localHookId] = newValue; // Update state
+        hookIdTrackerRef.current = 0;
+        rerender({}); // Trigger re-render
+      }
+    };
+
+    return [currentState, setValue];
+  };
+```
+
+## useEffect
+
+```JavaScript
+  const myEffect = (callback, depsArray) => {
+    const firstRenderRef = useRef(true); // Tracks if it's the first render
+    const prevDepsRef = useRef([]); // Stores the previous dependencies
+    const cleanupRef = useRef(null); // Stores the cleanup function
+
+    // Handle first render
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false;
+      cleanupRef.current = callback(); // Call effect
+      prevDepsRef.current = depsArray ?? []; // Store dependencies
+      return;
+    }
+
+    // Check if dependencies have changed
+    const haveDepsChanged =
+      !depsArray ||
+      depsArray.some((dep, i) => !Object.is(dep, prevDepsRef.current[i]));
+
+    // Cleanup and invoke callback if dependencies changed
+    if (haveDepsChanged) {
+      if (typeof cleanupRef.current === "function") {
+        cleanupRef.current(); // Call cleanup
+      }
+      cleanupRef.current = callback(); // Call effect
+    }
+
+    prevDepsRef.current = depsArray || []; // Update dependencies
+  };
+```
+
+## React App with Custom Hooks 
+
+```JavaScript
+import { MyReact } from './Polyfills';
+
+const Counter = () => {
+  const [count, setCount] = MyReact.useMyState(0);
+
+  //Runs on First render
+  //Runs when count changes
+  //Clean up doesn't run on first render
+
+  MyReact.myEffect(() => {
+    console.log("Effect ran with count:", count);
+
+    return () => {
+      console.log("Cleanup for count:", count);
+    };
+  }, [count]);
+
+  //Runs on every render
+  MyReact.myEffect(() => {
+    console.log("Runs always...");
+  });
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount((prev) => prev + 1)}>Increment</button>
+    </div>
+  )
+}
+
+export default function App() {
+
+  return (
+    <>
+      <Counter />
+      <Counter />
+    </>
+  );
+}
+```
