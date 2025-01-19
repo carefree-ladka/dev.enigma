@@ -1,0 +1,206 @@
+# Web Components
+
+## Introduction
+Web Components are a set of web platform APIs that allow you to create reusable custom elements. They're built on three main technologies: Custom Elements, Shadow DOM, and HTML Templates.
+
+## 1. Custom Elements
+
+### Theory
+Custom Elements allow you to define your own HTML tags with custom functionality. They must have a hyphen in their name (e.g., 'my-element') to avoid conflicts with standard HTML elements.
+
+### Example
+```javascript
+class MyElement extends HTMLElement {
+  constructor() {
+    super();
+    this.innerHTML = 'Hello from MyElement!';
+  }
+  
+  // Lifecycle Methods
+  connectedCallback() {
+    // Called when element is added to document
+    console.log('Element added to page');
+  }
+
+  disconnectedCallback() {
+    // Called when element is removed from document
+    console.log('Element removed from page');
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    // Called when an attribute is changed/added/removed
+    console.log(`Attribute ${name} changed from ${oldValue} to ${newValue}`);
+  }
+
+  static get observedAttributes() {
+    // Specify which attributes to watch for changes
+    return ['title', 'content'];
+  }
+}
+
+// Register the custom element
+customElements.define('my-element', MyElement);
+```
+
+## 2. Shadow DOM
+
+### Theory
+Shadow DOM provides encapsulation for DOM and CSS, creating a separate DOM tree that's isolated from the main document's DOM. This prevents style leakage and naming conflicts.
+
+### Example
+```javascript
+class ShadowElement extends HTMLElement {
+  constructor() {
+    super();
+    
+    // Create shadow root
+    const shadow = this.attachShadow({ mode: 'open' });
+    
+    // Create element
+    const wrapper = document.createElement('div');
+    wrapper.textContent = 'This is in Shadow DOM';
+    
+    // Add styles
+    const style = document.createElement('style');
+    style.textContent = `
+      div {
+        padding: 10px;
+        background: #f0f0f0;
+        border-radius: 5px;
+      }
+    `;
+    
+    // Attach to shadow DOM
+    shadow.appendChild(style);
+    shadow.appendChild(wrapper);
+  }
+}
+
+customElements.define('shadow-element', ShadowElement);
+```
+
+## 3. HTML Templates
+
+### Theory
+HTML Templates (`<template>` tag) allow you to define reusable HTML that can be instantiated later. Content inside a template is not rendered until it's cloned and added to the document.
+
+### Example
+```javascript
+// Define template in HTML
+/*
+<template id="my-template">
+  <style>
+    .container {
+      border: 1px solid #ccc;
+      padding: 15px;
+    }
+  </style>
+  <div class="container">
+    <h2><slot name="title">Default Title</slot></h2>
+    <div><slot>Default content</slot></div>
+  </div>
+</template>
+*/
+
+class TemplateElement extends HTMLElement {
+  constructor() {
+    super();
+    
+    // Get template content
+    const template = document.getElementById('my-template');
+    const templateContent = template.content;
+    
+    // Create shadow root and clone template
+    const shadow = this.attachShadow({ mode: 'open' });
+    shadow.appendChild(templateContent.cloneNode(true));
+  }
+}
+
+customElements.define('template-element', TemplateElement);
+```
+
+## Putting It All Together
+
+### Complete Example
+```javascript
+class CompleteComponent extends HTMLElement {
+  constructor() {
+    super();
+    
+    // Create shadow root
+    const shadow = this.attachShadow({ mode: 'open' });
+    
+    // Create template
+    const template = document.createElement('template');
+    template.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          padding: 20px;
+        }
+        .card {
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 15px;
+        }
+        h2 {
+          margin-top: 0;
+          color: #333;
+        }
+      </style>
+      <div class="card">
+        <h2><slot name="title">Default Title</slot></h2>
+        <div><slot>Default content</slot></div>
+      </div>
+    `;
+    
+    // Clone and attach template
+    shadow.appendChild(template.content.cloneNode(true));
+  }
+  
+  // Lifecycle and attribute handling
+  static get observedAttributes() {
+    return ['title'];
+  }
+  
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'title') {
+      const title = this.shadowRoot.querySelector('h2');
+      if (title) title.textContent = newValue;
+    }
+  }
+}
+
+customElements.define('complete-component', CompleteComponent);
+
+// Usage:
+/*
+<complete-component>
+  <span slot="title">My Custom Component</span>
+  <p>This is the content of my component</p>
+</complete-component>
+*/
+```
+
+## Best Practices
+
+1. **Naming Conventions**
+   - Always use a hyphen in custom element names
+   - Use descriptive, semantic names
+   - Prefix components with project/organization name
+
+2. **Performance**
+   - Use template elements for repeated structures
+   - Minimize shadow DOM operations
+   - Lazy load components when possible
+
+3. **Accessibility**
+   - Maintain ARIA attributes
+   - Ensure keyboard navigation works
+   - Preserve semantic meaning
+
+4. **Maintenance**
+   - Document public API and attributes
+   - Keep components focused and single-purpose
+   - Follow the Single Responsibility Principle
