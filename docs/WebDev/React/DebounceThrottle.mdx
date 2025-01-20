@@ -1,0 +1,181 @@
+# Debounce and Throttle
+
+
+```javascript
+// Custom hook for debouncing
+import { useState, useEffect, useCallback } from 'react';
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Custom hook for throttling
+function useThrottle(value, delay) {
+  const [throttledValue, setThrottledValue] = useState(value);
+  const [lastExecuted, setLastExecuted] = useState(Date.now());
+
+  useEffect(() => {
+    const now = Date.now();
+    const timeSinceLastExecution = now - lastExecuted;
+
+    if (timeSinceLastExecution >= delay) {
+      setThrottledValue(value);
+      setLastExecuted(now);
+    } else {
+      const timer = setTimeout(() => {
+        setThrottledValue(value);
+        setLastExecuted(Date.now());
+      }, delay - timeSinceLastExecution);
+
+      return () => clearTimeout(timer);
+    }
+  }, [value, delay, lastExecuted]);
+
+  return throttledValue;
+}
+
+// Example component using both debounce and throttle
+function SearchComponent() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [scrollPosition, setScrollPosition] = useState(0);
+
+  // Debounced search term - only updates after user stops typing for 500ms
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  // Throttled scroll position - only updates once every 200ms maximum
+  const throttledScrollPosition = useThrottle(scrollPosition, 200);
+
+  // Simulated API call using debounced value
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      console.log(`Making API call with: ${debouncedSearchTerm}`);
+      // Actual API call would go here
+    }
+  }, [debouncedSearchTerm]);
+
+  // Scroll handler using throttled value
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollPosition(window.scrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <div className="p-4">
+      <div className="mb-4">
+        <h3 className="text-lg font-bold mb-2">Debounced Search</h3>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search..."
+          className="border p-2 rounded"
+        />
+        <p className="mt-2">
+          Immediate value: {searchTerm}
+          <br />
+          Debounced value: {debouncedSearchTerm}
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-bold mb-2">Throttled Scroll</h3>
+        <p>
+          Immediate scroll position: {scrollPosition}px
+          <br />
+          Throttled scroll position: {throttledScrollPosition}px
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Alternative implementation using pure functions
+const debounce = (func, delay) => {
+  let timeoutId;
+
+  return (...args) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      func.apply(null, args);
+    }, delay);
+  };
+};
+
+const throttle = (func, delay) => {
+  let lastExecuted = 0;
+  let timeoutId;
+
+  return (...args) => {
+    const now = Date.now();
+
+    if (now - lastExecuted >= delay) {
+      func.apply(null, args);
+      lastExecuted = now;
+    } else {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func.apply(null, args);
+        lastExecuted = Date.now();
+      }, delay - (now - lastExecuted));
+    }
+  };
+};
+
+// Example usage of pure functions
+function EventHandlingComponent() {
+  const handleSearch = useCallback(
+    debounce((term) => {
+      console.log(`Searching for: ${term}`);
+      // API call would go here
+    }, 500),
+    []
+  );
+
+  const handleScroll = useCallback(
+    throttle((position) => {
+      console.log(`Scroll position: ${position}`);
+      // Handle scroll logic here
+    }, 200),
+    []
+  );
+
+  return (
+    <div>
+      <input
+        type="text"
+        onChange={(e) => handleSearch(e.target.value)}
+        placeholder="Search with debounce..."
+        className="border p-2 rounded"
+      />
+    </div>
+  );
+}
+
+export { 
+  useDebounce, 
+  useThrottle, 
+  SearchComponent, 
+  EventHandlingComponent,
+  debounce,
+  throttle 
+};
+```

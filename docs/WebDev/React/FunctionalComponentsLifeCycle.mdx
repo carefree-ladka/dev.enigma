@@ -1,0 +1,297 @@
+# React Functional Component Lifecycle
+
+## Introduction
+
+React functional components go through several phases during their lifetime. While class components have traditional lifecycle methods, functional components use Hooks to handle lifecycle events. This document explores the complete lifecycle of a React functional component.
+
+## Component Lifecycle Phases
+
+### 1. Mounting Phase
+
+When a component is being created and inserted into the DOM:
+
+```javascript
+function ExampleComponent({ initialData }) {
+  // 1. Component initialization
+  const [data, setData] = useState(initialData);
+  
+  // 2. First render setup
+  useEffect(() => {
+    // Runs after first render
+    console.log('Component mounted');
+    
+    // Cleanup function (optional)
+    return () => {
+      console.log('Component will unmount');
+    };
+  }, []); // Empty dependency array = run once on mount
+
+  return <div>{data}</div>;
+}
+```
+
+### 2. Updating Phase
+
+When a component is re-rendering due to changes in props or state:
+
+```javascript
+function UpdatingExample({ user }) {
+  const [count, setCount] = useState(0);
+  
+  // Runs on specific prop/state changes
+  useEffect(() => {
+    console.log('user or count updated');
+    // Side effects here
+  }, [user, count]); // Dependency array with values to watch
+  
+  // Runs on every render
+  useEffect(() => {
+    console.log('Component updated');
+  }); // No dependency array
+  
+  return (
+    <div>
+      <p>User: {user}</p>
+      <p>Count: {count}</p>
+    </div>
+  );
+}
+```
+
+### 3. Unmounting Phase
+
+When a component is being removed from the DOM:
+
+```javascript
+function UnmountExample() {
+  useEffect(() => {
+    // Setup phase
+    const subscription = setupSubscription();
+    
+    // Cleanup phase
+    return () => {
+      subscription.unsubscribe();
+      console.log('Cleanup performed');
+    };
+  }, []);
+  
+  return <div>Subscribed Component</div>;
+}
+```
+
+## Common Lifecycle Patterns
+
+### Data Fetching
+
+```javascript
+function DataFetchingComponent({ id }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  useEffect(() => {
+    let mounted = true;
+    
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/data/${id}`);
+        const result = await response.json();
+        
+        if (mounted) {
+          setData(result);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err);
+          setLoading(false);
+        }
+      }
+    }
+    
+    fetchData();
+    
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+  
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  return <div>{data}</div>;
+}
+```
+
+### Event Listeners
+
+```javascript
+function EventListenerComponent() {
+  useEffect(() => {
+    const handleResize = () => {
+      console.log('Window resized');
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  
+  return <div>Window Size Observer</div>;
+}
+```
+
+## Best Practices
+
+### 1. Cleanup Functions
+
+Always include cleanup functions in useEffect when:
+- Setting up subscriptions
+- Adding event listeners
+- Starting timers
+- Creating WebSocket connections
+
+```javascript
+function BestPracticeExample() {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      console.log('Timer tick');
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
+}
+```
+
+### 2. Dependency Arrays
+
+- Empty array (`[]`) = run once on mount
+- No array = run on every render
+- Array with dependencies = run when dependencies change
+
+```javascript
+function DependencyExample({ data, onUpdate }) {
+  // Runs on every data or onUpdate change
+  useEffect(() => {
+    onUpdate(data);
+  }, [data, onUpdate]);
+}
+```
+
+### 3. Conditional Effects
+
+Use conditional logic inside useEffect, not around it:
+
+```javascript
+// Good
+useEffect(() => {
+  if (condition) {
+    // Do something
+  }
+}, [condition]);
+
+// Bad - Don't do this
+if (condition) {
+  useEffect(() => {
+    // Do something
+  }, []);
+}
+```
+
+## Common Pitfalls
+
+### 1. Infinite Loops
+
+```javascript
+// ❌ Wrong - Creates infinite loop
+function InfiniteLoopExample() {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    setCount(count + 1); // Triggers re-render, which triggers effect again
+  }, [count]);
+}
+
+// ✅ Correct - Using functional update
+function FixedExample() {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    setCount(prev => prev + 1);
+  }, []); // Runs once on mount
+}
+```
+
+### 2. Stale Closures
+
+```javascript
+// ❌ Wrong - Stale closure problem
+function StaleClosureExample() {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      console.log(count); // Will always log initial value
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []); // Missing dependency
+}
+
+// ✅ Correct - Using functional update
+function FixedStaleClosureExample() {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCount(prev => prev + 1); // Uses latest state
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []); // No dependencies needed
+}
+```
+
+## Performance Optimization
+
+### 1. useMemo and useCallback
+
+```javascript
+function OptimizedComponent({ data }) {
+  // Memoize expensive calculations
+  const processedData = useMemo(() => {
+    return expensiveOperation(data);
+  }, [data]);
+  
+  // Memoize callbacks
+  const handleClick = useCallback(() => {
+    console.log(processedData);
+  }, [processedData]);
+  
+  return <button onClick={handleClick}>Process Data</button>;
+}
+```
+
+### 2. Avoiding Unnecessary Re-renders
+
+```javascript
+// Use React.memo for component-level memoization
+const MemoizedChild = React.memo(function Child({ data }) {
+  return <div>{data}</div>;
+});
+
+function Parent() {
+  // Memoize value to prevent unnecessary re-renders
+  const memoizedValue = useMemo(() => ({
+    complex: 'data structure'
+  }), []);
+  
+  return <MemoizedChild data={memoizedValue} />;
+}
+```
+
+## Conclusion
+
+Understanding the lifecycle of functional components is crucial for building efficient React applications. By properly managing effects, cleanup, and dependencies, you can create components that are both performant and maintainable. Remember to always consider the cleanup phase and carefully manage your effect dependencies to avoid common pitfalls.
