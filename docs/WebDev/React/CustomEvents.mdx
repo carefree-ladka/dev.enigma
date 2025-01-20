@@ -1,0 +1,101 @@
+# Custom Events
+
+## Custom Events Utility Class
+
+```JavaScript
+class CustomEvents {
+  constructor() {
+    this.events = {};
+  }
+
+  /**
+   * Add an event listener
+   * @param {string} eventName - Name of the event
+   * @param {function} callback - Callback to execute when the event is triggered
+   */
+  on(eventName, callback) {
+    if (!this.events[eventName]) {
+      this.events[eventName] = [];
+    }
+    this.events[eventName].push(callback);
+  }
+
+  /**
+   * Remove an event listener
+   * @param {string} eventName - Name of the event
+   * @param {function} callback - Callback to remove
+   */
+  off(eventName, callback) {
+    if (!this.events[eventName]) return;
+    this.events[eventName] = this.events[eventName].filter(cb => cb !== callback);
+  }
+
+  /**
+   * Dispatch an event
+   * @param {string} eventName - Name of the event
+   * @param {any} data - Data to pass to the listeners
+   */
+  dispatch(eventName, data) {
+    if (!this.events[eventName]) return;
+    this.events[eventName].forEach(callback => callback(data));
+  }
+}
+
+// Create a shared instance
+const customEvents = new CustomEvents();
+export default customEvents;
+```
+
+## Usage Example in React
+
+**Step 1: Dispatch Events :**
+   - You can dispatch custom events from any component.
+
+```JavaScript
+import React from 'react';
+import customEvents from './CustomEvents';
+
+const EventDispatcher = () => {
+  const handleClick = () => {
+    customEvents.dispatch('custom-event', { message: 'Hello from EventDispatcher!' });
+  };
+
+  return (
+    <button onClick={handleClick}>Dispatch Custom Event</button>
+  );
+};
+
+export default EventDispatcher;
+```
+
+**Step 2: Listen to Events :**
+
+```JavaScript
+import React, { useEffect, useState } from 'react';
+import customEvents from './CustomEvents';
+
+const EventListener = () => {
+  const [eventData, setEventData] = useState(null);
+
+  useEffect(() => {
+    const handleEvent = data => {
+      setEventData(data.message);
+    };
+
+    customEvents.on('custom-event', handleEvent);
+
+    // Clean up on unmount
+    return () => {
+      customEvents.off('custom-event', handleEvent);
+    };
+  }, []);
+
+  return (
+    <div>
+      <h3>Event Data: {eventData}</h3>
+    </div>
+  );
+};
+
+export default EventListener;
+```

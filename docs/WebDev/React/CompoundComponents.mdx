@@ -1,0 +1,350 @@
+# React Compound Components
+
+## Basic Structure
+```jsx
+// Basic compound component pattern
+const Menu = ({ children }) => {
+  const [activeIndex, setActiveIndex] = useState(null);
+  
+  return (
+    <MenuContext.Provider value={{ activeIndex, setActiveIndex }}>
+      <div className="menu">{children}</div>
+    </MenuContext.Provider>
+  );
+};
+
+Menu.Item = ({ children, index }) => {
+  const { activeIndex, setActiveIndex } = useContext(MenuContext);
+  
+  return (
+    <div 
+      className={`menu-item ${activeIndex === index ? 'active' : ''}`}
+      onClick={() => setActiveIndex(index)}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Usage
+<Menu>
+  <Menu.Item index={0}>Home</Menu.Item>
+  <Menu.Item index={1}>About</Menu.Item>
+  <Menu.Item index={2}>Contact</Menu.Item>
+</Menu>
+```
+
+## Complete Example: Custom Select Component
+```jsx
+import React, { createContext, useContext, useState } from 'react';
+
+// Create context
+const SelectContext = createContext();
+
+// Main component
+const Select = ({ children, onValueChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedValue, setSelectedValue] = useState(null);
+
+  const handleSelect = (value) => {
+    setSelectedValue(value);
+    setIsOpen(false);
+    onValueChange?.(value);
+  };
+
+  return (
+    <SelectContext.Provider 
+      value={{ 
+        isOpen, 
+        setIsOpen, 
+        selectedValue, 
+        handleSelect 
+      }}
+    >
+      <div className="select-container">
+        {children}
+      </div>
+    </SelectContext.Provider>
+  );
+};
+
+// Trigger component
+Select.Trigger = ({ placeholder = 'Select...' }) => {
+  const { isOpen, setIsOpen, selectedValue } = useContext(SelectContext);
+
+  return (
+    <button 
+      className="select-trigger"
+      onClick={() => setIsOpen(!isOpen)}
+    >
+      {selectedValue ?? placeholder}
+    </button>
+  );
+};
+
+// Options container
+Select.Options = ({ children }) => {
+  const { isOpen } = useContext(SelectContext);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="select-options">
+      {children}
+    </div>
+  );
+};
+
+// Option item
+Select.Option = ({ children, value }) => {
+  const { selectedValue, handleSelect } = useContext(SelectContext);
+
+  return (
+    <div 
+      className={`select-option ${selectedValue === value ? 'selected' : ''}`}
+      onClick={() => handleSelect(value)}
+    >
+      {children}
+    </div>
+  );
+};
+
+export { Select };
+
+// Usage
+const MySelect = () => (
+  <Select onValueChange={(value) => console.log(value)}>
+    <Select.Trigger placeholder="Choose a color" />
+    <Select.Options>
+      <Select.Option value="red">Red</Select.Option>
+      <Select.Option value="blue">Blue</Select.Option>
+      <Select.Option value="green">Green</Select.Option>
+    </Select.Options>
+  </Select>
+);
+```
+
+## Key Concepts
+
+### 1. Context Setup
+```jsx
+// Create context
+const ComponentContext = createContext();
+
+// Provider wrapper
+const MainComponent = ({ children }) => {
+  const [state, setState] = useState(initialState);
+  
+  return (
+    <ComponentContext.Provider value={{ state, setState }}>
+      {children}
+    </ComponentContext.Provider>
+  );
+};
+```
+
+### 2. Sub-components
+```jsx
+// Static properties approach
+MainComponent.SubComponent = ({ children }) => {
+  const context = useContext(ComponentContext);
+  return <div>{children}</div>;
+};
+
+// Namespace approach
+const Namespace = {
+  Main: MainComponent,
+  Sub: SubComponent
+};
+```
+
+### 3. State Management Patterns
+```jsx
+// Centralized state
+const TabGroup = ({ children }) => {
+  const [activeTab, setActiveTab] = useState(0);
+  
+  return (
+    <TabContext.Provider value={{ activeTab, setActiveTab }}>
+      {children}
+    </TabContext.Provider>
+  );
+};
+
+// Distributed state
+const Accordion = ({ children }) => {
+  return <div className="accordion">{children}</div>;
+};
+
+Accordion.Item = ({ children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className={`accordion-item ${isOpen ? 'open' : ''}`}>
+      {children(isOpen, setIsOpen)}
+    </div>
+  );
+};
+```
+
+### 4. Advanced Patterns
+
+#### Controlled vs Uncontrolled
+```jsx
+// Controlled component
+const ControlledSelect = ({ value, onChange, children }) => (
+  <Select 
+    value={value}
+    onChange={onChange}
+  >
+    {children}
+  </Select>
+);
+
+// Uncontrolled component
+const UncontrolledSelect = ({ defaultValue, children }) => (
+  <Select defaultValue={defaultValue}>
+    {children}
+  </Select>
+);
+```
+
+#### Render Props with Compound Components
+```jsx
+const Dropdown = ({ children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <DropdownContext.Provider value={{ isOpen, setIsOpen }}>
+      {typeof children === 'function' 
+        ? children({ isOpen, setIsOpen }) 
+        : children}
+    </DropdownContext.Provider>
+  );
+};
+
+// Usage
+<Dropdown>
+  {({ isOpen }) => (
+    <>
+      <Dropdown.Toggle />
+      {isOpen && <Dropdown.Menu />}
+    </>
+  )}
+</Dropdown>
+```
+
+### 5. TypeScript Support
+```typescript
+// Context type
+interface ComponentContext {
+  state: State;
+  setState: (state: State) => void;
+}
+
+// Component types
+interface MainComponentProps {
+  children: React.ReactNode;
+  defaultValue?: string;
+}
+
+interface SubComponentProps {
+  value: string;
+  onChange?: (value: string) => void;
+}
+
+// Type declarations
+declare namespace Component {
+  export const Main: React.FC<MainComponentProps>;
+  export const Sub: React.FC<SubComponentProps>;
+}
+```
+
+## Best Practices
+
+1. **API Design**
+   - Keep the main component focused on state management
+   - Make sub-components handle specific rendering logic
+   - Use consistent naming conventions for sub-components
+
+2. **State Management**
+   - Centralize shared state in the parent component
+   - Use context to avoid prop drilling
+   - Consider performance implications of context updates
+
+3. **Flexibility**
+   - Allow for both controlled and uncontrolled usage
+   - Support customization through props
+   - Enable composition with other components
+
+4. **Error Handling**
+   - Validate component hierarchy
+   - Provide helpful error messages
+   - Handle edge cases gracefully
+
+## Common Pitfalls to Avoid
+
+1. Over-complicating the API
+2. Unnecessary state sharing
+3. Tight coupling between components
+4. Poor TypeScript support
+5. Missing accessibility features
+6. Incomplete documentation
+
+## Performance Optimization
+
+1. **Context Splitting**
+```jsx
+// Split context by concern
+const UIContext = createContext();
+const DataContext = createContext();
+
+const Component = ({ children }) => (
+  <UIContext.Provider value={uiState}>
+    <DataContext.Provider value={dataState}>
+      {children}
+    </DataContext.Provider>
+  </UIContext.Provider>
+);
+```
+
+2. **Memoization**
+```jsx
+// Memoize expensive computations
+const MemoizedSubComponent = React.memo(({ data }) => (
+  <div>{/* render logic */}</div>
+));
+
+// Memoize context value
+const value = useMemo(() => ({
+  state,
+  actions
+}), [state]);
+```
+
+## Testing
+
+```jsx
+// Component testing
+describe('CompoundComponent', () => {
+  it('renders correctly', () => {
+    render(
+      <CompoundComponent>
+        <CompoundComponent.Sub />
+      </CompoundComponent>
+    );
+    
+    expect(screen.getByRole('button')).toBeInTheDocument();
+  });
+  
+  it('handles state changes', () => {
+    const { container } = render(
+      <CompoundComponent>
+        <CompoundComponent.Sub />
+      </CompoundComponent>
+    );
+    
+    fireEvent.click(screen.getByRole('button'));
+    expect(container).toMatchSnapshot();
+  });
+});
+```
