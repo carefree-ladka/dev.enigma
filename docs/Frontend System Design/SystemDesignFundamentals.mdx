@@ -1,0 +1,516 @@
+# System Design Fundamentals
+
+## 1. Key Characteristics of Distributed Systems
+
+### Scalability
+The ability of a system to handle increased load by adding resources.
+
+Types:
+- **Vertical Scaling (Scale Up)**: Adding more power to existing machines
+- **Horizontal Scaling (Scale Out)**: Adding more machines
+
+```javascript
+class ScalableSystem {
+  private nodes: Node[] = [];
+
+  addNode(node: Node): void {
+    this.nodes.push(node);
+    this.rebalanceLoad();
+  }
+
+  removeNode(nodeId: string): void {
+    this.nodes = this.nodes.filter(node => node.id !== nodeId);
+    this.rebalanceLoad();
+  }
+}
+```
+
+### Reliability
+The probability that a system will fail in a given period.
+
+```javascript
+class ReliableSystem {
+  calculateReliability(components: Component[]): number {
+    // For components in series
+    return components.reduce((acc, component) => 
+      acc * component.reliability, 1);
+  }
+
+  calculateParallelReliability(components: Component[]): number {
+    // For components in parallel
+    return 1 - components.reduce((acc, component) => 
+      acc * (1 - component.reliability), 1);
+  }
+}
+```
+
+## 2. Load Balancing
+
+Distributes incoming traffic across multiple servers.
+
+### Algorithms:
+1. Round Robin
+2. Least Connections
+3. Least Response Time
+4. Hash-based
+
+```javascript
+interface LoadBalancer {
+  servers: Server[];
+  
+  roundRobin(): Server;
+  leastConnections(): Server;
+  hashBased(key: string): Server;
+}
+
+class WeightedRoundRobin implements LoadBalancer {
+  private currentIndex = 0;
+  
+  roundRobin(): Server {
+    const server = this.servers[this.currentIndex];
+    this.currentIndex = (this.currentIndex + 1) % this.servers.length;
+    return server;
+  }
+}
+```
+
+## 3. Caching
+
+Temporary storage layer for faster data access.
+
+### Caching Strategies:
+1. Cache-Aside
+2. Write-Through
+3. Write-Behind
+4. Refresh-Ahead
+
+```javascript
+class CacheManager {
+  private cache: Map<string, any>;
+  private db: Database;
+
+  async get(key: string): Promise<any> {
+    // Cache-aside implementation
+    let data = this.cache.get(key);
+    if (!data) {
+      data = await this.db.get(key);
+      this.cache.set(key, data);
+    }
+    return data;
+  }
+}
+```
+
+## 4. Data Partitioning
+
+Splitting data across multiple machines.
+
+### Types:
+1. Horizontal Partitioning (Sharding)
+2. Vertical Partitioning
+3. Directory-Based Partitioning
+
+```javascript
+class DataPartitioner {
+  private shardCount: number;
+
+  constructor(shardCount: number) {
+    this.shardCount = shardCount;
+  }
+
+  getShardId(key: string): number {
+    const hash = this.hashFunction(key);
+    return hash % this.shardCount;
+  }
+}
+```
+
+## 5. Indexes
+
+Data structures to improve data retrieval speed.
+
+### Types:
+1. Primary Index
+2. Secondary Index
+3. Composite Index
+
+```javascript
+class DatabaseIndex {
+  private index: Map<string, number[]>;
+
+  addToIndex(key: string, documentId: number): void {
+    if (!this.index.has(key)) {
+      this.index.set(key, []);
+    }
+    this.index.get(key).push(documentId);
+  }
+
+  search(key: string): number[] {
+    return this.index.get(key) || [];
+  }
+}
+```
+
+## 6. Proxies
+
+Intermediate servers between clients and backend servers.
+
+### Types:
+1. Forward Proxy
+2. Reverse Proxy
+3. Load Balancer Proxy
+
+```javascript
+class ReverseProxy {
+  private backends: string[];
+  private loadBalancer: LoadBalancer;
+
+  async handleRequest(request: Request): Promise<Response> {
+    const backend = this.loadBalancer.getBackend();
+    return await this.forwardRequest(backend, request);
+  }
+}
+```
+
+## 7. Redundancy and Replication
+
+Creating and maintaining multiple copies of data.
+
+### Strategies:
+1. Active-Passive
+2. Active-Active
+3. Multi-AZ Replication
+
+```javascript
+class ReplicationManager {
+  private primary: Database;
+  private replicas: Database[];
+
+  async write(data: any): Promise<void> {
+    await this.primary.write(data);
+    await Promise.all(
+      this.replicas.map(replica => replica.replicate(data))
+    );
+  }
+}
+```
+
+## 8. SQL vs. NoSQL
+
+### SQL (Relational)
+- Structured data
+- ACID properties
+- Fixed schema
+
+### NoSQL
+- Unstructured data
+- Eventual consistency
+- Dynamic schema
+
+```javascript
+interface Database {
+  // SQL-like operations
+  query(sql: string): Promise<Result>;
+  
+  // NoSQL-like operations
+  get(key: string): Promise<Document>;
+  put(key: string, value: Document): Promise<void>;
+}
+```
+
+## 9. CAP Theorem
+
+A distributed system can only provide two of:
+- Consistency
+- Availability
+- Partition Tolerance
+
+```javascript
+class DistributedSystem {
+  private type: 'CP' | 'AP' | 'CA';
+
+  handlePartition(): void {
+    switch(this.type) {
+      case 'CP':
+        this.sacrificeAvailability();
+        break;
+      case 'AP':
+        this.sacrificeConsistency();
+        break;
+    }
+  }
+}
+```
+
+## 10. PACELC Theorem
+
+Extension of CAP:
+- During Partition (P): choose between Availability (A) and Consistency (C)
+- Else (E): choose between Latency (L) and Consistency (C)
+
+```javascript
+class PACELCSystem {
+  handleNormalOperation(preference: 'latency' | 'consistency'): void {
+    if (preference === 'latency') {
+      this.optimizeForLatency();
+    } else {
+      this.enforceStrongConsistency();
+    }
+  }
+}
+```
+
+## 11. Consistent Hashing
+
+Distributes data across nodes while minimizing reorganization when nodes are added/removed.
+
+```javascript
+class ConsistentHashing {
+  private ring: Map<number, Node>;
+  private replicaCount: number;
+
+  addNode(node: Node): void {
+    for (let i = 0; i < this.replicaCount; i++) {
+      const hash = this.hashFunction(`${node.id}-${i}`);
+      this.ring.set(hash, node);
+    }
+  }
+
+  getNode(key: string): Node {
+    const hash = this.hashFunction(key);
+    return this.findNextNode(hash);
+  }
+}
+```
+
+## 12. Real-time Communication Protocols
+
+### Long-Polling
+### How It Works:
+   - The client makes an HTTP request to the server.
+   - The server keeps the request open until new data is available or a timeout occurs.
+   - Once the server responds, the client immediately sends a new request to maintain the connection.
+
+### Key Characteristics:
+   - Simulates real-time communication using HTTP.
+   - Creates multiple HTTP requests (one for each polling cycle).
+   - Works over HTTP 1.1, so no persistent connection is required.
+
+### Advantages:
+   - Works in environments where WebSockets or SSE may not be supported.
+   - Simple to implement.
+
+### Disadvantages:
+   - Inefficient due to repeated HTTP requests and connection overhead.
+   - Higher latency compared to WebSockets and SSE.
+   - Puts additional load on servers.
+
+### Common Use Cases:
+   - Chat applications (legacy systems).
+   - Scenarios where WebSocket support is not guaranteed.
+
+```javascript
+class LongPollingClient {
+  async poll(): Promise<Data> {
+    while (true) {
+      const response = await fetch('/api/updates');
+      if (response.status === 200) {
+        return response.json();
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+}
+```
+
+### WebSockets
+### How It Works:
+- The client establishes a persistent, full-duplex connection with the server over a single TCP connection.
+- Communication can flow in both directions (client-to-server and server-to-client).
+
+### Key Characteristics:
+- Uses the `ws://` or `wss://` protocol (secure WebSocket).
+- After the initial handshake over HTTP/HTTPS, the connection upgrades to a WebSocket protocol.
+- Efficient for high-frequency data exchange.
+
+### Advantages:
+- Full-duplex communication allows real-time interaction.
+- Low overhead after the initial connection.
+- Ideal for scenarios requiring frequent or bidirectional data exchange.
+
+### Disadvantages:
+- Requires WebSocket support on both client and server.
+- May face challenges in environments with strict firewalls or proxies.
+
+### Common Use Cases:
+- Online multiplayer games.
+- Collaborative tools (e.g., Google Docs).
+- Real-time financial data (e.g., stock tickers).
+
+```javascript
+class WebSocketHandler {
+  private ws: WebSocket;
+
+  connect(): void {
+    this.ws = new WebSocket('ws://server');
+    this.ws.onmessage = this.handleMessage;
+  }
+
+  send(data: any): void {
+    this.ws.send(JSON.stringify(data));
+  }
+}
+```
+
+### Server-Sent Events
+### How It Works:
+- The server pushes updates to the client over an HTTP connection.
+- The client maintains an open connection and listens for events from the server.
+
+### Key Characteristics:
+- Works only in one direction: server-to-client.
+- Uses the `text/event-stream` MIME type.
+- Based on HTTP/1.1, leveraging persistent connections.
+
+### Advantages:
+- Simpler than WebSockets for one-way communication.
+- Built-in reconnection mechanisms.
+- Lightweight and efficient for server-to-client updates.
+
+### Disadvantages:
+- Unidirectional: no way for the client to send messages back over the same connection.
+- Limited support in some environments (e.g., older browsers or clients).
+
+### Common Use Cases:
+- Real-time dashboards.
+- Notifications.
+- Social media feeds.
+
+```javascript
+class SSEClient {
+  private eventSource: EventSource;
+
+  connect(): void {
+    this.eventSource = new EventSource('/api/events');
+    this.eventSource.onmessage = this.handleMessage;
+  }
+}
+```
+
+## Comparison Table
+
+| **Feature**               | **Long-Polling**               | **WebSockets**                   | **Server-Sent Events (SSE)**    |
+|---------------------------|--------------------------------|----------------------------------|----------------------------------|
+| **Communication**         | Client-initiated, server responds | Full-duplex (bidirectional)      | Unidirectional (server-to-client) |
+| **Efficiency**            | Low (multiple requests)        | High (persistent connection)     | Medium (persistent connection)   |
+| **Latency**               | Medium to high                | Low                              | Low                              |
+| **Browser Support**       | Universally supported          | Modern browsers only             | Most modern browsers             |
+| **Connection Protocol**   | HTTP/HTTPS                     | WebSocket protocol (`ws/wss`)    | HTTP/1.1                         |
+| **Data Format**           | Custom (e.g., JSON)            | Binary or text                   | Plain text (`event-stream`)      |
+| **Reconnection**          | Client manually re-establishes | Handled automatically            | Built-in reconnect support       |
+| **Use Case Examples**     | Legacy systems, basic real-time | Games, chats, collaborative apps | Notifications, dashboards        |
+
+## 13. Bloom Filters
+
+Probabilistic data structure to test whether an element is a member of a set.
+
+```javascript
+class BloomFilter {
+  private bitArray: boolean[];
+  private hashFunctions: ((item: string) => number)[];
+
+  add(item: string): void {
+    this.hashFunctions.forEach(hash => {
+      const index = hash(item) % this.bitArray.length;
+      this.bitArray[index] = true;
+    });
+  }
+
+  mightContain(item: string): boolean {
+    return this.hashFunctions.every(hash => {
+      const index = hash(item) % this.bitArray.length;
+      return this.bitArray[index];
+    });
+  }
+}
+```
+
+## 14. Quorum
+
+Number of nodes that must agree for a distributed operation to be considered successful.
+
+```javascript
+class QuorumSystem {
+  private nodes: number;
+  private readQuorum: number;
+  private writeQuorum: number;
+
+  constructor(n: number, r: number, w: number) {
+    this.nodes = n;
+    this.readQuorum = r;
+    this.writeQuorum = w;
+  }
+
+  isConsistent(): boolean {
+    return this.readQuorum + this.writeQuorum > this.nodes;
+  }
+}
+```
+
+## 15. Leader and Follower
+
+Pattern for coordinating distributed systems.
+
+```javascript
+class LeaderElection {
+  private nodes: Node[];
+  private currentLeader: Node | null = null;
+
+  electLeader(): void {
+    this.nodes.sort((a, b) => b.priority - a.priority);
+    this.currentLeader = this.nodes[0];
+    this.notifyFollowers();
+  }
+
+  handleLeaderFailure(): void {
+    this.electLeader();
+  }
+}
+```
+
+## 16. Heartbeat
+
+Mechanism to detect node failures in distributed systems.
+
+```javascript
+class HeartbeatMonitor {
+  private nodes: Map<string, Date>;
+  private timeout: number;
+
+  checkHeartbeats(): void {
+    const now = new Date();
+    for (const [nodeId, lastBeat] of this.nodes) {
+      if (now.getTime() - lastBeat.getTime() > this.timeout) {
+        this.handleNodeFailure(nodeId);
+      }
+    }
+  }
+}
+```
+
+## 17. Checksum
+
+Detects errors in data transmission or storage.
+
+```javascript
+class Checksum {
+  calculate(data: string): number {
+    return data.split('')
+      .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  }
+
+  verify(data: string, checksum: number): boolean {
+    return this.calculate(data) === checksum;
+  }
+}
+```

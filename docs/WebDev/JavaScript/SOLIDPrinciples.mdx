@@ -1,0 +1,361 @@
+# SOLID Principles in JavaScript and React
+
+## 1. Single Responsibility Principle (SRP)
+A class/component should have only one reason to change.
+
+### ❌ Bad Example
+```javascript
+class UserProfile {
+  constructor(user) {
+    this.user = user;
+  }
+
+  saveToDatabase() {
+    // Database logic here
+  }
+
+  formatUserData() {
+    // Data formatting logic
+  }
+
+  renderUserProfile() {
+    // UI rendering logic
+  }
+}
+```
+
+### ✅ Good Example
+```javascript
+// Data Service
+class UserService {
+  saveUser(user) {
+    // Database logic here
+  }
+}
+
+// Data Formatter
+class UserFormatter {
+  format(user) {
+    // Data formatting logic
+  }
+}
+
+// React Component
+const UserProfile = ({ user }) => {
+  const userService = new UserService();
+  const userFormatter = new UserFormatter();
+
+  const handleSave = () => {
+    const formattedData = userFormatter.format(user);
+    userService.saveUser(formattedData);
+  };
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <button onClick={handleSave}>Save</button>
+    </div>
+  );
+};
+```
+
+## 2. Open/Closed Principle (OCP)
+Software entities should be open for extension but closed for modification.
+
+### ❌ Bad Example
+```javascript
+class Button {
+  constructor(type) {
+    this.type = type;
+  }
+
+  render() {
+    if (this.type === 'primary') {
+      return '<button class="primary">Click</button>';
+    } else if (this.type === 'secondary') {
+      return '<button class="secondary">Click</button>';
+    }
+    // Adding new button types requires modifying existing code
+  }
+}
+```
+
+### ✅ Good Example
+```javascript
+// Abstract base class
+class ButtonBase {
+  getStyles() {
+    throw new Error('Must implement getStyles');
+  }
+
+  render() {
+    return <button className={this.getStyles()}>{this.props.children}</button>;
+  }
+}
+
+// Extended button types
+class PrimaryButton extends ButtonBase {
+  getStyles() {
+    return 'bg-blue-500 text-white';
+  }
+}
+
+class SecondaryButton extends ButtonBase {
+  getStyles() {
+    return 'bg-gray-500 text-white';
+  }
+}
+
+// New button types can be added without modifying existing code
+class DangerButton extends ButtonBase {
+  getStyles() {
+    return 'bg-red-500 text-white';
+  }
+}
+```
+
+## 3. Liskov Substitution Principle (LSP)
+Derived classes must be substitutable for their base classes.
+
+### ❌ Bad Example
+```javascript
+class Bird {
+  fly() {
+    return "I can fly!";
+  }
+}
+
+class Penguin extends Bird {
+  fly() {
+    throw new Error("I can't fly!"); // Violates LSP
+  }
+}
+```
+
+### ✅ Good Example
+```javascript
+class Bird {
+  move() {
+    throw new Error('Must implement move');
+  }
+}
+
+class FlyingBird extends Bird {
+  move() {
+    return "I can fly!";
+  }
+}
+
+class SwimmingBird extends Bird {
+  move() {
+    return "I can swim!";
+  }
+}
+
+// React Example
+const BirdComponent = ({ bird }) => {
+  return <div>{bird.move()}</div>;
+};
+```
+
+## 4. Interface Segregation Principle (ISP)
+A client should not be forced to depend on interfaces it doesn't use.
+
+### ❌ Bad Example
+```javascript
+class UserActions {
+  login(user) { /* ... */ }
+  logout() { /* ... */ }
+  updateProfile(data) { /* ... */ }
+  deleteAccount() { /* ... */ }
+}
+
+// Component forced to implement all methods
+class UserProfile extends React.Component {
+  userActions = new UserActions();
+  // Must include all methods even if not needed
+}
+```
+
+### ✅ Good Example
+```javascript
+// Separate interfaces
+class AuthService {
+  login(user) { /* ... */ }
+  logout() { /* ... */ }
+}
+
+class ProfileService {
+  updateProfile(data) { /* ... */ }
+}
+
+class AccountService {
+  deleteAccount() { /* ... */ }
+}
+
+// Components can use only what they need
+const LoginComponent = () => {
+  const authService = new AuthService();
+  
+  return <button onClick={() => authService.login()}>Login</button>;
+};
+
+const ProfileEditor = () => {
+  const profileService = new ProfileService();
+  
+  return <button onClick={() => profileService.updateProfile()}>Update</button>;
+};
+```
+
+## 5. Dependency Inversion Principle (DIP)
+High-level modules should not depend on low-level modules. Both should depend on abstractions.
+
+### ❌ Bad Example
+```javascript
+class NotificationService {
+  constructor() {
+    this.emailSender = new EmailSender(); // Direct dependency
+  }
+
+  sendNotification(message) {
+    this.emailSender.send(message);
+  }
+}
+```
+
+### ✅ Good Example
+```javascript
+// Abstract interface
+class NotificationSender {
+  send(message) {
+    throw new Error('Must implement send');
+  }
+}
+
+// Concrete implementations
+class EmailSender extends NotificationSender {
+  send(message) {
+    // Send email
+  }
+}
+
+class SMSSender extends NotificationSender {
+  send(message) {
+    // Send SMS
+  }
+}
+
+// React Component using dependency injection
+const NotificationComponent = ({ notificationSender }) => {
+  const sendNotification = (message) => {
+    notificationSender.send(message);
+  };
+
+  return (
+    <button onClick={() => sendNotification('Hello!')}>
+      Send Notification
+    </button>
+  );
+};
+
+// Usage
+const App = () => {
+  const emailSender = new EmailSender();
+  const smsSender = new SMSSender();
+
+  return (
+    <>
+      <NotificationComponent notificationSender={emailSender} />
+      <NotificationComponent notificationSender={smsSender} />
+    </>
+  );
+};
+```
+
+## Practical React Example Combining All Principles
+
+```javascript
+// 1. Single Responsibility Principle
+const useUserData = () => {
+  // Data management hook
+};
+
+const useUserValidation = () => {
+  // Validation logic hook
+};
+
+// 2. Open/Closed Principle
+const FormField = ({ validator, renderer, ...props }) => {
+  // Extensible form field component
+};
+
+// 3. Liskov Substitution Principle
+const Input = ({ type = 'text', ...props }) => {
+  // Base input component
+};
+
+const EmailInput = (props) => <Input type="email" {...props} />;
+const PasswordInput = (props) => <Input type="password" {...props} />;
+
+// 4. Interface Segregation Principle
+const useAuth = () => {
+  // Authentication hook
+};
+
+const useProfile = () => {
+  // Profile management hook
+};
+
+// 5. Dependency Inversion Principle
+const UserForm = ({ onSubmit, validation, transformation }) => {
+  const handleSubmit = async (data) => {
+    const isValid = await validation(data);
+    if (isValid) {
+      const transformed = transformation(data);
+      onSubmit(transformed);
+    }
+  };
+
+  return <form onSubmit={handleSubmit}>{/* Form fields */}</form>;
+};
+
+// Complete Example
+const UserProfile = () => {
+  const { user, updateUser } = useUserData();
+  const { validateUser } = useUserValidation();
+  const { transformUserData } = useUserTransformation();
+
+  return (
+    <UserForm
+      onSubmit={updateUser}
+      validation={validateUser}
+      transformation={transformUserData}
+    >
+      <EmailInput name="email" />
+      <PasswordInput name="password" />
+    </UserForm>
+  );
+};
+```
+
+## Benefits of Following SOLID Principles
+
+1. **Maintainability**
+   - Easier to understand and modify code
+   - Reduced technical debt
+   - Better organization of components
+
+2. **Testability**
+   - Isolated components are easier to test
+   - Clear dependencies make mocking simpler
+   - Better unit test coverage
+
+3. **Flexibility**
+   - Easier to extend functionality
+   - Better adaptation to changing requirements
+   - Improved reusability of components
+
+4. **Scalability**
+   - Better handling of growing complexity
+   - Easier team collaboration
+   - More sustainable codebase
