@@ -242,6 +242,242 @@ boxes.forEach(box => container.appendChild(box))
 // 10 box created with red background
 ```
 
+## Custom Star Rating Component
+
+```JavaScript
+class StarRating extends HTMLElement {
+
+  static get observedAttributes() {
+    return ['value', 'disabled'];
+  }
+
+  #value = 0;
+  #disabled = false;
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+
+    // Initialize state
+    this.#value = 0;
+    this.#disabled = false;
+
+    // Render initial template
+    this.render();
+  }
+
+  // Getters and setters
+  get value() {
+    return this.#value;
+  }
+
+  set value(newValue) {
+    const value = Math.min(Math.max(0, Number(newValue)), 5);
+    if (this.#value !== value) {
+      this.#value = value;
+      this.updateStars();
+    }
+  }
+
+  get disabled() {
+    return this.#disabled;
+  }
+
+  set disabled(value) {
+    this.#disabled = Boolean(value);
+    this.shadowRoot.querySelector('.stars').style.cursor =
+      this.#disabled ? 'default' : 'pointer';
+  }
+
+  // Lifecycle callbacks
+  connectedCallback() {
+    this.setupEventListeners();
+
+    // Set initial value if provided as attribute
+    if (this.hasAttribute('value')) {
+      this.value = this.getAttribute('value');
+    }
+
+    if (this.hasAttribute('disabled')) {
+      this.disabled = true;
+    }
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (oldValue === newValue) return;
+
+    switch (name) {
+      case 'value':
+        this.value = newValue;
+        break;
+      case 'disabled':
+        this.disabled = newValue !== null;
+        break;
+    }
+  }
+
+  // Private methods
+  render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: inline-block;
+        }
+        
+        .stars {
+          display: inline-flex;
+          gap: 4px;
+          cursor: pointer;
+          user-select: none;
+        }
+        
+        .star {
+          font-size: 24px;
+          color: #d4d4d4;
+          transition: color 0.2s ease-in-out;
+        }
+        
+        :host(:not([disabled])) .star:hover,
+        .star.selected {
+          color: #ffd700;
+        }
+        
+        :host(:not([disabled])) .star:hover ~ .star {
+          color: #d4d4d4 !important;
+        }
+        
+        :host([disabled]) .stars {
+          cursor: default;
+          opacity: 0.6;
+        }
+      </style>
+      <div class="stars" role="radiogroup" aria-label="Rating">
+        ${Array.from({ length: 5 }, (_, i) => `
+          <span class="star" 
+                role="radio"
+                aria-checked="false"
+                tabindex="${i === 0 ? 0 : -1}"
+                data-value="${i + 1}">
+            ★
+          </span>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  setupEventListeners() {
+    const starsContainer = this.shadowRoot.querySelector('.stars');
+
+    // Event delegation for better performance
+    starsContainer.addEventListener('click', (e) => {
+      if (this.disabled) return;
+
+      const star = e.target.closest('.star');
+      if (star) {
+        this.selectRating(Number(star.dataset.value));
+      }
+    });
+
+    starsContainer.addEventListener('mouseover', (e) => {
+      if (this.disabled) return;
+
+      const star = e.target.closest('.star');
+      if (star) {
+        this.previewRating(Number(star.dataset.value));
+      }
+    });
+
+    starsContainer.addEventListener('mouseleave', () => {
+      if (this.disabled) return;
+      this.updateStars();
+    });
+
+    // Keyboard navigation
+    starsContainer.addEventListener('keydown', (e) => {
+      if (this.disabled) return;
+
+      const target = e.target.closest('.star');
+      if (!target) return;
+
+      const currentValue = Number(target.dataset.value);
+
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowUp':
+          e.preventDefault();
+          this.selectRating(Math.min(currentValue + 1, 5));
+          this.focusStar(currentValue < 5 ? currentValue : 4);
+          break;
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          e.preventDefault();
+          this.selectRating(Math.max(currentValue - 1, 1));
+          this.focusStar(currentValue > 1 ? currentValue - 2 : 0);
+          break;
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          this.selectRating(currentValue);
+          break;
+      }
+    });
+  }
+
+  focusStar(index) {
+    const stars = this.shadowRoot.querySelectorAll('.star');
+    stars.forEach(star => star.setAttribute('tabindex', '-1'));
+    stars[index].setAttribute('tabindex', '0');
+    stars[index].focus();
+  }
+
+  selectRating(value) {
+    if (this.disabled || this.value === value) return;
+
+    this.value = value;
+
+    // Dispatch custom event
+    this.dispatchEvent(new CustomEvent('rating-change', {
+      bubbles: true,
+      composed: true,
+      detail: { value: this.value }
+    }));
+  }
+
+  previewRating(value) {
+    if (this.disabled) return;
+
+    const stars = this.shadowRoot.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+      star.classList.toggle('selected', index < value);
+      star.setAttribute('aria-checked', index < value ? 'true' : 'false');
+    });
+  }
+
+  updateStars() {
+    const stars = this.shadowRoot.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+      star.classList.toggle('selected', index < this.value);
+      star.setAttribute('aria-checked', index < this.value ? 'true' : 'false');
+    });
+  }
+}
+
+// Register the custom element
+customElements.define('star-rating', StarRating);
+
+// Usage example:
+
+document.querySelector('star-rating').addEventListener('rating-change', (event) => {
+  console.log('New rating:', event.detail.value);
+});
+
+/* 
+    <star-rating value="3"></star-rating>
+    <star-rating value="5"></star-rating>
+    <star-rating value="5" disabled></star-rating>
+*/
+```
+
 ## Best Practices
 
 1. **Naming Conventions**
