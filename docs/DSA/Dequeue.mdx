@@ -1,76 +1,100 @@
----
-title: Dequeue
----
+# Dequeue (Double-Ended Queue) Implementation Cheatsheet
 
-A **Deque** (Double-Ended Queue) is a data structure that allows insertion and deletion of elements from both ends.
-This implementation provides efficient O(1) operations for all the basic deque operations, leveraging the advantages of a doubly linked list
+## Basic Implementation
 
-### Dequeue using Array (Not Efficient)
-
-```JavaScript
+```javascript
 class Deque {
     constructor() {
-        this.items = []; // Underlying array to store deque elements
+        this.items = {};
+        this.frontIndex = 0;
+        this.backIndex = 0;
     }
 
-    // Add an item at the front
-    addFront(value) {
-        this.items.unshift(value); // Use unshift to add at the front
+    addFront(item) {
+        this.frontIndex--;
+        this.items[this.frontIndex] = item;
     }
 
-    // Add an item at the rear
-    addRear(value) {
-        this.items.push(value); // Use push to add at the rear
+    addBack(item) {
+        this.items[this.backIndex] = item;
+        this.backIndex++;
     }
 
-    // Remove an item from the front
     removeFront() {
-        if (this.isEmpty()) {
-            return null; // Deque is empty
-        }
-        return this.items.shift(); // Use shift to remove from the front
+        if (this.isEmpty()) return undefined;
+        const item = this.items[this.frontIndex];
+        delete this.items[this.frontIndex];
+        this.frontIndex++;
+        return item;
     }
 
-    // Remove an item from the rear
-    removeRear() {
-        if (this.isEmpty()) {
-            return null; // Deque is empty
-        }
-        return this.items.pop(); // Use pop to remove from the rear
+    removeBack() {
+        if (this.isEmpty()) return undefined;
+        this.backIndex--;
+        const item = this.items[this.backIndex];
+        delete this.items[this.backIndex];
+        return item;
     }
 
-    // Get the size of the deque
-    getSize() {
-        return this.items.length; // Return the length of the array
-    }
-
-    // Check if the deque is empty
-    isEmpty() {
-        return this.items.length === 0; // Check if the array is empty
-    }
-
-    // Peek at the front item
     peekFront() {
-        return this.isEmpty() ? null : this.items[0]; // Return the front item
+        if (this.isEmpty()) return undefined;
+        return this.items[this.frontIndex];
     }
 
-    // Peek at the rear item
-    peekRear() {
-        return this.isEmpty() ? null : this.items[this.items.length - 1]; // Return the rear item
+    peekBack() {
+        if (this.isEmpty()) return undefined;
+        return this.items[this.backIndex - 1];
+    }
+
+    isEmpty() {
+        return this.backIndex - this.frontIndex === 0;
+    }
+
+    size() {
+        return this.backIndex - this.frontIndex;
+    }
+
+    clear() {
+        this.items = {};
+        this.frontIndex = 0;
+        this.backIndex = 0;
     }
 }
-
-// Example usage
-const deque = new Deque();
-deque.addFront(10);
-deque.addRear(20);
-console.log(deque.peekFront()); // 10
-console.log(deque.peekRear());  // 20
-console.log(deque.removeFront()); // 10
-console.log(deque.removeRear());  // 20
-console.log(deque.isEmpty()); // true
 ```
 
+## Time Complexities
+
+| Operation  | Time Complexity | Description |
+|------------|----------------|-------------|
+| addFront   | O(1)          | Add item to front |
+| addBack    | O(1)          | Add item to back |
+| removeFront| O(1)          | Remove and return front item |
+| removeBack | O(1)          | Remove and return back item |
+| peekFront  | O(1)          | Return front item without removing |
+| peekBack   | O(1)          | Return back item without removing |
+| isEmpty    | O(1)          | Check if deque is empty |
+| size       | O(1)          | Get number of items |
+| clear      | O(1)          | Remove all items |
+
+## Usage Examples
+
+### Basic Operations
+```javascript
+const deque = new Deque();
+
+// Adding elements
+deque.addFront(1);    // [1]
+deque.addBack(2);     // [1, 2]
+deque.addFront(0);    // [0, 1, 2]
+
+// Removing elements
+deque.removeFront();  // returns 0, deque is [1, 2]
+deque.removeBack();   // returns 2, deque is [1]
+
+// Peeking elements
+deque.peekFront();    // returns 1
+deque.peekBack();     // returns 1
+```
 
 ### Dequeue using DoublyLinkedList
 
@@ -170,34 +194,127 @@ console.log(deque.removeRear());  // 20
 console.log(deque.isEmpty()); // true
 ```
 
-### Frequently Asked LeetCode Problems Using Deque
+### Common Applications
 
-1. **[Sliding Window Maximum](https://leetcode.com/problems/sliding-window-maximum/)**
-   - Problem: Given an array `nums` and an integer `k`, return the maximum values of each sliding window of size `k`.
+#### Sliding Window Maximum
+```javascript
+function maxSlidingWindow(nums, k) {
+    const deque = new Deque();
+    const result = [];
+    
+    for (let i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFront() < i - k + 1) {
+            deque.removeFront();
+        }
+        
+        // Remove smaller elements
+        while (!deque.isEmpty() && nums[deque.peekBack()] < nums[i]) {
+            deque.removeBack();
+        }
+        
+        deque.addBack(i);
+        
+        // Add to result if window has reached size k
+        if (i >= k - 1) {
+            result.push(nums[deque.peekFront()]);
+        }
+    }
+    
+    return result;
+}
+```
 
-2. **[Maximum Sliding Window](https://leetcode.com/problems/maximum-sliding-window/)**
-   - Problem: Similar to the previous one but requires you to return the maximum sliding window at each step.
+#### Palindrome Check
+```javascript
+function isPalindrome(str) {
+    const deque = new Deque();
+    
+    // Add all characters to deque
+    for (let char of str) {
+        deque.addBack(char);
+    }
+    
+    // Compare characters from both ends
+    while (deque.size() > 1) {
+        if (deque.removeFront() !== deque.removeBack()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+```
 
-3. **[Design Circular Deque](https://leetcode.com/problems/design-circular-deque/)**
-   - Problem: Implement a circular deque with operations like `insertFront`, `insertRear`, `deleteFront`, and `deleteRear`.
+## Best Practices
 
-4. **[First Unique Character in a String](https://leetcode.com/problems/first-unique-character-in-a-string/)**
-   - Problem: Given a string, find the first non-repeating character in it. If it doesn't exist, return a space.
+1. Use object-based implementation for O(1) operations
+2. Maintain front and back indices for efficient operations
+3. Handle edge cases (empty deque, single element)
+4. Implement size tracking for quick length checks
+5. Clear references to prevent memory leaks
+6. Use type checking for robust implementation
 
-5. **[Binary Tree Zigzag Level Order Traversal](https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/)**
-   - Problem: Given a binary tree, return its zigzag level order traversal.
+## Memory-Efficient Version
 
-6. **[Sliding Window Median](https://leetcode.com/problems/sliding-window-median/)**
-   - Problem: Given an array of integers, find the median of all sliding windows of size `k`.
+```javascript
+class CompactDeque {
+    constructor() {
+        this.items = new Array(16);  // Initial capacity
+        this.front = 8;              // Start in middle
+        this.back = 8;
+        this.capacity = 16;
+    }
 
-7. **[Longest Substring with At Most K Distinct Characters](https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/)**
-   - Problem: Given a string, find the length of the longest substring that contains at most `k` distinct characters.
+    resize(newCapacity) {
+        const newItems = new Array(newCapacity);
+        const size = this.size();
+        const newFront = Math.floor((newCapacity - size) / 2);
+        
+        for (let i = 0; i < size; i++) {
+            newItems[newFront + i] = this.items[(this.front + i) % this.capacity];
+        }
+        
+        this.items = newItems;
+        this.capacity = newCapacity;
+        this.front = newFront;
+        this.back = newFront + size;
+    }
 
-8. **[Kth Largest Element in a Stream](https://leetcode.com/problems/kth-largest-element-in-a-stream/)**
-   - Problem: Design a class that adds integers from a stream and finds the kth largest element in constant time.
+    addFront(item) {
+        if (this.front === 0) {
+            this.resize(this.capacity * 2);
+        }
+        this.front--;
+        this.items[this.front] = item;
+    }
 
-9. **[Task Scheduler](https://leetcode.com/problems/task-scheduler/)**
-   - Problem: Given a list of tasks and an integer `n`, find the least number of intervals needed to finish all tasks given that you need to wait `n` intervals between the same tasks.
+    addBack(item) {
+        if (this.back === this.capacity) {
+            this.resize(this.capacity * 2);
+        }
+        this.items[this.back] = item;
+        this.back++;
+    }
 
-10. **[Max Points on a Line](https://leetcode.com/problems/max-points-on-a-line/)**
-    - Problem: Given an array of points, find the maximum number of points that lie on the same straight line.
+    size() {
+        return this.back - this.front;
+    }
+}
+```
+
+## Common Pitfalls
+
+1. ❌ Using array shift/unshift operations (O(n) complexity)
+2. ❌ Not handling empty deque cases
+3. ❌ Forgetting to update indices after operations
+4. ❌ Not cleaning up removed elements
+5. ❌ Inefficient resizing strategies
+
+## Performance Tips
+
+1. ✅ Use object/array implementation instead of linked list
+2. ✅ Implement lazy cleanup for removed elements
+3. ✅ Use power-of-two capacity for efficient resizing
+4. ✅ Maintain indices instead of restructuring data
+5. ✅ Batch operations when possible
