@@ -144,122 +144,134 @@ async function fetchData() {
 ## Promise Polyfill
 
 ```JavaScript
-const STATE = Object.freeze({
-  PENDING: "pending",
-  SUCCESS: "fulfilled",
-  REJECTED: "rejected",
-});
-
 class MyPromise {
-  #value = null;
-  #state = STATE.PENDING;
-  #successcbs = [];
-  #rejectedcbs = [];
+  #STATE = Object.freeze({
+    PENDING: 'pending',
+    SUCCESS: 'fulfilled',
+    REJECTED: 'rejected'
+  })
+
+  #value = null
+  #state = this.#STATE.PENDING
+  #successCbs = []
+  #failureCbs = []
+
   constructor(executor) {
     try {
       executor(
         (val) => this.#resolve(val),
         (val) => this.#reject(val)
-      );
+      )
     } catch (e) {
-      this.#reject(e);
+      this.#reject(e)
     }
   }
 
-  #resolve(val) {
-    this.#value = val;
-    this.#state = STATE.SUCCESS;
-    this.#successcbs.forEach((cb) => cb());
+  #resolve = (val) => {
+    if (this.#state !== this.#STATE.PENDING) return
+
+    // Handle promise resolution
+    if (val instanceof MyPromise) {
+      val.then(this.#resolve, this.#reject)
+      return
+    }
+
+    this.#value = val
+    this.#state = this.#STATE.SUCCESS
+    this.#successCbs.forEach(cb => cb())
   }
 
-  #reject(val) {
-    this.#value = val;
-    this.#state = STATE.REJECTED;
-    this.#rejectedcbs.forEach((cb) => cb());
+  #reject = (error) => {
+    if (this.#state !== this.#STATE.PENDING) return
+    this.#value = error
+    this.#state = this.#STATE.REJECTED
+    this.#failureCbs.forEach(cb => cb())
   }
 
-  then(onFulfilled, onRejected) {
+  then = (onFulfilled, onRejected) => {
     return new MyPromise((resolve, reject) => {
-      const successCb = () => {
-        if (!onFulfilled) return resolve(this.#value);
+      const successCallback = () => {
+        if (!onFulfilled) {
+          resolve(this.#value)
+          return
+        }
         queueMicrotask(() => {
           try {
-            resolve(onFulfilled(this.#value));
+            const result = onFulfilled(this.#value)
+            resolve(result)
           } catch (e) {
-            reject(e);
+            reject(e)
           }
-        });
-      };
+        })
+      }
 
-      const rejectCb = () => {
-        if (!onRejected) return reject(this.#value);
+      const rejectCallback = () => {
+        if (!onRejected) {
+          reject(this.#value)
+          return
+        }
         queueMicrotask(() => {
           try {
-            resolve(onRejected(this.#value));
+            const result = onRejected(this.#value)
+            resolve(result)
           } catch (e) {
-            reject(e);
+            reject(e)
           }
-        });
-      };
+        })
+      }
 
       switch (this.#state) {
-        case STATE.PENDING:
-          this.#successcbs.push(successCb);
-          this.#rejectedcbs.push(rejectCb);
-          break;
-        case STATE.SUCCESS:
-          successCb();
-          break;
-        case STATE.REJECTED:
-          rejectCb();
-          break;
+        case this.#STATE.PENDING:
+          this.#successCbs.push(successCallback)
+          this.#failureCbs.push(rejectCallback)
+          break
+
+        case this.#STATE.SUCCESS:
+          successCallback()
+          break
+
+        case this.#STATE.REJECTED:
+          rejectCallback()
+          break
+
         default:
-          throw new Error("unknown state...");
+          throw new Error('Unknown state')
       }
-    });
+    })
   }
 
-  catch(onRejected) {
-    return this.then(null, onRejected);
+  catch = (onRejected) => {
+    return this.then(undefined, onRejected)
   }
 
-  finally(onFinally) {
+  finally = (onFinally) => {
     return this.then(
-      (value) => {
-        return MyPromise.resolve(onFinally()).then(() => value);
-      },
-      (reason) => {
-        return MyPromise.resolve(onFinally()).then(() => {
-          throw reason;
-        });
-      }
-    );
+      (val) => MyPromise.resolve(onFinally()).then(() => val),
+      (reason) => MyPromise.resolve(onFinally()).then(() => { throw reason })
+    )
   }
 
-  static resolve(value) {
-    return new MyPromise((resolve) => resolve(value));
+  static resolve = (value) => {
+    return new MyPromise((resolve) => resolve(value))
   }
 
-  static reject(reason) {
-    return new MyPromise((_, reject) => reject(reason));
+  static reject = (value) => {
+    return new MyPromise((_, reject) => reject(value))
   }
 }
 
-const getUser = () => {
-  return new MyPromise((resolve, reject) => {
-    if (Math.random() * 5 > 6) {
-      resolve("Hiii");
-    } else {
-      reject("Byeee");
-    }
-  });
-};
+const promise = new MyPromise((resolve, reject) => {
+  setTimeout(() => resolve('Success!'), 1000)
+})
 
-getUser()
-  .then((x) => console.log(x))
-  .catch((e) => console.log(e))
-  .finally(() => console.log("next..."))
-  .finally(() => console.log('lol'))
+promise
+  .then(val => {
+    console.log(val)  // After 1 second: 'Success!'
+    return 'Hello'
+  })
+  .then(data => console.log(data))  // Immediately after: 'Hello'
+  .catch(err => console.error(err))
+  .finally(() => console.log('Done!'))  // Immediately after: 'Done!'
 ```
 
 ## Promise.all
