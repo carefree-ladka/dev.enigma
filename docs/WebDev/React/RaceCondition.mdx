@@ -1,0 +1,236 @@
+---
+title: 'Handling Race Conditions in React'
+tags: ['react', 'javascript', 'async', 'performance']
+---
+
+## What are Race Conditions?
+
+A race condition is a software bug that occurs when the timing or ordering of events affects the correctness of a program. In React applications, race conditions typically happen when dealing with asynchronous operations like:
+
+- API calls
+- Data fetching
+- State updates
+- Event handlers
+- Timeouts and intervals
+
+These issues often manifest when a component is unmounted before an async operation completes, or when multiple async operations complete in an unexpected order.
+
+## Common Scenarios Where Race Conditions Occur
+
+1. **Multiple API Calls**: When making successive API calls (e.g., search functionality)
+2. **Component Unmounting**: When async operations complete after a component unmounts
+3. **State Updates**: When multiple setState calls happen concurrently
+4. **Event Handlers**: When multiple events trigger async operations
+5. **Network Requests**: When responses arrive in a different order than requested
+
+## Solutions and Best Practices
+
+### 1. Cleanup Functions in useEffect
+
+The most basic protection against race conditions is using cleanup functions in `useEffect`. This ensures that we don't update state after a component unmounts.
+
+```jsx
+function SearchComponent() {
+  const [data, setData] = useState(null);
+  
+  useEffect(() => {
+    let isSubscribed = true;
+    
+    async function fetchData() {
+      try {
+        const response = await fetch('https://api.example.com/data');
+        const result = await response.json();
+        
+        if (isSubscribed) {
+          setData(result);
+        }
+      } catch (error) {
+        if (isSubscribed) {
+          console.error(error);
+        }
+      }
+    }
+    
+    fetchData();
+    
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+}
+```
+
+### 2. AbortController for Network Requests
+
+`AbortController` allows you to cancel pending fetch requests when a component unmounts or when dependencies change.
+
+```jsx
+function DataFetcher() {
+  useEffect(() => {
+    const abortController = new AbortController();
+    
+    async function fetchData() {
+      try {
+        const response = await fetch('https://api.example.com/data', {
+          signal: abortController.signal
+        });
+        const data = await response.json();
+        // Process data
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          // Handle abort
+        }
+      }
+    }
+    
+    fetchData();
+    
+    return () => {
+      abortController.abort();
+    };
+  }, []);
+}
+```
+
+### 3. Request IDs for Multiple Requests
+
+When dealing with multiple sequential requests, use request IDs to ensure only the latest request's response is processed.
+
+```jsx
+function SearchWithRequestId() {
+  const [results, setResults] = useState([]);
+  const [search, setSearch] = useState('');
+  const requestIdRef = useRef(0);
+  
+  useEffect(() => {
+    const currentRequestId = ++requestIdRef.current;
+    
+    async function performSearch() {
+      try {
+        const response = await fetch(`/api/search?q=${search}`);
+        const data = await response.json();
+        
+        if (currentRequestId === requestIdRef.current) {
+          setResults(data);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    
+    performSearch();
+  }, [search]);
+}
+```
+
+### 4. Debouncing for Frequent Updates
+
+Debouncing helps prevent race conditions by limiting the rate of async operations.
+
+```jsx
+import { debounce } from 'lodash';
+
+function DebouncedSearch() {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const debouncedSearch = useCallback(
+    debounce((term) => {
+      // Perform search
+      console.log('Searching for:', term);
+    }, 500),
+    []
+  );
+  
+  useEffect(() => {
+    if (searchTerm) {
+      debouncedSearch(searchTerm);
+    }
+  }, [searchTerm, debouncedSearch]);
+}
+```
+
+### 5. Safe State Updates
+
+Always use functional updates when new state depends on previous state to avoid race conditions in state updates.
+
+```jsx
+// Bad
+setCount(count + 1);
+
+// Good
+setCount(prevCount => prevCount + 1);
+```
+
+### 6. Custom Hook for Safe Dispatches
+
+Create a custom hook to ensure state updates only occur when a component is mounted.
+
+```jsx
+function useSafeDispatch(dispatch) {
+  const mounted = useRef(false);
+  
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  
+  return useCallback(
+    (...args) => {
+      if (mounted.current) {
+        dispatch(...args);
+      }
+    },
+    [dispatch]
+  );
+}
+```
+
+## Best Practices Checklist
+
+✅ Always implement cleanup functions in useEffect  
+✅ Cancel network requests on component unmount  
+✅ Use request IDs for multiple async operations  
+✅ Implement debouncing for frequent updates  
+✅ Use functional updates for state that depends on previous state  
+✅ Track component mounted state with refs  
+✅ Consider custom hooks for complex async operations
+
+## Common Pitfalls
+
+❌ Not cleaning up subscriptions or timers  
+❌ Using stale closures in async operations  
+❌ Not handling component unmounting  
+❌ Directly updating state without checking if component is mounted  
+❌ Not cancelling pending requests when dependencies change
+
+## Testing for Race Conditions
+
+Here's a simple test case to verify race condition handling:
+
+```jsx
+test('handles race conditions in async operations', async () => {
+  const { result } = renderHook(() => useAsyncOperation());
+  
+  // Trigger multiple async operations
+  act(() => {
+    result.current.trigger();
+    result.current.trigger();
+  });
+  
+  // Wait for operations to complete
+  await waitFor(() => {
+    expect(result.current.isComplete).toBe(true);
+  });
+  
+  // Verify only the latest operation's result is used
+  expect(result.current.data).toBe('latest result');
+});
+```
+
+## Conclusion
+
+Race conditions are a common source of bugs in React applications, but they can be effectively managed with proper techniques and patterns. By following the best practices outlined in this guide and implementing appropriate safeguards, you can build more reliable and robust React applications.
+
+Remember that preventing race conditions is not just about fixing bugs—it's about designing your application's architecture to handle asynchronous operations safely from the start.
