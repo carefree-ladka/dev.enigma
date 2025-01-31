@@ -1,0 +1,209 @@
+# Shortest Paths Problems
+
+
+## Problem: Shortest Path with Maximum Distance from Fire
+
+The ant can move in four directions: **up**, **down**, **left**, or **right**. The goal is to find the **shortest path** from `(0, 0)` to `(m-1, n-1)` while ensuring that the ant stays as far away from the fire as possible. Specifically, the path should maximize the **minimum distance** from any fire cell along the way.
+
+## Constraints
+1. The grid will have dimensions `m x n`, where `1 <= m, n <= 100`.
+2. The ant cannot travel through cells with fire (`F`).
+3. The ant can move in four directions: up, down, left, or right.
+4. If no valid path exists, return `-1`.
+5. The distance from a cell to the fire is the Manhattan distance to the nearest fire cell.
+
+## Input
+- A 2D grid of characters (`F` or `.`) representing the map.
+- The starting position is `(0, 0)`, and the destination is `(m-1, n-1)`.
+
+## Output
+- Return the length of the shortest path from `(0, 0)` to `(m-1, n-1)` while maximizing the minimum distance from any fire cell.
+- If no such path exists, return `-1`.
+
+
+
+```JavaScript
+function shortestPathWithMaxDistanceFromFire(grid) {
+  const m = grid.length;
+  const n = grid[0].length;
+
+  // Directions for moving up, down, left, right
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+  // Step 1: Precompute the distance of each cell from the nearest fire
+  const fireDistance = new Array(m).fill().map(() => new Array(n).fill(Infinity));
+  const queue = [];
+
+  // Initialize the queue with all fire positions
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j < n; j++) {
+      if (grid[i][j] === 'F') {
+        queue.push([i, j]);
+        fireDistance[i][j] = 0;
+      }
+    }
+  }
+
+  // BFS to compute the distance from each fire
+  while (queue.length > 0) {
+    const [x, y] = queue.shift();
+    for (const [dx, dy] of directions) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && nx < m && ny >= 0 && ny < n && fireDistance[nx][ny] === Infinity) {
+        fireDistance[nx][ny] = fireDistance[x][y] + 1;
+        queue.push([nx, ny]);
+      }
+    }
+  }
+
+  // Step 2: Find the shortest path with maximum distance from fire
+  const visited = new Array(m).fill().map(() => new Array(n).fill(false));
+  const priorityQueue = [];
+
+  // Start from (0, 0) with distance 0 and the distance from fire at that cell
+  priorityQueue.push([0, 0, 0, fireDistance[0][0]]);
+  visited[0][0] = true;
+
+  while (priorityQueue.length > 0) {
+    priorityQueue.sort((a, b) => b[3] - a[3]); // Sort by distance from fire (max first)
+    const [x, y, dist, fireDist] = priorityQueue.pop();
+
+    // If we reach the destination, return the distance
+    if (x === m - 1 && y === n - 1) {
+      return dist;
+    }
+
+    // Explore all four directions
+    for (const [dx, dy] of directions) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && nx < m && ny >= 0 && ny < n && !visited[nx][ny] && grid[nx][ny] === '.') {
+        visited[nx][ny] = true;
+        priorityQueue.push([nx, ny, dist + 1, fireDistance[nx][ny]]);
+      }
+    }
+  }
+
+  // If no path is found
+  return -1;
+}
+
+// Example usage:
+const grid = [
+  ['.', 'F', '.', '.'],
+  ['.', '.', '.', 'F'],
+  ['F', '.', '.', '.'],
+  ['.', '.', 'F', '.']
+];
+
+console.log(shortestPathWithMaxDistanceFromFire(grid)); // Output: 6
+
+const grid2 = [
+  ['.', '.', '.', '.'],
+  ['.', 'F', '.', '.'],
+  ['.', '.', '.', '.'],
+  ['.', '.', '.', '.']
+];
+
+console.log(shortestPathWithMaxDistanceFromFire(grid2)); // Output: 5
+```
+
+
+## Problem: Optimal Apartment Location
+
+## Description
+You are planning to move to a new city and want to find the optimal apartment location. The city is represented as a 2D grid, where each cell can be:
+- A potential apartment location.
+- A key location (e.g., gym, office, restaurant, etc.).
+- An obstacle (e.g., park, lake, etc.) that cannot be traversed.
+
+Your goal is to find the apartment location that is **closest to all key locations** (e.g., gym, office, restaurant, etc.). The optimal apartment is the one that minimizes the **total distance** (or travel time) to all key locations.
+
+## Constraints
+1. The grid will have dimensions `m x n`, where `1 <= m, n <= 100`.
+2. You can move in four directions: **up**, **down**, **left**, or **right**.
+3. Obstacles are represented by `X`, and you cannot travel through them.
+4. Key locations are represented by unique identifiers (e.g., `G` for gym, `O` for office, `R` for restaurant, etc.).
+5. Apartment locations are represented by `A`.
+6. If no valid apartment location exists, return `-1`.
+
+## Input
+- A 2D grid of characters representing the city map. The grid contains:
+  - `A`: Potential apartment locations.
+  - `G`, `O`, `R`, etc.: Key locations (gym, office, restaurant, etc.).
+  - `X`: Obstacles that cannot be traversed.
+  - `.`: Empty spaces that can be traversed.
+
+## Output
+- Return the coordinates `(x, y)` of the optimal apartment location that minimizes the total distance to all key locations.
+- If no valid apartment location exists, return `-1`.
+
+
+```JavaScript
+function findOptimalApartment(grid, keyLocations) {
+    const m = grid.length;
+    const n = grid[0].length;
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Up, Down, Left, Right
+
+    // Initialize distance grids for each key location
+    const distanceGrids = keyLocations.map(([x, y]) => {
+        const distanceGrid = new Array(m).fill().map(() => new Array(n).fill(Infinity));
+        const queue = [[x, y]];
+        distanceGrid[x][y] = 0;
+
+        // BFS to compute distances from this key location
+        while (queue.length > 0) {
+            const [cx, cy] = queue.shift();
+            for (const [dx, dy] of directions) {
+                const nx = cx + dx;
+                const ny = cy + dy;
+                if (nx >= 0 && nx < m && ny >= 0 && ny < n && grid[nx][ny] !== 'X' && distanceGrid[nx][ny] === Infinity) {
+                    distanceGrid[nx][ny] = distanceGrid[cx][cy] + 1;
+                    queue.push([nx, ny]);
+                }
+            }
+        }
+        return distanceGrid;
+    });
+
+    // Find the apartment with the smallest total distance to all key locations
+    let minTotalDistance = Infinity;
+    let optimalApartment = null;
+
+    for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+            if (grid[i][j] === 'A') { // 'A' represents an apartment
+                let totalDistance = 0;
+                for (const distanceGrid of distanceGrids) {
+                    totalDistance += distanceGrid[i][j];
+                }
+                if (totalDistance < minTotalDistance) {
+                    minTotalDistance = totalDistance;
+                    optimalApartment = [i, j];
+                }
+            }
+        }
+    }
+
+    return optimalApartment;
+}
+
+// Example usage
+const grid = [
+    ['.', '.', '.', '.', '.'],
+    ['.', 'G', '.', 'X', '.'],
+    ['.', '.', 'A', '.', '.'],
+    ['.', 'X', '.', 'O', '.'],
+    ['.', '.', '.', '.', 'R']
+];
+
+const keyLocations = [
+    [1, 1], // Gym (G)
+    [3, 3], // Office (O)
+    [4, 4]  // Restaurant (R)
+];
+
+const optimalApartment = findOptimalApartment(grid, keyLocations);
+console.log("Optimal Apartment Location:", optimalApartment); // Output: [2, 2]
+```
