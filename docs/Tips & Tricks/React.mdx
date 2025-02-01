@@ -1,0 +1,77 @@
+# React Tips & Tricks
+
+## Throttle
+
+```JavaScript
+  const throttle = useCallback((func, limit) => {
+    let timeoutId = null;
+    let lastRun = 0;
+    
+    return function (...args) {
+      if (!lastRun) {
+        func.apply(this, args);
+        lastRun = Date.now();
+      } else {
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        timeoutId = setTimeout(() => {
+          if (Date.now() - lastRun >= limit) {
+            func.apply(this, args);
+            lastRun = Date.now();
+          }
+        }, limit - (Date.now() - lastRun));
+      }
+    };
+  }, []);
+```
+
+
+## Debounce
+
+```JavaScript
+const useDebounce = (callback, delay) => {
+  // Use ref to store the timeout ID so it persists between renders
+  const timeoutRef = useRef(null);
+
+  // Create memoized debounced callback
+  const debouncedCallback = useCallback((...args) => {
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Set new timeout
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+
+  return debouncedCallback;
+};
+```
+
+## To Check if a user reaches the bottom of a page or near it 
+
+```JavaScript
+useEffect(() => {
+    const handleScroll = () => {
+      const { scrollTop, clientHeight, scrollHeight } = document.documentElement;
+      
+      // Check if we're near bottom and not currently loading
+      if (
+        scrollTop + clientHeight >= scrollHeight - 50 && 
+        !loadingRef.current && 
+        hasMoreRef.current
+      ) {
+        setPage(prevPage => prevPage + 1);
+      }
+    };
+
+    const throttledHandleScroll = throttle(handleScroll, 100);
+    window.addEventListener('scroll', throttledHandleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', throttledHandleScroll);
+    };
+  }, [throttle]);
+```
