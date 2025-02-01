@@ -1,0 +1,81 @@
+# Throttle & Debounce
+
+## Throttle & Debounce with leading and trailing options
+
+```JavaScript
+class ThrottleDebounce {
+
+  // Throttle implementation
+  static throttle(func, wait, options = {}) {
+    let isWaiting = false;
+    let lastArgs = null;
+    let timeoutId = null;
+
+    const startWaitingPeriod = () => {
+      timeoutId = setTimeout(() => {
+        if (options.trailing && lastArgs) {
+          func.apply(this, lastArgs);
+          lastArgs = null;
+          startWaitingPeriod(); // Continue waiting period for trailing call
+        } else {
+          isWaiting = false; // Reset state if no trailing call
+        }
+      }, wait);
+    };
+
+    const wrapper = (...args) => {
+      if (!isWaiting) {
+        isWaiting = true;
+        if (options.leading) {
+          func.apply(this, args); // Execute immediately if leading is true
+        } else {
+          lastArgs = args; // Store args for trailing call
+        }
+        startWaitingPeriod(); // Start the waiting period
+      } else {
+        lastArgs = args; // Store args for trailing call
+      }
+    };
+
+    // Cancel the throttle
+    wrapper.cancel = () => {
+      clearTimeout(timeoutId); // Cancel the timeout
+      timeoutId = null;
+      isWaiting = false; // Reset waiting state
+      lastArgs = null; // Clear stored args
+    };
+    return wrapper;
+  }
+
+  // Debounce implementation
+  static debounce(func, wait, options = {}) {
+    let timeoutId;
+    const debounced = (...args) => {
+      const context = this;
+      const callNow = options.leading && !timeoutId;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        // Only execute if trailing is true
+        if (options.trailing && !callNow) {
+          func.apply(context, args);
+        }
+      }, wait);
+      // Execute immediately if it's a leading edge and not already called
+      if (callNow) {
+        func.apply(context, args);
+      }
+    };
+
+    // Add cancel method for cleanup
+    debounced.cancel = () => {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    };
+    return debounced;
+  }
+}
+
+const throttle = ThrottleDebounce.throttle
+const debounce = ThrottleDebounce.debounce
+```
