@@ -147,129 +147,121 @@ class MyPromise {
     PENDING: 'pending',
     SUCCESS: 'fulfilled',
     REJECTED: 'rejected'
-  })
+  });
 
-  #value = null
-  #state = this.#STATE.PENDING
-  #successCbs = []
-  #failureCbs = []
+  #value = null;
+  #state = this.#STATE.PENDING;
+  #successCbs = [];
+  #failureCbs = [];
 
   constructor(executor) {
     try {
       executor(
         (val) => this.#resolve(val),
         (val) => this.#reject(val)
-      )
+      );
     } catch (e) {
-      this.#reject(e)
+      this.#reject(e);
     }
   }
 
   #resolve = (val) => {
-    if (this.#state !== this.#STATE.PENDING) return
+    if (this.#state !== this.#STATE.PENDING) return;
 
     // Handle promise resolution
     if (val instanceof MyPromise) {
-      val.then(this.#resolve, this.#reject)
-      return
+      val.then(this.#resolve, this.#reject);
+      return;
     }
 
-    this.#value = val
-    this.#state = this.#STATE.SUCCESS
-    this.#successCbs.forEach(cb => cb())
-  }
+    this.#value = val;
+    this.#state = this.#STATE.SUCCESS;
+    this.#successCbs.forEach(cb => queueMicrotask(cb));
+  };
 
   #reject = (error) => {
-    if (this.#state !== this.#STATE.PENDING) return
-    this.#value = error
-    this.#state = this.#STATE.REJECTED
-    this.#failureCbs.forEach(cb => cb())
-  }
+    if (this.#state !== this.#STATE.PENDING) return;
+    this.#value = error;
+    this.#state = this.#STATE.REJECTED;
+    this.#failureCbs.forEach(cb => queueMicrotask(cb));
+  };
 
   then = (onFulfilled, onRejected) => {
     return new MyPromise((resolve, reject) => {
-      const successCallback = () => {
-        if (!onFulfilled) {
-          resolve(this.#value)
-          return
+      const handleMicroQueueTask = (isSuccess, value) => {
+        try {
+          const result = isSuccess
+            ? (typeof onFulfilled === 'function' ? onFulfilled(value) : value)
+            : (typeof onRejected === 'function' ? onRejected(value) : reject(value));
+          resolve(result);
+        } catch (e) {
+          reject(e);
         }
-        queueMicrotask(() => {
-          try {
-            const result = onFulfilled(this.#value)
-            resolve(result)
-          } catch (e) {
-            reject(e)
-          }
-        })
-      }
+      };
 
-      const rejectCallback = () => {
-        if (!onRejected) {
-          reject(this.#value)
-          return
-        }
-        queueMicrotask(() => {
-          try {
-            const result = onRejected(this.#value)
-            resolve(result)
-          } catch (e) {
-            reject(e)
-          }
-        })
-      }
+      const successCallback = () => handleMicroQueueTask(true, this.#value);
+      const rejectCallback = () => handleMicroQueueTask(false, this.#value);
 
       switch (this.#state) {
         case this.#STATE.PENDING:
-          this.#successCbs.push(successCallback)
-          this.#failureCbs.push(rejectCallback)
-          break
+          this.#successCbs.push(successCallback);
+          this.#failureCbs.push(rejectCallback);
+          break;
 
         case this.#STATE.SUCCESS:
-          successCallback()
-          break
+          queueMicrotask(successCallback);
+          break;
 
         case this.#STATE.REJECTED:
-          rejectCallback()
-          break
+          queueMicrotask(rejectCallback);
+          break;
 
         default:
-          throw new Error('Unknown state')
+          throw new Error('Unknown state');
       }
-    })
-  }
+    });
+  };
 
   catch = (onRejected) => {
-    return this.then(undefined, onRejected)
-  }
+    return this.then(undefined, onRejected);
+  };
 
   finally = (onFinally) => {
     return this.then(
       (val) => MyPromise.resolve(onFinally()).then(() => val),
       (reason) => MyPromise.resolve(onFinally()).then(() => { throw reason })
-    )
-  }
+    );
+  };
 
   static resolve = (value) => {
-    return new MyPromise((resolve) => resolve(value))
-  }
+    // If the value is already a MyPromise, return it directly
+    if (value instanceof MyPromise) return value;
+
+    // If the value is a thenable, assimilate it into a new MyPromise
+    if (value?.then) return new MyPromise(value.then.bind(value));
+
+    // Otherwise, create a new MyPromise and resolve it with the value
+    return new MyPromise((resolve) => resolve(value));
+  };
 
   static reject = (value) => {
-    return new MyPromise((_, reject) => reject(value))
-  }
+    return new MyPromise((_, reject) => reject(value));
+  };
 }
 
+// Example Usage
 const promise = new MyPromise((resolve, reject) => {
-  setTimeout(() => resolve('Success!'), 1000)
-})
+  setTimeout(() => resolve('Success!'), 1000);
+});
 
 promise
   .then(val => {
-    console.log(val)  // After 1 second: 'Success!'
-    return 'Hello'
+    console.log(val);  // After 1 second: 'Success!'
+    return 'Hello';
   })
   .then(data => console.log(data))  // Immediately after: 'Hello'
   .catch(err => console.error(err))
-  .finally(() => console.log('Done!'))  // Immediately after: 'Done!'
+  .finally(() => console.log('Done!'));  // Immediately after: 'Done!'
 ```
 
 ## Promise.all
