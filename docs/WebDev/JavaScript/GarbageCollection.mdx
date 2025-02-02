@@ -1,0 +1,324 @@
+# Garbage Collection
+
+## Core Concepts
+
+### 1. What is Garbage Collection?
+Garbage collection (GC) is an automatic memory management process in JavaScript that identifies and removes objects that are no longer reachable or usable by an application.
+
+### 2. Memory Lifecycle
+```javascript
+// 1. Memory Allocation
+let user = {                    // Allocates memory for object
+    name: "John",
+    age: 30
+};
+
+// 2. Memory Use
+console.log(user.name);         // Uses allocated memory
+
+// 3. Memory Release
+user = null;                    // Memory becomes eligible for GC
+```
+
+## Garbage Collection Algorithms
+
+### 1. Reference Counting (Basic GC)
+The basic concept of tracking how many references point to an object.
+
+```javascript
+let user = {                    // Reference count: 1
+    name: "John"
+};
+
+let admin = user;               // Reference count: 2
+user = null;                    // Reference count: 1
+admin = null;                   // Reference count: 0 -> Eligible for GC
+```
+
+#### Limitation: Circular References
+```javascript
+function createCircularReference() {
+    let obj1 = {};
+    let obj2 = {};
+    
+    obj1.ref = obj2;           // obj2 reference count: 1
+    obj2.ref = obj1;           // obj1 reference count: 1
+    
+    return 'created';
+}
+
+createCircularReference();      // Objects still have reference count 1
+                               // but are unreachable -> Memory leak!
+```
+
+### 2. Mark and Sweep Algorithm
+Modern JavaScript engines use the Mark and Sweep algorithm:
+
+1. Mark Phase: Starts from root objects (global object) and marks all reachable objects
+2. Sweep Phase: Removes unmarked objects
+
+```javascript
+// Root object
+window.globalUser = {
+    name: "John"
+};
+
+let localUser = {
+    name: "Jane"
+};
+
+// After this function ends, localUser becomes unreachable
+// but globalUser remains reachable from root
+```
+
+## Memory Leaks
+
+### 1. Global Variables
+```javascript
+function leakGlobal() {
+    user = { name: "John" };    // Missing 'let/const' -> Creates global
+}
+
+// Better version
+function noLeak() {
+    'use strict';              // Prevents accidental globals
+    let user = { name: "John" };
+}
+```
+
+### 2. Forgotten Event Listeners
+```javascript
+function createButton() {
+    const button = document.createElement('button');
+    
+    // Memory leak: listener stays even if button is removed
+    button.addEventListener('click', function() {
+        // Large data structure referenced in closure
+        const data = new Array(10000).fill('data');
+        console.log(data.length);
+    });
+    
+    return button;
+}
+
+// Proper cleanup
+function createButtonWithCleanup() {
+    const button = document.createElement('button');
+    const handler = function() {
+        const data = new Array(10000).fill('data');
+        console.log(data.length);
+    };
+    
+    button.addEventListener('click', handler);
+    
+    return {
+        button,
+        cleanup: () => button.removeEventListener('click', handler)
+    };
+}
+```
+
+### 3. Closures Retaining References
+```javascript
+function closure() {
+    const largeData = new Array(10000).fill('data');
+    
+    return function() {
+        // Keeps reference to largeData even if unused
+        console.log('Hello');
+    };
+}
+
+// Better version
+function noClosure() {
+    return function() {
+        console.log('Hello');
+    };
+}
+```
+
+## Best Practices
+
+### 1. Nullifying References
+```javascript
+function processData() {
+    const hugeData = new Array(10000).fill('data');
+    
+    // Process data
+    const result = hugeData.map(item => item.toUpperCase());
+    
+    // Clear reference when done
+    hugeData = null;
+    
+    return result;
+}
+```
+
+### 2. Using WeakMap and WeakSet
+```javascript
+// Strong reference - prevents GC
+const cache = new Map();
+let user = { id: 1 };
+cache.set(user, 'userData');
+user = null;                    // Object still in cache
+
+// Weak reference - allows GC
+const weakCache = new WeakMap();
+let user2 = { id: 2 };
+weakCache.set(user2, 'userData');
+user2 = null;                   // Object can be garbage collected
+```
+
+### 3. Proper Event Listener Management
+```javascript
+class ComponentWithEvents {
+    constructor() {
+        this.handleClick = this.handleClick.bind(this);
+        this.init();
+    }
+    
+    init() {
+        document.addEventListener('click', this.handleClick);
+    }
+    
+    handleClick() {
+        console.log('clicked');
+    }
+    
+    destroy() {
+        // Clean up listeners
+        document.removeEventListener('click', this.handleClick);
+    }
+}
+```
+
+## Memory Analysis Tools
+
+### 1. Chrome DevTools
+```javascript
+// Taking heap snapshot
+// 1. Open Chrome DevTools
+// 2. Go to Memory tab
+// 3. Select "Take heap snapshot"
+// 4. Analyze objects and references
+
+// Memory recording
+// 1. Click "Record allocation timeline"
+// 2. Perform actions
+// 3. Stop recording
+// 4. Analyze memory allocation patterns
+```
+
+### 2. Performance Monitoring
+```javascript
+// Monitor memory usage
+const used = process.memoryUsage();
+console.log({
+    heapTotal: `${Math.round(used.heapTotal / 1024 / 1024 * 100) / 100} MB`,
+    heapUsed: `${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB`
+});
+```
+
+## Advanced Patterns
+
+### 1. Object Pools
+```javascript
+class ObjectPool {
+    constructor(createFn, maxSize = 1000) {
+        this.createFn = createFn;
+        this.maxSize = maxSize;
+        this.pool = [];
+    }
+    
+    acquire() {
+        return this.pool.pop() || this.createFn();
+    }
+    
+    release(obj) {
+        if (this.pool.length < this.maxSize) {
+            this.pool.push(obj);
+        }
+    }
+}
+
+// Usage
+const pool = new ObjectPool(() => new Array(1000));
+const arr = pool.acquire();
+// Use array...
+pool.release(arr);             // Reuse instead of GC
+```
+
+### 2. Memory-Conscious Cache
+```javascript
+class MemoryCache {
+    constructor(maxSize = 1000) {
+        this.maxSize = maxSize;
+        this.cache = new Map();
+    }
+    
+    set(key, value) {
+        if (this.cache.size >= this.maxSize) {
+            // Remove oldest entry
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        this.cache.set(key, value);
+    }
+    
+    get(key) {
+        return this.cache.get(key);
+    }
+}
+```
+
+## Common Debugging Patterns
+
+### 1. Memory Leak Detection
+```javascript
+let memoryLeaks = [];
+
+function detectLeak() {
+    setInterval(() => {
+        const snapshot1 = performance.memory.usedJSHeapSize;
+        // Perform operations
+        const snapshot2 = performance.memory.usedJSHeapSize;
+        
+        if (snapshot2 - snapshot1 > 1000000) { // 1MB threshold
+            console.warn('Possible memory leak detected');
+            memoryLeaks.push({
+                time: Date.now(),
+                increase: snapshot2 - snapshot1
+            });
+        }
+    }, 1000);
+}
+```
+
+### 2. Reference Tracking
+```javascript
+class ReferenceTracker {
+    static refs = new WeakMap();
+    
+    static track(obj) {
+        this.refs.set(obj, new Error().stack);
+    }
+    
+    static getCreationStack(obj) {
+        return this.refs.get(obj);
+    }
+}
+
+// Usage
+const obj = { data: 'important' };
+ReferenceTracker.track(obj);
+console.log(ReferenceTracker.getCreationStack(obj));
+```
+
+Remember that garbage collection in JavaScript is automatic and optimized by the engine. These patterns and practices help you write memory-efficient code, but you should profile and measure before implementing complex memory management strategies.
+
+The key is to:
+1. Avoid unnecessary object references
+2. Clean up event listeners and timers
+3. Use weak references when appropriate
+4. Monitor memory usage in development
+5. Test memory patterns with large datasets
