@@ -1,0 +1,234 @@
+# TypeScript Generics
+
+## Basic Generic Functions
+```typescript
+// Regular function with generic
+function identity<T>(arg: T): T {
+  return arg;
+}
+
+// Arrow function with generic
+const identityArrow = <T>(arg: T): T => {
+  return arg;
+}
+
+// Multiple type parameters
+function pair<T, U>(first: T, second: U): [T, U] {
+  return [first, second];
+}
+
+// Generic function with constraints
+function getLength<T extends { length: number }>(arg: T): number {
+  return arg.length;
+}
+
+// Default type parameters
+function createArray<T = string>(length: number, value: T): T[] {
+  return new Array(length).fill(value);
+}
+```
+
+## Generic Interfaces
+```typescript
+// Basic generic interface
+interface Box<T> {
+  value: T;
+}
+
+// Interface with multiple type parameters
+interface Dictionary<K extends string | number, V> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+}
+
+// Generic interface extending another generic interface
+interface ReadOnlyBox<T> extends Box<T> {
+  readonly value: T;
+}
+
+// Generic interface with methods
+interface Collection<T> {
+  add(item: T): void;
+  remove(item: T): void;
+  getItems(): T[];
+}
+```
+
+## Generic Classes
+```typescript
+// Basic generic class
+class Stack<T> {
+  private items: T[] = [];
+
+  push(item: T): void {
+    this.items.push(item);
+  }
+
+  pop(): T | undefined {
+    return this.items.pop();
+  }
+}
+
+// Generic class implementing generic interface
+class ArrayCollection<T> implements Collection<T> {
+  private items: T[] = [];
+
+  add(item: T): void {
+    this.items.push(item);
+  }
+
+  remove(item: T): void {
+    const index = this.items.indexOf(item);
+    if (index > -1) {
+      this.items.splice(index, 1);
+    }
+  }
+
+  getItems(): T[] {
+    return [...this.items];
+  }
+}
+
+// Generic class with multiple type parameters
+class KeyValuePair<K, V> {
+  constructor(public key: K, public value: V) {}
+
+  toString(): string {
+    return `${String(this.key)}: ${String(this.value)}`;
+  }
+}
+```
+
+## Generic Constraints
+```typescript
+// Constraint to object type
+function getProperty<T extends object, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+// Constraint with interface
+interface Lengthwise {
+  length: number;
+}
+
+function loggingIdentity<T extends Lengthwise>(arg: T): T {
+  console.log(arg.length);
+  return arg;
+}
+
+// Constraint to class type
+class Animal {
+  name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
+}
+
+function createInstance<T extends Animal>(c: new () => T): T {
+  return new c();
+}
+```
+
+## Generic Type Aliases
+```typescript
+// Simple generic type alias
+type Container<T> = { value: T };
+
+// Generic mapped type
+type Readonly<T> = {
+  readonly [P in keyof T]: T[P];
+};
+
+// Conditional generic type
+type NonNullable<T> = T extends null | undefined ? never : T;
+
+// Generic utility type
+type ReturnType<T extends (...args: any) => any> = 
+  T extends (...args: any) => infer R ? R : any;
+```
+
+## Advanced Generic Patterns
+```typescript
+// Generic factory function
+function create<T>(Factory: { new (): T }): T {
+  return new Factory();
+}
+
+// Generic method overloads
+class DataContainer {
+  getData<T extends string>(id: number): string;
+  getData<T extends number>(id: string): number;
+  getData<T>(id: string | number): T {
+    // Implementation
+    return {} as T;
+  }
+}
+
+// Generic type guards
+function isOfType<T>(value: any, property: keyof T): value is T {
+  return property in value;
+}
+
+// Generic parameter defaults with constraints
+class Api<T extends object = {}> {
+  constructor(private baseUrl: string) {}
+  
+  async get<U extends keyof T>(endpoint: U): Promise<T[U]> {
+    // Implementation
+    return {} as T[U];
+  }
+}
+```
+
+## Practical Examples
+```typescript
+// Generic React component
+interface Props<T> {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}
+
+function List<T>({ items, renderItem }: Props<T>) {
+  return (
+    <ul>
+      {items.map((item, index) => (
+        <li key={index}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Generic state management
+class Store<State extends object> {
+  private state: State;
+
+  constructor(initialState: State) {
+    this.state = initialState;
+  }
+
+  getState(): Readonly<State> {
+    return Object.freeze({ ...this.state });
+  }
+
+  setState(partial: Partial<State>): void {
+    this.state = { ...this.state, ...partial };
+  }
+}
+
+// Generic event system
+type Listener<T> = (event: T) => void;
+
+class EventEmitter<T extends string> {
+  private listeners: Map<T, Listener<T>[]> = new Map();
+
+  on(event: T, listener: Listener<T>): void {
+    const listeners = this.listeners.get(event) || [];
+    this.listeners.set(event, [...listeners, listener]);
+  }
+
+  emit(event: T): void {
+    const listeners = this.listeners.get(event) || [];
+    listeners.forEach(listener => listener(event));
+  }
+}
+```
