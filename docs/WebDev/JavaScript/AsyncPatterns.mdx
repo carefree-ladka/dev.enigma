@@ -1,0 +1,294 @@
+# Async Patterns
+
+## Rate Limiter
+A rate limiter is a mechanism used to control the number of requests a client can make to a server within a specified time period. This is useful for preventing abuse, ensuring fair usage, and protecting against denial-of-service (DoS) attacks.
+
+```JavaScript
+class RateLimiter {
+  constructor(maxRequests, windowSizeInMs) {
+    this.maxRequests = maxRequests; // Maximum number of requests allowed in the window
+    this.windowSizeInMs = windowSizeInMs; // Time window size in milliseconds
+    this.requests = []; // Array to store timestamps of requests
+  }
+
+  // Method to check if a request is allowed
+  allowRequest() {
+    const now = Date.now();
+
+    // Remove requests that are outside the current window
+    this.requests = this.requests.filter(timestamp => now - timestamp < this.windowSizeInMs);
+
+    // Check if the number of requests is within the limit
+    if (this.requests.length < this.maxRequests) {
+      this.requests.push(now); // Add the current request timestamp
+      return true; // Request is allowed
+    } else {
+      return false; // Request is denied
+    }
+  }
+}
+
+// Example usage
+const limiter = new RateLimiter(5, 10000); // Allow 5 requests per 10 seconds
+
+for (let i = 0; i < 10; i++) {
+  setTimeout(() => {
+    if (limiter.allowRequest()) {
+      console.log(`Request ${i + 1}: Allowed`);
+    } else {
+      console.log(`Request ${i + 1}: Denied`);
+    }
+  }, i * 1000); // Simulate requests every second
+}
+```
+
+## Circuit Breaker
+A circuit breaker is a design pattern used to detect failures and prevent an application from repeatedly trying to execute an operation that's likely to fail. It’s commonly used in distributed systems to handle faults gracefully and avoid cascading failures.
+
+```JavaScript
+class CircuitBreaker {
+    constructor(request, options = {}) {
+        this.request = request; // The function to be executed
+        this.state = "CLOSED"; // Initial state: CLOSED, OPEN, or HALF-OPEN
+        this.failureCount = 0; // Count of consecutive failures
+        this.successCount = 0; // Count of consecutive successes (for HALF-OPEN state)
+        this.nextAttempt = Date.now(); // Time for the next attempt in OPEN state
+        this.options = {
+            failureThreshold: 3, // Number of failures before opening the circuit
+            successThreshold: 2, // Number of successes before closing the circuit
+            timeout: 5000, // Time in ms to wait before attempting again in OPEN state
+            ...options,
+        };
+    }
+
+    async fire() {
+        if (this.state === "OPEN") {
+            if (this.nextAttempt <= Date.now()) {
+                this.state = "HALF-OPEN"; // Allow one request to test the service
+            } else {
+                throw new Error("Circuit is OPEN. Request blocked.");
+            }
+        }
+
+        try {
+            const response = await this.request();
+            this.success();
+            return response;
+        } catch (err) {
+            this.fail();
+            throw err;
+        }
+    }
+
+    success() {
+        this.failureCount = 0; // Reset failure count
+        if (this.state === "HALF-OPEN") {
+            this.successCount++;
+            if (this.successCount >= this.options.successThreshold) {
+                this.state = "CLOSED"; // Close the circuit after enough successes
+            }
+        }
+    }
+
+    fail() {
+        this.failureCount++;
+        if (this.failureCount >= this.options.failureThreshold) {
+            this.state = "OPEN"; // Open the circuit after too many failures
+            this.nextAttempt = Date.now() + this.options.timeout;
+        }
+    }
+}
+
+// Example usage
+const unstableRequest = () => {
+    return new Promise((resolve, reject) => {
+        // Simulate a 50% chance of failure
+        if (Math.random() > 0.5) {
+            resolve("Success!");
+        } else {
+            reject("Failed!");
+        }
+    });
+};
+
+const breaker = new CircuitBreaker(unstableRequest, {
+    failureThreshold: 2,
+    successThreshold: 1,
+    timeout: 1000,
+});
+
+const testCircuitBreaker = async () => {
+    for (let i = 0; i < 10; i++) {
+        try {
+            const result = await breaker.fire();
+            console.log(`Request ${i + 1}: ${result}`);
+        } catch (err) {
+            console.log(`Request ${i + 1}: ${err}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Delay between requests
+    }
+};
+
+testCircuitBreaker();
+```
+
+## Batch Processing
+Batching promises is a technique used to group multiple asynchronous operations (promises) into a single batch to improve efficiency, reduce overhead, and manage concurrency. This is particularly useful when dealing with APIs, databases, or other I/O-bound operations where making individual requests can be inefficient.
+
+```JavaScript
+class PromiseBatcher {
+    constructor(batchSize, processBatch) {
+        this.batchSize = batchSize; // Maximum number of promises in a batch
+        this.processBatch = processBatch; // Function to process the batch
+        this.queue = []; // Queue to hold pending items
+        this.processing = false; // Flag to check if a batch is being processed
+    }
+
+    // Add an item to the queue and trigger processing
+    add(item) {
+        this.queue.push(item);
+        this.process();
+    }
+
+    // Process the queue in batches
+    async process() {
+        if (this.processing || this.queue.length === 0) {
+            return; // Avoid overlapping processing
+        }
+
+        this.processing = true;
+
+        // Take up to `batchSize` items from the queue
+        const batch = this.queue.splice(0, this.batchSize);
+
+        try {
+            // Process the batch using the provided function
+            await this.processBatch(batch);
+        } catch (error) {
+            console.error("Error processing batch:", error);
+        } finally {
+            this.processing = false;
+            this.process(); // Process the next batch if there are remaining items
+        }
+    }
+}
+
+// Example usage
+const batcher = new PromiseBatcher(3, async (batch) => {
+    console.log("Processing batch:", batch);
+    // Simulate an async operation (e.g., API call, database query)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("Batch processed:", batch);
+});
+
+// Add items to the batcher
+for (let i = 1; i <= 10; i++) {
+    batcher.add(i);
+}
+```
+
+## With Concurrency Control
+
+```JavaScript
+class ConcurrentPromiseBatcher {
+    constructor(batchSize, concurrency, processBatch) {
+        this.batchSize = batchSize;
+        this.concurrency = concurrency;
+        this.processBatch = processBatch;
+        this.queue = [];
+        this.processing = 0;
+    }
+
+    add(item) {
+        this.queue.push(item);
+        this.process();
+    }
+
+    async process() {
+        while (this.queue.length > 0 && this.processing < this.concurrency) {
+            const batch = this.queue.splice(0, this.batchSize);
+            this.processing++;
+
+            this.processBatch(batch)
+                .catch((error) => console.error("Error processing batch:", error))
+                .finally(() => {
+                    this.processing--;
+                    this.process();
+                });
+        }
+    }
+}
+
+// Example usage
+const concurrentBatcher = new ConcurrentPromiseBatcher(3, 2, async (batch) => {
+    console.log("Processing batch:", batch);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("Batch processed:", batch);
+});
+
+for (let i = 1; i <= 10; i++) {
+    concurrentBatcher.add(i);
+}
+```
+
+## Retry Pattern
+The Retry Pattern is a design pattern used to handle transient failures in an application by retrying a failed operation a specified number of times before giving up. This is particularly useful for operations that involve external systems, such as API calls, database queries, or network requests, where temporary issues (e.g., network latency, timeouts) can cause failures.
+
+```JavaScript
+const retry = async (fn, retries = 3, delay = 1000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) {
+      throw error; // No retries left
+    }
+    console.log(`Retrying... (${retries} retries left)`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retry(fn, retries - 1, delay); // Retry with reduced count
+  }
+};
+
+// Example Usage:
+const fetchData = async () => {
+  // Simulate a failing network request
+  if (Math.random() < 0.7) throw new Error("Network error");
+  return "Data fetched successfully!";
+};
+
+retry(fetchData)
+  .then(data => console.log(data))
+  .catch(err => console.error(err));
+```
+
+## Sequential Batching
+If you have a large number of tasks (such as API requests or computations) and want to execute them in batches sequentially—meaning that each batch runs after the previous one completes—you can achieve this using ``async/await`` and ``for...of`` loops.
+
+```JavaScript
+const sequentialBatch = async (tasks, batchSize = 5) => {
+  const results = [];
+  
+  for (let i = 0; i < tasks.length; i += batchSize) {
+    const batch = tasks.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(task => task())); // Run batch concurrently
+    results.push(...batchResults);
+  }
+  
+  return results;
+};
+
+// Example Usage:
+const tasks = Array.from({ length: 15 }, (_, index) => () =>
+  new Promise(resolve => setTimeout(() => resolve(`Task ${index + 1} done`), 500))
+);
+
+sequentialBatch(tasks, 5).then(results => console.log(results));
+
+/* 
+If you have 15 tasks and a batch size of 5, the execution would look like:
+
+1. First 5 tasks → Execute in parallel → Wait for them to finish.
+2. Next 5 tasks → Execute in parallel → Wait for them to finish.
+3. Last 5 tasks → Execute in parallel → Wait for them to finish.
+4. Return all results.
+*/
+```
