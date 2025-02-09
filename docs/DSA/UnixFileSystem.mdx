@@ -1,0 +1,118 @@
+# Unix File System
+
+```JavaScript
+class FileNode {
+  constructor(type) {
+    this.type = type
+    this.children = {}
+  }
+}
+
+class FileSystem {
+  constructor() {
+    this.root = new FileNode('dir') // Root directory
+    this.currentPath = this.root;
+    this.pathStack = ['/']; // Keeps track of current path
+  }
+
+  // Helper function to traverse the directory tree
+  #traverse(path) {
+    const parts = path.split('/').filter(Boolean);
+    let node = this.root;
+
+    for (const part of parts) {
+      if (!node.children[part] || node.children[part].type !== 'dir') {
+        throw new Error(`Directory '${part}' does not exist`);
+      }
+      node = node.children[part];
+    }
+    return node;
+  }
+
+  // Create a directory
+  mkdir(path) {
+    const parts = path.split('/').filter(Boolean);
+    let node = this.root;
+
+    for (const part of parts) {
+      if (!node.children[part]) {
+        node.children[part] = new FileNode('dir');
+      }
+      node = node.children[part];
+
+      if (node.type !== 'dir') {
+        throw new Error(`${part} is a file, cannot create directory here`);
+      }
+    }
+  }
+
+  // Create a file
+  touch(path) {
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    let node = this.root;
+
+    for (const part of parts) {
+      if (!node.children[part] || node.children[part].type !== 'dir') {
+        throw new Error(`Directory '${part}' does not exist`);
+      }
+      node = node.children[part];
+    }
+
+    node.children[fileName] = new FileNode('file')
+  }
+
+  // List contents of a directory
+  ls(path = '') {
+    const node = path ? this.#traverse(path) : this.currentPath;
+
+    if (node.type !== 'dir') {
+      throw new Error(`${path} is not a directory`);
+    }
+
+    return Object.keys(node.children);
+  }
+
+  // Change directory
+  cd(path) {
+    if (path === '/') {
+      this.currentPath = this.root;
+      this.pathStack = ['/'];
+      return;
+    }
+
+    const node = this.#traverse(path);
+    this.currentPath = node;
+    this.pathStack = path.split('/').filter(Boolean);
+  }
+
+  // Print working directory
+  pwd() {
+    return '/' + this.pathStack.join('/');
+  }
+}
+
+// Example Usage:
+const fs = new FileSystem();
+
+fs.mkdir('/home/user/documents');
+fs.mkdir('/home/user/photos');
+fs.touch('/home/user/documents/resume.pdf');
+fs.touch('/home/user/photos/selfie.png');
+
+console.log(fs.ls('/home/user'));  // ['documents', 'photos']
+console.log(fs.ls('/home/user/documents'));  // ['resume.pdf']
+
+fs.cd('/home/user/documents');
+console.log(fs.pwd());  // '/home/user/documents'
+
+fs.cd('/');
+console.log(fs.pwd());  // '/'
+
+/* 
+[ 'documents', 'photos' ]
+[ 'resume.pdf' ]
+/home/user/documents
+//
+*/
+```
