@@ -1,0 +1,174 @@
+---
+title: "React Bundle Optimization Guide"
+description: "Learn how to optimize your React bundle for better performance."
+---
+
+# 🚀 React Bundle Optimization Guide
+
+Performance optimization in a React application is crucial for faster load times, better UX, and SEO. One of the key strategies for improving performance is **bundle optimization**, which involves reducing the size of JavaScript files downloaded by the browser.
+
+## 🔹 What is Bundle Optimization?
+
+When you build a React app, **Webpack** (or another bundler like **Vite, Rollup, Parcel**) generates a single JavaScript file (or a few files). This "bundle" contains all your React components, third-party libraries, and assets.
+
+However, if the bundle is too large, it slows down page loads. **Optimizing your bundle** ensures that users download only the necessary code at the right time.
+
+---
+
+## 🔹 Step 1: Analyze Your Bundle
+Before optimizing, analyze your current bundle size.
+
+### 📌 Install Webpack Bundle Analyzer
+```bash
+npm install --save-dev webpack-bundle-analyzer
+```
+
+### Update `package.json`
+```json
+"scripts": {
+  "analyze": "webpack --profile --json > stats.json && webpack-bundle-analyzer stats.json"
+}
+```
+
+Run:
+```bash
+npm run analyze
+```
+This generates a **visual breakdown** of your bundle.
+
+---
+
+## 🔹 Step 2: Enable Code Splitting
+**Code splitting** creates smaller, lazy-loaded chunks, reducing initial load time.
+
+### ✅ Route-Based Code Splitting
+```tsx
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+
+const Home = lazy(() => import("./pages/Home"));
+const About = lazy(() => import("./pages/About"));
+
+function App() {
+  return (
+    <Router>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+}
+```
+👉 This ensures `Home.js` and `About.js` load **only when their route is accessed**.
+
+---
+
+## 🔹 Step 3: Optimize Third-Party Libraries
+Large libraries like **Lodash, Moment.js, and Axios** can bloat your bundle.
+
+### ✅ Reduce Lodash Size
+Instead of:
+```js
+import _ from "lodash";
+```
+Use:
+```js
+import debounce from "lodash/debounce";
+```
+👉 This imports **only the required function**, reducing the bundle size.
+
+### ✅ Remove Unused Moment.js Locales
+```js
+import moment from "moment";
+import "moment/locale/en";
+```
+Or use **Day.js** as a lightweight alternative:
+```js
+import dayjs from "dayjs";
+```
+
+---
+
+## 🔹 Step 4: Enable Tree Shaking
+Tree shaking **removes unused code** in production builds.
+
+### ✅ Ensure `"sideEffects": false` in `package.json`
+```json
+"sideEffects": false
+```
+👉 This tells Webpack to **remove unused exports**.
+
+---
+
+## 🔹 Step 5: Optimize Images & Assets
+Large images and fonts slow down apps.
+
+### ✅ Use WebP Instead of PNG/JPG
+```tsx
+<img src="image.webp" alt="Optimized Image" />
+```
+
+### ✅ Enable Image Lazy Loading
+```tsx
+<img src="large-image.jpg" loading="lazy" alt="Lazy Loaded" />
+```
+
+### ✅ Use Inline SVGs Instead of Icons
+```tsx
+<svg width="24" height="24">
+  <circle cx="12" cy="12" r="10" fill="blue" />
+</svg>
+```
+👉 **Reduces requests** and **speeds up rendering**.
+
+---
+
+## 🔹 Step 6: Minify CSS & JS
+1. Use **Tailwind CSS or Styled Components** instead of large UI libraries.
+2. Enable **CSS Purging** (removes unused styles). Example for Tailwind:
+   ```js
+   module.exports = {
+     purge: ["./src/**/*.js", "./public/index.html"],
+   };
+   ```
+3. Use **system fonts** to avoid large font downloads:
+   ```css
+   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI";
+   ```
+
+---
+
+## 🔹 Step 7: Enable Gzip or Brotli Compression
+This reduces the size of transferred files.
+
+### ✅ Enable Brotli in Vite
+```bash
+npm install vite-plugin-compression
+```
+In `vite.config.js`:
+```js
+import compression from "vite-plugin-compression";
+
+export default {
+  plugins: [compression()],
+};
+```
+
+---
+
+## ✅ **Summary: Key Steps to Optimize Your Bundle**
+| Optimization | Method |
+|-------------|--------|
+| **Analyze Bundle Size** | `webpack-bundle-analyzer` |
+| **Lazy Load Components** | `React.lazy()` & `Suspense` |
+| **Route-Based Code Splitting** | Dynamic `import()` with React Router |
+| **Tree Shaking** | `"sideEffects": false` in `package.json` |
+| **Optimize Third-Party Libraries** | Import only what's needed (`lodash/debounce`) |
+| **Lazy Load Images & Fonts** | `<img loading="lazy" />` + WebP |
+| **Minimize CSS & JS** | TailwindCSS, PurgeCSS, Styled Components |
+| **Enable Compression** | Gzip/Brotli via Webpack or Vite |
+
+---
