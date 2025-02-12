@@ -1,0 +1,152 @@
+# Graham's Scan Algorithm & Convex Hull
+
+## Theory
+A convex hull is the smallest convex polygon that can contain all points in a given set. Think of it as wrapping a rubber band around all the points - the shape it forms is the convex hull.
+
+### Key Concepts
+
+1. **Convex Polygon**: A polygon where:
+   - All interior angles are less than 180 degrees
+   - Any line segment between two points inside the polygon lies entirely inside the polygon
+
+2. **Properties**:
+   - Every point in the set is either inside the hull or on its boundary
+   - The hull vertices are a subset of the original points
+   - The hull is unique for a given set of points
+
+### Graham's Scan Algorithm Steps
+
+1. **Find Anchor Point**
+   - Select the point with lowest y-coordinate (leftmost point if tie)
+   - This point is guaranteed to be on the hull
+
+2. **Sort Points**
+   - Sort remaining points by polar angle relative to anchor point
+   - If angles are equal, sort by distance from anchor
+
+3. **Build Hull**
+   - Push first three points onto stack
+   - For each remaining point:
+     - While the last three points make a non-left turn, pop the middle point
+     - Push current point
+
+4. **Handle Collinear Points**
+   - Special care needed when multiple points have same angle
+   - Include all collinear points in final hull
+
+## Implementation
+
+```JavaScript
+class Point {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
+// Compute cross product to determine orientation
+const crossProduct = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+
+// Compute squared distance between two points
+const distSq = (p1, p2) => (p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2;
+
+// Graham's Scan algorithm
+const convexHull = (points) => {
+  if (points.length < 3) return points;
+
+  // Find pivot (lowest y, then lowest x if tie)
+  const pivot = points.reduce((a, b) => (b.y < a.y || (b.y === a.y && b.x < a.x) ? b : a));
+
+  // Sort by polar angle (remove collinear points)
+  points.sort((a, b) => {
+    let order = crossProduct(pivot, a, b);
+    return order === 0 ? distSq(pivot, a) - distSq(pivot, b) : -order;
+  });
+
+  // Construct hull using stack
+  return points.reduce((hull, p) => {
+    while (hull.length > 1 && crossProduct(hull[hull.length - 2], hull[hull.length - 1], p) <= 0) {
+      hull.pop();
+    }
+    hull.push(p);
+    return hull;
+  }, []);
+};
+
+// Example usage
+const points = [
+  new Point(0, 3), new Point(1, 1), new Point(2, 2),
+  new Point(4, 4), new Point(0, 0), new Point(1, 2),
+  new Point(3, 1), new Point(3, 3)
+];
+
+const convexHullPoints = convexHull(points);
+console.log("Convex Hull Points:", convexHullPoints.map(p => `(${p.x}, ${p.y})`));
+```
+
+## Time & Space Complexity
+
+- Time Complexity: O(n log n)
+  - Sorting points takes O(n log n)
+  - Building hull takes O(n)
+  
+- Space Complexity: O(n)
+  - Stack storage
+  - Sorted array storage
+
+## LeetCode Problems Using Convex Hull
+
+1. **587. Erect the Fence** (Hard)
+   - Direct application of convex hull
+   - Need to handle collinear points carefully
+
+2. **1937. Maximum Number of Points with Cost** (Medium)
+   - Can be optimized using convex hull concept
+   - Dynamic programming with geometric properties
+
+3. **483. Smallest Good Base** (Hard)
+   - While not directly using convex hull, uses similar geometric concepts
+   - Binary search with geometric properties
+
+4. **456. 132 Pattern** (Medium)
+   - Can be solved using monotonic stack (similar principle to Graham's Scan)
+   - Stack maintenance similar to convex hull building
+
+## Common Variations & Extensions
+
+1. **Monotone Chain Algorithm**
+   - Alternative to Graham's Scan
+   - Builds upper and lower hulls separately
+   - Often simpler to implement
+
+2. **Dynamic Convex Hull**
+   - Maintain hull as points are added/removed
+   - More complex but useful for streaming data
+
+3. **Closest Pair of Points**
+   - Can be solved using convex hull techniques
+   - Often combined with divide-and-conquer
+
+## Tips for Implementation
+
+1. **Handle Edge Cases**
+   - Less than 3 points
+   - Collinear points
+   - Duplicate points
+
+2. **Numerical Precision**
+   - Use appropriate epsilon for floating-point comparisons
+   - Consider integer-only implementations when possible
+
+3. **Optimization Opportunities**
+   - Pre-compute angles/distances
+   - Use array instead of stack for better cache performance
+   - Consider removing redundant calculations
+
+## Common Mistakes to Avoid
+
+1. Not handling collinear points correctly
+2. Incorrect anchor point selection
+3. Wrong turn detection implementation
+4. Not handling edge cases
+5. Poor floating-point comparisons
