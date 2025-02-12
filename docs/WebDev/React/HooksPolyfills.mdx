@@ -4,8 +4,8 @@
 
 ```JavaScript
   const useMyState = (initialValue) => {
-    const hookIdTrackerRef = useRef(0); // Component-specific tracker
-    const statesRef = useRef([]); // Component-specific state storage
+    const hookIdTrackerRef = React.useRef(0); // Component-specific tracker
+    const statesRef = React.useRef([]); // Component-specific state storage
 
     const localHookId = hookIdTrackerRef.current++; // Assign unique ID for this hook
 
@@ -42,9 +42,9 @@
 
 ```JavaScript
   const myEffect = (callback, depsArray) => {
-    const firstRenderRef = useRef(true); // Tracks if it's the first render
-    const prevDepsRef = useRef([]); // Stores the previous dependencies
-    const cleanupRef = useRef(null); // Stores the cleanup function
+    const firstRenderRef = React.useRef(true); // Tracks if it's the first render
+    const prevDepsRef = React.useRef([]); // Stores the previous dependencies
+    const cleanupRef = React.useRef(null); // Stores the cleanup function
 
     // Handle first render
     if (firstRenderRef.current) {
@@ -70,47 +70,44 @@
     prevDepsRef.current = depsArray || []; // Update dependencies
   };
 ```
-
-## React App with Custom Hooks 
+## useMemo
 
 ```JavaScript
-import { MyReact } from './Polyfills';
+function useMemo(factory, deps) {
+  const ref = React.useRef({ deps: undefined, value: undefined })
 
-const Counter = () => {
-  const [count, setCount] = MyReact.useMyState(0);
+  function areEqual(oldDeps, newDeps) {
+    if (!oldDeps || oldDeps.length !== newDeps.length) return false
+    return oldDeps.every((dep, i) => Object.is(dep, newDeps[i]))
+  }
 
-  //Runs on First render
-  //Runs when count changes
-  //Clean up doesn't run on first render
+  if (!areEqual(ref.current.deps, deps)) {
+    ref.current.value = factory()
+    ref.current.deps = deps
+  }
 
-  MyReact.myEffect(() => {
-    console.log("Effect ran with count:", count);
-
-    return () => {
-      console.log("Cleanup for count:", count);
-    };
-  }, [count]);
-
-  //Runs on every render
-  MyReact.myEffect(() => {
-    console.log("Runs always...");
-  });
-
-  return (
-    <div>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount((prev) => prev + 1)}>Increment</button>
-    </div>
-  )
+  return ref.current.value
 }
+```
 
-export default function App() {
+## useCallback
 
-  return (
-    <>
-      <Counter />
-      <Counter />
-    </>
-  );
+```JavaScript
+import * as React from 'react'
+
+function useCallback(callback, deps) {
+  const ref = React.useRef({ deps: undefined, memoizedCallback: null });
+
+  function areDepsEqual(oldDeps, newDeps) {
+    if (!oldDeps || oldDeps.length !== newDeps.length) return false;
+    return oldDeps.every((dep, i) => Object.is(dep, newDeps[i]));
+  }
+
+  if (!areDepsEqual(ref.current.deps, deps)) {
+    ref.current.memoizedCallback = callback;
+    ref.current.deps = deps;
+  }
+
+  return ref.current.memoizedCallback;
 }
 ```
