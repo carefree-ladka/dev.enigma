@@ -1,0 +1,97 @@
+---
+title: "Minimum Enclosing Circle - Welzl's Algorithm"
+description: "Learn how to find the smallest enclosing circle for a set of points using Welzl’s Algorithm."
+categories: ["Algorithms", "Computational Geometry"]
+tags: ["Geometry", "Convex Hull", "Welzl's Algorithm"]
+---
+
+# Minimum Enclosing Circle using Welzl’s Algorithm
+
+## Introduction
+The **Minimum Enclosing Circle (MEC)** problem requires finding the smallest possible circle that encloses a set of given points in a 2D plane. This is widely used in **robotics, computer vision, clustering, and collision detection**.
+
+## Problem Statement
+Given `n` points in a 2D plane, find the smallest circle `(x, y, r)` such that all points lie inside or on the boundary of the circle. The goal is to minimize `r`.
+
+### **Example**
+
+```plaintext
+Input: trees = [[1,1],[2,2],[2,0],[2,4],[3,3],[4,2]]
+Output: [2.00000, 2.00000, 2.00000]
+```
+
+## **Approach - Welzl’s Algorithm**
+Welzl’s Algorithm is a **recursive, randomized algorithm** that finds the **minimum enclosing circle in O(n) expected time**. It follows:
+
+1. **Base Case:** If there are no points left or we have 3 boundary points, return the circle through those points.
+2. **Recursion:** Pick a random point `p`, compute the MEC without `p`, and check if `p` is inside. If not, `p` must be on the boundary.
+3. **Bounding Case:** If `p` is outside, solve recursively with `p` added to the boundary.
+
+## **Implementation in JavaScript**
+
+```JavaScript
+const minEnclosingCircle = (trees) => {
+    const dist = (p1, p2) => Math.hypot(p1[0] - p2[0], p1[1] - p2[1]);
+
+    const circleFromTwo = ([x1, y1], [x2, y2]) => {
+        let cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+        return [cx, cy, dist([cx, cy], [x1, y1])];
+    };
+
+    const circleFromThree = ([x1, y1], [x2, y2], [x3, y3]) => {
+        let d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2));
+        if (d === 0) return null;
+        let cx = ((x1 ** 2 + y1 ** 2) * (y2 - y3) + (x2 ** 2 + y2 ** 2) * (y3 - y1) + (x3 ** 2 + y3 ** 2) * (y1 - y2)) / d;
+        let cy = ((x1 ** 2 + y1 ** 2) * (x3 - x2) + (x2 ** 2 + y2 ** 2) * (x1 - x3) + (x3 ** 2 + y3 ** 2) * (x2 - x1)) / d;
+        return [cx, cy, dist([cx, cy], [x1, y1])];
+    };
+
+    const isInside = (c, p) => dist([c[0], c[1]], p) <= c[2] + 1e-7;
+
+    const welzl = (points, R = []) => {
+        if (!points.length || R.length === 3) 
+            return R.length === 0 ? [0, 0, 0] :
+                   R.length === 1 ? [...R[0], 0] :
+                   R.length === 2 ? circleFromTwo(R[0], R[1]) :
+                   circleFromThree(R[0], R[1], R[2]);
+
+        let p = points.pop(), c = welzl([...points], R);
+        return isInside(c, p) ? c : welzl([...points], [...R, p]);
+    };
+
+    return welzl(trees.sort(() => Math.random() - 0.5)).map(v => +v.toFixed(5));
+};
+
+// Example Usage
+console.log(minEnclosingCircle([[1,1],[2,2],[2,0],[2,4],[3,3],[4,2]])); // [2.00000, 2.00000, 2.00000]
+console.log(minEnclosingCircle([[1,2],[2,2],[4,2]])); // [2.50000, 2.00000, 1.50000]
+```
+
+## Problems
+
+- https://leetcode.com/problems/erect-the-fence-ii/description/
+- Smallest Circle Covering Points (Variation of [1924])
+- Geometric Range Queries / Bounding Circle in K-D Trees
+- 1232. Check If It Is a Straight Line
+
+
+## **Complexity Analysis**
+- **Expected Time Complexity:** O(n)
+- **Worst-Case Complexity:** O(n²) (rare, occurs when recursion goes deep)
+- **Space Complexity:** O(n) (due to recursion stack)
+
+## **Why This Works?**
+- Uses **randomization** to reduce recursive depth.
+- The **smallest enclosing circle property** ensures that the boundary points are minimal.
+- Handles **degenerate cases** like collinear points gracefully.
+
+## **Use Cases**
+✅ Collision detection in games
+✅ Bounding circle for point clusters
+✅ Efficient space partitioning in 2D geometry
+
+## **Conclusion**
+Welzl’s Algorithm provides an **efficient O(n) expected time** approach to finding the **smallest enclosing circle**. It is widely used in computational geometry problems and real-world applications.
+
+ - https://www.geeksforgeeks.org/minimum-enclosing-circle-using-welzls-algorithm/
+ - https://en.wikipedia.org/wiki/Smallest-circle_problem
