@@ -1,0 +1,139 @@
+# Optimized Webpack Config for Performance
+
+```JavaScript
+const path = require("path");
+const TerserPlugin = require("terser-webpack-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CompressionPlugin = require("compression-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
+
+module.exports = {
+  mode: "production", // Ensures Webpack runs in optimized mode
+
+  entry: "./src/index.js",
+
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "js/[name].[contenthash].js", // Cache-busting
+    chunkFilename: "js/[name].[contenthash].chunk.js", // Cache-busting for chunks
+    publicPath: "/", // Set according to deployment needs
+  },
+
+  module: {
+    rules: [
+      // JavaScript / JSX
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "babel-loader",
+        },
+      },
+      // CSS / SCSS
+      {
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, "css-loader", "postcss-loader"],
+      },
+      {
+        test: /\.scss$/,
+        use: [MiniCssExtractPlugin.loader, "css-loader", "sass-loader"],
+      },
+      // Image Optimization
+      {
+        test: /\.(png|jpg|jpeg|gif|svg)$/,
+        type: "asset",
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8 * 1024, // Inline images below 8KB
+          },
+        },
+      },
+    ],
+  },
+
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        parallel: true, // Use multi-threading
+        extractComments: false, // Remove comments
+        terserOptions: {
+          compress: {
+            drop_console: true, // Remove console.logs
+          },
+        },
+      }),
+      new CssMinimizerPlugin(), // Minify CSS
+    ],
+
+    // 🚀 **Code Splitting for Better Performance**
+    splitChunks: {
+      chunks: "all",
+      cacheGroups: {
+        vendors: {
+          test: /[\\/]node_modules[\\/]/,
+          name: "vendors",
+          chunks: "all",
+        },
+      },
+    },
+
+    // ✅ Persistent caching for faster rebuilds
+    runtimeChunk: "single",
+  },
+
+  plugins: [
+    new CleanWebpackPlugin(), // Cleans old builds
+    new MiniCssExtractPlugin({
+      filename: "css/[name].[contenthash].css",
+    }),
+    new CompressionPlugin({
+      algorithm: "gzip", // Compress assets with Gzip
+      test: /\.(js|css|html|svg)$/,
+      threshold: 10240, // Only compress assets > 10KB
+      minRatio: 0.8,
+    }),
+    new BundleAnalyzerPlugin({
+      analyzerMode: "static",
+      openAnalyzer: false,
+    }),
+  ],
+
+  performance: {
+    hints: "warning",
+    maxEntrypointSize: 400000, // Warn if entry file exceeds 400KB
+    maxAssetSize: 250000, // Warn if asset exceeds 250KB
+  },
+
+  devtool: "source-map", // Helps in debugging, remove for production
+};
+```
+
+## Key Optimizations Explained
+**1. Minification & Tree Shaking**
+
+     - ``TerserPlugin``: Removes unused JS, minifies code.
+     - ``CssMinimizerPlugin``: Minifies CSS.
+
+**2. Compression**
+
+   - ``CompressionPlugin``: Gzip compression for smaller bundle sizes.
+
+**3. Code Splitting & Lazy Loading**
+
+   - ``splitChunks``: Moves common dependencies to a separate file (vendors.js).
+   - ``runtimeChunk``: "single": Improves caching.
+
+**4. Caching & Cache Busting**
+
+   - ``[contenthash]`` in filenames ensures browsers fetch the latest assets.
+
+**5. Performance Hints**
+
+   - Warns if bundles exceed optimal sizes.
+
+**6. Persistent Caching**
+
+   - Webpack caches modules efficiently, reducing build times.
