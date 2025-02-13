@@ -79,3 +79,381 @@ function V() {
   semaphore++;  // Exit critical section
 }
 ```
+
+## Thread Synchronization
+
+### Basic Concepts
+Thread synchronization ensures orderly access to shared resources in a multi-threaded environment.
+
+### Key Aspects
+1. **Resource Sharing**
+   - Multiple threads accessing shared resources
+   - Need for controlled access to prevent data corruption
+
+2. **Critical Section**
+   - Section of code accessing shared resources
+   - Must be protected from concurrent access
+
+3. **Race Conditions**
+   - Occur when multiple threads access shared data simultaneously
+   - Result depends on timing of thread execution
+
+### Synchronization Mechanisms
+1. **Mutex**
+   - Binary semaphore
+   - Locks resource for exclusive access
+   ```javascript
+   class Mutex {
+       constructor() {
+           this.locked = false;
+       }
+       
+       acquire() {
+           while(this.locked) {
+               // wait
+           }
+           this.locked = true;
+       }
+       
+       release() {
+           this.locked = false;
+       }
+   }
+   ```
+
+2. **Semaphores**
+   - Counter for resource management
+   - Controls access to finite resources
+   ```javascript
+   class Semaphore {
+       constructor(initial) {
+           this.value = initial;
+       }
+       
+       wait() {
+           while(this.value <= 0) {
+               // wait
+           }
+           this.value--;
+       }
+       
+       signal() {
+           this.value++;
+       }
+   }
+   ```
+
+## Producer-Consumer Problem
+
+### Problem Statement
+- Producers create data items and store in buffer
+- Consumers remove items from buffer
+- Need to synchronize access to shared buffer
+
+### Components
+1. **Buffer**
+   - Shared data structure
+   - Limited capacity in bounded version
+   - Unlimited in unbounded version
+
+2. **Producer**
+   - Creates items
+   - Adds to buffer when space available
+   ```javascript
+   async function produce(buffer, item) {
+       await buffer.notFull.wait();
+       await buffer.mutex.acquire();
+       buffer.add(item);
+       buffer.mutex.release();
+       buffer.notEmpty.signal();
+   }
+   ```
+
+3. **Consumer**
+   - Removes items
+   - Waits when buffer empty
+   ```javascript
+   async function consume(buffer) {
+       await buffer.notEmpty.wait();
+       await buffer.mutex.acquire();
+       const item = buffer.remove();
+       buffer.mutex.release();
+       buffer.notFull.signal();
+       return item;
+   }
+   ```
+
+## Implementation
+
+```JavaScript
+// Mutex implementation
+class Mutex {
+  constructor() {
+    this.locked = false;
+    this.waitingQueue = [];
+  }
+
+  async acquire() {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+
+    return new Promise(resolve => {
+      this.waitingQueue.push(resolve);
+    });
+  }
+
+  release() {
+    if (this.waitingQueue.length > 0) {
+      const resolve = this.waitingQueue.shift();
+      resolve();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+// Semaphore implementation
+class Semaphore {
+  constructor(count) {
+    this.count = count;
+    this.waitingQueue = [];
+  }
+
+  async wait() {
+    if (this.count > 0) {
+      this.count--;
+      return;
+    }
+
+    return new Promise(resolve => {
+      this.waitingQueue.push(resolve);
+    });
+  }
+
+  signal() {
+    if (this.waitingQueue.length > 0) {
+      const resolve = this.waitingQueue.shift();
+      resolve();
+    } else {
+      this.count++;
+    }
+  }
+}
+
+// Bounded Buffer implementation
+class BoundedBuffer {
+  constructor(capacity) {
+    this.buffer = [];
+    this.capacity = capacity;
+    this.mutex = new Mutex();
+    this.notFull = new Semaphore(capacity);
+    this.notEmpty = new Semaphore(0);
+  }
+
+  async produce(item) {
+    await this.notFull.wait();
+    await this.mutex.acquire();
+
+    this.buffer.push(item);
+    console.log(`Produced: ${item}. Buffer size: ${this.buffer.length}`);
+
+    this.mutex.release();
+    this.notEmpty.signal();
+  }
+
+  async consume() {
+    await this.notEmpty.wait();
+    await this.mutex.acquire();
+
+    const item = this.buffer.shift();
+    console.log(`Consumed: ${item}. Buffer size: ${this.buffer.length}`);
+
+    this.mutex.release();
+    this.notFull.signal();
+    return item;
+  }
+
+  getBufferState() {
+    return [...this.buffer];
+  }
+}
+
+// Helper function to delay execution
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Producer function
+async function producer(buffer, id, items) {
+  for (const item of items) {
+    try {
+      await buffer.produce(`P${id}-${item}`);
+      await delay(Math.random() * 1000); // Random delay between 0-1000ms
+    } catch (error) {
+      console.error(`Producer ${id} error:`, error);
+    }
+  }
+  console.log(`Producer ${id} finished`);
+}
+
+// Consumer function
+async function consumer(buffer, id, count) {
+  for (let i = 0; i < count; i++) {
+    try {
+      await buffer.consume();
+      await delay(Math.random() * 2000); // Random delay between 0-2000ms
+    } catch (error) {
+      console.error(`Consumer ${id} error:`, error);
+    }
+  }
+  console.log(`Consumer ${id} finished`);
+}
+
+// Main execution
+async function main() {
+  const buffer = new BoundedBuffer(5); // Buffer capacity of 5
+
+  // Create multiple producers and consumers
+  const producers = [
+    producer(buffer, 1, [1, 2, 3, 4, 5]),
+    producer(buffer, 2, [6, 7, 8, 9, 10])
+  ];
+
+  const consumers = [
+    consumer(buffer, 1, 5),
+    consumer(buffer, 2, 5)
+  ];
+
+  // Wait for all producers and consumers to finish
+  await Promise.all([...producers, ...consumers]);
+  console.log('All producers and consumers finished');
+}
+
+// Run the program
+main().catch(console.error);
+```
+
+### Common Scenarios
+
+#### 1. Single Producer-Single Consumer
+- Simplest case
+- Needs:
+  - One mutex for buffer access
+  - Two semaphores (empty, full)
+
+#### 2. Multiple Producers-Single Consumer
+- Multiple threads adding items
+- Needs:
+  - Mutex for producer synchronization
+  - Buffer bounds checking
+  - Consumer flow control
+
+#### 3. Single Producer-Multiple Consumers
+- Multiple threads removing items
+- Needs:
+  - Mutex for consumer synchronization
+  - Empty buffer handling
+  - Producer flow control
+
+#### 4. Multiple Producers-Multiple Consumers
+- Most complex scenario
+- Needs:
+  - Full synchronization mechanism
+  - Race condition prevention
+  - Fair access policies
+
+### Implementation Considerations
+1. **Buffer Design**
+   - Choose appropriate data structure
+   - Consider memory constraints
+   - Handle overflow/underflow
+
+2. **Synchronization**
+   - Prevent deadlocks
+   - Ensure thread safety
+   - Maintain data consistency
+
+3. **Performance**
+   - Balance throughput and latency
+   - Minimize blocking time
+   - Optimize resource usage
+
+## Example Implementation
+
+```javascript
+class BoundedBuffer {
+    constructor(size) {
+        this.buffer = [];
+        this.size = size;
+        this.mutex = new Mutex();
+        this.notFull = new Semaphore(size);
+        this.notEmpty = new Semaphore(0);
+    }
+
+    async produce(item) {
+        await this.notFull.wait();
+        await this.mutex.acquire();
+        
+        this.buffer.push(item);
+        
+        this.mutex.release();
+        this.notEmpty.signal();
+    }
+
+    async consume() {
+        await this.notEmpty.wait();
+        await this.mutex.acquire();
+        
+        const item = this.buffer.shift();
+        
+        this.mutex.release();
+        this.notFull.signal();
+        
+        return item;
+    }
+}
+```
+
+## Best Practices
+
+1. **Always Release Resources**
+   - Use try-finally blocks
+   - Prevent resource leaks
+   - Handle errors properly
+
+2. **Avoid Nested Locks**
+   - Prevent deadlocks
+   - Maintain simple locking hierarchy
+   - Release locks in reverse order
+
+3. **Use Appropriate Mechanisms**
+   - Choose right synchronization tool
+   - Consider problem requirements
+   - Balance complexity and needs
+
+4. **Error Handling**
+   - Handle timeout scenarios
+   - Implement recovery mechanisms
+   - Log synchronization issues
+
+## Common Pitfalls
+
+1. **Deadlock**
+   - Circular resource waiting
+   - Improper lock ordering
+   - Resource starvation
+
+2. **Race Conditions**
+   - Unsynchronized access
+   - Timing-dependent bugs
+   - Inconsistent state
+
+3. **Priority Inversion**
+   - Lower priority task holds resource
+   - Higher priority task blocked
+   - System performance impact
+
+4. **Buffer Problems**
+   - Overflow/underflow
+   - Memory leaks
+   - Performance bottlenecks****
