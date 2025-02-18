@@ -207,3 +207,111 @@ const keyLocations = [
 const optimalApartment = findOptimalApartment(grid, keyLocations);
 console.log("Optimal Apartment Location:", optimalApartment); // Output: [2, 2]
 ```
+
+##  Minimum Combined Travel Cost for Alice and Bob
+
+You are given a graph of cities where each vertex represents a city, and the edges represent the connectivity between two cities. The cost to travel from one city to another connected by a single edge is **1 unit**. Two friends, Alice and Bob, live in two different cities and want to reach a destination city to attend a concert. Both Alice and Bob plan to take cabs from their respective cities to reach the destination. They may decide to share a cab at some point to minimize the total cost of traveling to the destination city.
+
+Your task is to find the **minimum combined cost** for both Alice and Bob to reach the destination city.
+
+---
+
+## Example
+
+Consider the following graph:
+
+```plaintext
+A - B
+|   |
+D - C
+|   |
+E - F
+```
+
+
+- **Alice's starting city**: A
+- **Bob's starting city**: E
+- **Destination city**: C
+
+### Explanation:
+1. Alice travels from **A to D** (cost = 1).
+2. Bob travels from **E to D** (cost = 1).
+3. Both Alice and Bob share a cab from **D to C** (cost = 1).
+
+**Total cost = 1 + 1 + 1 = 3**
+
+---
+
+## Input
+- A graph represented as an adjacency list or matrix.
+- The starting cities for Alice and Bob.
+- The destination city.
+
+## Output
+- The minimum combined cost for Alice and Bob to reach the destination city.
+
+---
+
+## Constraints
+- The graph is undirected and unweighted (each edge has a cost of 1 unit).
+- Alice and Bob can share a cab at any point during their journey.
+
+---
+
+## Approach
+1. Use **Breadth-First Search (BFS)** to compute the shortest distance from Alice's starting city to all other cities.
+2. Use BFS to compute the shortest distance from Bob's starting city to all other cities.
+3. Use BFS to compute the shortest distance from the destination city to all other cities.
+4. Iterate through all cities to find the optimal meeting point where the combined cost of Alice and Bob traveling to the meeting point and then sharing a cab to the destination is minimized.
+
+```JavaScript
+function minTravelCost(edges, alice, bob, destination) {
+  // Build adjacency list for the graph
+  let graph = new Map();
+
+  edges.forEach(([u, v]) => {
+    if (!graph.has(u)) graph.set(u, []);
+    if (!graph.has(v)) graph.set(v, []);
+    graph.get(u).push(v);
+    graph.get(v).push(u);
+  });
+
+  // BFS function to calculate shortest distances from a given start city
+  function bfs(start) {
+    let queue = [[start, 0]];
+    let distances = new Map();
+    distances.set(start, 0);
+
+    while (queue.length > 0) {
+      let [city, dist] = queue.shift();
+      for (let neighbor of (graph.get(city) || [])) {
+        if (!distances.has(neighbor)) {
+          distances.set(neighbor, dist + 1);
+          queue.push([neighbor, dist + 1]);
+        }
+      }
+    }
+    return distances;
+  }
+
+  // Get shortest paths from Alice, Bob, and the destination
+  let distFromAlice = bfs(alice);
+  let distFromBob = bfs(bob);
+  let distFromDestination = bfs(destination);
+
+  // Find the minimum cost meeting point
+  let minCost = Infinity;
+  for (let city of graph.keys()) {
+    if (distFromAlice.has(city) && distFromBob.has(city) && distFromDestination.has(city)) {
+      let totalCost = distFromAlice.get(city) + distFromBob.get(city) + distFromDestination.get(city);
+      minCost = Math.min(minCost, totalCost);
+    }
+  }
+
+  return minCost;
+}
+
+// Example usage:
+const edges = [['A', 'B'], ['A', 'D'], ['B', 'C'], ['D', 'C'], ['D', 'E'], ['E', 'F'], ['F', 'C']];
+console.log(minTravelCost(edges, 'A', 'E', 'C')); // Output: 3
+```
