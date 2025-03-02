@@ -1,0 +1,51 @@
+# Tracking the amount of time a user spends on a site 
+
+```JavaScript
+// Record the time when the page loads
+let startTime = new Date();
+let totalActiveTime = 0; // Total active time spent on the page
+let isPageActive = true; // Track if the page is currently active
+
+// Function to calculate time spent
+function calculateTimeSpent() {
+    let endTime = new Date();
+    let timeSpent = (endTime - startTime) / 1000; // Convert to seconds
+
+    if (isPageActive) {
+        totalActiveTime += timeSpent; // Add to total active time
+    }
+
+    console.log(`Total active time spent on page: ${totalActiveTime} seconds`);
+
+    // Send the data to your server or analytics tool
+    fetch('/track-time-spent', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timeSpent: totalActiveTime }),
+    });
+
+    // Reset startTime for the next interval
+    startTime = new Date();
+}
+
+// Track when the user leaves the page
+window.addEventListener('beforeunload', calculateTimeSpent);
+
+// Track when the user switches tabs or minimizes the browser
+document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+        // Page is hidden (user switched tabs or minimized the browser)
+        isPageActive = false;
+        calculateTimeSpent(); // Calculate time spent up to this point
+    } else {
+        // Page is visible again
+        isPageActive = true;
+        startTime = new Date(); // Reset the start time
+    }
+});
+
+// Optional: Track time spent periodically (e.g., every 10 seconds)
+setInterval(calculateTimeSpent, 10000);
+```
