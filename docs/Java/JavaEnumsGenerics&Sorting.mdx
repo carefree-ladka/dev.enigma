@@ -1,0 +1,962 @@
+# Java Enums, Generics & Sorting
+
+## Table of Contents
+
+### Part 1: Java Enums
+- [What are Enums?](#what-are-enums)
+- [Basic Enum Syntax](#basic-enum-syntax)
+- [Enum Methods and Properties](#enum-methods-and-properties)
+- [Advanced Enum Features](#advanced-enum-features)
+- [Enum Best Practices](#enum-best-practices)
+
+### Part 2: Java Generics
+- [Introduction to Generics](#introduction-to-generics)
+- [Generic Classes](#generic-classes)
+- [Generic Methods](#generic-methods)
+- [Bounded Type Parameters](#bounded-type-parameters)
+- [Wildcards](#wildcards)
+- [Generic Best Practices](#generic-best-practices)
+
+### Part 3: Java Sorting
+- [Basic Sorting](#basic-sorting)
+- [Comparable Interface](#comparable-interface)
+- [Comparator Interface](#comparator-interface)
+- [Advanced Sorting Techniques](#advanced-sorting-techniques)
+- [Sorting Custom Objects](#sorting-custom-objects)
+
+---
+
+# Part 1: Java Enums
+
+## What are Enums?
+
+An **enum** (enumeration) is a special class that represents a group of constants (unchangeable variables). Enums are used when you have a fixed set of values that won't change.
+
+### Key Characteristics:
+- **Type-safe**: Prevents invalid values at compile time
+- **Singleton**: Each enum constant is a singleton instance
+- **Immutable**: Enum constants cannot be modified
+- **Comparable**: Enums implement `Comparable` by default
+
+## Basic Enum Syntax
+
+### Simple Enum Declaration
+```java
+public enum Level {
+    LOW,
+    MEDIUM,
+    HIGH
+}
+```
+
+### Using Enums
+```java
+public class EnumExample {
+    public static void main(String[] args) {
+        // Accessing enum constants
+        Level myLevel = Level.MEDIUM;
+        System.out.println(myLevel); // Output: MEDIUM
+
+        // Enum in switch statement
+        switch(myLevel) {
+            case LOW:
+                System.out.println("Low level");
+                break;
+            case MEDIUM:
+                System.out.println("Medium level");
+                break;
+            case HIGH:
+                System.out.println("High level");
+                break;
+        }
+    }
+}
+```
+
+### Looping Through Enums
+```java
+// Using values() method
+for (Level level : Level.values()) {
+    System.out.println(level);
+}
+
+// Output:
+// LOW
+// MEDIUM
+// HIGH
+```
+
+## Enum Methods and Properties
+
+### Built-in Methods
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `values()` | `EnumType[]` | Returns array of all enum constants |
+| `valueOf(String)` | `EnumType` | Returns enum constant with specified name |
+| `name()` | `String` | Returns the name of the constant |
+| `ordinal()` | `int` | Returns the position (0-based index) |
+| `toString()` | `String` | Returns string representation |
+
+### Example Usage
+```java
+public class EnumMethods {
+    public static void main(String[] args) {
+        Level level = Level.HIGH;
+
+        System.out.println("Name: " + level.name());        // Name: HIGH
+        System.out.println("Ordinal: " + level.ordinal());  // Ordinal: 2
+        System.out.println("String: " + level.toString());  // String: HIGH
+
+        // Using valueOf
+        Level parsed = Level.valueOf("MEDIUM");
+        System.out.println("Parsed: " + parsed);            // Parsed: MEDIUM
+
+        // Get all values
+        Level[] allLevels = Level.values();
+        System.out.println("Total levels: " + allLevels.length); // Total levels: 3
+    }
+}
+```
+
+## Advanced Enum Features
+
+### Enums with Fields and Methods
+```java
+public enum Planet {
+    MERCURY(3.303e+23, 2.4397e6),
+    VENUS(4.869e+24, 6.0518e6),
+    EARTH(5.976e+24, 6.37814e6),
+    MARS(6.421e+23, 3.3972e6);
+
+    private final double mass;   // in kilograms
+    private final double radius; // in meters
+
+    // Constructor
+    Planet(double mass, double radius) {
+        this.mass = mass;
+        this.radius = radius;
+    }
+
+    // Instance methods
+    public double getMass() {
+        return mass;
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+
+    // Calculate surface gravity
+    public double surfaceGravity() {
+        return 6.67300E-11 * mass / (radius * radius);
+    }
+
+    public double surfaceWeight(double otherMass) {
+        return otherMass * surfaceGravity();
+    }
+}
+```
+
+### Enum with Abstract Methods
+```java
+public enum Operation {
+    PLUS("+") {
+        public double apply(double x, double y) {
+            return x + y;
+        }
+    },
+    MINUS("-") {
+        public double apply(double x, double y) {
+            return x - y;
+        }
+    },
+    MULTIPLY("*") {
+        public double apply(double x, double y) {
+            return x * y;
+        }
+    },
+    DIVIDE("/") {
+        public double apply(double x, double y) {
+            return x / y;
+        }
+    };
+
+    private final String symbol;
+
+    Operation(String symbol) {
+        this.symbol = symbol;
+    }
+
+    // Abstract method - must be implemented by each constant
+    public abstract double apply(double x, double y);
+
+    @Override
+    public String toString() {
+        return symbol;
+    }
+}
+```
+
+### Enum Implementing Interfaces
+```java
+interface Describable {
+    String getDescription();
+}
+
+public enum Priority implements Describable {
+    LOW("Not urgent"),
+    MEDIUM("Moderately important"),
+    HIGH("Very urgent"),
+    CRITICAL("Immediate attention required");
+
+    private final String description;
+
+    Priority(String description) {
+        this.description = description;
+    }
+
+    @Override
+    public String getDescription() {
+        return description;
+    }
+}
+```
+
+## Enum Best Practices
+
+### ✅ Do's
+1. **Use enums for fixed sets of constants**
+2. **Make enum constructors private** (they are by default)
+3. **Use meaningful names** for enum constants
+4. **Add methods when enums need behavior**
+5. **Use enums in switch statements** for better readability
+
+### ❌ Don'ts
+1. **Don't use enums for values that might change**
+2. **Don't compare enums using ==** when null-safety is important
+3. **Don't create too many enum constants** (affects memory)
+
+### Safe Enum Comparison
+```java
+public class SafeEnumComparison {
+    public static void main(String[] args) {
+        Level level1 = Level.HIGH;
+        Level level2 = null;
+
+        // Safe comparison using equals()
+        if (Objects.equals(level1, level2)) {
+            System.out.println("Levels are equal");
+        }
+
+        // Or check for null first
+        if (level1 != null && level1 == level2) {
+            System.out.println("Levels are equal");
+        }
+    }
+}
+```
+
+---
+
+# Part 2: Java Generics
+
+## Introduction to Generics
+
+**Generics** allow you to write classes, interfaces, and methods that work with different data types while providing compile-time type safety.
+
+### Benefits of Generics:
+- **Type Safety**: Catch errors at compile time
+- **Elimination of Casting**: No need for explicit type casting
+- **Code Reusability**: Write once, use with multiple types
+- **Performance**: No boxing/unboxing overhead
+
+### Before Generics (Java < 5)
+```java
+// Old way - no type safety
+List list = new ArrayList();
+list.add("Hello");
+list.add(42); // This compiles but may cause runtime errors
+
+String s = (String) list.get(0); // Explicit casting required
+```
+
+### With Generics (Java 5+)
+```java
+// Modern way - type safe
+List<String> list = new ArrayList<String>();
+list.add("Hello");
+// list.add(42); // Compile-time error!
+
+String s = list.get(0); // No casting needed
+```
+
+## Generic Classes
+
+### Basic Generic Class
+```java
+public class Box<T> {
+    private T value;
+
+    public void set(T value) {
+        this.value = value;
+    }
+
+    public T get() {
+        return value;
+    }
+
+    public boolean isEmpty() {
+        return value == null;
+    }
+}
+```
+
+### Using Generic Classes
+```java
+public class GenericClassExample {
+    public static void main(String[] args) {
+        // String Box
+        Box<String> stringBox = new Box<>();
+        stringBox.set("Hello World");
+        String message = stringBox.get(); // No casting!
+
+        // Integer Box
+        Box<Integer> intBox = new Box<>();
+        intBox.set(42);
+        Integer number = intBox.get();
+
+        // Custom Object Box
+        Box<Person> personBox = new Box<>();
+        personBox.set(new Person("Alice", 30));
+        Person person = personBox.get();
+    }
+}
+```
+
+### Multiple Type Parameters
+```java
+public class Pair<T, U> {
+    private T first;
+    private U second;
+
+    public Pair(T first, U second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public T getFirst() {
+        return first;
+    }
+
+    public U getSecond() {
+        return second;
+    }
+
+    public void setFirst(T first) {
+        this.first = first;
+    }
+
+    public void setSecond(U second) {
+        this.second = second;
+    }
+}
+
+// Usage
+Pair<String, Integer> nameAge = new Pair<>("Alice", 30);
+Pair<Double, Boolean> scorePass = new Pair<>(85.5, true);
+```
+
+## Generic Methods
+
+### Basic Generic Method
+```java
+public class GenericMethods {
+    // Generic method with single type parameter
+    public static <T> void swap(T[] array, int i, int j) {
+        T temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+
+    // Generic method with return type
+    public static <T> T getMiddle(T... values) {
+        return values[values.length / 2];
+    }
+
+    // Generic method with multiple parameters
+    public static <T, U> void printPair(T first, U second) {
+        System.out.println("First: " + first + ", Second: " + second);
+    }
+}
+```
+
+### Usage Examples
+```java
+public class GenericMethodUsage {
+    public static void main(String[] args) {
+        // Swapping strings
+        String[] names = {"Alice", "Bob", "Charlie"};
+        GenericMethods.swap(names, 0, 2);
+        System.out.println(Arrays.toString(names)); // [Charlie, Bob, Alice]
+
+        // Getting middle element
+        String middle = GenericMethods.getMiddle("A", "B", "C", "D", "E");
+        System.out.println("Middle: " + middle); // Middle: C
+
+        // Printing pairs
+        GenericMethods.printPair("Name", "Alice");
+        GenericMethods.printPair(42, true);
+    }
+}
+```
+
+## Bounded Type Parameters
+
+### Upper Bounded Wildcards
+```java
+// T must extend Number
+public class NumberBox<T extends Number> {
+    private T value;
+
+    public void set(T value) {
+        this.value = value;
+    }
+
+    public T get() {
+        return value;
+    }
+
+    // Can use Number methods
+    public double getDoubleValue() {
+        return value.doubleValue();
+    }
+
+    // Generic method with bounds
+    public static <T extends Number> double sum(T[] numbers) {
+        double total = 0.0;
+        for (T number : numbers) {
+            total += number.doubleValue();
+        }
+        return total;
+    }
+}
+```
+
+### Multiple Bounds
+```java
+// T must extend Number AND implement Comparable
+public class ComparableNumberBox<T extends Number & Comparable<T>> {
+    private T value;
+
+    public void set(T value) {
+        this.value = value;
+    }
+
+    public T get() {
+        return value;
+    }
+
+    public boolean isGreaterThan(T other) {
+        return value.compareTo(other) > 0;
+    }
+}
+```
+
+## Wildcards
+
+### Unbounded Wildcards (?)
+```java
+public class WildcardExamples {
+    // Accepts List of any type
+    public static void printList(List<?> list) {
+        for (Object item : list) {
+            System.out.println(item);
+        }
+    }
+
+    public static void main(String[] args) {
+        List<String> stringList = Arrays.asList("A", "B", "C");
+        List<Integer> intList = Arrays.asList(1, 2, 3);
+
+        printList(stringList); // Works
+        printList(intList);    // Works
+    }
+}
+```
+
+### Upper Bounded Wildcards (? extends)
+```java
+// PECS: Producer Extends, Consumer Super
+public class UpperBoundedWildcard {
+    // Can read from list, but cannot add (except null)
+    public static double sumNumbers(List<? extends Number> numbers) {
+        double sum = 0.0;
+        for (Number number : numbers) {
+            sum += number.doubleValue();
+        }
+        return sum;
+    }
+
+    public static void main(String[] args) {
+        List<Integer> intList = Arrays.asList(1, 2, 3);
+        List<Double> doubleList = Arrays.asList(1.1, 2.2, 3.3);
+
+        System.out.println(sumNumbers(intList));    // 6.0
+        System.out.println(sumNumbers(doubleList)); // 6.6
+    }
+}
+```
+
+### Lower Bounded Wildcards (? super)
+```java
+public class LowerBoundedWildcard {
+    // Can add to list, but reading gives Object
+    public static void addNumbers(List<? super Integer> numbers) {
+        numbers.add(1);
+        numbers.add(2);
+        numbers.add(3);
+    }
+
+    public static void main(String[] args) {
+        List<Number> numberList = new ArrayList<>();
+        List<Object> objectList = new ArrayList<>();
+
+        addNumbers(numberList); // Works
+        addNumbers(objectList); // Works
+
+        System.out.println(numberList); // [1, 2, 3]
+    }
+}
+```
+
+## Generic Best Practices
+
+### ✅ Best Practices
+1. **Use meaningful type parameter names**
+   - `T` for type, `E` for element, `K` for key, `V` for value
+2. **Use bounded wildcards appropriately**
+   - `? extends` for producers (reading)
+   - `? super` for consumers (writing)
+3. **Favor generic types over raw types**
+4. **Use diamond operator** (`<>`) for cleaner code
+
+### Generic Naming Conventions
+```java
+public interface List<E>           // E for Element
+public interface Map<K, V>         // K for Key, V for Value
+public class Box<T>               // T for Type
+public interface Comparable<T>     // T for Type being compared
+```
+
+---
+
+# Part 3: Java Sorting
+
+## Basic Sorting
+
+### Collections.sort() for Simple Types
+```java
+import java.util.*;
+
+public class BasicSorting {
+    public static void main(String[] args) {
+        // Sorting Strings (alphabetical)
+        List<String> names = Arrays.asList("Charlie", "Alice", "Bob");
+        Collections.sort(names);
+        System.out.println("Sorted names: " + names);
+        // Output: [Alice, Bob, Charlie]
+
+        // Sorting Numbers (ascending)
+        List<Integer> numbers = Arrays.asList(5, 2, 8, 1, 9);
+        Collections.sort(numbers);
+        System.out.println("Sorted numbers: " + numbers);
+        // Output: [1, 2, 5, 8, 9]
+
+        // Reverse sorting
+        Collections.sort(names, Collections.reverseOrder());
+        System.out.println("Reverse sorted: " + names);
+        // Output: [Charlie, Bob, Alice]
+    }
+}
+```
+
+### Sorting Arrays
+```java
+import java.util.Arrays;
+
+public class ArraySorting {
+    public static void main(String[] args) {
+        // Sorting primitive arrays
+        int[] numbers = {5, 2, 8, 1, 9};
+        Arrays.sort(numbers);
+        System.out.println("Sorted array: " + Arrays.toString(numbers));
+        // Output: [1, 2, 5, 8, 9]
+
+        // Sorting object arrays
+        String[] names = {"Charlie", "Alice", "Bob"};
+        Arrays.sort(names);
+        System.out.println("Sorted names: " + Arrays.toString(names));
+        // Output: [Alice, Bob, Charlie]
+    }
+}
+```
+
+## Comparable Interface
+
+The `Comparable` interface allows objects to define their natural ordering.
+
+### Implementing Comparable
+```java
+public class Person implements Comparable<Person> {
+    private String name;
+    private int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    // Natural ordering by age
+    @Override
+    public int compareTo(Person other) {
+        return Integer.compare(this.age, other.age);
+
+        // Alternative implementations:
+        // return this.age - other.age; // Simple but can overflow
+        // return this.name.compareTo(other.name); // Sort by name
+    }
+
+    // Getters, setters, toString...
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    @Override
+    public String toString() {
+        return name + "(" + age + ")";
+    }
+}
+```
+
+### Using Comparable Objects
+```java
+public class ComparableExample {
+    public static void main(String[] args) {
+        List<Person> people = Arrays.asList(
+            new Person("Alice", 30),
+            new Person("Bob", 25),
+            new Person("Charlie", 35)
+        );
+
+        System.out.println("Before sorting: " + people);
+        Collections.sort(people); // Uses compareTo() method
+        System.out.println("After sorting: " + people);
+        // Output: [Bob(25), Alice(30), Charlie(35)]
+    }
+}
+```
+
+## Comparator Interface
+
+The `Comparator` interface allows you to define custom sorting logic without modifying the class.
+
+### Creating Comparators
+```java
+import java.util.Comparator;
+
+public class ComparatorExamples {
+    public static void main(String[] args) {
+        List<Person> people = Arrays.asList(
+            new Person("Alice", 30),
+            new Person("Bob", 25),
+            new Person("Charlie", 35)
+        );
+
+        // Sort by name using anonymous class
+        Collections.sort(people, new Comparator<Person>() {
+            @Override
+            public int compare(Person p1, Person p2) {
+                return p1.getName().compareTo(p2.getName());
+            }
+        });
+        System.out.println("Sorted by name: " + people);
+
+        // Sort by age descending using lambda
+        Collections.sort(people, (p1, p2) -> Integer.compare(p2.getAge(), p1.getAge()));
+        System.out.println("Sorted by age desc: " + people);
+
+        // Sort using method reference
+        people.sort(Comparator.comparing(Person::getName));
+        System.out.println("Sorted by name (method ref): " + people);
+    }
+}
+```
+
+### Lambda Expressions for Sorting
+```java
+public class LambdaSorting {
+    public static void main(String[] args) {
+        List<String> words = Arrays.asList("banana", "apple", "cherry", "date");
+
+        // Sort by length
+        words.sort((s1, s2) -> Integer.compare(s1.length(), s2.length()));
+        System.out.println("By length: " + words);
+
+        // Sort by length using method reference
+        words.sort(Comparator.comparing(String::length));
+        System.out.println("By length (method ref): " + words);
+
+        // Sort by length, then alphabetically
+        words.sort(Comparator.comparing(String::length)
+                           .thenComparing(String::compareTo));
+        System.out.println("By length then alphabetically: " + words);
+    }
+}
+```
+
+## Advanced Sorting Techniques
+
+### Multiple Field Sorting
+```java
+public class Employee {
+    private String department;
+    private String name;
+    private int salary;
+
+    public Employee(String department, String name, int salary) {
+        this.department = department;
+        this.name = name;
+        this.salary = salary;
+    }
+
+    // Getters...
+    public String getDepartment() { return department; }
+    public String getName() { return name; }
+    public int getSalary() { return salary; }
+
+    @Override
+    public String toString() {
+        return department + "-" + name + "($" + salary + ")";
+    }
+}
+
+public class MultiFieldSorting {
+    public static void main(String[] args) {
+        List<Employee> employees = Arrays.asList(
+            new Employee("IT", "Alice", 75000),
+            new Employee("HR", "Bob", 65000),
+            new Employee("IT", "Charlie", 80000),
+            new Employee("HR", "Diana", 70000),
+            new Employee("IT", "Eve", 75000)
+        );
+
+        // Sort by department, then by salary descending, then by name
+        employees.sort(
+            Comparator.comparing(Employee::getDepartment)
+                     .thenComparing(Employee::getSalary, Comparator.reverseOrder())
+                     .thenComparing(Employee::getName)
+        );
+
+        employees.forEach(System.out::println);
+        // Output:
+        // HR-Diana($70000)
+        // HR-Bob($65000)
+        // IT-Charlie($80000)
+        // IT-Alice($75000)
+        // IT-Eve($75000)
+    }
+}
+```
+
+### Null-Safe Sorting
+```java
+public class NullSafeSorting {
+    public static void main(String[] args) {
+        List<String> words = Arrays.asList("apple", null, "banana", null, "cherry");
+
+        // Nulls first
+        words.sort(Comparator.nullsFirst(String::compareTo));
+        System.out.println("Nulls first: " + words);
+
+        // Nulls last
+        words.sort(Comparator.nullsLast(String::compareTo));
+        System.out.println("Nulls last: " + words);
+    }
+}
+```
+
+### Custom Sorting Logic
+```java
+public class CustomSortingLogic {
+    public static void main(String[] args) {
+        List<String> items = Arrays.asList("item1", "item10", "item2", "item20", "item3");
+
+        // Natural string sorting (lexicographic)
+        items.sort(String::compareTo);
+        System.out.println("Natural sort: " + items);
+        // Output: [item1, item10, item2, item20, item3]
+
+        // Custom numeric sorting
+        items.sort((s1, s2) -> {
+            int num1 = Integer.parseInt(s1.substring(4));
+            int num2 = Integer.parseInt(s2.substring(4));
+            return Integer.compare(num1, num2);
+        });
+        System.out.println("Numeric sort: " + items);
+        // Output: [item1, item2, item3, item10, item20]
+    }
+}
+```
+
+## Sorting Custom Objects
+
+### Complete Example with Multiple Sorting Options
+```java
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class Student {
+    private String name;
+    private int age;
+    private double gpa;
+    private String major;
+
+    public Student(String name, int age, double gpa, String major) {
+        this.name = name;
+        this.age = age;
+        this.gpa = gpa;
+        this.major = major;
+    }
+
+    // Getters
+    public String getName() { return name; }
+    public int getAge() { return age; }
+    public double getGpa() { return gpa; }
+    public String getMajor() { return major; }
+
+    @Override
+    public String toString() {
+        return String.format("%s(age:%d, gpa:%.1f, major:%s)",
+                           name, age, gpa, major);
+    }
+}
+
+public class StudentSorting {
+    public static void main(String[] args) {
+        List<Student> students = Arrays.asList(
+            new Student("Alice", 20, 3.8, "CS"),
+            new Student("Bob", 19, 3.5, "Math"),
+            new Student("Charlie", 21, 3.9, "CS"),
+            new Student("Diana", 20, 3.7, "Physics"),
+            new Student("Eve", 22, 3.6, "Math")
+        );
+
+        System.out.println("Original list:");
+        students.forEach(System.out::println);
+
+        // Sort by GPA descending
+        List<Student> byGpa = students.stream()
+            .sorted(Comparator.comparing(Student::getGpa).reversed())
+            .collect(Collectors.toList());
+        System.out.println("\nSorted by GPA (desc):");
+        byGpa.forEach(System.out::println);
+
+        // Sort by major, then by GPA descending
+        List<Student> byMajorThenGpa = students.stream()
+            .sorted(Comparator.comparing(Student::getMajor)
+                             .thenComparing(Student::getGpa).reversed())
+            .collect(Collectors.toList());
+        System.out.println("\nSorted by major, then GPA (desc):");
+        byMajorThenGpa.forEach(System.out::println);
+
+        // Find top 3 students by GPA
+        List<Student> top3 = students.stream()
+            .sorted(Comparator.comparing(Student::getGpa).reversed())
+            .limit(3)
+            .collect(Collectors.toList());
+        System.out.println("\nTop 3 by GPA:");
+        top3.forEach(System.out::println);
+    }
+}
+```
+
+### Enum-Based Sorting
+```java
+public enum Grade {
+    A(4.0), B(3.0), C(2.0), D(1.0), F(0.0);
+
+    private final double points;
+
+    Grade(double points) {
+        this.points = points;
+    }
+
+    public double getPoints() {
+        return points;
+    }
+}
+
+public class CourseGrade {
+    private String course;
+    private Grade grade;
+
+    public CourseGrade(String course, Grade grade) {
+        this.course = course;
+        this.grade = grade;
+    }
+
+    public String getCourse() { return course; }
+    public Grade getGrade() { return grade; }
+
+    @Override
+    public String toString() {
+        return course + ": " + grade;
+    }
+}
+
+public class EnumSorting {
+    public static void main(String[] args) {
+        List<CourseGrade> grades = Arrays.asList(
+            new CourseGrade("Math", Grade.B),
+            new CourseGrade("Science", Grade.A),
+            new CourseGrade("History", Grade.C),
+            new CourseGrade("English", Grade.A),
+            new CourseGrade("Art", Grade.B)
+        );
+
+        // Sort by grade (natural enum order)
+        grades.sort(Comparator.comparing(CourseGrade::getGrade));
+        System.out.println("Sorted by grade (natural order):");
+        grades.forEach(System.out::println);
+
+        // Sort by grade points (descending)
+        grades.sort(Comparator.comparing(
+            (CourseGrade cg) -> cg.getGrade().getPoints()).reversed());
+        System.out.println("\nSorted by grade points (desc):");
+        grades.forEach(System.out::println);
+    }
+}
+```
+
+## Summary
+
+### Enums Key Points
+- Use for fixed sets of constants
+- Provide type safety and prevent invalid values
+- Can have fields, methods, and constructors
+- Implement Comparable by default (declaration order)
+
+### Generics Key Points
+- Provide compile-time type safety
+- Eliminate casting and reduce runtime errors
+- Use bounded wildcards appropriately
+- Follow naming conventions (T, E, K, V)
+
+### Sorting Key Points
+- Use `Comparable` for natural ordering
+- Use `Comparator` for custom sorting logic
+- Leverage lambda expressions and method references
+- Chain multiple sorting criteria using `thenComparing()`
+- Handle null values with `nullsFirst()` and `nullsLast()`
+
+These three concepts work together powerfully in Java applications, providing type safety, flexibility, and robust data manipulation capabilities.

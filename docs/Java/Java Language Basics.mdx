@@ -1,0 +1,324 @@
+# Java Language Basics - Execution, Memory & JVM
+
+## Table of Contents
+- [Java Overview](#java-overview)
+- [Java Execution Process](#java-execution-process)
+- [Java Virtual Machine (JVM)](#java-virtual-machine-jvm)
+- [Memory Management](#memory-management)
+- [Code Compilation & Execution](#code-compilation--execution)
+- [Java Runtime Environment](#java-runtime-environment)
+- [Platform Independence](#platform-independence)
+
+## Java Overview
+
+Java is a high-level, object-oriented programming language developed by Sun Microsystems (now Oracle). Key characteristics:
+
+- **Platform Independent**: "Write Once, Run Anywhere" (WORA)
+- **Object-Oriented**: Everything is an object (except primitives)
+- **Strongly Typed**: Variables must be declared with specific types
+- **Memory Managed**: Automatic garbage collection
+- **Compiled and Interpreted**: Bytecode compilation + JVM interpretation
+
+## Java Execution Process
+
+### 1. Source Code (.java files)
+```java
+// Example: HelloWorld.java
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+```
+
+### 2. Compilation Process
+```bash
+javac HelloWorld.java  # Compiles to HelloWorld.class
+```
+
+**What happens during compilation:**
+- Source code (.java) → Bytecode (.class)
+- Syntax checking and error reporting
+- Optimization at compile time
+- Generation of platform-independent bytecode
+
+### 3. Execution Process
+```bash
+java HelloWorld  # Runs the bytecode
+```
+
+**Execution flow:**
+1. JVM loads the bytecode
+2. Bytecode verification
+3. Just-In-Time (JIT) compilation
+4. Native machine code execution
+
+## Java Virtual Machine (JVM)
+
+### JVM Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│                JVM                          │
+├─────────────────────────────────────────────┤
+│  Class Loader Subsystem                     │
+├─────────────────────────────────────────────┤
+│  Memory Areas:                              │
+│  ├─ Method Area                             │
+│  ├─ Heap Memory                             │
+│  ├─ Stack Memory                            │
+│  ├─ PC (Program Counter) Register           │
+│  └─ Native Method Stack                     │
+├─────────────────────────────────────────────┤
+│  Execution Engine:                          │
+│  ├─ Interpreter                             │
+│  ├─ JIT Compiler                            │
+│  └─ Garbage Collector                       │
+├─────────────────────────────────────────────┤
+│  Native Method Interface (JNI)              │
+└─────────────────────────────────────────────┘
+```
+
+### JVM Components
+
+#### 1. Class Loader Subsystem
+- **Loading**: Loads .class files into memory
+- **Linking**: Verification, preparation, resolution
+- **Initialization**: Static variables and blocks
+
+#### 2. Memory Areas
+- **Method Area**: Class-level data, constants, static variables
+- **Heap**: Object instances and arrays
+- **Stack**: Method call frames, local variables
+- **PC Register**: Current executing instruction pointer
+- **Native Method Stack**: Native method calls
+
+#### 3. Execution Engine
+- **Interpreter**: Executes bytecode line by line
+- **JIT Compiler**: Compiles frequently used bytecode to native code
+- **Garbage Collector**: Automatic memory management
+
+## Memory Management
+
+### Heap Memory Structure
+
+```
+┌─────────────────────────────────────────────┐
+│                HEAP MEMORY                  │
+├─────────────────────────────────────────────┤
+│  Young Generation:                          │
+│  ├─ Eden Space (new objects)                │
+│  ├─ Survivor Space S0                       │
+│  └─ Survivor Space S1                       │
+├─────────────────────────────────────────────┤
+│  Old Generation (Tenured):                  │
+│  └─ Long-lived objects                      │
+├─────────────────────────────────────────────┤
+│  Metaspace (Java 8+):                       │
+│  └─ Class metadata                          │
+└─────────────────────────────────────────────┘
+```
+
+### Stack Memory
+
+```java
+public class StackExample {
+    public static void main(String[] args) {    // Frame 1
+        int x = 10;
+        methodA(x);
+    }
+
+    static void methodA(int a) {                // Frame 2
+        int b = 20;
+        methodB(a, b);
+    }
+
+    static void methodB(int p, int q) {         // Frame 3
+        int result = p + q;
+        System.out.println(result);
+    }  // Frame 3 destroyed
+}      // Frame 2 destroyed, Frame 1 destroyed
+```
+
+**Stack Frame Contains:**
+- Local variables
+- Method parameters
+- Return address
+- Intermediate values
+
+### Memory Allocation Example
+
+```java
+public class MemoryExample {
+    static int staticVar = 100;        // Method Area
+
+    public static void main(String[] args) {
+        int localVar = 10;             // Stack
+        String str = "Hello";          // String Pool (Heap)
+        Person p = new Person("John"); // Heap
+
+        // localVar, str reference → Stack
+        // "Hello", Person object → Heap
+        // staticVar → Method Area
+    }
+}
+```
+
+## Code Compilation & Execution
+
+### Compilation Steps
+
+1. **Lexical Analysis**: Source code → Tokens
+2. **Syntax Analysis**: Tokens → Abstract Syntax Tree (AST)
+3. **Semantic Analysis**: Type checking, scope resolution
+4. **Code Generation**: AST → Bytecode
+5. **Optimization**: Bytecode optimization
+
+### Bytecode Example
+
+```java
+// Java source
+public int add(int a, int b) {
+    return a + b;
+}
+```
+
+```
+// Corresponding bytecode
+public int add(int, int);
+  Code:
+     0: iload_1      // Load first parameter
+     1: iload_2      // Load second parameter
+     2: iadd         // Add integers
+     3: ireturn      // Return result
+```
+
+### JIT Compilation Process
+
+```
+Bytecode → Profiling → Hot Spot Detection → Native Code Generation
+```
+
+**JIT Optimization Levels:**
+- **C1 Compiler**: Fast compilation, basic optimizations
+- **C2 Compiler**: Slower compilation, advanced optimizations
+- **Tiered Compilation**: Combines C1 and C2
+
+## Java Runtime Environment
+
+### JRE Components
+
+```
+┌─────────────────────────────────────────────┐
+│  Java Runtime Environment (JRE)            │
+├─────────────────────────────────────────────┤
+│  ├─ Java Virtual Machine (JVM)             │
+│  ├─ Core Libraries (java.lang, java.util)  │
+│  ├─ Supporting Files                        │
+│  └─ Configuration Files                     │
+└─────────────────────────────────────────────┘
+```
+
+### JDK vs JRE vs JVM
+
+```
+┌─────────────────────────────────────────────┐
+│  Java Development Kit (JDK)                │
+│  ├─ Development Tools (javac, jar, etc.)   │
+│  └─ Java Runtime Environment (JRE)         │
+│      ├─ Java Virtual Machine (JVM)         │
+│      └─ Core Libraries                     │
+└─────────────────────────────────────────────┘
+```
+
+## Platform Independence
+
+### How Java Achieves Platform Independence
+
+1. **Bytecode**: Intermediate representation
+2. **JVM**: Platform-specific implementation
+3. **Standard Libraries**: Consistent APIs across platforms
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│Java Source  │    │  Bytecode   │    │   Native    │
+│  (.java)    │───▶│  (.class)   │───▶│   Code      │
+│             │    │Platform     │    │Platform     │
+│Platform     │    │Independent  │    │Dependent    │
+│Independent  │    │             │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Memory Management Deep Dive
+
+### Garbage Collection
+
+**Types of GC:**
+- **Serial GC**: Single-threaded
+- **Parallel GC**: Multi-threaded
+- **CMS GC**: Concurrent Mark Sweep
+- **G1 GC**: Garbage First
+- **ZGC/Shenandoah**: Low-latency collectors
+
+### GC Process Example
+
+```java
+public class GCExample {
+    public static void main(String[] args) {
+        // Objects created in Eden space
+        Person p1 = new Person("Alice");
+        Person p2 = new Person("Bob");
+
+        p1 = null; // p1 becomes eligible for GC
+
+        // Force garbage collection (not recommended in production)
+        System.gc();
+    }
+}
+```
+
+## Performance Considerations
+
+### JVM Tuning Parameters
+
+```bash
+# Heap size
+java -Xms512m -Xmx2g MyApp
+
+# Garbage Collector
+java -XX:+UseG1GC MyApp
+
+# JIT compilation
+java -XX:+TieredCompilation MyApp
+
+# Memory debugging
+java -XX:+PrintGCDetails MyApp
+```
+
+### Best Practices
+
+1. **Memory Management**:
+   - Avoid memory leaks
+   - Use appropriate data structures
+   - Close resources properly
+
+2. **Performance**:
+   - Minimize object creation in loops
+   - Use StringBuilder for string concatenation
+   - Profile your application
+
+3. **JVM Configuration**:
+   - Set appropriate heap sizes
+   - Choose suitable garbage collector
+   - Monitor JVM metrics
+
+## Summary
+
+Java's execution model provides platform independence through bytecode compilation and JVM interpretation. The JVM manages memory automatically through garbage collection and optimizes performance through JIT compilation. Understanding these concepts is crucial for writing efficient Java applications and troubleshooting performance issues.
+
+Key takeaways:
+- Java source code compiles to platform-independent bytecode
+- JVM provides runtime environment with automatic memory management
+- Memory is organized into heap, stack, and method areas
+- JIT compilation optimizes frequently executed code
+- Garbage collection automatically manages object lifecycle

@@ -1,0 +1,318 @@
+# Java Call by Value vs Call by Reference
+
+## Overview
+
+Java uses **call by value** for all parameter passing, but the behavior differs based on the type of data being passed:
+- **Primitive types**: The actual value is copied
+- **Reference types (objects)**: The reference (memory address) is copied, not the object itself
+
+## Key Concept: Java is Always Call by Value
+
+```java
+// This is the fundamental rule:
+// Java ALWAYS passes a COPY of the value to methods
+```
+
+## Primitive Types - Call by Value
+
+When primitive types are passed to methods, a copy of the actual value is created.
+
+### Example with Primitives
+
+```java
+public class PrimitiveExample {
+    public static void main(String[] args) {
+        int x = 10;
+        System.out.println("Before method call: x = " + x); // x = 10
+
+        modifyPrimitive(x);
+
+        System.out.println("After method call: x = " + x);  // x = 10 (unchanged)
+    }
+
+    public static void modifyPrimitive(int num) {
+        num = 100; // This only changes the local copy
+        System.out.println("Inside method: num = " + num); // num = 100
+    }
+}
+```
+
+**Output:**
+```
+Before method call: x = 10
+Inside method: num = 100
+After method call: x = 10
+```
+
+### Memory Visualization for Primitives
+
+```
+Stack Memory:
+┌─────────────────┐
+│ main() method   │
+│ x = 10          │ ← Original variable
+└─────────────────┘
+┌─────────────────┐
+│ modifyPrimitive │
+│ num = 10 → 100  │ ← Copy of the value
+└─────────────────┘
+```
+
+## Reference Types - Call by Value (of the Reference)
+
+When objects are passed to methods, a copy of the reference (memory address) is passed, not the object itself.
+
+### Example with Objects
+
+```java
+class Person {
+    String name;
+    int age;
+
+    Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    @Override
+    public String toString() {
+        return "Person{name='" + name + "', age=" + age + "}";
+    }
+}
+
+public class ReferenceExample {
+    public static void main(String[] args) {
+        Person person = new Person("Alice", 25);
+        System.out.println("Before method call: " + person);
+
+        modifyObject(person);
+
+        System.out.println("After method call: " + person);
+    }
+
+    public static void modifyObject(Person p) {
+        p.name = "Bob";     // This modifies the original object
+        p.age = 30;         // This modifies the original object
+        System.out.println("Inside method: " + p);
+    }
+}
+```
+
+**Output:**
+```
+Before method call: Person{name='Alice', age=25}
+Inside method: Person{name='Bob', age=30}
+After method call: Person{name='Bob', age=30}
+```
+
+### Memory Visualization for Objects
+
+```
+Stack Memory:                    Heap Memory:
+┌─────────────────┐             ┌──────────────────┐
+│ main() method   │             │ Person Object    │
+│ person = @123   │ ─────────→  │ name = "Alice"   │
+└─────────────────┘             │ age = 25         │
+┌─────────────────┐             └──────────────────┘
+│ modifyObject()  │                      ↑
+│ p = @123        │ ─────────────────────┘
+└─────────────────┘
+```
+
+## Common Misconception: Reassigning References
+
+Many developers think Java passes references by reference, but this example proves otherwise:
+
+```java
+public class ReassignmentExample {
+    public static void main(String[] args) {
+        Person person1 = new Person("Alice", 25);
+        System.out.println("Before method: " + person1);
+
+        reassignReference(person1);
+
+        System.out.println("After method: " + person1); // Still Alice!
+    }
+
+    public static void reassignReference(Person p) {
+        p = new Person("Charlie", 35); // Creates new object, assigns to local copy
+        System.out.println("Inside method: " + p);
+    }
+}
+```
+
+**Output:**
+```
+Before method: Person{name='Alice', age=25}
+Inside method: Person{name='Charlie', age=35}
+After method: Person{name='Alice', age=25}
+```
+
+### Why Reassignment Doesn't Work
+
+```
+Initial State:
+Stack:                          Heap:
+┌─────────────────┐            ┌──────────────────┐
+│ person1 = @123  │ ────────→  │ Alice, 25        │
+└─────────────────┘            └──────────────────┘
+┌─────────────────┐
+│ p = @123        │ ────────→  (same object)
+└─────────────────┘
+
+After Reassignment:
+┌─────────────────┐            ┌──────────────────┐
+│ person1 = @123  │ ────────→  │ Alice, 25        │
+└─────────────────┘            └──────────────────┘
+┌─────────────────┐            ┌──────────────────┐
+│ p = @456        │ ────────→  │ Charlie, 35      │
+└─────────────────┘            └──────────────────┘
+```
+
+## Arrays - Special Case of Reference Types
+
+Arrays behave like objects since they are reference types:
+
+```java
+public class ArrayExample {
+    public static void main(String[] args) {
+        int[] numbers = {1, 2, 3, 4, 5};
+        System.out.println("Before: " + Arrays.toString(numbers));
+
+        modifyArray(numbers);
+
+        System.out.println("After: " + Arrays.toString(numbers));
+
+        // But reassignment doesn't affect original
+        reassignArray(numbers);
+        System.out.println("After reassign: " + Arrays.toString(numbers));
+    }
+
+    public static void modifyArray(int[] arr) {
+        arr[0] = 100; // Modifies original array
+    }
+
+    public static void reassignArray(int[] arr) {
+        arr = new int[]{10, 20, 30}; // Only affects local copy
+    }
+}
+```
+
+**Output:**
+```
+Before: [1, 2, 3, 4, 5]
+After: [100, 2, 3, 4, 5]
+After reassign: [100, 2, 3, 4, 5]
+```
+
+## String - Special Reference Type
+
+Strings are immutable, so even though they're reference types, they behave like primitives in method calls:
+
+```java
+public class StringExample {
+    public static void main(String[] args) {
+        String message = "Hello";
+        System.out.println("Before: " + message);
+
+        modifyString(message);
+
+        System.out.println("After: " + message); // Still "Hello"
+    }
+
+    public static void modifyString(String str) {
+        str = "World"; // Creates new String, assigns to local copy
+        System.out.println("Inside method: " + str);
+    }
+}
+```
+
+## Wrapper Classes (Integer, Double, etc.)
+
+Wrapper classes are immutable like String:
+
+```java
+public class WrapperExample {
+    public static void main(String[] args) {
+        Integer num = 10;
+        System.out.println("Before: " + num);
+
+        modifyWrapper(num);
+
+        System.out.println("After: " + num); // Still 10
+    }
+
+    public static void modifyWrapper(Integer n) {
+        n = 100; // Creates new Integer, assigns to local copy
+    }
+}
+```
+
+## Practical Examples and Best Practices
+
+### 1. Returning Modified Objects
+
+```java
+public class BestPracticeExample {
+    // Good practice: Return the modified object
+    public static Person updatePersonAge(Person p, int newAge) {
+        p.age = newAge;
+        return p; // Return for method chaining
+    }
+
+    // For immutable objects, create new instances
+    public static String updateString(String str) {
+        return str.toUpperCase(); // Must return new string
+    }
+}
+```
+
+### 2. Defensive Copying
+
+```java
+public class DefensiveCopying {
+    private List<String> names = new ArrayList<>();
+
+    // Bad: Exposes internal state
+    public List<String> getNames() {
+        return names;
+    }
+
+    // Good: Return defensive copy
+    public List<String> getNamesCopy() {
+        return new ArrayList<>(names);
+    }
+
+    // Good: Accept copy to prevent external modification
+    public void setNames(List<String> names) {
+        this.names = new ArrayList<>(names);
+    }
+}
+```
+
+## Summary Table
+
+| Type | What's Passed | Original Modified? | Example |
+|------|---------------|-------------------|---------|
+| Primitive (`int`, `double`, `boolean`) | Copy of value | ❌ No | `int x = 5` |
+| Mutable Object (`List`, `Person`) | Copy of reference | ✅ Yes | `person.name = "New"` |
+| Immutable Object (`String`, `Integer`) | Copy of reference | ❌ No | `str = "New"` |
+| Array | Copy of reference | ✅ Yes | `arr[0] = 10` |
+
+## Key Takeaways
+
+1. **Java is ALWAYS call by value** - no exceptions
+2. **For primitives**: Value is copied, original unchanged
+3. **For objects**: Reference is copied, object can be modified through the copy
+4. **Reassignment never affects the original** reference in the calling method
+5. **Immutable objects** (String, wrapper classes) behave like primitives
+6. **Arrays are objects** and follow object rules
+7. **Use defensive copying** when necessary to protect object state
+
+## Memory Management Tips
+
+- Understand the difference between stack (method parameters) and heap (objects)
+- Be careful with mutable objects in multi-threaded environments
+- Consider using immutable objects when possible
+- Use builder patterns for complex object construction
+- Implement proper `equals()` and `hashCode()` methods for custom objects

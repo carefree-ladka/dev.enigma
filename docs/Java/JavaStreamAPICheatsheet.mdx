@@ -1,0 +1,373 @@
+# Java Stream API Cheatsheet
+
+## Table of Contents
+1. [Stream Creation](#stream-creation)
+2. [Intermediate Operations](#intermediate-operations)
+3. [Terminal Operations](#terminal-operations)
+4. [Collectors](#collectors)
+5. [Primitive Streams](#primitive-streams)
+6. [Common Patterns](#common-patterns)
+7. [Performance Tips](#performance-tips)
+
+## Stream Creation
+
+### From Collections
+```java
+List<String> list = Arrays.asList("a", "b", "c");
+Stream<String> stream = list.stream();
+Stream<String> parallelStream = list.parallelStream();
+```
+
+### From Arrays
+```java
+String[] array = {"a", "b", "c"};
+Stream<String> stream = Arrays.stream(array);
+Stream<String> streamPart = Arrays.stream(array, 1, 3); // from index 1 to 2
+```
+
+### Static Methods
+```java
+Stream<String> empty = Stream.empty();
+Stream<String> single = Stream.of("a");
+Stream<String> multiple = Stream.of("a", "b", "c");
+Stream<Integer> infinite = Stream.generate(() -> 1);
+Stream<Integer> sequence = Stream.iterate(0, n -> n + 2); // 0, 2, 4, 6...
+Stream<Integer> limited = Stream.iterate(0, n -> n < 10, n -> n + 1); // Java 9+
+```
+
+### From Files and I/O
+```java
+Stream<String> lines = Files.lines(Paths.get("file.txt"));
+Stream<Path> paths = Files.walk(Paths.get("directory"));
+```
+
+### From Random Numbers
+```java
+Random random = new Random();
+Stream<Integer> randomInts = random.ints().boxed();
+IntStream randomIntStream = random.ints(10); // 10 random integers
+```
+
+## Intermediate Operations
+
+### Filtering
+```java
+stream.filter(x -> x.length() > 2)
+stream.filter(Objects::nonNull)
+stream.filter(String::isEmpty)
+```
+
+### Mapping
+```java
+stream.map(String::toUpperCase)
+stream.map(s -> s.length())
+stream.mapToInt(String::length) // Returns IntStream
+stream.mapToLong(Long::parseLong)
+stream.mapToDouble(Double::parseDouble)
+```
+
+### Flat Mapping
+```java
+// Flatten nested collections
+stream.flatMap(Collection::stream)
+stream.flatMapToInt(s -> s.chars()) // String to IntStream of characters
+```
+
+### Sorting
+```java
+stream.sorted() // Natural ordering
+stream.sorted(Comparator.reverseOrder())
+stream.sorted(Comparator.comparing(String::length))
+stream.sorted(Comparator.comparing(Person::getName).thenComparing(Person::getAge))
+```
+
+### Limiting and Skipping
+```java
+stream.limit(5) // First 5 elements
+stream.skip(3)  // Skip first 3 elements
+stream.takeWhile(x -> x.length() < 5) // Java 9+
+stream.dropWhile(x -> x.length() < 5) // Java 9+
+```
+
+### Distinct and Peek
+```java
+stream.distinct() // Remove duplicates
+stream.peek(System.out::println) // Debug/side effects
+```
+
+## Terminal Operations
+
+### Collection Operations
+```java
+List<String> list = stream.collect(Collectors.toList());
+Set<String> set = stream.collect(Collectors.toSet());
+String joined = stream.collect(Collectors.joining(", "));
+```
+
+### Finding Elements
+```java
+Optional<String> first = stream.findFirst();
+Optional<String> any = stream.findAny();
+boolean anyMatch = stream.anyMatch(s -> s.startsWith("a"));
+boolean allMatch = stream.allMatch(s -> s.length() > 0);
+boolean noneMatch = stream.noneMatch(String::isEmpty);
+```
+
+### Reduction
+```java
+Optional<String> reduced = stream.reduce((a, b) -> a + b);
+String reduced = stream.reduce("", (a, b) -> a + b);
+int sum = stream.reduce(0, Integer::sum);
+```
+
+### Counting and Statistics
+```java
+long count = stream.count();
+OptionalInt max = intStream.max();
+OptionalInt min = intStream.min();
+```
+
+### For Each
+```java
+stream.forEach(System.out::println);
+stream.forEachOrdered(System.out::println); // Maintains order in parallel streams
+```
+
+## Collectors
+
+### Basic Collectors
+```java
+// To Collections
+.collect(Collectors.toList())
+.collect(Collectors.toSet())
+.collect(Collectors.toCollection(TreeSet::new))
+
+// To Map
+.collect(Collectors.toMap(keyMapper, valueMapper))
+.collect(Collectors.toMap(Person::getId, Function.identity()))
+
+// Joining
+.collect(Collectors.joining())
+.collect(Collectors.joining(", "))
+.collect(Collectors.joining(", ", "[", "]"))
+```
+
+### Grouping and Partitioning
+```java
+// Group by
+Map<Integer, List<String>> byLength =
+    stream.collect(Collectors.groupingBy(String::length));
+
+Map<Integer, Set<String>> byLengthSet =
+    stream.collect(Collectors.groupingBy(String::length, Collectors.toSet()));
+
+// Partition (boolean grouping)
+Map<Boolean, List<String>> partition =
+    stream.collect(Collectors.partitioningBy(s -> s.length() > 3));
+```
+
+### Statistical Collectors
+```java
+// Counting
+Map<String, Long> counts =
+    stream.collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+// Statistics
+IntSummaryStatistics stats =
+    stream.collect(Collectors.summarizingInt(String::length));
+
+// Min/Max
+Optional<String> longest =
+    stream.collect(Collectors.maxBy(Comparator.comparing(String::length)));
+```
+
+### Advanced Collectors
+```java
+// Downstream collectors
+Map<Integer, String> lengthToJoined = stream.collect(
+    Collectors.groupingBy(String::length, Collectors.joining(", ")));
+
+// Mapping collector
+Set<Integer> lengths = stream.collect(
+    Collectors.mapping(String::length, Collectors.toSet()));
+
+// Filtering collector (Java 9+)
+List<String> longStrings = stream.collect(
+    Collectors.filtering(s -> s.length() > 3, Collectors.toList()));
+```
+
+## Primitive Streams
+
+### IntStream
+```java
+IntStream.range(1, 5)        // 1, 2, 3, 4
+IntStream.rangeClosed(1, 5)  // 1, 2, 3, 4, 5
+IntStream.of(1, 2, 3, 4, 5)
+
+// Statistics
+OptionalInt max = intStream.max();
+OptionalInt min = intStream.min();
+int sum = intStream.sum();
+OptionalDouble average = intStream.average();
+IntSummaryStatistics stats = intStream.summaryStatistics();
+```
+
+### LongStream and DoubleStream
+```java
+LongStream.range(1L, 1000000L)
+DoubleStream.of(1.0, 2.0, 3.0)
+
+// Convert between streams
+intStream.asLongStream()
+intStream.asDoubleStream()
+intStream.boxed() // IntStream to Stream<Integer>
+```
+
+## Common Patterns
+
+### Find Maximum/Minimum
+```java
+// Find person with max age
+Optional<Person> oldest = people.stream()
+    .max(Comparator.comparing(Person::getAge));
+
+// Find longest string
+Optional<String> longest = strings.stream()
+    .max(Comparator.comparing(String::length));
+```
+
+### Group and Count
+```java
+// Count occurrences
+Map<String, Long> wordCounts = words.stream()
+    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
+// Group by property and count
+Map<String, Long> countByCity = people.stream()
+    .collect(Collectors.groupingBy(Person::getCity, Collectors.counting()));
+```
+
+### Nested Grouping
+```java
+// Group by department, then by salary range
+Map<String, Map<String, List<Employee>>> grouped = employees.stream()
+    .collect(Collectors.groupingBy(Employee::getDepartment,
+        Collectors.groupingBy(emp -> emp.getSalary() > 50000 ? "High" : "Low")));
+```
+
+### Custom Collectors
+```java
+// Create a custom collector for comma-separated values
+Collector<String, ?, String> customJoining = Collector.of(
+    StringBuilder::new,                    // supplier
+    (sb, s) -> sb.append(s).append(", "), // accumulator
+    StringBuilder::append,                 // combiner
+    sb -> sb.toString()                   // finisher
+);
+```
+
+### Flat Map Examples
+```java
+// Get all words from sentences
+List<String> words = sentences.stream()
+    .flatMap(sentence -> Arrays.stream(sentence.split(" ")))
+    .collect(Collectors.toList());
+
+// Get all phone numbers from people
+List<String> allPhones = people.stream()
+    .flatMap(person -> person.getPhones().stream())
+    .collect(Collectors.toList());
+```
+
+### Complex Filtering and Mapping
+```java
+// Chain multiple operations
+List<String> result = people.stream()
+    .filter(person -> person.getAge() > 18)
+    .filter(person -> person.getCity().equals("NYC"))
+    .map(Person::getName)
+    .map(String::toUpperCase)
+    .sorted()
+    .collect(Collectors.toList());
+```
+
+## Performance Tips
+
+### Parallel Streams
+```java
+// Use parallel streams for CPU-intensive operations on large datasets
+list.parallelStream()
+    .filter(expensiveOperation)
+    .collect(Collectors.toList());
+
+// Sequential processing when needed
+parallelStream.sequential()
+```
+
+### Stream Ordering
+```java
+// Unordered streams can be faster for certain operations
+set.stream()
+    .unordered()
+    .parallel()
+    .map(operation)
+    .collect(Collectors.toSet());
+```
+
+### Early Termination
+```java
+// Use findFirst() or findAny() for early termination
+Optional<String> found = hugelist.stream()
+    .filter(expensiveCondition)
+    .findFirst();
+
+// Use anyMatch() instead of filter().findAny().isPresent()
+boolean exists = list.stream().anyMatch(condition);
+```
+
+### Avoid Boxing
+```java
+// Use primitive streams to avoid boxing
+int sum = list.stream()
+    .mapToInt(Integer::intValue)
+    .sum();
+
+// Instead of
+int sum = list.stream()
+    .reduce(0, Integer::sum);
+```
+
+### Method References
+```java
+// Method references are often more efficient than lambdas
+list.stream().map(String::toLowerCase)     // Good
+list.stream().map(s -> s.toLowerCase())    // Less efficient
+
+list.stream().filter(Objects::nonNull)    // Good
+list.stream().filter(x -> x != null)      // Less efficient
+```
+
+## Common Anti-Patterns to Avoid
+
+```java
+// Don't use streams for simple iterations
+// BAD
+list.stream().forEach(System.out::println);
+// GOOD
+for (String item : list) {
+    System.out.println(item);
+}
+
+// Don't modify external state in stream operations
+// BAD
+List<String> result = new ArrayList<>();
+list.stream().forEach(result::add);
+// GOOD
+List<String> result = list.stream().collect(Collectors.toList());
+
+// Don't use parallel streams for small datasets or I/O operations
+// BAD
+smallList.parallelStream().map(this::callWebService)
+// GOOD
+smallList.stream().map(this::callWebService)
+```

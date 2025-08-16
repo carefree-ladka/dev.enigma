@@ -1,0 +1,3544 @@
+# Java Wrapper Classes, Lambda, Regex & Annotations
+
+## Table of Contents
+
+### Part 1: Wrapper Classes
+- [What are Wrapper Classes?](#what-are-wrapper-classes)
+- [Primitive to Wrapper Mapping](#primitive-to-wrapper-mapping)
+- [Autoboxing and Unboxing](#autoboxing-and-unboxing)
+- [Wrapper Class Methods](#wrapper-class-methods)
+- [Practical Usage](#practical-usage)
+
+### Part 2: Lambda Expressions
+- [Introduction to Lambda](#introduction-to-lambda)
+- [Lambda Syntax](#lambda-syntax)
+- [Functional Interfaces](#functional-interfaces)
+- [Built-in Functional Interfaces](#built-in-functional-interfaces)
+- [Method References](#method-references)
+
+### Part 3: Regular Expressions
+- [Regex Fundamentals](#regex-fundamentals)
+- [Pattern and Matcher Classes](#pattern-and-matcher-classes)
+- [Common Regex Patterns](#common-regex-patterns)
+- [Practical Regex Examples](#practical-regex-examples)
+
+### Part 4: Annotations
+- [Understanding Annotations](#understanding-annotations)
+- [Built-in Annotations](#built-in-annotations)
+- [Custom Annotations](#custom-annotations)
+- [Annotation Processing](#annotation-processing)
+
+---
+
+# Part 1: Wrapper Classes
+
+## What are Wrapper Classes?
+
+Wrapper classes provide a way to use primitive data types (int, boolean, etc..) as objects.
+
+### Why Wrapper Classes?
+- **Collections Requirement**: Collections like ArrayList can only store objects, not primitives
+- **Method Availability**: Wrapper classes provide useful methods for data conversion
+- **Null Support**: Wrapper classes can hold null values, primitives cannot
+- **Generic Type Parameters**: Required for generics (e.g., `List<Integer>`)
+
+## Primitive to Wrapper Mapping
+
+| Primitive Type | Wrapper Class | Size (bytes) | Range |
+|---------------|---------------|--------------|--------|
+| `byte` | `Byte` | 1 | -128 to 127 |
+| `short` | `Short` | 2 | -32,768 to 32,767 |
+| `int` | `Integer` | 4 | -2³¹ to 2³¹-1 |
+| `long` | `Long` | 8 | -2⁶³ to 2⁶³-1 |
+| `float` | `Float` | 4 | ±3.4E±38 (7 digits) |
+| `double` | `Double` | 8 | ±1.7E±308 (15 digits) |
+| `boolean` | `Boolean` | 1 bit | true/false |
+| `char` | `Character` | 2 | 0 to 65,535 (Unicode) |
+
+## Autoboxing and Unboxing
+
+### Autoboxing (Primitive to Wrapper)
+```java
+public class AutoboxingExample {
+    public static void main(String[] args) {
+        // Automatic conversion from primitive to wrapper
+        Integer myInt = 5;           // int -> Integer
+        Double myDouble = 5.99;      // double -> Double
+        Boolean myBoolean = true;    // boolean -> Boolean
+        Character myChar = 'A';      // char -> Character
+
+        System.out.println(myInt);     // Output: 5
+        System.out.println(myDouble);  // Output: 5.99
+        System.out.println(myBoolean); // Output: true
+        System.out.println(myChar);    // Output: A
+
+        // Collections with autoboxing
+        ArrayList<Integer> numbers = new ArrayList<>();
+        numbers.add(10);    // Automatically boxes int to Integer
+        numbers.add(20);
+        numbers.add(30);
+    }
+}
+```
+
+### Unboxing (Wrapper to Primitive)
+```java
+public class UnboxingExample {
+    public static void main(String[] args) {
+        Integer wrapperInt = 100;
+        Double wrapperDouble = 25.5;
+
+        // Automatic conversion from wrapper to primitive
+        int primitiveInt = wrapperInt;        // Integer -> int
+        double primitiveDouble = wrapperDouble; // Double -> double
+
+        // Arithmetic operations trigger unboxing
+        Integer a = 10;
+        Integer b = 20;
+        int sum = a + b;  // Both Integer objects are unboxed to int
+
+        System.out.println("Sum: " + sum); // Output: Sum: 30
+    }
+}
+```
+
+### Null Pointer Exception Risk
+```java
+public class NPEExample {
+    public static void main(String[] args) {
+        Integer nullInteger = null;
+
+        try {
+            int value = nullInteger; // NullPointerException!
+        } catch (NullPointerException e) {
+            System.out.println("Cannot unbox null wrapper: " + e.getMessage());
+        }
+
+        // Safe approach
+        if (nullInteger != null) {
+            int safeValue = nullInteger;
+            System.out.println("Safe value: " + safeValue);
+        }
+    }
+}
+```
+
+## Wrapper Class Methods
+
+### Value Extraction Methods
+```java
+public class ValueExtractionExample {
+    public static void main(String[] args) {
+        Integer intWrapper = 42;
+        Double doubleWrapper = 3.14159;
+        Character charWrapper = 'Z';
+        Boolean boolWrapper = true;
+
+        // Extract primitive values
+        int intValue = intWrapper.intValue();
+        byte byteValue = intWrapper.byteValue();
+        double doubleValue = intWrapper.doubleValue();
+
+        double doubleVal = doubleWrapper.doubleValue();
+        float floatVal = doubleWrapper.floatValue();
+        int truncatedInt = doubleWrapper.intValue(); // Truncates decimal
+
+        char charValue = charWrapper.charValue();
+        boolean boolValue = boolWrapper.booleanValue();
+
+        System.out.println("Integer as int: " + intValue);        // 42
+        System.out.println("Integer as byte: " + byteValue);      // 42
+        System.out.println("Integer as double: " + doubleValue); // 42.0
+        System.out.println("Double truncated: " + truncatedInt); // 3
+    }
+}
+```
+
+### String Conversion Methods
+```java
+public class StringConversionExample {
+    public static void main(String[] args) {
+        Integer number = 12345;
+        Double decimal = 98.76;
+        Boolean flag = true;
+
+        // Convert to string
+        String numberStr = number.toString();
+        String decimalStr = decimal.toString();
+        String flagStr = flag.toString();
+
+        System.out.println("Number as string: " + numberStr);   // "12345"
+        System.out.println("String length: " + numberStr.length()); // 5
+
+        // Static toString methods
+        String binaryStr = Integer.toString(number, 2);  // Binary
+        String hexStr = Integer.toString(number, 16);    // Hexadecimal
+        String octalStr = Integer.toString(number, 8);   // Octal
+
+        System.out.println("Binary: " + binaryStr);   // "11000000111001"
+        System.out.println("Hex: " + hexStr);         // "3039"
+        System.out.println("Octal: " + octalStr);     // "30071"
+    }
+}
+```
+
+### Parsing Methods
+```java
+public class ParsingExample {
+    public static void main(String[] args) {
+        // String to primitive/wrapper conversion
+        String intStr = "123";
+        String doubleStr = "45.67";
+        String boolStr = "true";
+
+        // Parse to primitives
+        int parsedInt = Integer.parseInt(intStr);
+        double parsedDouble = Double.parseDouble(doubleStr);
+        boolean parsedBool = Boolean.parseBoolean(boolStr);
+
+        // Parse to wrapper objects
+        Integer wrapperInt = Integer.valueOf(intStr);
+        Double wrapperDouble = Double.valueOf(doubleStr);
+        Boolean wrapperBool = Boolean.valueOf(boolStr);
+
+        System.out.println("Parsed int: " + parsedInt);
+        System.out.println("Wrapper int: " + wrapperInt);
+
+        // Parse with different radix
+        String binaryStr = "1010";
+        String hexStr = "FF";
+        int fromBinary = Integer.parseInt(binaryStr, 2);  // Binary to int
+        int fromHex = Integer.parseInt(hexStr, 16);       // Hex to int
+
+        System.out.println("Binary 1010 as int: " + fromBinary); // 10
+        System.out.println("Hex FF as int: " + fromHex);         // 255
+
+        // Error handling
+        try {
+            int invalid = Integer.parseInt("not a number");
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number format: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Comparison Methods
+```java
+public class ComparisonExample {
+    public static void main(String[] args) {
+        Integer a = 100;
+        Integer b = 200;
+        Integer c = 100;
+
+        // Compare wrapper objects
+        System.out.println("a.equals(c): " + a.equals(c));           // true
+        System.out.println("a == c: " + (a == c));                  // true (cached)
+
+        Integer x = 128;
+        Integer y = 128;
+        System.out.println("x.equals(y): " + x.equals(y));          // true
+        System.out.println("x == y: " + (x == y));                  // false (not cached)
+
+        // Compare values
+        int comparison = a.compareTo(b);
+        System.out.println("a compared to b: " + comparison);       // -1 (a < b)
+
+        // Static compare methods
+        int staticComp = Integer.compare(a, b);
+        System.out.println("Static compare: " + staticComp);        // -1
+
+        // Max and min values
+        System.out.println("Integer MAX: " + Integer.MAX_VALUE);
+        System.out.println("Integer MIN: " + Integer.MIN_VALUE);
+        System.out.println("Double MAX: " + Double.MAX_VALUE);
+        System.out.println("Double MIN: " + Double.MIN_VALUE);
+    }
+}
+```
+
+## Practical Usage
+
+### Working with Collections
+```java
+import java.util.*;
+
+public class CollectionUsage {
+    public static void main(String[] args) {
+        // List of integers
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // Sum using wrapper methods
+        int sum = numbers.stream()
+                        .mapToInt(Integer::intValue)
+                        .sum();
+        System.out.println("Sum: " + sum);
+
+        // Map with wrapper keys and values
+        Map<Integer, String> numberNames = new HashMap<>();
+        numberNames.put(1, "One");
+        numberNames.put(2, "Two");
+        numberNames.put(3, "Three");
+
+        // Process map entries
+        numberNames.forEach((key, value) ->
+            System.out.println(key.toString() + " -> " + value));
+    }
+}
+```
+
+### Utility Methods Example
+```java
+public class UtilityMethodsExample {
+    public static void main(String[] args) {
+        // Integer utility methods
+        System.out.println("Bit count of 7: " + Integer.bitCount(7));      // 3
+        System.out.println("Leading zeros: " + Integer.numberOfLeadingZeros(8)); // 28
+        System.out.println("Reverse bits: " + Integer.reverse(1));         // -2147483648
+
+        // Character utility methods
+        System.out.println("Is digit: " + Character.isDigit('5'));         // true
+        System.out.println("Is letter: " + Character.isLetter('A'));       // true
+        System.out.println("To uppercase: " + Character.toUpperCase('a')); // A
+        System.out.println("To lowercase: " + Character.toLowerCase('Z')); // z
+
+        // Boolean utility methods
+        System.out.println("Logical AND: " + Boolean.logicalAnd(true, false)); // false
+        System.out.println("Logical OR: " + Boolean.logicalOr(true, false));   // true
+        System.out.println("Logical XOR: " + Boolean.logicalXor(true, false)); // true
+    }
+}
+```
+
+---
+
+# Part 2: Lambda Expressions
+
+## Introduction to Lambda
+
+Lambda Expressions were added in Java 8. A lambda expression is a short block of code which takes in parameters and returns a value. Lambda expressions are similar to methods, but they do not need a name and they can be implemented right in the body of a method.
+
+### Benefits of Lambda Expressions:
+- **Concise Code**: Reduce boilerplate code
+- **Functional Programming**: Enable functional programming paradigms
+- **Better Collections**: Work seamlessly with Streams API
+- **Parallel Processing**: Easier parallel operations
+
+## Lambda Syntax
+
+### Basic Syntax Forms
+The simplest lambda expression contains a single parameter and an expression:
+parameter -> expression
+
+To use more than one parameter, wrap them in parentheses:
+(parameter1, parameter2) -> expression
+
+```java
+// Single parameter (parentheses optional)
+x -> x * 2
+n -> System.out.println(n)
+
+// Multiple parameters (parentheses required)
+(a, b) -> a + b
+(x, y) -> Math.max(x, y)
+
+// No parameters
+() -> System.out.println("Hello")
+() -> Math.random()
+
+// Code block with return statement
+(a, b) -> {
+    int sum = a + b;
+    return sum * 2;
+}
+
+// Code block without return (void)
+n -> {
+    System.out.println("Processing: " + n);
+    // Some complex logic here
+}
+```
+
+### Lambda Expression Examples
+```java
+import java.util.*;
+import java.util.function.*;
+
+public class LambdaSyntaxExamples {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // Traditional approach with anonymous class
+        numbers.forEach(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer n) {
+                System.out.println(n);
+            }
+        });
+
+        // Lambda expression - single line
+        numbers.forEach(n -> System.out.println(n));
+
+        // Lambda expression - method reference
+        numbers.forEach(System.out::println);
+
+        // Lambda with filtering
+        numbers.stream()
+               .filter(n -> n % 2 == 0)
+               .forEach(System.out::println);
+
+        // Lambda with transformation
+        List<String> strings = numbers.stream()
+                                     .map(n -> "Number: " + n)
+                                     .collect(Collectors.toList());
+        System.out.println(strings);
+    }
+}
+```
+
+## Functional Interfaces
+
+### What is a Functional Interface?
+A functional interface has exactly one abstract method (Single Abstract Method - SAM). Lambda expressions can be used wherever a functional interface is expected.
+
+### @FunctionalInterface Annotation
+```java
+@FunctionalInterface
+interface MathOperation {
+    int operate(int a, int b);
+
+    // Default methods are allowed
+    default void printResult(int result) {
+        System.out.println("Result: " + result);
+    }
+
+    // Static methods are allowed
+    static void printInfo() {
+        System.out.println("This is a math operation interface");
+    }
+}
+
+public class FunctionalInterfaceExample {
+    public static void main(String[] args) {
+        // Lambda expressions implementing the interface
+        MathOperation addition = (a, b) -> a + b;
+        MathOperation subtraction = (a, b) -> a - b;
+        MathOperation multiplication = (a, b) -> a * b;
+        MathOperation division = (a, b) -> a / b;
+
+        // Using the lambda expressions
+        System.out.println("10 + 5 = " + addition.operate(10, 5));
+        System.out.println("10 - 5 = " + subtraction.operate(10, 5));
+        System.out.println("10 * 5 = " + multiplication.operate(10, 5));
+        System.out.println("10 / 5 = " + division.operate(10, 5));
+
+        // Using default method
+        addition.printResult(addition.operate(10, 5));
+
+        // Using static method
+        MathOperation.printInfo();
+    }
+}
+```
+
+### Custom Functional Interface Example
+```java
+@FunctionalInterface
+interface StringProcessor {
+    String process(String input);
+}
+
+public class CustomFunctionalInterface {
+    public static void main(String[] args) {
+        // Various lambda implementations
+        StringProcessor uppercase = s -> s.toUpperCase();
+        StringProcessor lowercase = s -> s.toLowerCase();
+        StringProcessor reverse = s -> new StringBuilder(s).reverse().toString();
+        StringProcessor addExclamation = s -> s + "!";
+
+        String text = "Hello World";
+
+        System.out.println("Original: " + text);
+        System.out.println("Uppercase: " + processString(text, uppercase));
+        System.out.println("Lowercase: " + processString(text, lowercase));
+        System.out.println("Reversed: " + processString(text, reverse));
+        System.out.println("With exclamation: " + processString(text, addExclamation));
+    }
+
+    public static String processString(String input, StringProcessor processor) {
+        return processor.process(input);
+    }
+}
+```
+
+## Built-in Functional Interfaces
+
+Java provides many built-in functional interfaces in the `java.util.function` package:
+
+### Core Functional Interfaces
+
+| Interface | Method | Description | Example |
+|-----------|--------|-------------|---------|
+| `Consumer<T>` | `void accept(T t)` | Consumes an input, returns nothing | `s -> System.out.println(s)` |
+| `Supplier<T>` | `T get()` | Supplies a value, takes no input | `() -> Math.random()` |
+| `Function<T,R>` | `R apply(T t)` | Takes input T, returns output R | `s -> s.length()` |
+| `Predicate<T>` | `boolean test(T t)` | Tests a condition, returns boolean | `n -> n > 0` |
+
+### Consumer Examples
+```java
+import java.util.function.Consumer;
+import java.util.function.BiConsumer;
+
+public class ConsumerExamples {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+
+        // Consumer - single parameter
+        Consumer<String> printer = name -> System.out.println("Hello, " + name);
+        names.forEach(printer);
+
+        // BiConsumer - two parameters
+        BiConsumer<String, Integer> indexedPrinter =
+            (name, index) -> System.out.println(index + ": " + name);
+
+        for (int i = 0; i < names.size(); i++) {
+            indexedPrinter.accept(names.get(i), i + 1);
+        }
+
+        // Consumer chaining
+        Consumer<String> upperCase = s -> System.out.println(s.toUpperCase());
+        Consumer<String> lowerCase = s -> System.out.println(s.toLowerCase());
+        Consumer<String> combined = upperCase.andThen(lowerCase);
+
+        combined.accept("Hello World");
+    }
+}
+```
+
+### Supplier Examples
+```java
+import java.util.function.Supplier;
+import java.util.Random;
+
+public class SupplierExamples {
+    public static void main(String[] args) {
+        // Simple suppliers
+        Supplier<String> messageSupplier = () -> "Hello from supplier!";
+        Supplier<Double> randomSupplier = () -> Math.random();
+        Supplier<Integer> diceRoll = () -> new Random().nextInt(6) + 1;
+
+        System.out.println(messageSupplier.get());
+        System.out.println("Random: " + randomSupplier.get());
+        System.out.println("Dice roll: " + diceRoll.get());
+
+        // Supplier with complex logic
+        Supplier<List<String>> listSupplier = () -> {
+            List<String> list = new ArrayList<>();
+            list.add("Item 1");
+            list.add("Item 2");
+            list.add("Item 3");
+            return list;
+        };
+
+        List<String> items = listSupplier.get();
+        System.out.println("Generated list: " + items);
+
+        // Lazy evaluation example
+        System.out.println("Getting value lazily: " + getValue(randomSupplier));
+    }
+
+    public static String getValue(Supplier<Double> supplier) {
+        // Value is only generated when needed
+        double value = supplier.get();
+        return value > 0.5 ? "High: " + value : "Low: " + value;
+    }
+}
+```
+
+### Function Examples
+```java
+import java.util.function.Function;
+import java.util.function.BiFunction;
+
+public class FunctionExamples {
+    public static void main(String[] args) {
+        List<String> words = Arrays.asList("hello", "world", "java", "lambda");
+
+        // Function - transform string to its length
+        Function<String, Integer> lengthFunction = s -> s.length();
+
+        List<Integer> lengths = words.stream()
+                                   .map(lengthFunction)
+                                   .collect(Collectors.toList());
+        System.out.println("Lengths: " + lengths);
+
+        // Function chaining
+        Function<String, String> upperCase = s -> s.toUpperCase();
+        Function<String, String> addExclamation = s -> s + "!";
+        Function<String, String> combined = upperCase.andThen(addExclamation);
+
+        System.out.println(combined.apply("hello")); // "HELLO!"
+
+        // BiFunction - two parameters
+        BiFunction<Integer, Integer, Integer> multiply = (a, b) -> a * b;
+        BiFunction<String, String, String> concat = (s1, s2) -> s1 + " " + s2;
+
+        System.out.println("3 * 4 = " + multiply.apply(3, 4));
+        System.out.println("Concatenated: " + concat.apply("Hello", "World"));
+
+        // Function composition
+        Function<Integer, Integer> doubleValue = x -> x * 2;
+        Function<Integer, Integer> addTen = x -> x + 10;
+
+        // compose: first apply addTen, then doubleValue
+        Function<Integer, Integer> composed1 = doubleValue.compose(addTen);
+        System.out.println("Compose (5+10)*2 = " + composed1.apply(5)); // 30
+
+        // andThen: first apply doubleValue, then addTen
+        Function<Integer, Integer> composed2 = doubleValue.andThen(addTen);
+        System.out.println("AndThen (5*2)+10 = " + composed2.apply(5)); // 20
+    }
+}
+```
+
+### Predicate Examples
+```java
+import java.util.function.Predicate;
+
+public class PredicateExamples {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        // Simple predicates
+        Predicate<Integer> isEven = n -> n % 2 == 0;
+        Predicate<Integer> isPositive = n -> n > 0;
+        Predicate<Integer> isGreaterThanFive = n -> n > 5;
+
+        // Filter using predicates
+        List<Integer> evenNumbers = numbers.stream()
+                                          .filter(isEven)
+                                          .collect(Collectors.toList());
+        System.out.println("Even numbers: " + evenNumbers);
+
+        // Predicate combination
+        Predicate<Integer> evenAndGreaterThanFive = isEven.and(isGreaterThanFive);
+        Predicate<Integer> evenOrGreaterThanFive = isEven.or(isGreaterThanFive);
+        Predicate<Integer> notEven = isEven.negate();
+
+        System.out.println("Even and > 5: " +
+            numbers.stream().filter(evenAndGreaterThanFive).collect(Collectors.toList()));
+        System.out.println("Even or > 5: " +
+            numbers.stream().filter(evenOrGreaterThanFive).collect(Collectors.toList()));
+        System.out.println("Odd numbers: " +
+            numbers.stream().filter(notEven).collect(Collectors.toList()));
+
+        // String predicates
+        List<String> words = Arrays.asList("apple", "banana", "cherry", "date", "elderberry");
+
+        Predicate<String> startsWithA = s -> s.startsWith("a");
+        Predicate<String> longerThanFive = s -> s.length() > 5;
+        Predicate<String> containsE = s -> s.contains("e");
+
+        System.out.println("Starts with 'a': " +
+            words.stream().filter(startsWithA).collect(Collectors.toList()));
+        System.out.println("Longer than 5 chars: " +
+            words.stream().filter(longerThanFive).collect(Collectors.toList()));
+        System.out.println("Contains 'e': " +
+            words.stream().filter(containsE).collect(Collectors.toList()));
+    }
+}
+```
+
+## Method References
+
+Method references provide a shorthand syntax for lambda expressions that call a single method.
+
+### Types of Method References
+
+| Type | Syntax | Example |
+|------|--------|---------|
+| Static method | `ClassName::staticMethod` | `Integer::parseInt` |
+| Instance method of particular object | `object::instanceMethod` | `myObj::toString` |
+| Instance method of arbitrary object | `ClassName::instanceMethod` | `String::length` |
+| Constructor | `ClassName::new` | `ArrayList::new` |
+
+### Method Reference Examples
+```java
+import java.util.function.*;
+import java.util.stream.Collectors;
+
+public class MethodReferenceExamples {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("Alice", "Bob", "Charlie", "Diana");
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // 1. Static method reference
+        // Lambda: s -> Integer.parseInt(s)
+        Function<String, Integer> parseInt = Integer::parseInt;
+        List<String> numberStrings = Arrays.asList("1", "2", "3", "4", "5");
+        List<Integer> parsed = numberStrings.stream()
+                                          .map(parseInt)
+                                          .collect(Collectors.toList());
+        System.out.println("Parsed numbers: " + parsed);
+
+        // 2. Instance method of particular object
+        PrintStream out = System.out;
+        Consumer<String> printer = out::println;  // Same as s -> System.out.println(s)
+        names.forEach(printer);
+
+        // 3. Instance method of arbitrary object of particular type
+        // Lambda: s -> s.length()
+        Function<String, Integer> lengthFunc = String::length;
+        List<Integer> lengths = names.stream()
+                                   .map(lengthFunc)
+                                   .collect(Collectors.toList());
+        System.out.println("Name lengths: " + lengths);
+
+        // Lambda: s -> s.toUpperCase()
+        Function<String, String> upperCaseFunc = String::toUpperCase;
+        List<String> upperCaseNames = names.stream()
+                                         .map(upperCaseFunc)
+                                         .collect(Collectors.toList());
+        System.out.println("Uppercase names: " + upperCaseNames);
+
+        // 4. Constructor reference
+        // Lambda: () -> new ArrayList<>()
+        Supplier<List<String>> listSupplier = ArrayList::new;
+        List<String> newList = listSupplier.get();
+        newList.add("Created with constructor reference");
+        System.out.println(newList);
+
+        // Constructor with parameter
+        // Lambda: capacity -> new ArrayList<>(capacity)
+        Function<Integer, List<String>> listWithCapacity = ArrayList::new;
+        List<String> capacityList = listWithCapacity.apply(10);
+
+        // Comparison: Lambda vs Method Reference
+        System.out.println("\n--- Lambda vs Method Reference Comparison ---");
+
+        // Using lambda
+        numbers.stream().map(n -> n.toString()).forEach(s -> System.out.println(s));
+
+        // Using method references
+        numbers.stream().map(Object::toString).forEach(System.out::println);
+    }
+}
+```
+
+### Advanced Method Reference Usage
+```java
+public class Person {
+    private String name;
+    private int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    public static int compareByAge(Person p1, Person p2) {
+        return Integer.compare(p1.age, p2.age);
+    }
+
+    public int compareByName(Person other) {
+        return this.name.compareTo(other.name);
+    }
+
+    @Override
+    public String toString() {
+        return name + "(" + age + ")";
+    }
+}
+
+public class AdvancedMethodReferences {
+    public static void main(String[] args) {
+        List<Person> people = Arrays.asList(
+            new Person("Alice", 30),
+            new Person("Bob", 25),
+            new Person("Charlie", 35),
+            new Person("Diana", 28)
+        );
+
+        System.out.println("Original: " + people);
+
+        // Static method reference for comparison
+        List<Person> sortedByAge = people.stream()
+                                        .sorted(Person::compareByAge)
+                                        .collect(Collectors.toList());
+        System.out.println("Sorted by age: " + sortedByAge);
+
+        // Instance method reference
+        List<String> names = people.stream()
+                                  .map(Person::getName)
+                                  .collect(Collectors.toList());
+        System.out.println("Names: " + names);
+
+        // Constructor reference with custom object
+        Function<String, Person> personFactory = name -> new Person(name, 0);
+        // This could be written as a constructor reference if Person had appropriate constructor
+
+        List<Person> newPeople = Arrays.asList("Eve", "Frank", "Grace")
+                                      .stream()
+                                      .map(personFactory)
+                                      .collect(Collectors.toList());
+        System.out.println("New people: " + newPeople);
+    }
+}
+```
+
+---
+
+# Part 3: Regular Expressions
+
+## Regex Fundamentals
+
+A regular expression (regex) is a sequence of characters that forms a search pattern. When you search for data in a text, you can use this search pattern to describe what you are searching for.
+
+### Java Regex Classes
+- **`Pattern`** - Defines a pattern (to be used in a search)
+- **`Matcher`** - Used to search for the pattern
+- **`PatternSyntaxException`** - Indicates syntax error in a regular expression pattern
+
+## Pattern and Matcher Classes
+
+### Basic Usage
+```java
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
+public class BasicRegexExample {
+    public static void main(String[] args) {
+        String text = "Visit W3Schools for Java tutorials!";
+        String pattern = "w3schools";
+
+        // Case-sensitive search
+        Pattern compiledPattern = Pattern.compile(pattern);
+        Matcher matcher = compiledPattern.matcher(text);
+
+        if (matcher.find()) {
+            System.out.println("Match found at position: " + matcher.start());
+            System.out.println("Matched text: " + matcher.group());
+        } else {
+            System.out.println("No match found");
+        }
+
+        // Case-insensitive search
+        Pattern caseInsensitive = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        Matcher caseInsensitiveMatcher = caseInsensitive.matcher(text);
+
+        if (caseInsensitiveMatcher.find()) {
+            System.out.println("Case-insensitive match found!");
+            System.out.println("Match: " + caseInsensitiveMatcher.group());
+        }
+    }
+}
+```
+
+### Pattern Flags
+```java
+public class PatternFlagsExample {
+    public static void main(String[] args) {
+        String text = "Hello WORLD\nThis is a\nmultiline text";
+
+        // CASE_INSENSITIVE flag
+        Pattern pattern1 = Pattern.compile("hello", Pattern.CASE_INSENSITIVE);
+        System.out.println("Case insensitive match: " + pattern1.matcher(text).find());
+
+        // MULTILINE flag - ^ and $ match line boundaries
+        Pattern pattern2 = Pattern.compile("^This", Pattern.MULTILINE);
+        System.out.println("Multiline match: " + pattern2.matcher(text).find());
+
+        // DOTALL flag - . matches any character including newlines
+        Pattern pattern3 = Pattern.compile("Hello.*text", Pattern.DOTALL);
+        System.out.println("Dot all match: " + pattern3.matcher(text).find());
+
+        // Combining flags
+        Pattern combined = Pattern.compile("hello.*world",
+                                         Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        System.out.println("Combined flags match: " + combined.matcher(text).find());
+    }
+}
+```
+
+### Matcher Methods
+```java
+public class MatcherMethodsExample {
+    public static void main(String[] args) {
+        String text = "The quick brown fox jumps over the lazy dog";
+        Pattern pattern = Pattern.compile("\\b\\w{4}\\b"); // 4-letter words
+
+        Matcher matcher = pattern.matcher(text);
+
+        System.out.println("Finding all 4-letter words:");
+        while (matcher.find()) {
+            System.out.println("Found: '" + matcher.group() +
+                             "' at position " + matcher.start() +
+                             "-" + matcher.end());
+        }
+
+        // Reset matcher for new operations
+        matcher.reset();
+
+        // Count matches
+        long count = matcher.results().count();
+        System.out.println("Total 4-letter words: " + count);
+
+        // Replace operations
+        String replaced = matcher.replaceAll("WORD");
+        System.out.println("After replacement: " + replaced);
+
+        matcher.reset();
+        String replacedFirst = matcher.replaceFirst("FIRST");
+        System.out.println("After replacing first: " + replacedFirst);
+    }
+}
+```
+
+## Common Regex Patterns
+
+### Character Classes and Metacharacters
+```java
+public class RegexPatternsExample {
+    public static void main(String[] args) {
+        String[] testStrings = {
+            "Hello123",
+            "test@email.com",
+            "Phone: 123-456-7890",
+            "Price: $29.99",
+            "Date: 2024-01-15"
+        };
+
+        // Test various patterns
+        testPattern("\\d+", testStrings, "Digits");
+        testPattern("\\w+", testStrings, "Word characters");
+        testPattern("\\s+", testStrings, "Whitespace");
+        testPattern("[A-Z]+", testStrings, "Uppercase letters");
+        testPattern("[a-z]+", testStrings, "Lowercase letters");
+        testPattern("\\$\\d+\\.\\d{2}", testStrings, "Price format");
+        testPattern("\\d{4}-\\d{2}-\\d{2}", testStrings, "Date format YYYY-MM-DD");
+        testPattern("\\w+@\\w+\\.\\w+", testStrings, "Simple email pattern");
+    }
+
+    private static void testPattern(String regex, String[] texts, String description) {
+        System.out.println("\n--- Testing: " + description + " (" + regex + ") ---");
+        Pattern pattern = Pattern.compile(regex);
+
+        for (String text : texts) {
+            Matcher matcher = pattern.matcher(text);
+            System.out.print("\"" + text + "\" -> ");
+
+            if (matcher.find()) {
+                System.out.print("Found: ");
+                matcher.reset();
+                while (matcher.find()) {
+                    System.out.print("'" + matcher.group() + "' ");
+                }
+                System.out.println();
+            } else {
+                System.out.println("No match");
+            }
+        }
+    }
+}
+```
+
+### Quantifiers
+```java
+public class QuantifiersExample {
+    public static void main(String[] args) {
+        String text = "aaa bb cccc d eeeeee";
+
+        // + : one or more
+        testQuantifier("a+", text, "One or more 'a'");
+
+        // * : zero or more
+        testQuantifier("b*", text, "Zero or more 'b'");
+
+        // ? : zero or one
+        testQuantifier("d?", text, "Zero or one 'd'");
+
+        // {n} : exactly n
+        testQuantifier("c{4}", text, "Exactly 4 'c'");
+
+        // {n,m} : between n and m
+        testQuantifier("e{2,4}", text, "Between 2 and 4 'e'");
+
+        // {n,} : n or more
+        testQuantifier("e{3,}", text, "3 or more 'e'");
+
+        // Greedy vs non-greedy
+        String html = "<div>content</div><span>more</span>";
+        System.out.println("\nGreedy vs Non-greedy:");
+        testQuantifier("<.+>", html, "Greedy: any character between < and >");
+        testQuantifier("<.+?>", html, "Non-greedy: any character between < and >");
+    }
+
+    private static void testQuantifier(String regex, String text, String description) {
+        System.out.println(description + " (" + regex + "):");
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            System.out.println("  Found: '" + matcher.group() +
+                             "' at " + matcher.start() + "-" + matcher.end());
+        }
+    }
+}
+```
+
+### Groups and Capturing
+```java
+public class GroupsExample {
+    public static void main(String[] args) {
+        String text = "Contact: John Doe (john.doe@email.com) Phone: 123-456-7890";
+
+        // Named groups for email extraction
+        String emailPattern = "(\\w+)\\.(\\w+)@(\\w+)\\.(\\w+)";
+        Pattern pattern = Pattern.compile(emailPattern);
+        Matcher matcher = pattern.matcher(text);
+
+        if (matcher.find()) {
+            System.out.println("Full match: " + matcher.group(0));
+            System.out.println("First name: " + matcher.group(1));
+            System.out.println("Last name: " + matcher.group(2));
+            System.out.println("Domain: " + matcher.group(3));
+            System.out.println("TLD: " + matcher.group(4));
+        }
+
+        // Phone number pattern with groups
+        String phonePattern = "(\\d{3})-(\\d{3})-(\\d{4})";
+        Pattern phonePatternCompiled = Pattern.compile(phonePattern);
+        Matcher phoneMatcher = phonePatternCompiled.matcher(text);
+
+        if (phoneMatcher.find()) {
+            System.out.println("\nPhone number breakdown:");
+            System.out.println("Full number: " + phoneMatcher.group(0));
+            System.out.println("Area code: " + phoneMatcher.group(1));
+            System.out.println("Exchange: " + phoneMatcher.group(2));
+            System.out.println("Number: " + phoneMatcher.group(3));
+        }
+
+        // Non-capturing groups (?:...)
+        String nonCapturingPattern = "(?:Mr|Ms|Dr)\\. (\\w+ \\w+)";
+        Pattern nonCapturing = Pattern.compile(nonCapturingPattern);
+        String titleText = "Dr. Jane Smith and Mr. John Doe";
+        Matcher titleMatcher = nonCapturing.matcher(titleText);
+
+        System.out.println("\nNon-capturing groups (titles ignored):");
+        while (titleMatcher.find()) {
+            System.out.println("Name only: " + titleMatcher.group(1));
+        }
+    }
+}
+```
+
+## Practical Regex Examples
+
+### Email Validation
+```java
+public class EmailValidationExample {
+    private static final String EMAIL_PATTERN =
+        "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
+    private static final Pattern pattern = Pattern.compile(EMAIL_PATTERN);
+
+    public static boolean isValidEmail(String email) {
+        return pattern.matcher(email).matches();
+    }
+
+    public static void main(String[] args) {
+        String[] emails = {
+            "user@example.com",           // Valid
+            "test.email@domain.co.uk",    // Valid
+            "user+tag@example.com",       // Valid
+            "invalid-email",              // Invalid
+            "@example.com",               // Invalid
+            "user@",                      // Invalid
+            "user@domain",                // Invalid
+            "user name@domain.com"        // Invalid (space)
+        };
+
+        System.out.println("Email Validation Results:");
+        for (String email : emails) {
+            System.out.printf("%-25s -> %s%n",
+                email, isValidEmail(email) ? "VALID" : "INVALID");
+        }
+    }
+}
+```
+
+### Phone Number Extraction and Formatting
+```java
+public class PhoneNumberExample {
+    public static void main(String[] args) {
+        String text = "Call me at 123-456-7890 or (555) 123-4567 or 555.987.6543";
+
+        // Different phone number patterns
+        String[] phonePatterns = {
+            "\\d{3}-\\d{3}-\\d{4}",           // 123-456-7890
+            "\\(\\d{3}\\) \\d{3}-\\d{4}",     // (555) 123-4567
+            "\\d{3}\\.\\d{3}\\.\\d{4}"        // 555.987.6543
+        };
+
+        System.out.println("Original text: " + text);
+        System.out.println("\nFound phone numbers:");
+
+        for (String patternStr : phonePatterns) {
+            Pattern pattern = Pattern.compile(patternStr);
+            Matcher matcher = pattern.matcher(text);
+
+            while (matcher.find()) {
+                System.out.println("Pattern: " + patternStr + " -> " + matcher.group());
+            }
+        }
+
+        // Universal phone pattern and formatting
+        String universalPattern = "(?:\\(?(\\d{3})\\)?[-.\\s]?(\\d{3})[-.\\s]?(\\d{4}))";
+        Pattern universal = Pattern.compile(universalPattern);
+        Matcher universalMatcher = universal.matcher(text);
+
+        System.out.println("\nFormatted phone numbers:");
+        while (universalMatcher.find()) {
+            String formatted = String.format("(%s) %s-%s",
+                universalMatcher.group(1),
+                universalMatcher.group(2),
+                universalMatcher.group(3));
+            System.out.println("Original: " + universalMatcher.group() +
+                             " -> Formatted: " + formatted);
+        }
+    }
+}
+```
+
+### Log File Parsing
+```java
+public class LogParsingExample {
+    public static void main(String[] args) {
+        String[] logLines = {
+            "2024-01-15 10:30:45 [INFO] User login successful - user: john_doe",
+            "2024-01-15 10:31:02 [ERROR] Database connection failed - timeout after 30s",
+            "2024-01-15 10:31:15 [WARN] Memory usage at 85% - threshold exceeded",
+            "2024-01-15 10:32:00 [INFO] File upload completed - size: 2.5MB"
+        };
+
+        // Log pattern: timestamp [level] message
+        String logPattern = "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(\\w+)\\] (.+)";
+        Pattern pattern = Pattern.compile(logPattern);
+
+        System.out.println("Parsed log entries:");
+        for (String logLine : logLines) {
+            Matcher matcher = pattern.matcher(logLine);
+
+            if (matcher.find()) {
+                String timestamp = matcher.group(1);
+                String level = matcher.group(2);
+                String message = matcher.group(3);
+
+                System.out.printf("Timestamp: %s | Level: %-5s | Message: %s%n",
+                    timestamp, level, message);
+            }
+        }
+
+        // Filter by log level
+        System.out.println("\nERROR level logs only:");
+        Pattern errorPattern = Pattern.compile(".*\\[ERROR\\].*");
+        for (String logLine : logLines) {
+            if (errorPattern.matcher(logLine).matches()) {
+                System.out.println(logLine);
+            }
+        }
+    }
+}
+```
+
+### Text Processing and Cleaning
+```java
+public class TextProcessingExample {
+    public static void main(String[] args) {
+        String messyText = "  Hello,    world!!!   How   are you???  \n\n  Fine, thanks!  ";
+
+        System.out.println("Original text: '" + messyText + "'");
+
+        // Remove extra whitespace
+        String cleanWhitespace = messyText.replaceAll("\\s+", " ").trim();
+        System.out.println("Clean whitespace: '" + cleanWhitespace + "'");
+
+        // Remove multiple punctuation marks
+        String cleanPunctuation = cleanWhitespace.replaceAll("[!?]{2,}", "!");
+        System.out.println("Clean punctuation: '" + cleanPunctuation + "'");
+
+        // Extract words only (remove punctuation)
+        String wordsOnly = cleanPunctuation.replaceAll("[^a-zA-Z\\s]", "");
+        System.out.println("Words only: '" + wordsOnly + "'");
+
+        // Split into words
+        String[] words = wordsOnly.split("\\s+");
+        System.out.println("Word count: " + words.length);
+        System.out.println("Words: " + Arrays.toString(words));
+
+        // Find and replace with pattern
+        String htmlText = "<p>This is a <strong>bold</strong> text with <em>emphasis</em></p>";
+        String cleanHtml = htmlText.replaceAll("<[^>]+>", "");
+        System.out.println("\nHTML text: " + htmlText);
+        System.out.println("Clean text: " + cleanHtml);
+    }
+}
+```
+
+---
+
+# Part 4: Annotations
+
+## Understanding Annotations
+
+Annotations are special notes you add to your Java code. They start with the `@` symbol. They don't change how your program runs, but they give extra information to the compiler, development tools, or frameworks.
+
+### Benefits of Annotations:
+- **Compile-time checking**: Help catch errors during compilation
+- **Code generation**: Tools can generate code based on annotations
+- **Runtime processing**: Can be processed at runtime for frameworks
+- **Documentation**: Provide metadata about code elements
+
+## Built-in Annotations
+
+### @Override Annotation
+The `@Override` annotation indicates that a method overrides a method in a superclass.
+
+```java
+class Animal {
+    void makeSound() {
+        System.out.println("Animal sound");
+    }
+
+    void move() {
+        System.out.println("Animal moves");
+    }
+}
+
+class Dog extends Animal {
+    @Override
+    void makeSound() {
+        System.out.println("Woof!");
+    }
+
+    @Override
+    void move() {
+        System.out.println("Dog runs");
+    }
+
+    // This will cause a compile error if uncommented
+    // @Override
+    // void makesound() { // Typo in method name
+    //     System.out.println("Woof!");
+    // }
+}
+
+public class OverrideExample {
+    public static void main(String[] args) {
+        Animal myDog = new Dog();
+        myDog.makeSound(); // Output: Woof!
+        myDog.move();      // Output: Dog runs
+
+        // Demonstrating polymorphism
+        Animal[] animals = {new Animal(), new Dog()};
+        for (Animal animal : animals) {
+            animal.makeSound();
+        }
+    }
+}
+```
+
+### @Deprecated Annotation
+The `@Deprecated` annotation marks methods, classes, or fields as outdated.
+
+```java
+public class DeprecatedExample {
+
+    @Deprecated
+    public static void oldMethod() {
+        System.out.println("This is an old method");
+    }
+
+    @Deprecated(since = "2.0", forRemoval = true)
+    public static void veryOldMethod() {
+        System.out.println("This method will be removed");
+    }
+
+    public static void newMethod() {
+        System.out.println("Use this new method instead");
+    }
+
+    public static void main(String[] args) {
+        // These calls will show deprecation warnings
+        oldMethod();        // Warning: deprecated
+        veryOldMethod();    // Warning: deprecated and marked for removal
+
+        // This is the recommended approach
+        newMethod();        // No warning
+    }
+}
+```
+
+### @SuppressWarnings Annotation
+The `@SuppressWarnings` annotation tells the compiler to ignore specific warnings.
+
+```java
+import java.util.*;
+
+public class SuppressWarningsExample {
+
+    @SuppressWarnings("unchecked")
+    public static void uncheckedExample() {
+        // Raw type usage (normally causes warning)
+        List rawList = new ArrayList();
+        rawList.add("String");
+        rawList.add(42);
+
+        System.out.println("Raw list: " + rawList);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void deprecationExample() {
+        // Using deprecated method (normally causes warning)
+        DeprecatedExample.oldMethod();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void multipleWarnings() {
+        Map rawMap = new HashMap();
+        rawMap.put("key", "value");
+        System.out.println("Raw map: " + rawMap);
+    }
+
+    @SuppressWarnings("unused")
+    public static void unusedVariableExample() {
+        int unusedVariable = 42; // This would normally cause a warning
+        // Variable is not used, but warning is suppressed
+    }
+
+    public static void main(String[] args) {
+        uncheckedExample();
+        deprecationExample();
+        multipleWarnings();
+        unusedVariableExample();
+    }
+}
+```
+
+### Other Built-in Annotations
+```java
+public class OtherAnnotationsExample {
+
+    // @SafeVarargs - suppresses warnings about varargs
+    @SafeVarargs
+    public static <T> void printAll(T... items) {
+        for (T item : items) {
+            System.out.println(item);
+        }
+    }
+
+    // @FunctionalInterface - ensures interface has only one abstract method
+    @FunctionalInterface
+    interface Calculator {
+        int calculate(int a, int b);
+
+        // Default methods are allowed
+        default void printResult(int result) {
+            System.out.println("Result: " + result);
+        }
+
+        // Static methods are allowed
+        static void info() {
+            System.out.println("This is a calculator interface");
+        }
+    }
+
+    public static void main(String[] args) {
+        // Using @SafeVarargs method
+        printAll("Hello", "World", "Java");
+        printAll(1, 2, 3, 4, 5);
+
+        // Using @FunctionalInterface
+        Calculator add = (a, b) -> a + b;
+        Calculator multiply = (a, b) -> a * b;
+
+        int sum = add.calculate(5, 3);
+        int product = multiply.calculate(5, 3);
+
+        add.printResult(sum);      // Result: 8
+        multiply.printResult(product); // Result: 15
+
+        Calculator.info(); // This is a calculator interface
+    }
+}
+```
+
+## Custom Annotations
+
+### Creating Custom Annotations
+```java
+import java.lang.annotation.*;
+
+// Custom annotation for marking methods as test methods
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Test {
+    String description() default "";
+    int priority() default 1;
+    boolean enabled() default true;
+}
+
+// Custom annotation for class-level information
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Author {
+    String name();
+    String email() default "";
+    String version() default "1.0";
+}
+
+// Custom annotation for field validation
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Required {
+    String message() default "Field is required";
+}
+
+@Author(name = "John Doe", email = "john@example.com", version = "2.0")
+public class CustomAnnotationExample {
+
+    @Required(message = "Name cannot be empty")
+    private String name;
+
+    @Required
+    private String email;
+
+    private int age; // Not required
+
+    public CustomAnnotationExample(String name, String email, int age) {
+        this.name = name;
+        this.email = email;
+        this.age = age;
+    }
+
+    @Test(description = "Test basic functionality", priority = 1)
+    public void testBasicFunction() {
+        System.out.println("Running basic test");
+    }
+
+    @Test(description = "Test advanced functionality", priority = 2, enabled = false)
+    public void testAdvancedFunction() {
+        System.out.println("Running advanced test");
+    }
+
+    @Test(description = "Test error handling", priority = 3)
+    public void testErrorHandling() {
+        System.out.println("Running error handling test");
+    }
+
+    // Method without annotation
+    public void regularMethod() {
+        System.out.println("Regular method - not a test");
+    }
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+}
+```
+
+## Annotation Processing
+
+### Runtime Annotation Processing
+```java
+import java.lang.reflect.*;
+
+public class AnnotationProcessor {
+
+    public static void runTests(Object testInstance) {
+        Class<?> clazz = testInstance.getClass();
+
+        // Process class-level annotations
+        if (clazz.isAnnotationPresent(Author.class)) {
+            Author author = clazz.getAnnotation(Author.class);
+            System.out.println("Author: " + author.name());
+            System.out.println("Email: " + author.email());
+            System.out.println("Version: " + author.version());
+            System.out.println();
+        }
+
+        // Find and run test methods
+        Method[] methods = clazz.getDeclaredMethods();
+
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Test.class)) {
+                Test testAnnotation = method.getAnnotation(Test.class);
+
+                if (testAnnotation.enabled()) {
+                    System.out.println("Running test: " + method.getName());
+                    System.out.println("Description: " + testAnnotation.description());
+                    System.out.println("Priority: " + testAnnotation.priority());
+
+                    try {
+                        method.invoke(testInstance);
+                        System.out.println("✓ Test passed\n");
+                    } catch (Exception e) {
+                        System.out.println("✗ Test failed: " + e.getMessage() + "\n");
+                    }
+                } else {
+                    System.out.println("⚠ Test skipped (disabled): " + method.getName() + "\n");
+                }
+            }
+        }
+    }
+
+    public static void validateRequiredFields(Object obj) {
+        Class<?> clazz = obj.getClass();
+        Field[] fields = clazz.getDeclaredFields();
+
+        System.out.println("Validating required fields for: " + clazz.getSimpleName());
+
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Required.class)) {
+                Required required = field.getAnnotation(Required.class);
+                field.setAccessible(true);
+
+                try {
+                    Object value = field.get(obj);
+                    if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+                        System.out.println("✗ Validation failed for field '" + field.getName() +
+                                         "': " + required.message());
+                    } else {
+                        System.out.println("✓ Field '" + field.getName() + "' is valid");
+                    }
+                } catch (IllegalAccessException e) {
+                    System.out.println("✗ Cannot access field: " + field.getName());
+                }
+            }
+        }
+        System.out.println();
+    }
+
+    public static void main(String[] args) {
+        // Create test instances
+        CustomAnnotationExample validExample =
+            new CustomAnnotationExample("John Doe", "john@example.com", 30);
+
+        CustomAnnotationExample invalidExample =
+            new CustomAnnotationExample("", null, 25);
+
+        // Validate required fields
+        validateRequiredFields(validExample);
+        validateRequiredFields(invalidExample);
+
+        // Run tests
+        System.out.println("=== Running Tests ===");
+        runTests(validExample);
+    }
+}
+```
+
+### Meta-Annotations
+```java
+import java.lang.annotation.*;
+
+// Meta-annotations example
+@Target({ElementType.METHOD, ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@interface Performance {
+    String value() default "";
+    long maxExecutionTime() default 1000; // milliseconds
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@Repeatable(Benchmarks.class) // Java 8 feature
+@interface Benchmark {
+    String name();
+    int iterations() default 1;
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Benchmarks {
+    Benchmark[] value();
+}
+
+@Performance("High performance class")
+public class MetaAnnotationExample {
+
+    @Performance(maxExecutionTime = 500)
+    @Benchmark(name = "QuickSort", iterations = 100)
+    @Benchmark(name = "MergeSort", iterations = 50)
+    public void sortingAlgorithmTest() {
+        // Simulate some processing
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        System.out.println("Sorting algorithm test completed");
+    }
+
+    @Performance(maxExecutionTime = 2000)
+    public void databaseOperationTest() {
+        System.out.println("Database operation test completed");
+    }
+
+    public static void main(String[] args) {
+        MetaAnnotationExample example = new MetaAnnotationExample();
+        Class<?> clazz = example.getClass();
+
+        // Process class-level annotation
+        if (clazz.isAnnotationPresent(Performance.class)) {
+            Performance perf = clazz.getAnnotation(Performance.class);
+            System.out.println("Class performance info: " + perf.value());
+        }
+
+        // Process method-level annotations
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Performance.class)) {
+                Performance perf = method.getAnnotation(Performance.class);
+                System.out.println("Method: " + method.getName());
+                System.out.println("Max execution time: " + perf.maxExecutionTime() + "ms");
+            }
+
+            // Process repeatable annotations
+            Benchmark[] benchmarks = method.getAnnotationsByType(Benchmark.class);
+            for (Benchmark benchmark : benchmarks) {
+                System.out.println("Benchmark: " + benchmark.name() +
+                                 " (iterations: " + benchmark.iterations() + ")");
+            }
+            System.out.println();
+        }
+    }
+}
+```
+
+## Summary
+
+### Wrapper Classes Key Points
+- **Purpose**: Convert primitives to objects for use with collections and generics
+- **Autoboxing/Unboxing**: Automatic conversion between primitives and wrappers
+- **Null Safety**: Be careful with null wrapper objects to avoid NullPointerException
+- **Caching**: Integer values -128 to 127 are cached (use `.equals()` for comparison)
+- **Utility Methods**: Rich set of parsing, conversion, and comparison methods
+
+### Lambda Expressions Key Points
+- **Syntax**: `(parameters) -> expression` or `(parameters) -> { code block }`
+- **Functional Interfaces**: Must have exactly one abstract method (SAM)
+- **Built-in Interfaces**: Consumer, Supplier, Function, Predicate are most common
+- **Method References**: Shorthand syntax for lambdas (`ClassName::method`)
+- **Benefits**: More concise code, better support for functional programming
+
+### Regular Expressions Key Points
+- **Pattern & Matcher**: Core classes for regex operations in Java
+- **Metacharacters**: `\d`, `\w`, `\s`, `.`, `^`, `# Java Wrapper Classes, Lambda, Regex & Annotations - Comprehensive Notes
+
+## Table of Contents
+
+### Part 1: Wrapper Classes
+- [What are Wrapper Classes?](#what-are-wrapper-classes)
+- [Primitive to Wrapper Mapping](#primitive-to-wrapper-mapping)
+- [Autoboxing and Unboxing](#autoboxing-and-unboxing)
+- [Wrapper Class Methods](#wrapper-class-methods)
+- [Practical Usage](#practical-usage)
+
+### Part 2: Lambda Expressions
+- [Introduction to Lambda](#introduction-to-lambda)
+- [Lambda Syntax](#lambda-syntax)
+- [Functional Interfaces](#functional-interfaces)
+- [Built-in Functional Interfaces](#built-in-functional-interfaces)
+- [Method References](#method-references)
+
+### Part 3: Regular Expressions
+- [Regex Fundamentals](#regex-fundamentals)
+- [Pattern and Matcher Classes](#pattern-and-matcher-classes)
+- [Common Regex Patterns](#common-regex-patterns)
+- [Practical Regex Examples](#practical-regex-examples)
+
+### Part 4: Annotations
+- [Understanding Annotations](#understanding-annotations)
+- [Built-in Annotations](#built-in-annotations)
+- [Custom Annotations](#custom-annotations)
+- [Annotation Processing](#annotation-processing)
+
+---
+
+# Part 1: Wrapper Classes
+
+## What are Wrapper Classes?
+
+Wrapper classes provide a way to use primitive data types (int, boolean, etc..) as objects.
+
+### Why Wrapper Classes?
+- **Collections Requirement**: Collections like ArrayList can only store objects, not primitives
+- **Method Availability**: Wrapper classes provide useful methods for data conversion
+- **Null Support**: Wrapper classes can hold null values, primitives cannot
+- **Generic Type Parameters**: Required for generics (e.g., `List<Integer>`)
+
+## Primitive to Wrapper Mapping
+
+| Primitive Type | Wrapper Class | Size (bytes) | Range |
+|---------------|---------------|--------------|--------|
+| `byte` | `Byte` | 1 | -128 to 127 |
+| `short` | `Short` | 2 | -32,768 to 32,767 |
+| `int` | `Integer` | 4 | -2³¹ to 2³¹-1 |
+| `long` | `Long` | 8 | -2⁶³ to 2⁶³-1 |
+| `float` | `Float` | 4 | ±3.4E±38 (7 digits) |
+| `double` | `Double` | 8 | ±1.7E±308 (15 digits) |
+| `boolean` | `Boolean` | 1 bit | true/false |
+| `char` | `Character` | 2 | 0 to 65,535 (Unicode) |
+
+## Autoboxing and Unboxing
+
+### Autoboxing (Primitive to Wrapper)
+```java
+public class AutoboxingExample {
+    public static void main(String[] args) {
+        // Automatic conversion from primitive to wrapper
+        Integer myInt = 5;           // int -> Integer
+        Double myDouble = 5.99;      // double -> Double
+        Boolean myBoolean = true;    // boolean -> Boolean
+        Character myChar = 'A';      // char -> Character
+
+        System.out.println(myInt);     // Output: 5
+        System.out.println(myDouble);  // Output: 5.99
+        System.out.println(myBoolean); // Output: true
+        System.out.println(myChar);    // Output: A
+
+        // Collections with autoboxing
+        ArrayList<Integer> numbers = new ArrayList<>();
+        numbers.add(10);    // Automatically boxes int to Integer
+        numbers.add(20);
+        numbers.add(30);
+    }
+}
+```
+
+### Unboxing (Wrapper to Primitive)
+```java
+public class UnboxingExample {
+    public static void main(String[] args) {
+        Integer wrapperInt = 100;
+        Double wrapperDouble = 25.5;
+
+        // Automatic conversion from wrapper to primitive
+        int primitiveInt = wrapperInt;        // Integer -> int
+        double primitiveDouble = wrapperDouble; // Double -> double
+
+        // Arithmetic operations trigger unboxing
+        Integer a = 10;
+        Integer b = 20;
+        int sum = a + b;  // Both Integer objects are unboxed to int
+
+        System.out.println("Sum: " + sum); // Output: Sum: 30
+    }
+}
+```
+
+### Null Pointer Exception Risk
+```java
+public class NPEExample {
+    public static void main(String[] args) {
+        Integer nullInteger = null;
+
+        try {
+            int value = nullInteger; // NullPointerException!
+        } catch (NullPointerException e) {
+            System.out.println("Cannot unbox null wrapper: " + e.getMessage());
+        }
+
+        // Safe approach
+        if (nullInteger != null) {
+            int safeValue = nullInteger;
+            System.out.println("Safe value: " + safeValue);
+        }
+    }
+}
+```
+
+## Wrapper Class Methods
+
+### Value Extraction Methods
+```java
+public class ValueExtractionExample {
+    public static void main(String[] args) {
+        Integer intWrapper = 42;
+        Double doubleWrapper = 3.14159;
+        Character charWrapper = 'Z';
+        Boolean boolWrapper = true;
+
+        // Extract primitive values
+        int intValue = intWrapper.intValue();
+        byte byteValue = intWrapper.byteValue();
+        double doubleValue = intWrapper.doubleValue();
+
+        double doubleVal = doubleWrapper.doubleValue();
+        float floatVal = doubleWrapper.floatValue();
+        int truncatedInt = doubleWrapper.intValue(); // Truncates decimal
+
+        char charValue = charWrapper.charValue();
+        boolean boolValue = boolWrapper.booleanValue();
+
+        System.out.println("Integer as int: " + intValue);        // 42
+        System.out.println("Integer as byte: " + byteValue);      // 42
+        System.out.println("Integer as double: " + doubleValue); // 42.0
+        System.out.println("Double truncated: " + truncatedInt); // 3
+    }
+}
+```
+
+### String Conversion Methods
+```java
+public class StringConversionExample {
+    public static void main(String[] args) {
+        Integer number = 12345;
+        Double decimal = 98.76;
+        Boolean flag = true;
+
+        // Convert to string
+        String numberStr = number.toString();
+        String decimalStr = decimal.toString();
+        String flagStr = flag.toString();
+
+        System.out.println("Number as string: " + numberStr);   // "12345"
+        System.out.println("String length: " + numberStr.length()); // 5
+
+        // Static toString methods
+        String binaryStr = Integer.toString(number, 2);  // Binary
+        String hexStr = Integer.toString(number, 16);    // Hexadecimal
+        String octalStr = Integer.toString(number, 8);   // Octal
+
+        System.out.println("Binary: " + binaryStr);   // "11000000111001"
+        System.out.println("Hex: " + hexStr);         // "3039"
+        System.out.println("Octal: " + octalStr);     // "30071"
+    }
+}
+```
+
+### Parsing Methods
+```java
+public class ParsingExample {
+    public static void main(String[] args) {
+        // String to primitive/wrapper conversion
+        String intStr = "123";
+        String doubleStr = "45.67";
+        String boolStr = "true";
+
+        // Parse to primitives
+        int parsedInt = Integer.parseInt(intStr);
+        double parsedDouble = Double.parseDouble(doubleStr);
+        boolean parsedBool = Boolean.parseBoolean(boolStr);
+
+        // Parse to wrapper objects
+        Integer wrapperInt = Integer.valueOf(intStr);
+        Double wrapperDouble = Double.valueOf(doubleStr);
+        Boolean wrapperBool = Boolean.valueOf(boolStr);
+
+        System.out.println("Parsed int: " + parsedInt);
+        System.out.println("Wrapper int: " + wrapperInt);
+
+        // Parse with different radix
+        String binaryStr = "1010";
+        String hexStr = "FF";
+        int fromBinary = Integer.parseInt(binaryStr, 2);  // Binary to int
+        int fromHex = Integer.parseInt(hexStr, 16);       // Hex to int
+
+        System.out.println("Binary 1010 as int: " + fromBinary); // 10
+        System.out.println("Hex FF as int: " + fromHex);         // 255
+
+        // Error handling
+        try {
+            int invalid = Integer.parseInt("not a number");
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number format: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Comparison Methods
+```java
+public class ComparisonExample {
+    public static void main(String[] args) {
+        Integer a = 100;
+        Integer b = 200;
+        Integer c = 100;
+
+        // Compare wrapper objects
+        System.out.println("a.equals(c): " + a.equals(c));           // true
+        System.out.println("a == c: " + (a == c));                  // true (cached)
+
+        Integer x = 128;
+        Integer y = 128;
+        System.out.println("x.equals(y): " + x.equals(y));          // true
+        System.out.println("x == y: " + (x == y));                  // false (not cached)
+
+        // Compare values
+        int comparison = a.compareTo(b);
+        System.out.println("a compared to b: " + comparison);       // -1 (a < b)
+
+        // Static compare methods
+        int staticComp = Integer.compare(a, b);
+        System.out.println("Static compare: " + staticComp);        // -1
+
+        // Max and min values
+        System.out.println("Integer MAX: " + Integer.MAX_VALUE);
+        System.out.println("Integer MIN: " + Integer.MIN_VALUE);
+        System.out.println("Double MAX: " + Double.MAX_VALUE);
+        System.out.println("Double MIN: " + Double.MIN_VALUE);
+    }
+}
+```
+
+## Practical Usage
+
+### Working with Collections
+```java
+import java.util.*;
+
+public class CollectionUsage {
+    public static void main(String[] args) {
+        // List of integers
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // Sum using wrapper methods
+        int sum = numbers.stream()
+                        .mapToInt(Integer::intValue)
+                        .sum();
+        System.out.println("Sum: " + sum);
+
+        // Map with wrapper keys and values
+        Map<Integer, String> numberNames = new HashMap<>();
+        numberNames.put(1, "One");
+        numberNames.put(2, "Two");
+        numberNames.put(3, "Three");
+
+        // Process map entries
+        numberNames.forEach((key, value) ->
+            System.out.println(key.toString() + " -> " + value));
+    }
+}
+```
+
+### Utility Methods Example
+```java
+public class UtilityMethodsExample {
+    public static void main(String[] args) {
+        // Integer utility methods
+        System.out.println("Bit count of 7: " + Integer.bitCount(7));      // 3
+        System.out.println("Leading zeros: " + Integer.numberOfLeadingZeros(8)); // 28
+        System.out.println("Reverse bits: " + Integer.reverse(1));         // -2147483648
+
+        // Character utility methods
+        System.out.println("Is digit: " + Character.isDigit('5'));         // true
+        System.out.println("Is letter: " + Character.isLetter('A'));       // true
+        System.out.println("To uppercase: " + Character.toUpperCase('a')); // A
+        System.out.println("To lowercase: " + Character.toLowerCase('Z')); // z
+
+        // Boolean utility methods
+        System.out.println("Logical AND: " + Boolean.logicalAnd(true, false)); // false
+        System.out.println("Logical OR: " + Boolean.logicalOr(true, false));   // true
+        System.out.println("Logical XOR: " + Boolean.logicalXor(true, false)); // true
+    }
+}
+```
+
+---
+
+# Part 2: Lambda Expressions
+
+## Introduction to Lambda
+
+Lambda Expressions were added in Java 8. A lambda expression is a short block of code which takes in parameters and returns a value. Lambda expressions are similar to methods, but they do not need a name and they can be implemented right in the body of a method.
+
+### Benefits of Lambda Expressions:
+- **Concise Code**: Reduce boilerplate code
+- **Functional Programming**: Enable functional programming paradigms
+- **Better Collections**: Work seamlessly with Streams API
+- **Parallel Processing**: Easier parallel operations
+
+## Lambda Syntax
+
+### Basic Syntax Forms
+The simplest lambda expression contains a single parameter and an expression:
+parameter -> expression
+
+To use more than one parameter, wrap them in parentheses:
+(parameter1, parameter2) -> expression
+
+```java
+// Single parameter (parentheses optional)
+x -> x * 2
+n -> System.out.println(n)
+
+// Multiple parameters (parentheses required)
+(a, b) -> a + b
+(x, y) -> Math.max(x, y)
+
+// No parameters
+() -> System.out.println("Hello")
+() -> Math.random()
+
+// Code block with return statement
+(a, b) -> {
+    int sum = a + b;
+    return sum * 2;
+}
+
+// Code block without return (void)
+n -> {
+    System.out.println("Processing: " + n);
+    // Some complex logic here
+}
+```
+
+### Lambda Expression Examples
+```java
+import java.util.*;
+import java.util.function.*;
+
+public class LambdaSyntaxExamples {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // Traditional approach with anonymous class
+        numbers.forEach(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer n) {
+                System.out.println(n);
+            }
+        });
+
+        // Lambda expression - single line
+        numbers.forEach(n -> System.out.println(n));
+
+        // Lambda expression - method reference
+        numbers.forEach(System.out::println);
+
+        // Lambda with filtering
+        numbers.stream()
+               .filter(n -> n % 2 == 0)
+               .forEach(System.out::println);
+
+        // Lambda with transformation
+        List<String> strings = numbers.stream()
+                                     .map(n -> "Number: " + n)
+                                     .collect(Collectors.toList());
+        System.out.println(strings);
+    }
+}
+```
+
+## Functional Interfaces
+
+### What is a Functional Interface?
+A functional interface has exactly one abstract method (Single Abstract Method - SAM). Lambda expressions can be used wherever a functional interface is expected.
+
+### @FunctionalInterface Annotation
+```java
+@FunctionalInterface
+interface MathOperation {
+    int operate(int a, int b);
+
+    // Default methods are allowed
+    default void printResult(int result) {
+        System.out.println("Result: " + result);
+    }
+
+    // Static methods are allowed
+    static void printInfo() {
+        System.out.println("This is a math operation interface");
+    }
+}
+
+public class FunctionalInterfaceExample {
+    public static void main(String[] args) {
+        // Lambda expressions implementing the interface
+        MathOperation addition = (a, b) -> a + b;
+        MathOperation subtraction = (a, b) -> a - b;
+        MathOperation multiplication = (a, b) -> a * b;
+        MathOperation division = (a, b) -> a / b;
+
+        // Using the lambda expressions
+        System.out.println("10 + 5 = " + addition.operate(10, 5));
+        System.out.println("10 - 5 = " + subtraction.operate(10, 5));
+        System.out.println("10 * 5 = " + multiplication.operate(10, 5));
+        System.out.println("10 / 5 = " + division.operate(10, 5));
+
+        // Using default method
+        addition.printResult(addition.operate(10, 5));
+
+        // Using static method
+        MathOperation.printInfo();
+    }
+}
+```
+
+### Custom Functional Interface Example
+```java
+@FunctionalInterface
+interface StringProcessor {
+    String process(String input);
+}
+
+public class CustomFunctionalInterface {
+    public static void main(String[] args) {
+        // Various lambda implementations
+        StringProcessor uppercase = s -> s.toUpperCase();
+        StringProcessor lowercase = s -> s.toLowerCase();
+        StringProcessor reverse = s -> new StringBuilder(s).reverse().toString();
+        StringProcessor addExclamation = s -> s + "!";
+
+        String text = "Hello World";
+
+        System.out.println("Original: " + text);
+        System.out.println("Uppercase: " + processString(text, uppercase));
+        System.out.println("Lowercase: " + processString(text, lowercase));
+        System.out.println("Reversed: " + processString(text, reverse));
+        System.out.println("With exclamation: " + processString(text, addExclamation));
+    }
+
+    public static String processString(String input, StringProcessor processor) {
+        return processor.process(input);
+    }
+}
+```
+
+## Built-in Functional Interfaces
+
+Java provides many built-in functional interfaces in the `java.util.function` package:
+
+### Core Functional Interfaces
+
+| Interface | Method | Description | Example |
+|-----------|--------|-------------|---------|
+| `Consumer<T>` | `void accept(T t)` | Consumes an input, returns nothing | `s -> System.out.println(s)` |
+| `Supplier<T>` | `T get()` | Supplies a value, takes no input | `() -> Math.random()` |
+| `Function<T,R>` | `R apply(T t)` | Takes input T, returns output R | `s -> s.length()` |
+| `Predicate<T>` | `boolean test(T t)` | Tests a condition, returns boolean | `n -> n > 0` |
+
+### Consumer Examples
+```java
+import java.util.function.Consumer;
+import java.util.function.BiConsumer;
+
+public class ConsumerExamples {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+
+        // Consumer - single parameter
+        Consumer<String> printer = name -> System.out.println("Hello, " + name);
+        names.forEach(printer);
+
+        // BiConsumer - two parameters
+        BiConsumer<String, Integer> indexedPrinter =
+            (name, index) -> System.out.println(index + ": " + name);
+
+        for (int i = 0; i < names.size(); i++) {
+            indexedPrinter.accept(names.get(i), i + 1);
+        }
+
+        // Consumer chaining
+        Consumer<String> upperCase = s -> System.out.println(s.toUpperCase());
+        Consumer<String> lowerCase = s -> System.out.println(s.toLowerCase());
+        Consumer<String> combined = upperCase.andThen(lowerCase);
+
+        combined.accept("Hello World");
+    }
+}
+```
+
+### Supplier Examples
+```java
+import java.util.function.Supplier;
+import java.util.Random;
+
+public class SupplierExamples {
+    public static void main(String[] args) {
+        // Simple suppliers
+        Supplier<String> messageSupplier = () -> "Hello from supplier!";
+        Supplier<Double> randomSupplier = () -> Math.random();
+        Supplier<Integer> diceRoll = () -> new Random().nextInt(6) + 1;
+
+        System.out.println(messageSupplier.get());
+        System.out.println("Random: " + randomSupplier.get());
+        System.out.println("Dice roll: " + diceRoll.get());
+
+        // Supplier with complex logic
+        Supplier<List<String>> listSupplier = () -> {
+            List<String> list = new ArrayList<>();
+            list.add("Item 1");
+            list.add("Item 2");
+            list.add("Item 3");
+            return list;
+        };
+
+        List<String> items = listSupplier.get();
+        System.out.println("Generated list: " + items);
+
+        // Lazy evaluation example
+        System.out.println("Getting value lazily: " + getValue(randomSupplier));
+    }
+
+    public static String getValue(Supplier<Double> supplier) {
+        // Value is only generated when needed
+        double value = supplier.get();
+        return value > 0.5 ? "High: " + value : "Low: " + value;
+    }
+}
+```
+
+### Function Examples
+```java
+import java.util.function.Function;
+import java.util.function.BiFunction;
+
+public class FunctionExamples {
+    public static void main(String[] args) {
+        List<String> words = Arrays.asList("hello", "world", "java", "lambda");
+
+        // Function - transform string to its length
+        Function<String, Integer> lengthFunction = s -> s.length();
+
+        List<Integer> lengths = words.stream()
+                                   .map(lengthFunction)
+                                   .collect(Collectors.toList());
+        System.out.println("Lengths: " + lengths);
+
+        // Function chaining
+        Function<String, String> upperCase = s -> s.toUpperCase();
+        Function<String, String> addExclamation = s -> s + "!";
+        Function<String, String> combined = upperCase.andThen(addExclamation);
+
+        System.out.println(combined.apply("hello")); // "HELLO!"
+
+        // BiFunction - two parameters
+        BiFunction<Integer, Integer, Integer> multiply = (a, b) -> a * b;
+        BiFunction<String, String, String> concat = (s1, s2) -> s1 + " " + s2;
+
+        System.out.println("3 * 4 = " + multiply.apply(3, 4));
+        System.out.println("Concatenated: " + concat.apply("Hello", "World"));
+
+        // Function composition
+        Function<Integer, Integer> doubleValue = x -> x * 2;
+        Function<Integer, Integer> addTen = x -> x + 10;
+
+        // compose: first apply addTen, then doubleValue
+        Function<Integer, Integer> composed1 = doubleValue.compose(addTen);
+        System.out.println("Compose (5+10)*2 = " + composed1.apply(5)); // 30
+
+        // andThen: first apply doubleValue, then addTen
+        Function<Integer, Integer> composed2 = doubleValue.andThen(addTen);
+        System.out.println("AndThen (5*2)+10 = " + composed2.apply(5)); // 20
+    }
+}
+```
+
+### Predicate Examples
+```java
+import java.util.function.Predicate;
+
+public class PredicateExamples {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        // Simple predicates
+        Predicate<Integer> isEven = n -> n % 2 == 0;
+        Predicate<Integer> isPositive = n -> n > 0;
+        Predicate<Integer> isGreaterThanFive = n -> n > 5;
+
+        // Filter using predicates
+        List<Integer> evenNumbers = numbers.stream()
+                                          .filter(isEven)
+                                          .collect(Collectors.toList());
+        System.out.println("Even numbers: " + evenNumbers);
+
+        // Predicate combination
+        Predicate<Integer> evenAndGreaterThanFive = isEven.and(isGreaterThanFive);
+        Predicate<Integer> evenOrGreaterThanFive = isEven.or(isGreaterThanFive);
+        Predicate<Integer> notEven = isEven.negate();
+
+        System.out.println("Even and > 5: " +
+            numbers.stream().filter(evenAndGreaterThanFive).collect(Collectors.toList()));
+        System.out.println("Even or > 5: " +
+            numbers.stream().filter(evenOrGreaterThanFive).collect(Collectors.toList()));
+        System.out.println("Odd numbers: " +
+            numbers.stream().filter(notEven).collect(Collectors.toList()));
+
+        // String predicates
+        List<String> words = Arrays.asList("apple", "banana", "cherry", "date", "elderberry");
+
+        Predicate<String> startsWithA = s -> s.startsWith("a");
+        Predicate<String> longerThanFive = s -> s.length() > 5;
+        Predicate<String> containsE = s -> s.contains("e");
+
+        System.out.println("Starts with 'a': " +
+            words.stream().filter(startsWithA).collect(Collectors.toList()));
+        System.out.println("Longer than 5 chars: " +
+            words.stream().filter(longerThanFive).collect(Collectors.toList()));
+        System.out.println("Contains 'e': " +
+            words.stream().filter(containsE).collect(Collectors.toList()));
+    }
+}
+```
+
+## Method References
+
+Method references provide a shorthand syntax for lambda expressions that call a single method.
+
+### Types of Method References
+
+| Type | Syntax | Example |
+|------|--------|---------|
+| Static method | `ClassName::staticMethod` | `Integer::parseInt` |
+| Instance method of particular object | `object::instanceMethod` | `myObj::toString` |
+| Instance method of arbitrary object | `ClassName::instanceMethod` | `String::length` |
+| Constructor | `ClassName::new` | `ArrayList::new` |
+
+### Method Reference Examples
+```java
+import java.util.function.*;
+import java.util.stream.Collectors;
+
+public class MethodReferenceExamples {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("Alice", "Bob", "Charlie", "Diana");
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        // 1. Static method reference
+        // Lambda: s -> Integer.parseInt(s)
+        Function<String, Integer> parseInt = Integer::parseInt;
+        List<String> numberStrings = Arrays.asList("1", "2", "3", "4", "5");
+        List<Integer> parsed = numberStrings.stream()
+                                          .map(parseInt)
+                                          .collect(Collectors.toList());
+        System.out.println("Parsed numbers: " + parsed);
+
+        // 2. Instance method of particular object
+        PrintStream out = System.out;
+        Consumer<String> printer = out::println;  // Same as s -> System.out.println(s)
+        names.forEach(printer);
+
+        // 3. Instance method of arbitrary object of particular type
+        // Lambda: s -> s.length()
+        Function<String, Integer> lengthFunc = String::length;
+        List<Integer> lengths = names.stream()
+                                   .map(lengthFunc)
+                                   .collect(Collectors.toList());
+        System.out.println("Name lengths: " + lengths);
+
+        // Lambda: s -> s.toUpperCase()
+        Function<String, String> upperCaseFunc = String::toUpperCase;
+        List<String> upperCaseNames = names.stream()
+                                         .map(upperCaseFunc)
+                                         .collect(Collectors.toList());
+        System.out.println("Uppercase names: " + upperCaseNames);
+
+        // 4. Constructor reference
+        // Lambda: () -> new ArrayList<>()
+        Supplier<List<String>> listSupplier = ArrayList::new;
+        List<String> newList = listSupplier.get();
+        newList.add("Created with constructor reference");
+        System.out.println(newList);
+
+        // Constructor with parameter
+        // Lambda: capacity -> new ArrayList<>(capacity)
+        Function<Integer, List<String>> listWithCapacity = ArrayList::new;
+        List<String> capacityList = listWithCapacity.apply(10);
+
+        // Comparison: Lambda vs Method Reference
+        System.out.println("\n--- Lambda vs Method Reference Comparison ---");
+
+        // Using lambda
+        numbers.stream().map(n -> n.toString()).forEach(s -> System.out.println(s));
+
+        // Using method references
+        numbers.stream().map(Object::toString).forEach(System.out::println);
+    }
+}
+```
+
+### Advanced Method Reference Usage
+```java
+public class Person {
+    private String name;
+    private int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    public static int compareByAge(Person p1, Person p2) {
+        return Integer.compare(p1.age, p2.age);
+    }
+
+    public int compareByName(Person other) {
+        return this.name.compareTo(other.name);
+    }
+
+    @Override
+    public String toString() {
+        return name + "(" + age + ")";
+    }
+}
+
+public class AdvancedMethodReferences {
+    public static void main(String[] args) {
+        List<Person> people = Arrays.asList(
+            new Person("Alice", 30),
+            new Person("Bob", 25),
+            new Person("Charlie", 35),
+            new Person("Diana", 28)
+        );
+
+        System.out.println("Original: " + people);
+
+        // Static method reference for comparison
+        List<Person> sortedByAge = people.stream()
+                                        .sorted(Person::compareByAge)
+                                        .collect(Collectors.toList());
+        System.out.println("Sorted by age: " + sortedByAge);
+
+        // Instance method reference
+        List<String> names = people.stream()
+                                  .map(Person::getName)
+                                  .collect(Collectors.toList());
+        System.out.println("Names: " + names);
+
+        // Constructor reference with custom object
+        Function<String, Person> personFactory = name -> new Person(name, 0);
+        // This could be written as a constructor reference if Person had appropriate constructor
+
+        List<Person> newPeople = Arrays.asList("Eve", "Frank", "Grace")
+                                      .stream()
+                                      .map(personFactory)
+                                      .collect(Collectors.toList());
+        System.out.println("New people: " + newPeople);
+    }
+}
+```
+
+---
+
+# Part 3: Regular Expressions
+
+## Regex Fundamentals
+
+A regular expression (regex) is a sequence of characters that forms a search pattern. When you search for data in a text, you can use this search pattern to describe what you are searching for.
+
+### Java Regex Classes
+- **`Pattern`** - Defines a pattern (to be used in a search)
+- **`Matcher`** - Used to search for the pattern
+- **`PatternSyntaxException`** - Indicates syntax error in a regular expression pattern
+
+## Pattern and Matcher Classes
+
+### Basic Usage
+```java
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
+public class BasicRegexExample {
+    public static void main(String[] args) {
+        String text = "Visit W3Schools for Java tutorials!";
+        String pattern = "w3schools";
+
+        // Case-sensitive search
+        Pattern compiledPattern = Pattern.compile(pattern);
+        Matcher matcher = compiledPattern.matcher(text);
+
+        if (matcher.find()) {
+            System.out.println("Match found at position: " + matcher.start());
+            System.out.println("Matched text: " + matcher.group());
+        } else {
+            System.out.println("No match found");
+        }
+
+        // Case-insensitive search
+        Pattern caseInsensitive = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        Matcher caseInsensitiveMatcher = caseInsensitive.matcher(text);
+
+        if (caseInsensitiveMatcher.find()) {
+            System.out.println("Case-insensitive match found!");
+            System.out.println("Match: " + caseInsensitiveMatcher.group());
+        }
+    }
+}
+```
+
+### Pattern Flags
+```java
+public class PatternFlagsExample {
+    public static void main(String[] args) {
+        String text = "Hello WORLD\nThis is a\nmultiline text";
+
+        // CASE_INSENSITIVE flag
+        Pattern pattern1 = Pattern.compile("hello", Pattern.CASE_INSENSITIVE);
+        System.out.println("Case insensitive match: " + pattern1.matcher(text).find());
+
+        // MULTILINE flag - ^ and $ match line boundaries
+        Pattern pattern2 = Pattern.compile("^This", Pattern.MULTILINE);
+        System.out.println("Multiline match: " + pattern2.matcher(text).find());
+
+        // DOTALL flag - . matches any character including newlines
+        Pattern pattern3 = Pattern.compile("Hello.*text", Pattern.DOTALL);
+        System.out.println("Dot all match: " + pattern3.matcher(text).find());
+
+        // Combining flags
+        Pattern combined = Pattern.compile("hello.*world",
+                                         Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        System.out.println("Combined flags match: " + combined.matcher(text).find());
+    }
+}
+```
+
+### Matcher Methods
+```java
+public class MatcherMethodsExample {
+    public static void main(String[] args) {
+        String text = "The quick brown fox jumps over the lazy dog";
+        Pattern pattern = Pattern.compile("\\b\\w{4}\\b"); // 4-letter words
+
+        Matcher matcher = pattern.matcher(text);
+
+        System.out.println("Finding all 4-letter words:");
+        while (matcher.find()) {
+            System.out.println("Found: '" + matcher.group() +
+                             "' at position " + matcher.start() +
+                             "-" + matcher.end());
+        }
+
+        // Reset matcher for new operations
+        matcher.reset();
+
+        // Count matches
+        long count = matcher.results().count();
+        System.out.println("Total 4-letter words: " + count);
+
+        // Replace operations
+        String replaced = matcher.replaceAll("WORD");
+        System.out.println("After replacement: " + replaced);
+
+        matcher.reset();
+        String replacedFirst = matcher.replaceFirst("FIRST");
+        System.out.println("After replacing first: " + replacedFirst);
+    }
+}
+```
+
+## Common Regex Patterns
+
+### Character Classes and Metacharacters
+```java
+public class RegexPatternsExample {
+    public static void main(String[] args) {
+        String[] testStrings = {
+            "Hello123",
+            "test@email.com",
+            "Phone: 123-456-7890",
+            "Price: $29.99",
+            "Date: 2024-01-15"
+        };
+
+        // Test various patterns
+        testPattern("\\d+", testStrings, "Digits");
+        testPattern("\\w+", testStrings, "Word characters");
+        testPattern("\\s+", testStrings, "Whitespace");
+        testPattern("[A-Z]+", testStrings, "Uppercase letters");
+        testPattern("[a-z]+", testStrings, "Lowercase letters");
+        testPattern("\\$\\d+\\.\\d{2}", testStrings, "Price format");
+        testPattern("\\d{4}-\\d{2}-\\d{2}", testStrings, "Date format YYYY-MM-DD");
+        testPattern("\\w+@\\w+\\.\\w+", testStrings, "Simple email pattern");
+    }
+
+    private static void testPattern(String regex, String[] texts, String description) {
+        System.out.println("\n--- Testing: " + description + " (" + regex + ") ---");
+        Pattern pattern = Pattern.compile(regex);
+
+        for (String text : texts) {
+            Matcher matcher = pattern.matcher(text);
+            System.out.print("\"" + text + "\" -> ");
+
+            if (matcher.find()) {
+                System.out.print("Found: ");
+                matcher.reset();
+                while (matcher.find()) {
+                    System.out.print("'" + matcher.group() + "' ");
+                }
+                System.out.println();
+            } else {
+                System.out.println("No match");
+            }
+        }
+    }
+}
+```
+
+### Quantifiers
+```java
+public class QuantifiersExample {
+    public static void main(String[] args) {
+        String text = "aaa bb cccc d eeeeee";
+
+        // + : one or more
+        testQuantifier("a+", text, "One or more 'a'");
+
+        // * : zero or more
+        testQuantifier("b*", text, "Zero or more 'b'");
+
+        // ? : zero or one
+        testQuantifier("d?", text, "Zero or one 'd'");
+
+        // {n} : exactly n
+        testQuantifier("c{4}", text, "Exactly 4 'c'");
+
+        // {n,m} : between n and m
+        testQuantifier("e{2,4}", text, "Between 2 and 4 'e'");
+
+        // {n,} : n or more
+        testQuantifier("e{3,}", text, "3 or more 'e'");
+
+        // Greedy vs non-greedy
+        String html = "<div>content</div><span>more</span>";
+        System.out.println("\nGreedy vs Non-greedy:");
+        testQuantifier("<.+>", html, "Greedy: any character between < and >");
+        testQuantifier("<.+?>", html, "Non-greedy: any character between < and >");
+    }
+
+    private static void testQuantifier(String regex, String text, String description) {
+        System.out.println(description + " (" + regex + "):");
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            System.out.println("  Found: '" + matcher.group() +
+                             "' at " + matcher.start() + "-" + matcher.end());
+        }
+    }
+}
+```
+
+### Groups and Capturing
+```java
+public class GroupsExample {
+    public static void main(String[] args) {
+        String text = "Contact: John Doe (john.doe@email.com) Phone: 123-456-7890";
+
+        // Named groups for email extraction
+        String emailPattern = "(\\w+)\\.(\\w+)@(\\w+)\\.(\\w+)";
+        Pattern pattern = Pattern.compile(emailPattern);
+        Matcher matcher = pattern.matcher(text);
+
+        if (matcher.find()) {
+            System.out.println("Full match: " + matcher.group(0));
+            System.out.println("First name: " + matcher.group(1));
+            System.out.println("Last name: " + matcher.group(2));
+            System.out.println("Domain: " + matcher.group(3));
+            System.out.println("TLD: " + matcher.group(4));
+        }
+
+        // Phone number pattern with groups
+        String phonePattern = "(\\d{3})-(\\d{3})-(\\d{4})";
+        Pattern phonePatternCompiled = Pattern.compile(phonePattern);
+        Matcher phoneMatcher = phonePatternCompiled.matcher(text);
+
+        if (phoneMatcher.find()) {
+            System.out.println("\nPhone number breakdown:");
+            System.out.println("Full number: " + phoneMatcher.group(0));
+            System.out.println("Area code: " + phoneMatcher.group(1));
+            System.out.println("Exchange: " + phoneMatcher.group(2));
+            System.out.println("Number: " + phoneMatcher.group(3));
+        }
+
+        // Non-capturing groups (?:...)
+        String nonCapturingPattern = "(?:Mr|Ms|Dr)\\. (\\w+ \\w+)";
+        Pattern nonCapturing = Pattern.compile(nonCapturingPattern);
+        String titleText = "Dr. Jane Smith and Mr. John Doe";
+        Matcher titleMatcher = nonCapturing.matcher(titleText);
+
+        System.out.println("\nNon-capturing groups (titles ignored):");
+        while (titleMatcher.find()) {
+            System.out.println("Name only: " + titleMatcher.group(1));
+        }
+    }
+}
+```
+
+## Practical Regex Examples
+
+### Email Validation
+```java
+public class EmailValidationExample {
+    private static final String EMAIL_PATTERN =
+        "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
+
+    private static final Pattern pattern = Pattern.compile(EMAIL_PATTERN);
+
+    public static boolean isValidEmail(String email) {
+        return pattern.matcher(email).matches();
+    }
+
+    public static void main(String[] args) {
+        String[] emails = {
+            "user@example.com",           // Valid
+            "test.email@domain.co.uk",    // Valid
+            "user+tag@example.com",       // Valid
+            "invalid-email",              // Invalid
+            "@example.com",               // Invalid
+            "user@",                      // Invalid
+            "user@domain",                // Invalid
+            "user name@domain.com"        // Invalid (space)
+        };
+
+        System.out.println("Email Validation Results:");
+        for (String email : emails) {
+            System.out.printf("%-25s -> %s%n",
+                email, isValidEmail(email) ? "VALID" : "INVALID");
+        }
+    }
+}
+```
+
+### Phone Number Extraction and Formatting
+```java
+public class PhoneNumberExample {
+    public static void main(String[] args) {
+        String text = "Call me at 123-456-7890 or (555) 123-4567 or 555.987.6543";
+
+        // Different phone number patterns
+        String[] phonePatterns = {
+            "\\d{3}-\\d{3}-\\d{4}",           // 123-456-7890
+            "\\(\\d{3}\\) \\d{3}-\\d{4}",     // (555) 123-4567
+            "\\d{3}\\.\\d{3}\\.\\d{4}"        // 555.987.6543
+        };
+
+        System.out.println("Original text: " + text);
+        System.out.println("\nFound phone numbers:");
+
+        for (String patternStr : phonePatterns) {
+            Pattern pattern = Pattern.compile(patternStr);
+            Matcher matcher = pattern.matcher(text);
+
+            while (matcher.find()) {
+                System.out.println("Pattern: " + patternStr + " -> " + matcher.group());
+            }
+        }
+
+        // Universal phone pattern and formatting
+        String universalPattern = "(?:\\(?(\\d{3})\\)?[-.\\s]?(\\d{3})[-.\\s]?(\\d{4}))";
+        Pattern universal = Pattern.compile(universalPattern);
+        Matcher universalMatcher = universal.matcher(text);
+
+        System.out.println("\nFormatted phone numbers:");
+        while (universalMatcher.find()) {
+            String formatted = String.format("(%s) %s-%s",
+                universalMatcher.group(1),
+                universalMatcher.group(2),
+                universalMatcher.group(3));
+            System.out.println("Original: " + universalMatcher.group() +
+                             " -> Formatted: " + formatted);
+        }
+    }
+}
+```
+
+### Log File Parsing
+```java
+public class LogParsingExample {
+    public static void main(String[] args) {
+        String[] logLines = {
+            "2024-01-15 10:30:45 [INFO] User login successful - user: john_doe",
+            "2024-01-15 10:31:02 [ERROR] Database connection failed - timeout after 30s",
+            "2024-01-15 10:31:15 [WARN] Memory usage at 85% - threshold exceeded",
+            "2024-01-15 10:32:00 [INFO] File upload completed - size: 2.5MB"
+        };
+
+        // Log pattern: timestamp [level] message
+        String logPattern = "(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(\\w+)\\] (.+)";
+        Pattern pattern = Pattern.compile(logPattern);
+
+        System.out.println("Parsed log entries:");
+        for (String logLine : logLines) {
+            Matcher matcher = pattern.matcher(logLine);
+
+            if (matcher.find()) {
+                String timestamp = matcher.group(1);
+                String level = matcher.group(2);
+                String message = matcher.group(3);
+
+                System.out.printf("Timestamp: %s | Level: %-5s | Message: %s%n",
+                    timestamp, level, message);
+            }
+        }
+
+        // Filter by log level
+        System.out.println("\nERROR level logs only:");
+        Pattern errorPattern = Pattern.compile(".*\\[ERROR\\].*");
+        for (String logLine : logLines) {
+            if (errorPattern.matcher(logLine).matches()) {
+                System.out.println(logLine);
+            }
+        }
+    }
+}
+```
+
+### Text Processing and Cleaning
+```java
+public class TextProcessingExample {
+    public static void main(String[] args) {
+        String messyText = "  Hello,    world!!!   How   are you???  \n\n  Fine, thanks!  ";
+
+        System.out.println("Original text: '" + messyText + "'");
+
+        // Remove extra whitespace
+        String cleanWhitespace = messyText.replaceAll("\\s+", " ").trim();
+        System.out.println("Clean whitespace: '" + cleanWhitespace + "'");
+
+        // Remove multiple punctuation marks
+        String cleanPunctuation = cleanWhitespace.replaceAll("[!?]{2,}", "!");
+        System.out.println("Clean punctuation: '" + cleanPunctuation + "'");
+
+        // Extract words only (remove punctuation)
+        String wordsOnly = cleanPunctuation.replaceAll("[^a-zA-Z\\s]", "");
+        System.out.println("Words only: '" + wordsOnly + "'");
+
+        // Split into words
+        String[] words = wordsOnly.split("\\s+");
+        System.out.println("Word count: " + words.length);
+        System.out.println("Words: " + Arrays.toString(words));
+
+        // Find and replace with pattern
+        String htmlText = "<p>This is a <strong>bold</strong> text with <em>emphasis</em></p>";
+        String cleanHtml = htmlText.replaceAll("<[^>]+>", "");
+        System.out.println("\nHTML text: " + htmlText);
+        System.out.println("Clean text: " + cleanHtml);
+    }
+}
+```
+
+---
+
+# Part 4: Annotations
+
+## Understanding Annotations
+
+Annotations are special notes you add to your Java code. They start with the `@` symbol. They don't change how your program runs, but they give extra information to the compiler, development tools, or frameworks.
+
+### Benefits of Annotations:
+- **Compile-time checking**: Help catch errors during compilation
+- **Code generation**: Tools can generate code based on annotations
+- **Runtime processing**: Can be processed at runtime for frameworks
+- **Documentation**: Provide metadata about code elements
+
+## Built-in Annotations
+
+### @Override Annotation
+The `@Override` annotation indicates that a method overrides a method in a superclass.
+
+```java
+class Animal {
+    void makeSound() {
+        System.out.println("Animal sound");
+    }
+
+    void move() {
+        System.out.println("Animal moves");
+    }
+}
+
+class Dog extends Animal {
+    @Override
+    void makeSound() {
+        System.out.println("Woof!");
+    }
+
+    @Override
+    void move() {
+        System.out.println("Dog runs");
+    }
+
+    // This will cause a compile error if uncommented
+    // @Override
+    // void makesound() { // Typo in method name
+    //     System.out.println("Woof!");
+    // }
+}
+
+public class OverrideExample {
+    public static void main(String[] args) {
+        Animal myDog = new Dog();
+        myDog.makeSound(); // Output: Woof!
+        myDog.move();      // Output: Dog runs
+
+        // Demonstrating polymorphism
+        Animal[] animals = {new Animal(), new Dog()};
+        for (Animal animal : animals) {
+            animal.makeSound();
+        }
+    }
+}
+```
+
+### @Deprecated Annotation
+The `@Deprecated` annotation marks methods, classes, or fields as outdated.
+
+```java
+public class DeprecatedExample {
+
+    @Deprecated
+    public static void oldMethod() {
+        System.out.println("This is an old method");
+    }
+
+    @Deprecated(since = "2.0", forRemoval = true)
+    public static void veryOldMethod() {
+        System.out.println("This method will be removed");
+    }
+
+    public static void newMethod() {
+        System.out.println("Use this new method instead");
+    }
+
+    public static void main(String[] args) {
+        // These calls will show deprecation warnings
+        oldMethod();        // Warning: deprecated
+        veryOldMethod();    // Warning: deprecated and marked for removal
+
+        // This is the recommended approach
+        newMethod();        // No warning
+    }
+}
+```
+
+### @SuppressWarnings Annotation
+The `@SuppressWarnings` annotation tells the compiler to ignore specific warnings.
+
+```java
+import java.util.*;
+
+public class SuppressWarningsExample {
+
+    @SuppressWarnings("unchecked")
+    public static void uncheckedExample() {
+        // Raw type usage (normally causes warning)
+        List rawList = new ArrayList();
+        rawList.add("String");
+        rawList.add(42);
+
+        System.out.println("Raw list: " + rawList);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void deprecationExample() {
+        // Using deprecated method (normally causes warning)
+        DeprecatedExample.oldMethod();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void multipleWarnings() {
+        Map rawMap = new HashMap();
+        rawMap.put("key", "value");
+        System.out.println("Raw map: " + rawMap);
+    }
+
+    @SuppressWarnings("unused")
+    public static void unusedVariableExample() {
+        int unusedVariable = 42; // This would normally cause a warning
+        // Variable is not used, but warning is suppressed
+    }
+
+    public static void main(String[] args) {
+        uncheckedExample();
+        deprecationExample();
+        multipleWarnings();
+        unusedVariableExample();
+    }
+}
+```
+
+### Other Built-in Annotations
+```java
+public class OtherAnnotationsExample {
+
+    // @SafeVarargs - suppresses warnings about varargs
+    @SafeVarargs
+    public static <T> void printAll(T... items) {
+        for (T item : items) {
+            System.out.println(item);
+        }
+    }
+
+    // @FunctionalInterface - ensures interface has only one abstract method
+    @FunctionalInterface
+    interface Calculator {
+        int calculate(int a, int b);
+
+        // Default methods are allowed
+        default void printResult(int result) {
+            System.out.println("Result: " + result);
+        }
+
+        // Static methods are allowed
+        static void info() {
+            System.out.println("This is a calculator interface");
+        }
+    }
+
+    public static void main(String[] args) {
+        // Using @SafeVarargs method
+        printAll("Hello", "World", "Java");
+        printAll(1, 2, 3, 4, 5);
+
+        // Using @FunctionalInterface
+        Calculator add = (a, b) -> a + b;
+        Calculator multiply = (a, b) -> a * b;
+
+        int sum = add.calculate(5, 3);
+        int product = multiply.calculate(5, 3);
+
+        add.printResult(sum);      // Result: 8
+        multiply.printResult(product); // Result: 15
+
+        Calculator.info(); // This is a calculator interface
+    }
+}
+```
+
+## Custom Annotations
+
+### Creating Custom Annotations
+```java
+import java.lang.annotation.*;
+
+// Custom annotation for marking methods as test methods
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Test {
+    String description() default "";
+    int priority() default 1;
+    boolean enabled() default true;
+}
+
+// Custom annotation for class-level information
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Author {
+    String name();
+    String email() default "";
+    String version() default "1.0";
+}
+
+// Custom annotation for field validation
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Required {
+    String message() default "Field is required";
+}
+
+@Author(name = "John Doe", email = "john@example.com", version = "2.0")
+public class CustomAnnotationExample {
+
+    @Required(message = "Name cannot be empty")
+    private String name;
+
+    @Required
+    private String email;
+
+    private int age; // Not required
+
+    public CustomAnnotationExample(String name, String email, int age) {
+        this.name = name;
+        this.email = email;
+        this.age = age;
+    }
+
+    @Test(description = "Test basic functionality", priority = 1)
+    public void testBasicFunction() {
+        System.out.println("Running basic test");
+    }
+
+    @Test(description = "Test advanced functionality", priority = 2, enabled = false)
+    public void testAdvancedFunction() {
+        System.out.println("Running advanced test");
+    }
+
+    @Test(description = "Test error handling", priority = 3)
+    public void testErrorHandling() {
+        System.out.println("Running error handling test");
+    }
+
+    // Method without annotation
+    public void regularMethod() {
+        System.out.println("Regular method - not a test");
+    }
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+}
+```
+
+## Annotation Processing
+
+### Runtime Annotation Processing
+```java
+import java.lang.reflect.*;
+
+public class AnnotationProcessor {
+
+    public static void runTests(Object testInstance) {
+        Class<?> clazz = testInstance.getClass();
+
+        // Process class-level annotations
+        if (clazz.isAnnotationPresent(Author.class)) {
+            Author author = clazz.getAnnotation(Author.class);
+            System.out.println("Author: " + author.name());
+            System.out.println("Email: " + author.email());
+            System.out.println("Version: " + author.version());
+            System.out.println();
+        }
+
+        // Find and run test methods
+        Method[] methods = clazz.getDeclaredMethods();
+
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Test.class)) {
+                Test testAnnotation = method.getAnnotation(Test.class);
+
+                if (testAnnotation.enabled()) {
+                    System.out.println("Running test: " + method.getName());
+                    System.out.println("Description: " + testAnnotation.description());
+                    System.out.println("Priority: " + testAnnotation.priority());
+
+                    try {
+                        method.invoke(testInstance);
+                        System.out.println("✓ Test passed\n");
+                    } catch (Exception e) {
+                        System.out.println("✗ Test failed: " + e.getMessage() + "\n");
+                    }
+                } else {
+                    System.out.println("⚠ Test skipped (disabled): " + method.getName() + "\n");
+                }
+            }
+        }
+    }
+
+    public static void validateRequiredFields(Object obj) {
+        Class<?> clazz = obj.getClass();
+        Field[] fields = clazz.getDeclaredFields();
+
+        System.out.println("Validating required fields for: " + clazz.getSimpleName());
+
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Required.class)) {
+                Required required = field.getAnnotation(Required.class);
+                field.setAccessible(true);
+
+                try {
+                    Object value = field.get(obj);
+                    if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+                        System.out.println("✗ Validation failed for field '" + field.getName() +
+                                         "': " + required.message());
+                    } else {
+                        System.out.println("✓ Field '" + field.getName() + "' is valid");
+                    }
+                } catch (IllegalAccessException e) {
+                    System.out.println("✗ Cannot access field: " + field.getName());
+                }
+            }
+        }
+        System.out.println();
+    }
+
+    public static void main(String[] args) {
+        // Create test instances
+        CustomAnnotationExample validExample =
+            new CustomAnnotationExample("John Doe", "john@example.com", 30);
+
+        CustomAnnotationExample invalidExample =
+            new CustomAnnotationExample("", null, 25);
+
+        // Validate required fields
+        validateRequiredFields(validExample);
+        validateRequiredFields(invalidExample);
+
+        // Run tests
+        System.out.println("=== Running Tests ===");
+        runTests(validExample);
+    }
+}
+```
+
+### Meta-Annotations
+```java
+import java.lang.annotation.*;
+
+// Meta-annotations example
+@Target({ElementType.METHOD, ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@interface Performance {
+    String value() default "";
+    long maxExecutionTime() default 1000; // milliseconds
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@Repeatable(Benchmarks.class) // Java 8 feature
+@interface Benchmark {
+    String name();
+    int iterations() default 1;
+}
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Benchmarks {
+    Benchmark[] value();
+}
+
+@Performance("High performance class")
+public class MetaAnnotationExample {
+
+    @Performance(maxExecutionTime = 500)
+    @Benchmark(name = "QuickSort", iterations = 100)
+    @Benchmark(name = "MergeSort", iterations = 50)
+    public void sortingAlgorithmTest() {
+        // Simulate some processing
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        System.out.println("Sorting algorithm test completed");
+    }
+
+    @Performance(maxExecutionTime = 2000)
+    public void databaseOperationTest() {
+        System.out.println("Database operation test completed");
+    }
+
+    public static void main(String[] args) {
+        MetaAnnotationExample example = new MetaAnnotationExample();
+        Class<?> clazz = example.getClass();
+
+        // Process class-level annotation
+        if (clazz.isAnnotationPresent(Performance.class)) {
+            Performance perf = clazz.getAnnotation(Performance.class);
+            System.out.println("Class performance info: " + perf.value());
+        }
+
+        // Process method-level annotations
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Performance.class)) {
+                Performance perf = method.getAnnotation(Performance.class);
+                System.out.println("Method: " + method.getName());
+                System.out.println("Max execution time: " + perf.maxExecutionTime() + "ms");
+            }
+
+            // Process repeatable annotations
+            Benchmark[] benchmarks = method.getAnnotationsByType(Benchmark.class);
+            for (Benchmark benchmark : benchmarks) {
+                System.out.println("Benchmark: " + benchmark.name() +
+                                 " (iterations: " + benchmark.iterations() + ")");
+            }
+            System.out.println();
+        }
+    }
+}
+```
+
+ for common patterns
+- **Quantifiers**: `+`, `*`, `?`, `{n}`, `{n,m}` for repetition
+- **Groups**: Parentheses for capturing parts of matches
+- **Flags**: Case-insensitive, multiline, and other pattern modifiers
+
+### Annotations Key Points
+- **Built-in**: `@Override`, `@Deprecated`, `@SuppressWarnings` for compiler assistance
+- **Custom Annotations**: Define with `@interface` and meta-annotations
+- **Retention Policy**: SOURCE, CLASS, or RUNTIME for different processing needs
+- **Target**: Specify where annotations can be applied (methods, fields, classes, etc.)
+- **Processing**: Use reflection to read and act on annotations at runtime
+
+## Comprehensive Example
+
+Here's an example that combines all four concepts:
+
+```java
+import java.util.*;
+import java.util.function.*;
+import java.util.regex.*;
+import java.lang.annotation.*;
+import java.lang.reflect.*;
+
+// Custom annotation for data validation
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Validate {
+    String pattern() default "";
+    String message() default "Validation failed";
+    boolean required() default true;
+}
+
+// Custom annotation for method performance tracking
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+@interface Timed {
+    String description() default "";
+}
+
+public class ComprehensiveExample {
+
+    @Validate(pattern = "^[a-zA-Z\\s]{2,50}$", message = "Name must be 2-50 characters, letters and spaces only")
+    private String name;
+
+    @Validate(pattern = "^[\\w._%+-]+@[\\w.-]+\\.[A-Z]{2,}$", message = "Invalid email format")
+    private String email;
+
+    @Validate(pattern = "^\\d{10}$", message = "Phone must be 10 digits")
+    private String phone;
+
+    // Wrapper classes for handling null values safely
+    private Integer age;
+    private Double salary;
+
+    public ComprehensiveExample(String name, String email, String phone, Integer age, Double salary) {
+        this.name = name;
+        this.email = email;
+        this.phone = phone;
+        this.age = age;
+        this.salary = salary;
+    }
+
+    // Lambda expressions with functional interfaces
+    @Timed(description = "Data processing with lambdas")
+    public void processData() {
+        List<String> data = Arrays.asList("apple", "banana", "cherry", "date", "elderberry");
+
+        // Using Consumer
+        Consumer<String> printer = item -> System.out.println("Processing: " + item);
+
+        // Using Predicate
+        Predicate<String> longNames = item -> item.length() > 5;
+
+        // Using Function
+        Function<String, Integer> lengthMapper = String::length;
+
+        // Using Supplier
+        Supplier<String> timestampSupplier = () -> "Processed at: " + System.currentTimeMillis();
+
+        System.out.println("=== Processing Data with Lambdas ===");
+        data.stream()
+            .filter(longNames)                    // Predicate
+            .map(lengthMapper)                    // Function
+            .forEach(length -> System.out.println("Length: " + length)); // Consumer
+
+        System.out.println(timestampSupplier.get()); // Supplier
+    }
+
+    // Method using wrapper classes and their utility methods
+    @Timed(description = "Number processing with wrapper classes")
+    public void processNumbers() {
+        List<String> numberStrings = Arrays.asList("123", "456", "789", "invalid", "012");
+        List<Integer> validNumbers = new ArrayList<>();
+
+        System.out.println("\n=== Processing Numbers with Wrapper Classes ===");
+
+        for (String numStr : numberStrings) {
+            try {
+                // Using wrapper class parsing method
+                Integer number = Integer.valueOf(numStr);
+                validNumbers.add(number);
+
+                // Using wrapper class utility methods
+                System.out.printf("Number: %d, Binary: %s, Hex: %s%n",
+                    number, Integer.toBinaryString(number), Integer.toHexString(number));
+
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid number: " + numStr);
+            }
+        }
+
+        // Statistical operations using wrapper methods
+        OptionalDouble average = validNumbers.stream()
+                                           .mapToDouble(Integer::doubleValue)
+                                           .average();
+
+        if (average.isPresent()) {
+            System.out.printf("Average: %.2f%n", average.getAsDouble());
+        }
+    }
+
+    // Method demonstrating regex usage
+    @Timed(description = "Text processing with regex")
+    public void processText() {
+        String text = "Contact John Doe at john.doe@email.com or call (555) 123-4567. " +
+                     "Also reach Jane Smith at jane@company.org or (555) 987-6543.";
+
+        System.out.println("\n=== Processing Text with Regex ===");
+        System.out.println("Original text: " + text);
+
+        // Email extraction pattern
+        String emailPattern = "([\\w._%+-]+)@([\\w.-]+\\.[A-Z]{2,})";
+        Pattern emailRegex = Pattern.compile(emailPattern, Pattern.CASE_INSENSITIVE);
+        Matcher emailMatcher = emailRegex.matcher(text);
+
+        System.out.println("\nFound emails:");
+        while (emailMatcher.find()) {
+            System.out.println("- " + emailMatcher.group() +
+                             " (user: " + emailMatcher.group(1) +
+                             ", domain: " + emailMatcher.group(2) + ")");
+        }
+
+        // Phone number extraction
+        String phonePattern = "\\(?([0-9]{3})\\)?[-.\\s]?([0-9]{3})[-.\\s]?([0-9]{4})";
+        Pattern phoneRegex = Pattern.compile(phonePattern);
+        Matcher phoneMatcher = phoneRegex.matcher(text);
+
+        System.out.println("\nFound phone numbers:");
+        while (phoneMatcher.find()) {
+            String formatted = String.format("(%s) %s-%s",
+                phoneMatcher.group(1), phoneMatcher.group(2), phoneMatcher.group(3));
+            System.out.println("- " + phoneMatcher.group() + " -> " + formatted);
+        }
+    }
+
+    // Annotation-based validation using reflection
+    public boolean validateFields() {
+        System.out.println("\n=== Field Validation with Annotations ===");
+        Class<?> clazz = this.getClass();
+        Field[] fields = clazz.getDeclaredFields();
+        boolean allValid = true;
+
+        for (Field field : fields) {
+            if (field.isAnnotationPresent(Validate.class)) {
+                Validate validation = field.getAnnotation(Validate.class);
+                field.setAccessible(true);
+
+                try {
+                    Object value = field.get(this);
+                    String stringValue = value != null ? value.toString() : "";
+
+                    if (validation.required() && (value == null || stringValue.isEmpty())) {
+                        System.out.println("✗ " + field.getName() + ": Field is required");
+                        allValid = false;
+                    } else if (!validation.pattern().isEmpty() && !stringValue.isEmpty()) {
+                        Pattern pattern = Pattern.compile(validation.pattern(), Pattern.CASE_INSENSITIVE);
+                        if (!pattern.matcher(stringValue).matches()) {
+                            System.out.println("✗ " + field.getName() + ": " + validation.message());
+                            allValid = false;
+                        } else {
+                            System.out.println("✓ " + field.getName() + ": Valid");
+                        }
+                    }
+
+                } catch (IllegalAccessException e) {
+                    System.out.println("✗ Cannot access field: " + field.getName());
+                    allValid = false;
+                }
+            }
+        }
+
+        return allValid;
+    }
+
+    // Performance timing using annotations
+    public static void executeWithTiming(Object instance) {
+        Class<?> clazz = instance.getClass();
+        Method[] methods = clazz.getDeclaredMethods();
+
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(Timed.class)) {
+                Timed timed = method.getAnnotation(Timed.class);
+
+                try {
+                    System.out.println("\n" + "=".repeat(50));
+                    System.out.println("Executing: " + method.getName());
+                    System.out.println("Description: " + timed.description());
+
+                    long startTime = System.nanoTime();
+                    method.invoke(instance);
+                    long endTime = System.nanoTime();
+
+                    double executionTime = (endTime - startTime) / 1_000_000.0;
+                    System.out.printf("Execution time: %.2f ms%n", executionTime);
+
+                } catch (Exception e) {
+                    System.out.println("Error executing method: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    // Getters for field access
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getPhone() { return phone; }
+    public Integer getAge() { return age; }
+    public Double getSalary() { return salary; }
+
+    public static void main(String[] args) {
+        // Create instances with valid and invalid data
+        System.out.println("Creating example with valid data:");
+        ComprehensiveExample validExample = new ComprehensiveExample(
+            "John Doe",
+            "john.doe@email.com",
+            "1234567890",
+            30,
+            75000.50
+        );
+
+        // Validate fields
+        boolean isValid = validExample.validateFields();
+        System.out.println("Overall validation result: " + (isValid ? "✓ VALID" : "✗ INVALID"));
+
+        // Execute timed methods
+        executeWithTiming(validExample);
+
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("Creating example with invalid data:");
+
+        ComprehensiveExample invalidExample = new ComprehensiveExample(
+            "J",
+            "invalid-email",
+            "123",
+            null,
+            null
+        );
+
+        boolean isValidInvalid = invalidExample.validateFields();
+        System.out.println("Overall validation result: " + (isValidInvalid ? "✓ VALID" : "✗ INVALID"));
+    }
+}
+```
+
+This comprehensive example demonstrates:
+
+1. **Wrapper Classes**: Used for `Integer` and `Double` fields that can be null, with parsing and utility methods
+2. **Lambda Expressions**: Multiple functional interfaces (Consumer, Predicate, Function, Supplier) for data processing
+3. **Regular Expressions**: Email and phone number extraction and formatting with groups and patterns
+4. **Annotations**: Custom validation annotations with reflection-based processing and method timing
+
+The example shows how these Java features work together in real-world scenarios, combining type safety, functional programming, pattern matching, and metadata-driven programming.

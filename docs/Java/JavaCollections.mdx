@@ -1,0 +1,515 @@
+# Java Collections Cheatsheet
+
+## Table of Contents
+1. [Collection Hierarchy](#collection-hierarchy)
+2. [List Interface](#list-interface)
+3. [Set Interface](#set-interface)
+4. [Queue Interface](#queue-interface)
+5. [Map Interface](#map-interface)
+6. [Stack Operations](#stack-operations)
+7. [Common Algorithms](#common-algorithms)
+8. [Java 21+ Features](#java-21-features)
+9. [Time Complexities](#time-complexities)
+
+---
+
+## Collection Hierarchy
+
+```
+Collection (Interface)
+├── List (Interface)
+│   ├── ArrayList
+│   ├── LinkedList
+│   └── Vector
+├── Set (Interface)
+│   ├── HashSet
+│   ├── LinkedHashSet
+│   └── TreeSet
+└── Queue (Interface)
+    ├── LinkedList
+    ├── PriorityQueue
+    └── Deque (Interface)
+        ├── ArrayDeque
+        └── LinkedList
+
+Map (Interface) - Separate hierarchy
+├── HashMap
+├── LinkedHashMap
+├── TreeMap
+└── Hashtable
+```
+
+---
+
+## List Interface
+
+### ArrayList
+**Signature:** `ArrayList<E>()` - Resizable array implementation
+**Use Case:** Fast random access, frequent reads
+
+```java
+// Creation and Basic Operations
+List<Integer> list = new ArrayList<>();
+List<String> names = new ArrayList<>(Arrays.asList("Alice", "Bob"));
+
+// Adding elements
+list.add(10);                    // [10]
+list.add(0, 5);                 // [5, 10] - insert at index
+list.addAll(Arrays.asList(1, 2, 3)); // [5, 10, 1, 2, 3]
+
+// Accessing elements
+int first = list.get(0);         // 5
+int size = list.size();          // 5
+boolean isEmpty = list.isEmpty(); // false
+
+// Modifying elements
+list.set(1, 20);                 // [5, 20, 1, 2, 3]
+list.remove(0);                  // [20, 1, 2, 3] - remove by index
+list.remove(Integer.valueOf(2)); // [20, 1, 3] - remove by value
+
+// Searching
+int index = list.indexOf(1);     // 1
+boolean contains = list.contains(3); // true
+
+// Iteration
+for (int num : list) { /* enhanced for loop */ }
+list.forEach(System.out::println); // Java 8+
+
+// Conversion
+int[] array = list.stream().mapToInt(i -> i).toArray();
+```
+
+### LinkedList
+**Signature:** `LinkedList<E>()` - Doubly-linked list implementation
+**Use Case:** Frequent insertions/deletions, queue/deque operations
+
+```java
+LinkedList<String> linkedList = new LinkedList<>();
+
+// LinkedList specific methods
+linkedList.addFirst("First");    // Add to beginning
+linkedList.addLast("Last");      // Add to end
+linkedList.removeFirst();        // Remove from beginning
+linkedList.removeLast();         // Remove from end
+String first = linkedList.peekFirst(); // Get first without removing
+String last = linkedList.peekLast();   // Get last without removing
+```
+
+---
+
+## Set Interface
+
+### HashSet
+**Signature:** `HashSet<E>()` - Hash table implementation
+**Use Case:** Fast lookups, no duplicates, no order
+
+```java
+Set<String> set = new HashSet<>();
+
+// Basic operations
+set.add("apple");               // true
+set.add("banana");              // true
+set.add("apple");               // false (duplicate)
+
+boolean contains = set.contains("apple"); // true
+set.remove("banana");           // true
+int size = set.size();          // 1
+
+// Set operations
+Set<Integer> set1 = Set.of(1, 2, 3, 4);
+Set<Integer> set2 = Set.of(3, 4, 5, 6);
+
+// Union
+Set<Integer> union = new HashSet<>(set1);
+union.addAll(set2);             // [1, 2, 3, 4, 5, 6]
+
+// Intersection
+Set<Integer> intersection = new HashSet<>(set1);
+intersection.retainAll(set2);   // [3, 4]
+
+// Difference
+Set<Integer> difference = new HashSet<>(set1);
+difference.removeAll(set2);     // [1, 2]
+```
+
+### TreeSet
+**Signature:** `TreeSet<E>()` - Red-black tree implementation
+**Use Case:** Sorted set, range operations
+
+```java
+TreeSet<Integer> treeSet = new TreeSet<>();
+treeSet.addAll(Arrays.asList(3, 1, 4, 1, 5, 9));
+
+// Sorted order: [1, 3, 4, 5, 9]
+Integer first = treeSet.first();    // 1
+Integer last = treeSet.last();      // 9
+Integer lower = treeSet.lower(4);   // 3 (largest < 4)
+Integer higher = treeSet.higher(4); // 5 (smallest > 4)
+Integer floor = treeSet.floor(3);   // 3 (largest <= 3)
+Integer ceiling = treeSet.ceiling(3); // 3 (smallest >= 3)
+
+// Range operations
+SortedSet<Integer> subset = treeSet.subSet(2, 6); // [3, 4, 5]
+SortedSet<Integer> headSet = treeSet.headSet(4);  // [1, 3]
+SortedSet<Integer> tailSet = treeSet.tailSet(4);  // [4, 5, 9]
+```
+
+---
+
+## Queue Interface
+
+### PriorityQueue
+**Signature:** `PriorityQueue<E>()` - Heap-based priority queue
+**Use Case:** Heap operations, priority-based processing
+
+```java
+// Min heap (default)
+PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+minHeap.addAll(Arrays.asList(3, 1, 4, 1, 5));
+
+// Max heap
+PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+// Basic operations
+minHeap.offer(2);               // Add element
+Integer min = minHeap.peek();   // 1 (get min without removing)
+Integer removed = minHeap.poll(); // 1 (remove and return min)
+boolean empty = minHeap.isEmpty();
+
+// Custom comparator
+PriorityQueue<String> pq = new PriorityQueue<>((a, b) -> a.length() - b.length());
+```
+
+### ArrayDeque
+**Signature:** `ArrayDeque<E>()` - Resizable array deque
+**Use Case:** Stack and queue operations, better than Stack class
+
+```java
+Deque<Integer> deque = new ArrayDeque<>();
+
+// Queue operations (FIFO)
+deque.offer(1);                 // Add to rear
+deque.offer(2);
+Integer front = deque.poll();   // Remove from front (1)
+
+// Stack operations (LIFO)
+deque.push(3);                  // Add to front
+deque.push(4);
+Integer top = deque.pop();      // Remove from front (4)
+
+// Deque specific
+deque.addFirst(0);              // Add to front
+deque.addLast(5);               // Add to rear
+deque.removeFirst();            // Remove from front
+deque.removeLast();             // Remove from rear
+```
+
+---
+
+## Map Interface
+
+### HashMap
+**Signature:** `HashMap<K,V>()` - Hash table implementation
+**Use Case:** Fast key-value lookups, no order
+
+```java
+Map<String, Integer> map = new HashMap<>();
+
+// Basic operations
+map.put("apple", 5);            // Add/update
+map.put("banana", 3);
+Integer value = map.get("apple"); // 5
+Integer defaultValue = map.getOrDefault("orange", 0); // 0
+
+// Checking
+boolean hasKey = map.containsKey("apple");     // true
+boolean hasValue = map.containsValue(5);       // true
+int size = map.size();                         // 2
+
+// Removal
+Integer removed = map.remove("banana");        // 3
+map.remove("apple", 5);                        // true (remove if key-value matches)
+
+// Java 8+ methods
+map.putIfAbsent("grape", 10);                  // Add if key doesn't exist
+map.compute("apple", (k, v) -> v == null ? 1 : v + 1); // Compute new value
+map.computeIfAbsent("orange", k -> k.length()); // Compute if absent
+map.computeIfPresent("apple", (k, v) -> v * 2); // Compute if present
+map.merge("apple", 1, Integer::sum);           // Merge values
+
+// Iteration
+for (Map.Entry<String, Integer> entry : map.entrySet()) {
+    String key = entry.getKey();
+    Integer val = entry.getValue();
+}
+
+// Java 8+ iteration
+map.forEach((key, val) -> System.out.println(key + ": " + val));
+
+// Views
+Set<String> keys = map.keySet();
+Collection<Integer> values = map.values();
+Set<Map.Entry<String, Integer>> entries = map.entrySet();
+```
+
+### TreeMap
+**Signature:** `TreeMap<K,V>()` - Red-black tree implementation
+**Use Case:** Sorted map, range operations
+
+```java
+TreeMap<String, Integer> treeMap = new TreeMap<>();
+treeMap.put("c", 3);
+treeMap.put("a", 1);
+treeMap.put("b", 2);
+
+// Sorted order: {a=1, b=2, c=3}
+String firstKey = treeMap.firstKey();        // "a"
+String lastKey = treeMap.lastKey();          // "c"
+String lowerKey = treeMap.lowerKey("b");     // "a"
+String higherKey = treeMap.higherKey("b");   // "c"
+
+// Range operations
+SortedMap<String, Integer> subMap = treeMap.subMap("a", "c"); // {a=1, b=2}
+SortedMap<String, Integer> headMap = treeMap.headMap("b");    // {a=1}
+SortedMap<String, Integer> tailMap = treeMap.tailMap("b");    // {b=2, c=3}
+```
+
+---
+
+## Stack Operations
+
+### Using ArrayDeque (Recommended)
+```java
+Deque<Integer> stack = new ArrayDeque<>();
+
+stack.push(1);                  // Push
+stack.push(2);
+stack.push(3);
+
+Integer top = stack.peek();     // 3 (view top)
+Integer popped = stack.pop();   // 3 (remove top)
+boolean empty = stack.isEmpty(); // false
+int size = stack.size();        // 2
+```
+
+---
+
+## Common Algorithms
+
+### Collections Utility Class
+```java
+List<Integer> list = Arrays.asList(3, 1, 4, 1, 5, 9, 2, 6);
+
+// Sorting
+Collections.sort(list);                    // [1, 1, 2, 3, 4, 5, 6, 9]
+Collections.sort(list, Collections.reverseOrder()); // Reverse sort
+
+// Searching (requires sorted list)
+int index = Collections.binarySearch(list, 4);
+
+// Min/Max
+Integer min = Collections.min(list);
+Integer max = Collections.max(list);
+
+// Shuffle
+Collections.shuffle(list);
+
+// Reverse
+Collections.reverse(list);
+
+// Fill and copy
+Collections.fill(list, 0);                 // Fill with zeros
+List<Integer> copy = new ArrayList<>(Collections.nCopies(5, 1)); // [1,1,1,1,1]
+
+// Frequency
+int freq = Collections.frequency(list, 1); // Count occurrences
+```
+
+### Stream Operations (Java 8+)
+```java
+List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+// Filtering and collecting
+List<Integer> evens = numbers.stream()
+    .filter(n -> n % 2 == 0)
+    .collect(Collectors.toList());
+
+// Mapping
+List<String> strings = numbers.stream()
+    .map(String::valueOf)
+    .collect(Collectors.toList());
+
+// Reducing
+int sum = numbers.stream()
+    .reduce(0, Integer::sum);
+
+Optional<Integer> max = numbers.stream()
+    .max(Integer::compareTo);
+
+// Grouping
+Map<Boolean, List<Integer>> partitioned = numbers.stream()
+    .collect(Collectors.partitioningBy(n -> n % 2 == 0));
+```
+
+---
+
+## Java 21+ Features
+
+### Sequenced Collections (Java 21)
+```java
+// New methods available on List, Deque, and LinkedHashSet/Map
+
+List<String> list = new ArrayList<>(Arrays.asList("a", "b", "c"));
+
+// New methods
+String first = list.getFirst();           // "a" - equivalent to get(0)
+String last = list.getLast();             // "c" - equivalent to get(size()-1)
+list.addFirst("x");                       // ["x", "a", "b", "c"]
+list.addLast("z");                        // ["x", "a", "b", "c", "z"]
+String removedFirst = list.removeFirst(); // Remove and return first
+String removedLast = list.removeLast();   // Remove and return last
+
+// Reversed view
+List<String> reversed = list.reversed();  // Non-destructive reverse view
+
+// Works with LinkedHashMap and LinkedHashSet too
+LinkedHashMap<String, Integer> map = new LinkedHashMap<>();
+map.put("first", 1);
+map.put("second", 2);
+
+Map.Entry<String, Integer> firstEntry = map.firstEntry();
+Map.Entry<String, Integer> lastEntry = map.lastEntry();
+Map<String, Integer> reversedMap = map.reversed();
+```
+
+### Record Patterns and Pattern Matching
+```java
+// Using records with collections
+record Person(String name, int age) {}
+
+List<Person> people = Arrays.asList(
+    new Person("Alice", 25),
+    new Person("Bob", 30)
+);
+
+// Pattern matching in streams
+people.stream()
+    .filter(person -> switch (person) {
+        case Person(var name, var age) when age > 25 -> true;
+        default -> false;
+    })
+    .forEach(System.out::println);
+```
+
+### Collection Factories (Java 9+, still relevant)
+```java
+// Immutable collections
+List<String> list = List.of("a", "b", "c");
+Set<Integer> set = Set.of(1, 2, 3);
+Map<String, Integer> map = Map.of("a", 1, "b", 2, "c", 3);
+
+// For larger maps
+Map<String, Integer> largeMap = Map.ofEntries(
+    Map.entry("key1", 1),
+    Map.entry("key2", 2),
+    Map.entry("key3", 3)
+);
+```
+
+---
+
+## Time Complexities
+
+| Operation | ArrayList | LinkedList | HashSet | TreeSet | HashMap | TreeMap |
+|-----------|-----------|------------|---------|---------|---------|---------|
+| Add       | O(1)*     | O(1)       | O(1)    | O(log n)| O(1)    | O(log n)|
+| Remove    | O(n)      | O(1)**     | O(1)    | O(log n)| O(1)    | O(log n)|
+| Search    | O(n)      | O(n)       | O(1)    | O(log n)| O(1)    | O(log n)|
+| Access    | O(1)      | O(n)       | -       | -       | O(1)    | O(log n)|
+
+*Amortized time complexity
+**O(1) if you have reference to the node
+
+---
+
+## DSA Common Patterns
+
+### Sliding Window
+```java
+// Maximum sum subarray of size k
+public int maxSumSubarray(int[] arr, int k) {
+    Deque<Integer> deque = new ArrayDeque<>();
+    int maxSum = 0, windowSum = 0;
+
+    for (int i = 0; i < arr.length; i++) {
+        windowSum += arr[i];
+
+        if (i >= k - 1) {
+            maxSum = Math.max(maxSum, windowSum);
+            windowSum -= arr[i - k + 1];
+        }
+    }
+    return maxSum;
+}
+```
+
+### Two Pointers with Map
+```java
+// Two sum using HashMap
+public int[] twoSum(int[] nums, int target) {
+    Map<Integer, Integer> map = new HashMap<>();
+
+    for (int i = 0; i < nums.length; i++) {
+        int complement = target - nums[i];
+        if (map.containsKey(complement)) {
+            return new int[]{map.get(complement), i};
+        }
+        map.put(nums[i], i);
+    }
+    return new int[]{};
+}
+```
+
+### Graph Traversal
+```java
+// BFS using Queue
+public void bfs(Map<Integer, List<Integer>> graph, int start) {
+    Queue<Integer> queue = new LinkedList<>();
+    Set<Integer> visited = new HashSet<>();
+
+    queue.offer(start);
+    visited.add(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+        System.out.println(node);
+
+        for (int neighbor : graph.getOrDefault(node, new ArrayList<>())) {
+            if (!visited.contains(neighbor)) {
+                queue.offer(neighbor);
+                visited.add(neighbor);
+            }
+        }
+    }
+}
+```
+
+---
+
+## Quick Reference
+
+### When to Use What
+- **ArrayList**: Random access, more reads than writes
+- **LinkedList**: Frequent insertions/deletions in middle, queue operations
+- **HashSet**: Fast lookups, no duplicates, no order needed
+- **TreeSet**: Sorted set, range queries
+- **HashMap**: Fast key-value lookups, no order needed
+- **TreeMap**: Sorted map, range queries on keys
+- **PriorityQueue**: Heap operations, priority-based processing
+- **ArrayDeque**: Stack/queue operations (prefer over Stack class)
+
+### Memory Tips
+- Collections with "Hash" prefix: O(1) average operations
+- Collections with "Tree" prefix: O(log n) operations, sorted
+- Collections with "Linked" prefix: Good for frequent modifications
+- Use `ArrayList` by default for lists unless you need specific features

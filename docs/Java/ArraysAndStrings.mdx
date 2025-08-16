@@ -1,0 +1,1570 @@
+# Java Arrays and Strings
+
+## Table of Contents
+1. [Arrays](#arrays)
+2. [Arrays Class Utility Methods](#arrays-class-utility-methods)
+3. [Strings](#strings)
+4. [StringBuilder and StringBuffer](#stringbuilder-and-stringbuffer)
+5. [String Formatting](#string-formatting)
+6. [Common DSA Patterns](#common-dsa-patterns)
+7. [Performance Considerations](#performance-considerations)
+8. [Best Practices](#best-practices)
+
+---
+
+## Arrays
+
+### Array Basics
+
+#### Declaration and Initialization
+```java
+// Declaration
+int[] arr1;                    // Preferred style
+int arr2[];                    // Alternative style
+
+// Initialization
+int[] numbers = new int[5];    // Size 5, all elements = 0
+int[] values = {1, 2, 3, 4, 5}; // Array literal
+int[] copy = new int[]{1, 2, 3, 4, 5}; // Explicit array creation
+
+// Different types
+String[] names = new String[3];
+boolean[] flags = new boolean[10]; // All false by default
+double[] prices = {19.99, 29.99, 39.99};
+
+// Multidimensional arrays
+int[][] matrix = new int[3][4];    // 3x4 matrix
+int[][] jaggedArray = new int[3][]; // Jagged array
+jaggedArray[0] = new int[2];
+jaggedArray[1] = new int[4];
+jaggedArray[2] = new int[3];
+
+// Array of arrays initialization
+int[][] grid = {
+    {1, 2, 3},
+    {4, 5, 6},
+    {7, 8, 9}
+};
+```
+
+#### Basic Array Operations
+```java
+int[] arr = {10, 20, 30, 40, 50};
+
+// Access elements
+int first = arr[0];           // 10
+int last = arr[arr.length - 1]; // 50
+
+// Modify elements
+arr[2] = 35;                  // [10, 20, 35, 40, 50]
+
+// Array length
+int size = arr.length;        // 5 (property, not method)
+
+// Iteration
+// Enhanced for loop (recommended)
+for (int num : arr) {
+    System.out.println(num);
+}
+
+// Traditional for loop
+for (int i = 0; i < arr.length; i++) {
+    System.out.println("Index " + i + ": " + arr[i]);
+}
+
+// Reverse iteration
+for (int i = arr.length - 1; i >= 0; i--) {
+    System.out.println(arr[i]);
+}
+
+// Using streams
+Arrays.stream(arr).forEach(System.out::println);
+```
+
+#### Array Copying
+```java
+int[] original = {1, 2, 3, 4, 5};
+
+// Method 1: System.arraycopy()
+int[] copy1 = new int[5];
+System.arraycopy(original, 0, copy1, 0, original.length);
+
+// Method 2: Arrays.copyOf()
+int[] copy2 = Arrays.copyOf(original, original.length);
+
+// Method 3: Arrays.copyOfRange()
+int[] partial = Arrays.copyOfRange(original, 1, 4); // [2, 3, 4]
+
+// Method 4: clone() - shallow copy
+int[] copy3 = original.clone();
+
+// For 2D arrays - deep copy needed
+int[][] matrix2D = {{1, 2}, {3, 4}};
+int[][] deepCopy = new int[matrix2D.length][];
+for (int i = 0; i < matrix2D.length; i++) {
+    deepCopy[i] = matrix2D[i].clone();
+}
+```
+
+---
+
+## Arrays Class Utility Methods
+
+The `java.util.Arrays` class provides many utility methods for array operations.
+
+### Sorting
+```java
+int[] numbers = {3, 1, 4, 1, 5, 9, 2, 6};
+
+// Sort entire array
+Arrays.sort(numbers);
+System.out.println(Arrays.toString(numbers)); // [1, 1, 2, 3, 4, 5, 6, 9]
+
+// Sort partial array
+int[] partial = {5, 2, 8, 1, 9};
+Arrays.sort(partial, 1, 4); // Sort from index 1 to 3
+System.out.println(Arrays.toString(partial)); // [5, 1, 2, 8, 9]
+
+// Sort with custom comparator
+String[] words = {"apple", "pie", "banana", "cherry"};
+Arrays.sort(words, (a, b) -> a.length() - b.length());
+System.out.println(Arrays.toString(words)); // [pie, apple, banana, cherry]
+
+// Reverse sort
+Integer[] nums = {3, 1, 4, 1, 5, 9, 2, 6};
+Arrays.sort(nums, Collections.reverseOrder());
+System.out.println(Arrays.toString(nums)); // [9, 6, 5, 4, 3, 2, 1, 1]
+
+// Sort 2D array by first element
+int[][] pairs = {{3, 4}, {1, 2}, {5, 6}};
+Arrays.sort(pairs, (a, b) -> a[0] - b[0]);
+// Result: [[1, 2], [3, 4], [5, 6]]
+```
+
+### Searching
+```java
+int[] sorted = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+// Binary search (array must be sorted)
+int index = Arrays.binarySearch(sorted, 5); // Returns 4
+int notFound = Arrays.binarySearch(sorted, 10); // Returns negative value
+
+// Binary search in range
+int rangeIndex = Arrays.binarySearch(sorted, 2, 7, 5); // Search in index 2-6
+
+// Custom comparator search
+String[] sortedWords = {"apple", "banana", "cherry", "date"};
+int wordIndex = Arrays.binarySearch(sortedWords, "cherry"); // Returns 2
+
+// Linear search (for unsorted arrays)
+public static int linearSearch(int[] arr, int target) {
+    for (int i = 0; i < arr.length; i++) {
+        if (arr[i] == target) return i;
+    }
+    return -1;
+}
+```
+
+### Comparison and Equality
+```java
+int[] arr1 = {1, 2, 3, 4, 5};
+int[] arr2 = {1, 2, 3, 4, 5};
+int[] arr3 = {1, 2, 3, 4, 6};
+
+// Compare arrays
+boolean equal = Arrays.equals(arr1, arr2); // true
+boolean notEqual = Arrays.equals(arr1, arr3); // false
+
+// Compare 2D arrays
+int[][] matrix1 = {{1, 2}, {3, 4}};
+int[][] matrix2 = {{1, 2}, {3, 4}};
+boolean deepEqual = Arrays.deepEquals(matrix1, matrix2); // true
+
+// Compare lexicographically
+int result = Arrays.compare(arr1, arr3); // negative (arr1 < arr3)
+
+// Mismatch - find first difference (Java 9+)
+int mismatchIndex = Arrays.mismatch(arr1, arr3); // Returns 4
+```
+
+### Filling Arrays
+```java
+int[] arr = new int[10];
+
+// Fill entire array
+Arrays.fill(arr, 42);
+System.out.println(Arrays.toString(arr)); // [42, 42, 42, ...]
+
+// Fill partial array
+Arrays.fill(arr, 2, 7, 99); // Fill index 2-6 with 99
+System.out.println(Arrays.toString(arr)); // [42, 42, 99, 99, 99, 99, 99, 42, 42, 42]
+
+// Fill 2D array
+int[][] matrix = new int[3][4];
+for (int[] row : matrix) {
+    Arrays.fill(row, 1);
+}
+```
+
+### Conversion and String Representation
+```java
+int[] numbers = {1, 2, 3, 4, 5};
+
+// Convert to string
+String arrayStr = Arrays.toString(numbers); // "[1, 2, 3, 4, 5]"
+
+// Convert 2D array to string
+int[][] matrix = {{1, 2}, {3, 4}};
+String matrixStr = Arrays.deepToString(matrix); // "[[1, 2], [3, 4]]"
+
+// Convert to List
+List<Integer> list = Arrays.asList(1, 2, 3, 4, 5);
+// Note: This creates a fixed-size list backed by the array
+
+// Convert to Stream
+IntStream stream = Arrays.stream(numbers);
+Stream<Integer> boxedStream = Arrays.stream(numbers).boxed();
+
+// Convert array to set
+Set<Integer> set = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5));
+```
+
+### Advanced Array Operations
+```java
+// Parallel sorting (for large arrays)
+int[] largeArray = new int[1000000];
+// ... fill array
+Arrays.parallelSort(largeArray);
+
+// Parallel prefix (cumulative operations)
+int[] values = {1, 2, 3, 4, 5};
+Arrays.parallelPrefix(values, Integer::sum);
+System.out.println(Arrays.toString(values)); // [1, 3, 6, 10, 15] (cumulative sum)
+
+// Set all elements using generator function
+int[] generated = new int[10];
+Arrays.setAll(generated, i -> i * 2); // [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]
+
+// Parallel set all
+Arrays.parallelSetAll(generated, i -> i * i); // [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+```
+
+---
+
+## Strings
+
+### String Basics
+
+#### Creation and Immutability
+```java
+// String creation
+String str1 = "Hello";           // String literal (stored in string pool)
+String str2 = new String("Hello"); // New object in heap
+String str3 = "Hello";           // Refers to same object as str1
+
+// Immutability demonstration
+String original = "Hello";
+String modified = original.concat(" World"); // Creates new string
+System.out.println(original); // Still "Hello"
+System.out.println(modified); // "Hello World"
+
+// String from char array
+char[] chars = {'H', 'e', 'l', 'l', 'o'};
+String fromChars = new String(chars);
+
+// String from bytes
+byte[] bytes = {72, 101, 108, 108, 111}; // ASCII values for "Hello"
+String fromBytes = new String(bytes);
+```
+
+### Basic String Operations
+
+#### Length and Character Access
+```java
+String text = "Hello World";
+
+// Length
+int length = text.length();      // 11
+
+// Character access
+char first = text.charAt(0);     // 'H'
+char last = text.charAt(length - 1); // 'd'
+
+// Character array
+char[] charArray = text.toCharArray();
+
+// Code points (for Unicode)
+int codePoint = text.codePointAt(0); // Unicode code point
+
+// Iterate through characters
+for (int i = 0; i < text.length(); i++) {
+    char ch = text.charAt(i);
+    System.out.println("Char at " + i + ": " + ch);
+}
+
+// Enhanced for with char array
+for (char ch : text.toCharArray()) {
+    System.out.println(ch);
+}
+```
+
+#### String Comparison
+```java
+String str1 = "hello";
+String str2 = "Hello";
+String str3 = "hello";
+String str4 = new String("hello");
+
+// Equality
+boolean equal1 = str1.equals(str3);        // true
+boolean equal2 = str1.equals(str2);        // false (case-sensitive)
+boolean equal3 = str1.equalsIgnoreCase(str2); // true
+boolean equal4 = str1 == str3;             // true (same reference)
+boolean equal5 = str1 == str4;             // false (different objects)
+
+// Comparison
+int result1 = str1.compareTo(str2);        // positive (h > H in ASCII)
+int result2 = str1.compareToIgnoreCase(str2); // 0 (equal ignoring case)
+
+// Starts with / ends with
+boolean starts = str1.startsWith("hel");   // true
+boolean ends = str1.endsWith("llo");       // true
+boolean startsAt = str1.startsWith("llo", 2); // true (from index 2)
+
+// Contains
+boolean contains = text.contains("World"); // true
+```
+
+#### String Searching
+```java
+String text = "Hello World Hello";
+
+// Find first occurrence
+int firstIndex = text.indexOf('o');        // 4
+int firstHello = text.indexOf("Hello");    // 0
+int notFound = text.indexOf('z');          // -1
+
+// Find from specific index
+int secondO = text.indexOf('o', 5);        // 7
+int secondHello = text.indexOf("Hello", 1); // 12
+
+// Find last occurrence
+int lastO = text.lastIndexOf('o');         // 16
+int lastHello = text.lastIndexOf("Hello"); // 12
+
+// Check if empty
+boolean isEmpty = text.isEmpty();          // false
+boolean isBlank = text.isBlank();          // false (Java 11+)
+boolean blankCheck = "   ".isBlank();      // true (Java 11+)
+```
+
+#### String Modification (Returns New String)
+```java
+String original = "  Hello World  ";
+
+// Case conversion
+String upper = original.toUpperCase();     // "  HELLO WORLD  "
+String lower = original.toLowerCase();     // "  hello world  "
+
+// Trimming
+String trimmed = original.trim();          // "Hello World"
+String stripped = original.strip();        // "Hello World" (Java 11+, Unicode-aware)
+String leadingStripped = original.stripLeading(); // "Hello World  " (Java 11+)
+String trailingStripped = original.stripTrailing(); // "  Hello World" (Java 11+)
+
+// Substrings
+String sub1 = original.substring(2);       // "Hello World  "
+String sub2 = original.substring(2, 7);    // "Hello"
+
+// Replace
+String replaced1 = original.replace('l', 'x');        // "  HexxO Worxd  "
+String replaced2 = original.replace("World", "Java"); // "  Hello Java  "
+String replacedAll = original.replaceAll("l+", "L");  // "  HeLo WorLd  " (regex)
+String replacedFirst = original.replaceFirst("l", "L"); // "  HeLlo World  "
+
+// Concatenation
+String concat1 = original.concat(" - End");
+String concat2 = original + " - End";      // Using + operator
+```
+
+#### String Splitting and Joining
+```java
+String data = "apple,banana,cherry,date";
+
+// Split
+String[] fruits = data.split(",");         // ["apple", "banana", "cherry", "date"]
+String[] limited = data.split(",", 2);     // ["apple", "banana,cherry,date"]
+
+// Split with regex
+String text = "one1two2three3four";
+String[] parts = text.split("\\d+");       // ["one", "two", "three", "four"]
+
+// Join (Java 8+)
+String joined = String.join(", ", fruits); // "apple, banana, cherry, date"
+String joined2 = String.join(" | ", "a", "b", "c"); // "a | b | c"
+
+// Lines (Java 11+)
+String multiline = "line1\nline2\nline3";
+multiline.lines().forEach(System.out::println);
+```
+
+### String Formatting
+
+#### printf-style Formatting
+```java
+String name = "Alice";
+int age = 25;
+double salary = 50000.75;
+
+// Format method
+String formatted = String.format("Name: %s, Age: %d, Salary: $%.2f", name, age, salary);
+// "Name: Alice, Age: 25, Salary: $50000.75"
+
+// Common format specifiers
+String str = String.format("%s", "text");           // String
+String integer = String.format("%d", 42);           // Decimal integer
+String hex = String.format("%x", 255);              // Hexadecimal (ff)
+String octal = String.format("%o", 8);              // Octal (10)
+String floatStr = String.format("%.2f", 3.14159);   // Float with 2 decimals
+String scientific = String.format("%e", 1000.0);    // Scientific notation
+String percentage = String.format("%.1%%", 85.7);   // Percentage
+
+// Width and alignment
+String padded = String.format("%10s", "hello");     // Right-aligned in 10 chars
+String leftPadded = String.format("%-10s", "hello"); // Left-aligned in 10 chars
+String zeroPadded = String.format("%05d", 42);      // Zero-padded: "00042"
+
+// Argument index
+String indexed = String.format("%2$s %1$s", "World", "Hello"); // "Hello World"
+```
+
+#### Text Blocks (Java 15+)
+```java
+String json = """
+    {
+        "name": "Alice",
+        "age": 25,
+        "skills": ["Java", "Python", "JavaScript"]
+    }
+    """;
+
+String sql = """
+    SELECT name, age, department
+    FROM employees
+    WHERE age > 25
+    AND department = 'Engineering'
+    ORDER BY name
+    """;
+```
+
+### String Conversion
+```java
+// From primitives
+String fromInt = String.valueOf(42);
+String fromDouble = String.valueOf(3.14);
+String fromBoolean = String.valueOf(true);
+String fromChar = String.valueOf('A');
+
+// To primitives
+int toInt = Integer.parseInt("42");
+double toDouble = Double.parseDouble("3.14");
+boolean toBoolean = Boolean.parseBoolean("true");
+
+// With error handling
+try {
+    int value = Integer.parseInt("invalid");
+} catch (NumberFormatException e) {
+    System.out.println("Invalid number format");
+}
+
+// Using wrapper classes
+Integer intObject = Integer.valueOf("42");
+Double doubleObject = Double.valueOf("3.14");
+```
+
+---
+
+## StringBuilder and StringBuffer
+
+### StringBuilder (Single-threaded, Recommended)
+```java
+StringBuilder sb = new StringBuilder();
+
+// Append operations
+sb.append("Hello");
+sb.append(' ');
+sb.append("World");
+sb.append(42);
+sb.append(3.14);
+
+// Method chaining
+StringBuilder chained = new StringBuilder()
+    .append("Hello")
+    .append(" ")
+    .append("World");
+
+// Insert
+sb.insert(5, " Beautiful"); // Insert at index 5
+
+// Delete
+sb.delete(5, 15);           // Delete from index 5 to 14
+sb.deleteCharAt(5);         // Delete character at index 5
+
+// Replace
+sb.replace(0, 5, "Hi");     // Replace "Hello" with "Hi"
+
+// Reverse
+sb.reverse();               // Reverse the entire string
+
+// Convert to String
+String result = sb.toString();
+
+// Capacity management
+int capacity = sb.capacity();
+sb.ensureCapacity(100);     // Ensure capacity of at least 100
+sb.trimToSize();            // Trim capacity to current length
+
+// Length operations
+int length = sb.length();
+sb.setLength(10);           // Truncate or pad to length 10
+
+// Character access and modification
+char ch = sb.charAt(0);
+sb.setCharAt(0, 'h');       // Change character at index 0
+```
+
+### StringBuffer (Thread-safe)
+```java
+// StringBuffer has the same API as StringBuilder but is synchronized
+StringBuffer buffer = new StringBuffer();
+buffer.append("Thread-safe");
+buffer.append(" operations");
+String result = buffer.toString();
+```
+
+### Performance Comparison
+```java
+// ❌ Inefficient - creates many intermediate strings
+String result = "";
+for (int i = 0; i < 1000; i++) {
+    result += "number " + i + " ";
+}
+
+// ✅ Efficient - uses mutable buffer
+StringBuilder sb = new StringBuilder();
+for (int i = 0; i < 1000; i++) {
+    sb.append("number ").append(i).append(" ");
+}
+String result = sb.toString();
+```
+
+---
+
+## Common DSA Patterns
+
+### Array Patterns
+
+#### Two Pointers
+```java
+// Find pair with target sum in sorted array
+public boolean hasTwoSum(int[] arr, int target) {
+    int left = 0, right = arr.length - 1;
+
+    while (left < right) {
+        int sum = arr[left] + arr[right];
+        if (sum == target) return true;
+        else if (sum < target) left++;
+        else right--;
+    }
+    return false;
+}
+
+// Remove duplicates in sorted array
+public int removeDuplicates(int[] nums) {
+    if (nums.length == 0) return 0;
+
+    int writeIndex = 1;
+    for (int i = 1; i < nums.length; i++) {
+        if (nums[i] != nums[i - 1]) {
+            nums[writeIndex] = nums[i];
+            writeIndex++;
+        }
+    }
+    return writeIndex;
+}
+```
+
+#### Sliding Window
+```java
+// Maximum sum subarray of size k
+public int maxSumSubarray(int[] arr, int k) {
+    if (arr.length < k) return -1;
+
+    // Calculate sum of first window
+    int windowSum = 0;
+    for (int i = 0; i < k; i++) {
+        windowSum += arr[i];
+    }
+
+    int maxSum = windowSum;
+
+    // Slide the window
+    for (int i = k; i < arr.length; i++) {
+        windowSum = windowSum - arr[i - k] + arr[i];
+        maxSum = Math.max(maxSum, windowSum);
+    }
+
+    return maxSum;
+}
+
+// Longest substring without repeating characters
+public int lengthOfLongestSubstring(String s) {
+    Set<Character> set = new HashSet<>();
+    int left = 0, maxLength = 0;
+
+    for (int right = 0; right < s.length(); right++) {
+        while (set.contains(s.charAt(right))) {
+            set.remove(s.charAt(left));
+            left++;
+        }
+        set.add(s.charAt(right));
+        maxLength = Math.max(maxLength, right - left + 1);
+    }
+
+    return maxLength;
+}
+```
+
+#### Prefix Sum
+```java
+// Range sum query
+class PrefixSum {
+    private int[] prefixSum;
+
+    public PrefixSum(int[] nums) {
+        prefixSum = new int[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+    }
+
+    public int rangeSum(int left, int right) {
+        return prefixSum[right + 1] - prefixSum[left];
+    }
+}
+
+// Subarray sum equals K
+public int subarraySum(int[] nums, int k) {
+    Map<Integer, Integer> prefixSumCount = new HashMap<>();
+    prefixSumCount.put(0, 1);
+
+    int count = 0, prefixSum = 0;
+
+    for (int num : nums) {
+        prefixSum += num;
+        count += prefixSumCount.getOrDefault(prefixSum - k, 0);
+        prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+    }
+
+    return count;
+}
+```
+
+### String Patterns
+
+#### Palindromes
+```java
+// Check if string is palindrome
+public boolean isPalindrome(String s) {
+    int left = 0, right = s.length() - 1;
+
+    while (left < right) {
+        if (s.charAt(left) != s.charAt(right)) {
+            return false;
+        }
+        left++;
+        right--;
+    }
+    return true;
+}
+
+// Longest palindromic substring
+public String longestPalindrome(String s) {
+    if (s == null || s.length() < 2) return s;
+
+    int start = 0, maxLen = 1;
+
+    for (int i = 0; i < s.length(); i++) {
+        // Check for odd length palindromes
+        int len1 = expandAroundCenter(s, i, i);
+        // Check for even length palindromes
+        int len2 = expandAroundCenter(s, i, i + 1);
+
+        int len = Math.max(len1, len2);
+        if (len > maxLen) {
+            maxLen = len;
+            start = i - (len - 1) / 2;
+        }
+    }
+
+    return s.substring(start, start + maxLen);
+}
+
+private int expandAroundCenter(String s, int left, int right) {
+    while (left >= 0 && right < s.length() && s.charAt(left) == s.charAt(right)) {
+        left--;
+        right++;
+    }
+    return right - left - 1;
+}
+```
+
+#### Anagrams
+```java
+// Check if two strings are anagrams
+public boolean isAnagram(String s, String t) {
+    if (s.length() != t.length()) return false;
+
+    int[] count = new int[26];
+
+    for (int i = 0; i < s.length(); i++) {
+        count[s.charAt(i) - 'a']++;
+        count[t.charAt(i) - 'a']--;
+    }
+
+    for (int c : count) {
+        if (c != 0) return false;
+    }
+
+    return true;
+}
+
+// Group anagrams
+public List<List<String>> groupAnagrams(String[] strs) {
+    Map<String, List<String>> map = new HashMap<>();
+
+    for (String str : strs) {
+        char[] chars = str.toCharArray();
+        Arrays.sort(chars);
+        String sorted = new String(chars);
+
+        map.computeIfAbsent(sorted, k -> new ArrayList<>()).add(str);
+    }
+
+    return new ArrayList<>(map.values());
+}
+```
+
+#### Pattern Matching
+```java
+// KMP Pattern Matching
+public int strStr(String haystack, String needle) {
+    if (needle.isEmpty()) return 0;
+
+    int[] lps = computeLPS(needle);
+    int i = 0, j = 0; // i for haystack, j for needle
+
+    while (i < haystack.length()) {
+        if (haystack.charAt(i) == needle.charAt(j)) {
+            i++;
+            j++;
+        }
+
+        if (j == needle.length()) {
+            return i - j;
+        } else if (i < haystack.length() && haystack.charAt(i) != needle.charAt(j)) {
+            if (j != 0) {
+                j = lps[j - 1];
+            } else {
+                i++;
+            }
+        }
+    }
+
+    return -1;
+}
+
+private int[] computeLPS(String pattern) {
+    int[] lps = new int[pattern.length()];
+    int len = 0, i = 1;
+
+    while (i < pattern.length()) {
+        if (pattern.charAt(i) == pattern.charAt(len)) {
+            len++;
+            lps[i] = len;
+            i++;
+        } else {
+            if (len != 0) {
+                len = lps[len - 1];
+            } else {
+                lps[i] = 0;
+                i++;
+            }
+        }
+    }
+
+    return lps;
+}
+```
+
+### Character Frequency Patterns
+```java
+// Character frequency using array
+public int[] charFrequency(String s) {
+    int[] freq = new int[26]; // For lowercase letters a-z
+
+    for (char c : s.toCharArray()) {
+        freq[c - 'a']++;
+    }
+
+    return freq;
+}
+
+// First non-repeating character
+public int firstUniqChar(String s) {
+    int[] freq = new int[26];
+
+    // Count frequencies
+    for (char c : s.toCharArray()) {
+        freq[c - 'a']++;
+    }
+
+    // Find first character with frequency 1
+    for (int i = 0; i < s.length(); i++) {
+        if (freq[s.charAt(i) - 'a'] == 1) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+// Valid anagram using frequency
+public boolean isAnagram(String s, String t) {
+    if (s.length() != t.length()) return false;
+
+    int[] freq = new int[26];
+
+    for (int i = 0; i < s.length(); i++) {
+        freq[s.charAt(i) - 'a']++;
+        freq[t.charAt(i) - 'a']--;
+    }
+
+    for (int count : freq) {
+        if (count != 0) return false;
+    }
+
+    return true;
+}
+```
+
+### Array Rotation and Reversal
+```java
+// Rotate array right by k steps
+public void rotate(int[] nums, int k) {
+    k = k % nums.length;
+    reverse(nums, 0, nums.length - 1);
+    reverse(nums, 0, k - 1);
+    reverse(nums, k, nums.length - 1);
+}
+
+private void reverse(int[] nums, int start, int end) {
+    while (start < end) {
+        int temp = nums[start];
+        nums[start] = nums[end];
+        nums[end] = temp;
+        start++;
+        end--;
+    }
+}
+
+// Reverse words in a string
+public String reverseWords(String s) {
+    String[] words = s.trim().split("\\s+");
+    StringBuilder sb = new StringBuilder();
+
+    for (int i = words.length - 1; i >= 0; i--) {
+        sb.append(words[i]);
+        if (i > 0) sb.append(" ");
+    }
+
+    return sb.toString();
+}
+```
+
+---
+
+## Performance Considerations
+
+### Array Performance
+```java
+// ✅ Efficient - direct access
+int value = array[index]; // O(1)
+
+// ✅ Efficient - sequential access (cache-friendly)
+for (int i = 0; i < array.length; i++) {
+    process(array[i]);
+}
+
+// ❌ Less efficient - random access pattern
+Random random = new Random();
+for (int i = 0; i < 1000; i++) {
+    int randomIndex = random.nextInt(array.length);
+    process(array[randomIndex]); // Poor cache locality
+}
+
+// Memory usage
+int[] ints = new int[1000];        // 4KB (4 bytes per int)
+long[] longs = new long[1000];     // 8KB (8 bytes per long)
+Integer[] integers = new Integer[1000]; // More memory due to object overhead
+```
+
+### String Performance
+```java
+// ❌ Inefficient - creates many temporary strings
+String result = "";
+for (int i = 0; i < 1000; i++) {
+    result += "Item " + i; // Creates new string each time
+}
+
+// ✅ Efficient - uses StringBuilder
+StringBuilder sb = new StringBuilder();
+for (int i = 0; i < 1000; i++) {
+    sb.append("Item ").append(i);
+}
+String result = sb.toString();
+
+// String comparison performance
+String a = "hello";
+String b = "hello";
+String c = new String("hello");
+
+// ✅ Fast - reference comparison first
+boolean fast = a.equals(b);
+
+// ❌ Slower - always does character comparison
+boolean slower = a.equals(c);
+
+// ✅ Use == for null checks and reference comparison
+if (str != null && str.equals("expected")) { /* ... */ }
+
+// ✅ Use string pool for frequently used strings
+private static final String CONSTANT = "frequently_used_string";
+
+// Character access performance
+String text = "Hello World";
+
+// ✅ Efficient for single access
+char ch = text.charAt(5);
+
+// ✅ More efficient for multiple access
+char[] chars = text.toCharArray();
+for (char c : chars) {
+    process(c);
+}
+
+// ❌ Less efficient for multiple charAt calls
+for (int i = 0; i < text.length(); i++) {
+    char c = text.charAt(i); // Method call overhead
+    process(c);
+}
+```
+
+---
+
+## Best Practices
+
+### Array Best Practices
+
+#### Initialization and Declaration
+```java
+// ✅ Preferred array declaration style
+int[] numbers = new int[10];
+String[] names = {"Alice", "Bob", "Charlie"};
+
+// ❌ Avoid C-style declaration
+int numbers[] = new int[10]; // Works but not preferred
+
+// ✅ Use meaningful names and sizes
+private static final int MAX_STUDENTS = 100;
+Student[] students = new Student[MAX_STUDENTS];
+
+// ✅ Initialize with appropriate default values
+Arrays.fill(scores, -1); // Use -1 to indicate unset scores
+
+// ✅ Use constants for array sizes
+private static final int DAYS_IN_WEEK = 7;
+boolean[] weekdayFlags = new boolean[DAYS_IN_WEEK];
+```
+
+#### Bounds Checking and Safety
+```java
+// ✅ Always check bounds
+public int safeGet(int[] array, int index) {
+    if (index >= 0 && index < array.length) {
+        return array[index];
+    }
+    throw new IndexOutOfBoundsException("Index: " + index);
+}
+
+// ✅ Use enhanced for loop when possible
+for (int value : array) {
+    process(value); // No index out of bounds risk
+}
+
+// ✅ Defensive copying for mutable arrays
+public class ArrayContainer {
+    private int[] data;
+
+    public ArrayContainer(int[] data) {
+        this.data = data.clone(); // Defensive copy
+    }
+
+    public int[] getData() {
+        return data.clone(); // Return copy, not reference
+    }
+}
+
+// ✅ Null safety
+public void processArray(int[] array) {
+    if (array == null || array.length == 0) {
+        return; // Handle empty/null case
+    }
+
+    for (int value : array) {
+        process(value);
+    }
+}
+```
+
+#### Array Utilities Usage
+```java
+// ✅ Use Arrays utilities instead of manual loops
+// Sorting
+Arrays.sort(array);
+// Instead of implementing bubble sort or similar
+
+// Comparison
+if (Arrays.equals(array1, array2)) {
+    // Arrays are equal
+}
+// Instead of manual element-by-element comparison
+
+// Filling
+Arrays.fill(array, defaultValue);
+// Instead of manual loop
+
+// Copying
+int[] copy = Arrays.copyOf(original, newLength);
+// Instead of manual copying
+
+// String representation
+System.out.println(Arrays.toString(array));
+// Instead of manual string building
+```
+
+### String Best Practices
+
+#### String Creation and Immutability
+```java
+// ✅ Use string literals for constants
+private static final String ERROR_MESSAGE = "Invalid input";
+
+// ✅ Use StringBuilder for concatenation in loops
+StringBuilder result = new StringBuilder();
+for (String item : items) {
+    result.append(item).append(", ");
+}
+if (result.length() > 0) {
+    result.setLength(result.length() - 2); // Remove trailing ", "
+}
+
+// ✅ Use String.format or printf for complex formatting
+String message = String.format("User %s has %d points (%.1f%%)",
+                               username, points, percentage);
+
+// ❌ Avoid string concatenation in loops
+String result = "";
+for (String item : items) {
+    result += item + ", "; // Creates many intermediate strings
+}
+
+// ✅ Use text blocks for multi-line strings (Java 15+)
+String sql = """
+    SELECT name, age
+    FROM users
+    WHERE age > 18
+    ORDER BY name
+    """;
+```
+
+#### String Comparison and Validation
+```java
+// ✅ Use equals() for content comparison
+if ("expected".equals(userInput)) { // Protects against null userInput
+    // Handle expected input
+}
+
+// ✅ Use Objects.equals for null-safe comparison
+if (Objects.equals(str1, str2)) {
+    // Handles null values correctly
+}
+
+// ✅ Use isEmpty() and isBlank() appropriately
+if (input.isEmpty()) { // Checks for ""
+    // Handle empty string
+}
+
+if (input.isBlank()) { // Java 11+, checks for "", " ", "\t", etc.
+    // Handle blank string
+}
+
+// ✅ Validate input strings
+public boolean isValidEmail(String email) {
+    return email != null &&
+           !email.isBlank() &&
+           email.contains("@") &&
+           email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
+}
+
+// ✅ Use trim() judiciously
+String cleanInput = userInput != null ? userInput.trim() : "";
+```
+
+#### String Processing Efficiency
+```java
+// ✅ Cache string operations results
+public class StringProcessor {
+    private final Map<String, String> processedCache = new HashMap<>();
+
+    public String expensiveStringOperation(String input) {
+        return processedCache.computeIfAbsent(input, this::actuallyProcess);
+    }
+
+    private String actuallyProcess(String input) {
+        // Expensive processing logic
+        return input.toUpperCase().replace(" ", "_");
+    }
+}
+
+// ✅ Use appropriate string methods
+// For single character replacement
+String result = text.replace('a', 'A'); // More efficient than replaceAll
+
+// For regex patterns
+String result = text.replaceAll("\\d+", "X"); // Use when regex is needed
+
+// ✅ Choose the right collection for string storage
+Set<String> uniqueStrings = new HashSet<>();     // For uniqueness
+Set<String> sortedStrings = new TreeSet<>();     // For sorted uniqueness
+List<String> orderedStrings = new ArrayList<>(); // For ordered list
+
+// ✅ Intern strings for memory optimization (use carefully)
+public String internIfCommon(String str) {
+    // Only intern if the string is likely to be duplicated many times
+    if (isCommonString(str)) {
+        return str.intern();
+    }
+    return str;
+}
+```
+
+### Memory Management
+
+#### Array Memory Optimization
+```java
+// ✅ Choose appropriate primitive arrays over wrapper arrays
+int[] primitiveArray = new int[1000];        // 4KB
+Integer[] wrapperArray = new Integer[1000];   // Much more memory due to objects
+
+// ✅ Use byte arrays for binary data
+byte[] binaryData = new byte[1000]; // 1KB
+
+// ✅ Consider using specialized collections for large datasets
+// TIntArrayList from GNU Trove library for primitive int collections
+
+// ✅ Clear references when done
+largeArray = null; // Allow garbage collection
+
+// ✅ Resize arrays appropriately
+public class DynamicArray {
+    private int[] data;
+    private int size;
+
+    public void trimToSize() {
+        if (size < data.length) {
+            data = Arrays.copyOf(data, size); // Reduce memory usage
+        }
+    }
+}
+```
+
+#### String Memory Optimization
+```java
+// ✅ Use StringBuilder with appropriate initial capacity
+StringBuilder sb = new StringBuilder(estimatedSize);
+
+// ✅ Reuse StringBuilder instances
+public class StringUtils {
+    private static final ThreadLocal<StringBuilder> BUILDER =
+        ThreadLocal.withInitial(() -> new StringBuilder(256));
+
+    public static String buildString(String... parts) {
+        StringBuilder sb = BUILDER.get();
+        sb.setLength(0); // Reset
+
+        for (String part : parts) {
+            sb.append(part);
+        }
+
+        return sb.toString();
+    }
+}
+
+// ✅ Be careful with substring() and interning
+// substring() shares backing array in older Java versions
+String large = "very long string...";
+String small = large.substring(0, 5); // Might hold reference to entire large string
+
+// Better approach for small substrings from large strings:
+String small = new String(large.substring(0, 5)); // Creates new backing array
+```
+
+### Error Handling and Edge Cases
+
+#### Array Error Handling
+```java
+// ✅ Handle edge cases properly
+public int findMax(int[] array) {
+    if (array == null || array.length == 0) {
+        throw new IllegalArgumentException("Array cannot be null or empty");
+    }
+
+    int max = array[0];
+    for (int i = 1; i < array.length; i++) {
+        max = Math.max(max, array[i]);
+    }
+    return max;
+}
+
+// ✅ Use Optional for nullable results
+public Optional<Integer> findFirst(int[] array, int target) {
+    if (array == null) return Optional.empty();
+
+    for (int i = 0; i < array.length; i++) {
+        if (array[i] == target) {
+            return Optional.of(i);
+        }
+    }
+    return Optional.empty();
+}
+
+// ✅ Validate array indices
+public void safeSwap(int[] array, int i, int j) {
+    Objects.requireNonNull(array, "Array cannot be null");
+    if (i < 0 || i >= array.length || j < 0 || j >= array.length) {
+        throw new IndexOutOfBoundsException("Invalid indices");
+    }
+
+    int temp = array[i];
+    array[i] = array[j];
+    array[j] = temp;
+}
+```
+
+#### String Error Handling
+```java
+// ✅ Handle null and empty strings
+public String processString(String input) {
+    if (input == null) {
+        return ""; // Or throw exception based on requirements
+    }
+
+    if (input.isEmpty()) {
+        return input; // Return as-is for empty strings
+    }
+
+    return input.trim().toUpperCase();
+}
+
+// ✅ Use defensive programming for string operations
+public String safeSubstring(String str, int start, int end) {
+    if (str == null) return null;
+
+    int length = str.length();
+    start = Math.max(0, Math.min(start, length));
+    end = Math.max(start, Math.min(end, length));
+
+    return str.substring(start, end);
+}
+
+// ✅ Handle encoding issues
+public String safeStringFromBytes(byte[] bytes, String encoding) {
+    try {
+        return new String(bytes, encoding);
+    } catch (UnsupportedEncodingException e) {
+        // Fall back to default encoding
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+}
+```
+
+---
+
+## Advanced Topics
+
+### Regular Expressions with Strings
+```java
+// Common regex patterns
+public class RegexPatterns {
+    private static final String EMAIL_PATTERN =
+        "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+
+    private static final String PHONE_PATTERN =
+        "^\\+?[1-9]\\d{1,14}$";
+
+    private static final String URL_PATTERN =
+        "^https?://[A-Za-z0-9.-]+\\.[A-Za-z]{2,}(/.*)?$";
+
+    // Pre-compile patterns for better performance
+    private static final Pattern EMAIL_REGEX = Pattern.compile(EMAIL_PATTERN);
+    private static final Pattern PHONE_REGEX = Pattern.compile(PHONE_PATTERN);
+
+    public static boolean isValidEmail(String email) {
+        return email != null && EMAIL_REGEX.matcher(email).matches();
+    }
+
+    // Extract all numbers from string
+    public static List<Integer> extractNumbers(String text) {
+        Pattern pattern = Pattern.compile("\\d+");
+        Matcher matcher = pattern.matcher(text);
+
+        List<Integer> numbers = new ArrayList<>();
+        while (matcher.find()) {
+            numbers.add(Integer.parseInt(matcher.group()));
+        }
+        return numbers;
+    }
+
+    // Split preserving delimiters
+    public static String[] splitPreservingDelimiters(String text, String regex) {
+        return text.split("(?<=" + regex + ")|(?=" + regex + ")");
+    }
+}
+```
+
+### Character Encoding and Internationalization
+```java
+// ✅ Handle different character encodings
+public class EncodingUtils {
+
+    // Convert between encodings
+    public static String convertEncoding(String text, String fromEncoding, String toEncoding) {
+        try {
+            byte[] bytes = text.getBytes(fromEncoding);
+            return new String(bytes, toEncoding);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Unsupported encoding", e);
+        }
+    }
+
+    // Safe string operations with Unicode
+    public static int getDisplayLength(String text) {
+        return text.codePointCount(0, text.length()); // Handles surrogate pairs
+    }
+
+    // Iterate over Unicode code points (not just chars)
+    public static void iterateCodePoints(String text) {
+        for (int i = 0; i < text.length(); ) {
+            int codePoint = text.codePointAt(i);
+
+            // Process the code point
+            System.out.printf("Code point: U+%04X (%s)%n",
+                            codePoint,
+                            Character.getName(codePoint));
+
+            i += Character.charCount(codePoint);
+        }
+    }
+
+    // Normalize Unicode text
+    public static String normalizeText(String text) {
+        return Normalizer.normalize(text, Normalizer.Form.NFC);
+    }
+}
+```
+
+### Memory-Efficient String Operations
+```java
+// String interning and memory optimization
+public class StringOptimization {
+
+    // Custom string pool for application-specific strings
+    private static final Map<String, String> CUSTOM_POOL = new ConcurrentHashMap<>();
+
+    public static String internCustom(String str) {
+        return CUSTOM_POOL.computeIfAbsent(str, s -> s);
+    }
+
+    // Efficient string building with known patterns
+    public static String buildPath(String... segments) {
+        if (segments.length == 0) return "";
+        if (segments.length == 1) return segments[0];
+
+        int totalLength = 0;
+        for (String segment : segments) {
+            totalLength += segment.length();
+        }
+        totalLength += segments.length - 1; // For separators
+
+        StringBuilder sb = new StringBuilder(totalLength);
+        sb.append(segments[0]);
+
+        for (int i = 1; i < segments.length; i++) {
+            sb.append('/').append(segments[i]);
+        }
+
+        return sb.toString();
+    }
+
+    // Lazy string operations
+    public static class LazyString {
+        private final Supplier<String> stringSupplier;
+        private volatile String cachedValue;
+
+        public LazyString(Supplier<String> supplier) {
+            this.stringSupplier = supplier;
+        }
+
+        public String getValue() {
+            if (cachedValue == null) {
+                synchronized (this) {
+                    if (cachedValue == null) {
+                        cachedValue = stringSupplier.get();
+                    }
+                }
+            }
+            return cachedValue;
+        }
+    }
+}
+```
+
+---
+
+## Testing and Debugging
+
+### Array Testing Patterns
+```java
+public class ArrayTestUtils {
+
+    // Assert array equality with helpful error messages
+    public static void assertArrayEquals(int[] expected, int[] actual) {
+        if (!Arrays.equals(expected, actual)) {
+            String message = String.format(
+                "Arrays not equal.%nExpected: %s%nActual: %s",
+                Arrays.toString(expected),
+                Arrays.toString(actual)
+            );
+            throw new AssertionError(message);
+        }
+    }
+
+    // Generate test arrays
+    public static int[] randomArray(int size, int min, int max) {
+        Random random = new Random();
+        return random.ints(size, min, max + 1).toArray();
+    }
+
+    public static int[] sortedArray(int size) {
+        return IntStream.range(0, size).toArray();
+    }
+
+    public static int[] reverseSortedArray(int size) {
+        return IntStream.iterate(size - 1, i -> i - 1)
+                       .limit(size)
+                       .toArray();
+    }
+
+    // Debugging utilities
+    public static void printArray(int[] array, String label) {
+        System.out.printf("%s: %s%n", label, Arrays.toString(array));
+    }
+
+    public static void printMatrix(int[][] matrix, String label) {
+        System.out.println(label + ":");
+        for (int[] row : matrix) {
+            System.out.println(Arrays.toString(row));
+        }
+    }
+}
+```
+
+### String Testing Patterns
+```java
+public class StringTestUtils {
+
+    // Test string operations with edge cases
+    public static void testStringOperation(Function<String, String> operation) {
+        String[] testCases = {
+            null, "", " ", "a", "ab", "abc",
+            "  spaces  ", "mixed123", "UPPER", "lower"
+        };
+
+        for (String testCase : testCases) {
+            try {
+                String result = operation.apply(testCase);
+                System.out.printf("Input: '%s' -> Output: '%s'%n", testCase, result);
+            } catch (Exception e) {
+                System.out.printf("Input: '%s' -> Exception: %s%n", testCase, e.getMessage());
+            }
+        }
+    }
+
+    // Generate test strings
+    public static String randomString(int length) {
+        String chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new Random();
+        StringBuilder sb = new StringBuilder(length);
+
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+
+        return sb.toString();
+    }
+
+    public static String repeatedString(String base, int count) {
+        return String.join("", Collections.nCopies(count, base));
+    }
+}
+```
+
+---
+
+This comprehensive guide covers all the essential aspects of working with arrays and strings in Java. Key takeaways:
+
+**Arrays:**
+- Use `Arrays` utility class methods for common operations
+- Be mindful of bounds checking and null safety
+- Choose appropriate array types (primitive vs wrapper)
+- Understand copying semantics (shallow vs deep)
+
+**Strings:**
+- Remember that strings are immutable
+- Use `StringBuilder` for concatenation in loops
+- Leverage utility methods like `split()`, `join()`, `substring()`
+- Handle null and empty cases properly
+
+**Performance:**
+- Use primitive arrays when possible for better memory efficiency
+- StringBuilder for string building, not concatenation
+- Cache compiled regex patterns
+- Consider memory usage with large strings and arrays
+
+**DSA Patterns:**
+- Master two pointers, sliding window, and prefix sum for arrays
+- Understand palindrome, anagram, and pattern matching for strings
+- Use frequency counting and character arrays for optimization
+
+The examples progress from basic usage to advanced patterns, making this guide suitable for both learning and reference during coding interviews and practical development**!**
