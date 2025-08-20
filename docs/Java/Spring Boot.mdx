@@ -1,0 +1,533 @@
+# Spring Boot Beginner Guide
+
+## Table of Contents
+1. [What is Spring Boot?](#what-is-spring-boot)
+2. [Prerequisites](#prerequisites)
+3. [Setting Up Your Development Environment](#setting-up-your-development-environment)
+4. [Creating Your First Spring Boot Project](#creating-your-first-spring-boot-project)
+5. [Understanding the Project Structure](#understanding-the-project-structure)
+6. [Core Concepts](#core-concepts)
+7. [Building Your First REST API](#building-your-first-rest-api)
+8. [Working with Data](#working-with-data)
+9. [Configuration and Properties](#configuration-and-properties)
+10. [Common Annotations](#common-annotations)
+11. [Next Steps](#next-steps)
+
+---
+
+## What is Spring Boot?
+
+Spring Boot is a framework that makes it easy to create stand-alone, production-grade Spring applications. Think of it as a "starter kit" that:
+
+- **Simplifies setup**: No complex XML configurations
+- **Provides defaults**: Sensible defaults for most common scenarios
+- **Includes embedded server**: No need to deploy to external servers
+- **Offers auto-configuration**: Automatically configures your application based on dependencies
+
+### Why Spring Boot?
+- Faster development
+- Less boilerplate code
+- Easy to test
+- Production-ready features out of the box
+- Large ecosystem and community support
+
+---
+
+## Prerequisites
+
+Before diving into Spring Boot, make sure you have:
+
+### Java Knowledge (You're learning this! 🎉)
+- Basic Java syntax
+- Object-Oriented Programming concepts
+- Understanding of classes, objects, methods
+- Basic knowledge of collections (List, Map)
+
+### Tools You'll Need
+- **Java 17 or higher** (recommended: Java 17 LTS)
+- **IDE**: IntelliJ IDEA, Eclipse, or VS Code
+- **Build tool**: Maven or Gradle (we'll use Maven)
+- **Git** (optional but recommended)
+
+---
+
+## Setting Up Your Development Environment
+
+### 1. Install Java Development Kit (JDK)
+```bash
+# Check if Java is installed
+java -version
+
+# Should show Java 17 or higher
+```
+
+### 2. Choose Your IDE
+- **IntelliJ IDEA Community** (recommended for beginners)
+- **Eclipse IDE for Java Developers**
+- **Visual Studio Code** with Java extensions
+
+### 3. Verify Maven Installation
+```bash
+# Check Maven installation
+mvn -version
+```
+
+---
+
+## Creating Your First Spring Boot Project
+
+### Method 1: Using Spring Initializr (Recommended)
+
+1. Visit [start.spring.io](https://start.spring.io)
+2. Configure your project:
+   - **Project**: Maven
+   - **Language**: Java
+   - **Spring Boot Version**: Latest stable (3.x)
+   - **Group**: com.example
+   - **Artifact**: my-first-app
+   - **Package name**: com.example.myfirstapp
+   - **Packaging**: Jar
+   - **Java Version**: 17
+
+3. Add dependencies:
+   - Spring Web
+   - Spring Boot DevTools
+
+4. Click "Generate" and download the ZIP file
+5. Extract and open in your IDE
+
+### Method 2: Using IDE
+Most modern IDEs have Spring Boot project creation wizards that use Spring Initializr internally.
+
+---
+
+## Understanding the Project Structure
+
+```
+my-first-app/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/example/myfirstapp/
+│   │   │       └── MyFirstAppApplication.java
+│   │   └── resources/
+│   │       ├── static/          # Static web content
+│   │       ├── templates/       # Template files
+│   │       └── application.properties
+│   └── test/
+│       └── java/
+│           └── com/example/myfirstapp/
+│               └── MyFirstAppApplicationTests.java
+├── target/                      # Compiled classes (generated)
+├── pom.xml                     # Maven configuration
+└── README.md
+```
+
+### Key Files Explained
+
+#### `MyFirstAppApplication.java` (Main Class)
+```java
+@SpringBootApplication
+public class MyFirstAppApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MyFirstAppApplication.class, args);
+    }
+}
+```
+
+#### `pom.xml` (Maven Configuration)
+Contains project dependencies and build configuration.
+
+#### `application.properties`
+Configuration file for your application settings.
+
+---
+
+## Core Concepts
+
+### 1. Inversion of Control (IoC) and Dependency Injection
+
+**Traditional approach:**
+```java
+public class CarService {
+    private Engine engine = new Engine(); // CarService creates Engine
+}
+```
+
+**Spring Boot approach:**
+```java
+@Service
+public class CarService {
+    private final Engine engine;
+
+    // Spring will inject Engine automatically
+    public CarService(Engine engine) {
+        this.engine = engine;
+    }
+}
+```
+
+### 2. Beans and Components
+
+A **Bean** is an object managed by Spring. You create beans using annotations:
+
+```java
+@Component  // Generic component
+@Service    // Business logic layer
+@Repository // Data access layer
+@Controller // Web layer
+```
+
+### 3. Auto-Configuration
+
+Spring Boot automatically configures your application based on:
+- Dependencies in classpath
+- Properties you've set
+- Beans you've defined
+
+---
+
+## Building Your First REST API
+
+Let's create a simple REST API for managing books:
+
+### 1. Create a Book Model
+
+```java
+// src/main/java/com/example/myfirstapp/model/Book.java
+package com.example.myfirstapp.model;
+
+public class Book {
+    private Long id;
+    private String title;
+    private String author;
+    private double price;
+
+    // Constructors
+    public Book() {}
+
+    public Book(Long id, String title, String author, double price) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.price = price;
+    }
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getAuthor() { return author; }
+    public void setAuthor(String author) { this.author = author; }
+
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+}
+```
+
+### 2. Create a Controller
+
+```java
+// src/main/java/com/example/myfirstapp/controller/BookController.java
+package com.example.myfirstapp.controller;
+
+import com.example.myfirstapp.model.Book;
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/books")
+public class BookController {
+
+    // In-memory storage (we'll use database later)
+    private List<Book> books = new ArrayList<>();
+    private Long nextId = 1L;
+
+    // Constructor - add some sample data
+    public BookController() {
+        books.add(new Book(nextId++, "Spring Boot in Action", "Craig Walls", 29.99));
+        books.add(new Book(nextId++, "Java: The Complete Reference", "Herbert Schildt", 35.00));
+    }
+
+    // GET /api/books - Get all books
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return books;
+    }
+
+    // GET /api/books/{id} - Get book by ID
+    @GetMapping("/{id}")
+    public Book getBookById(@PathVariable Long id) {
+        return books.stream()
+            .filter(book -> book.getId().equals(id))
+            .findFirst()
+            .orElse(null);
+    }
+
+    // POST /api/books - Create new book
+    @PostMapping
+    public Book createBook(@RequestBody Book book) {
+        book.setId(nextId++);
+        books.add(book);
+        return book;
+    }
+
+    // PUT /api/books/{id} - Update book
+    @PutMapping("/{id}")
+    public Book updateBook(@PathVariable Long id, @RequestBody Book updatedBook) {
+        for (int i = 0; i < books.size(); i++) {
+            if (books.get(i).getId().equals(id)) {
+                updatedBook.setId(id);
+                books.set(i, updatedBook);
+                return updatedBook;
+            }
+        }
+        return null;
+    }
+
+    // DELETE /api/books/{id} - Delete book
+    @DeleteMapping("/{id}")
+    public void deleteBook(@PathVariable Long id) {
+        books.removeIf(book -> book.getId().equals(id));
+    }
+}
+```
+
+### 3. Test Your API
+
+Start your application and test these endpoints:
+
+```bash
+# Get all books
+curl http://localhost:8080/api/books
+
+# Get book by ID
+curl http://localhost:8080/api/books/1
+
+# Create new book
+curl -X POST http://localhost:8080/api/books \
+  -H "Content-Type: application/json" \
+  -d '{"title":"New Book","author":"Author Name","price":25.99}'
+```
+
+---
+
+## Working with Data
+
+### Adding Database Support
+
+Add these dependencies to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.h2database</groupId>
+    <artifactId>h2</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+### Update Your Book Model
+
+```java
+import javax.persistence.*;
+
+@Entity
+@Table(name = "books")
+public class Book {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String title;
+
+    private String author;
+    private double price;
+
+    // ... constructors, getters, setters remain the same
+}
+```
+
+### Create a Repository
+
+```java
+// src/main/java/com/example/myfirstapp/repository/BookRepository.java
+package com.example.myfirstapp.repository;
+
+import com.example.myfirstapp.model.Book;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface BookRepository extends JpaRepository<Book, Long> {
+    // JpaRepository provides basic CRUD operations
+    // You can add custom query methods here
+}
+```
+
+### Update Your Controller
+
+```java
+@RestController
+@RequestMapping("/api/books")
+public class BookController {
+
+    private final BookRepository bookRepository;
+
+    // Constructor injection
+    public BookController(BookRepository bookRepository) {
+        this.bookRepository = bookRepository;
+    }
+
+    @GetMapping
+    public List<Book> getAllBooks() {
+        return bookRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public Book getBookById(@PathVariable Long id) {
+        return bookRepository.findById(id).orElse(null);
+    }
+
+    @PostMapping
+    public Book createBook(@RequestBody Book book) {
+        return bookRepository.save(book);
+    }
+
+    // ... other methods updated similarly
+}
+```
+
+---
+
+## Configuration and Properties
+
+### application.properties
+
+```properties
+# Server configuration
+server.port=8080
+
+# Database configuration (H2 in-memory)
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+
+# JPA/Hibernate configuration
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+
+# H2 Console (for development)
+spring.h2.console.enabled=true
+```
+
+### Using @Value Annotation
+
+```java
+@Component
+public class AppConfig {
+    @Value("${server.port}")
+    private int serverPort;
+
+    @Value("${app.name:My Spring Boot App}")
+    private String appName; // Default value if property not found
+}
+```
+
+---
+
+## Common Annotations
+
+### Class-Level Annotations
+- `@SpringBootApplication`: Combines @Configuration, @EnableAutoConfiguration, and @ComponentScan
+- `@RestController`: Combines @Controller and @ResponseBody
+- `@Service`: Marks service layer components
+- `@Repository`: Marks data access layer components
+- `@Component`: Generic stereotype annotation
+- `@Configuration`: Indicates configuration class
+
+### Method-Level Annotations
+- `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`: HTTP method mappings
+- `@RequestMapping`: Generic request mapping
+- `@PathVariable`: Binds URI template variables to method parameters
+- `@RequestBody`: Binds HTTP request body to method parameter
+- `@RequestParam`: Binds request parameters to method parameters
+
+### Field-Level Annotations
+- `@Autowired`: Dependency injection
+- `@Value`: Injects values from properties
+- `@Id`: JPA primary key
+- `@Entity`: JPA entity class
+- `@Column`: JPA column mapping
+
+---
+
+## Next Steps
+
+### 1. Learn More About Spring Boot
+- **Testing**: Learn about @SpringBootTest, @WebMvcTest
+- **Security**: Add Spring Security for authentication
+- **Validation**: Use @Valid and validation annotations
+- **Profiles**: Different configurations for dev, test, prod
+
+### 2. Database Integration
+- **MySQL/PostgreSQL**: Production databases
+- **Spring Data JPA**: Advanced querying
+- **Database migrations**: Flyway or Liquibase
+
+### 3. Advanced Topics
+- **Microservices**: Spring Cloud
+- **Caching**: Spring Cache abstraction
+- **Messaging**: RabbitMQ, Apache Kafka
+- **Monitoring**: Spring Boot Actuator
+
+### 4. Best Practices
+- **Error handling**: Global exception handlers
+- **Logging**: Structured logging with Logback
+- **API documentation**: Swagger/OpenAPI
+- **Docker**: Containerizing Spring Boot apps
+
+### 5. Practice Projects
+1. **Todo API**: CRUD operations with user authentication
+2. **Blog System**: Posts, comments, and user management
+3. **E-commerce Backend**: Products, orders, and payments
+4. **Social Media API**: Users, posts, likes, and follows
+
+---
+
+## Helpful Resources
+
+- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
+- [Spring Initializr](https://start.spring.io)
+- [Baeldung Spring Boot Tutorials](https://www.baeldung.com/spring-boot)
+- [Spring Boot Reference Guide](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/)
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Run your Spring Boot application
+./mvnw spring-boot:run
+
+# Package your application
+./mvnw clean package
+
+# Run tests
+./mvnw test
+
+# Run with specific profile
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Remember: Spring Boot is all about **convention over configuration**. It provides sensible defaults so you can focus on writing business logic rather than configuration. Start simple, and gradually add complexity as you learn!
+

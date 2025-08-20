@@ -1,0 +1,971 @@
+# System Design Notes
+
+## Table of Contents
+
+1. [Introduction to System Design](#introduction-to-system-design)
+2. [High-Level Design (HLD)](#high-level-design-hld)
+3. [Low-Level Design (LLD)](#low-level-design-lld)
+4. [System Design Fundamentals](#system-design-fundamentals)
+5. [Interview Templates](#interview-templates)
+6. [Common Design Patterns](#common-design-patterns)
+7. [Case Studies](#case-studies)
+8. [Checklists and Best Practices](#checklists-and-best-practices)
+
+---
+
+## Introduction to System Design
+
+System design is the process of defining the architecture, modules, interfaces, and data for a system to satisfy specified requirements. It involves two main levels:
+
+- **High-Level Design (HLD)**: System architecture, major components, and their interactions
+- **Low-Level Design (LLD)**: Detailed design of individual components, classes, and algorithms
+
+### Why System Design Matters
+
+- **Scalability**: Handle growing user base and data
+- **Reliability**: Ensure system uptime and fault tolerance
+- **Performance**: Optimize for speed and efficiency
+- **Maintainability**: Easy to modify and extend
+- **Cost-effectiveness**: Optimal resource utilization
+
+---
+
+## High-Level Design (HLD)
+
+### Definition
+HLD provides a bird's-eye view of the entire system, focusing on:
+- System architecture and major components
+- Data flow between components
+- Technology stack decisions
+- Infrastructure requirements
+- Scalability and reliability strategies
+
+### Key Components of HLD
+
+#### 1. System Architecture
+```
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+│   Client    │───▶│ Load Balancer│───▶│ Web Servers │
+│ (Web/Mobile)│    │              │    │             │
+└─────────────┘    └──────────────┘    └─────────────┘
+                                              │
+                                              ▼
+                          ┌─────────────────────────────────┐
+                          │     Application Servers        │
+                          └─────────────────────────────────┘
+                                              │
+                                              ▼
+                          ┌─────────────────────────────────┐
+                          │        Database Layer          │
+                          │  ┌─────────┐  ┌─────────────┐  │
+                          │  │ Primary │  │   Cache     │  │
+                          │  │   DB    │  │  (Redis)    │  │
+                          │  └─────────┘  └─────────────┘  │
+                          └─────────────────────────────────┘
+```
+
+#### 2. Core Components
+
+**Load Balancer**
+- Distributes incoming requests
+- Types: Layer 4 (TCP) vs Layer 7 (HTTP)
+- Algorithms: Round Robin, Weighted, Least Connections
+
+**Web Servers**
+- Handle HTTP requests
+- Serve static content
+- Examples: Nginx, Apache
+
+**Application Servers**
+- Business logic execution
+- API endpoints
+- Examples: Node.js, Spring Boot, Django
+
+**Database Layer**
+- Primary database (RDBMS/NoSQL)
+- Read replicas
+- Caching layer
+
+**Message Queues**
+- Asynchronous processing
+- Decoupling services
+- Examples: RabbitMQ, Apache Kafka
+
+#### 3. HLD Design Process
+
+1. **Requirement Analysis**
+   - Functional requirements
+   - Non-functional requirements (NFRs)
+   - Scale estimation
+
+2. **Capacity Estimation**
+   - Traffic patterns
+   - Storage requirements
+   - Bandwidth calculations
+
+3. **Architecture Design**
+   - Choose architectural pattern
+   - Define major components
+   - Plan data flow
+
+4. **Technology Selection**
+   - Database choice
+   - Programming languages
+   - Infrastructure decisions
+
+### HLD Example: URL Shortener (like bit.ly)
+
+```
+Requirements:
+- Shorten long URLs
+- Redirect short URLs to original
+- 100M URLs/day, 100:1 read/write ratio
+
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+│   Client    │───▶│Load Balancer │───▶│ Web Servers │
+└─────────────┘    └──────────────┘    └─────────────┘
+                                              │
+                   ┌──────────────────────────┼──────────────────────────┐
+                   │                          ▼                          │
+                   │              ┌─────────────────┐                    │
+                   │              │ App Servers     │                    │
+                   │              │ - URL encoding  │                    │
+                   │              │ - URL decoding  │                    │
+                   │              │ - Analytics     │                    │
+                   │              └─────────────────┘                    │
+                   │                          │                          │
+                   │                          ▼                          │
+       ┌─────────────────┐                         ┌─────────────────┐   │
+       │     Cache       │◄────────────────────────┤    Database     │   │
+       │   (Redis)       │                         │   - URL mappings│   │
+       │ - Hot URLs      │                         │   - Analytics   │   │
+       │ - TTL based     │                         │   - User data   │   │
+       └─────────────────┘                         └─────────────────┘   │
+                                                                          │
+                   └──────────────────────────────────────────────────────┘
+```
+
+---
+
+## Low-Level Design (LLD)
+
+### Definition
+LLD provides detailed design of individual components, focusing on:
+- Class diagrams and relationships
+- API designs
+- Database schemas
+- Algorithms and data structures
+- Interface definitions
+
+### Key Components of LLD
+
+#### 1. Class Design
+
+```java
+// URL Shortener LLD Example
+
+public class URLShortenerService {
+    private URLRepository urlRepository;
+    private CacheService cacheService;
+    private Base62Encoder encoder;
+
+    public ShortenURLResponse shortenURL(ShortenURLRequest request) {
+        // Validate URL
+        if (!isValidURL(request.getOriginalUrl())) {
+            throw new InvalidURLException("Invalid URL provided");
+        }
+
+        // Check if URL already exists
+        String existingShortCode = urlRepository.findShortCodeByOriginalUrl(
+            request.getOriginalUrl()
+        );
+
+        if (existingShortCode != null) {
+            return new ShortenURLResponse(existingShortCode);
+        }
+
+        // Generate unique short code
+        String shortCode = generateUniqueShortCode();
+
+        // Save mapping
+        URLMapping mapping = new URLMapping(
+            shortCode,
+            request.getOriginalUrl(),
+            request.getUserId(),
+            System.currentTimeMillis()
+        );
+
+        urlRepository.save(mapping);
+
+        return new ShortenURLResponse(shortCode);
+    }
+
+    public String expandURL(String shortCode) {
+        // Check cache first
+        String cachedUrl = cacheService.get(shortCode);
+        if (cachedUrl != null) {
+            return cachedUrl;
+        }
+
+        // Query database
+        URLMapping mapping = urlRepository.findByShortCode(shortCode);
+        if (mapping == null) {
+            throw new URLNotFoundException("Short URL not found");
+        }
+
+        // Cache the result
+        cacheService.put(shortCode, mapping.getOriginalUrl(), TTL_SECONDS);
+
+        return mapping.getOriginalUrl();
+    }
+
+    private String generateUniqueShortCode() {
+        // Implementation using counter or random generation
+        long id = counterService.getNextId();
+        return encoder.encode(id);
+    }
+}
+
+// Data Models
+public class URLMapping {
+    private String shortCode;
+    private String originalUrl;
+    private String userId;
+    private long createdAt;
+    private long expiresAt;
+
+    // constructors, getters, setters
+}
+
+public class ShortenURLRequest {
+    private String originalUrl;
+    private String userId;
+    private long ttl; // Time to live
+
+    // constructors, getters, setters
+}
+```
+
+#### 2. Database Schema Design
+
+```sql
+-- URL Mappings Table
+CREATE TABLE url_mappings (
+    short_code VARCHAR(7) PRIMARY KEY,
+    original_url TEXT NOT NULL,
+    user_id VARCHAR(36),
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT,
+    click_count BIGINT DEFAULT 0,
+
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+);
+
+-- Analytics Table
+CREATE TABLE url_analytics (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    short_code VARCHAR(7) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    referer TEXT,
+    country VARCHAR(2),
+    clicked_at BIGINT NOT NULL,
+
+    FOREIGN KEY (short_code) REFERENCES url_mappings(short_code),
+    INDEX idx_short_code_time (short_code, clicked_at)
+);
+
+-- Users Table
+CREATE TABLE users (
+    user_id VARCHAR(36) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at BIGINT NOT NULL,
+    subscription_type ENUM('FREE', 'PREMIUM') DEFAULT 'FREE'
+);
+```
+
+#### 3. API Design
+
+```yaml
+# OpenAPI Specification
+openapi: 3.0.0
+info:
+  title: URL Shortener API
+  version: 1.0.0
+
+paths:
+  /api/v1/shorten:
+    post:
+      summary: Shorten a URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                customCode:
+                  type: string
+                  minLength: 4
+                  maxLength: 7
+                ttl:
+                  type: integer
+                  description: Time to live in seconds
+              required:
+                - url
+      responses:
+        '200':
+          description: URL shortened successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shortCode:
+                    type: string
+                  shortUrl:
+                    type: string
+                  originalUrl:
+                    type: string
+        '400':
+          description: Invalid request
+        '409':
+          description: Custom code already exists
+
+  /api/v1/expand/{shortCode}:
+    get:
+      summary: Expand a short URL
+      parameters:
+        - name: shortCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to original URL
+          headers:
+            Location:
+              schema:
+                type: string
+        '404':
+          description: Short URL not found
+
+  /api/v1/analytics/{shortCode}:
+    get:
+      summary: Get URL analytics
+      parameters:
+        - name: shortCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalClicks:
+                    type: integer
+                  clicksToday:
+                    type: integer
+                  topCountries:
+                    type: array
+                    items:
+                      type: object
+```
+
+---
+
+## System Design Fundamentals
+
+### 1. Scalability Patterns
+
+#### Horizontal vs Vertical Scaling
+```
+Vertical Scaling (Scale Up)     Horizontal Scaling (Scale Out)
+┌─────────────────┐            ┌─────┐ ┌─────┐ ┌─────┐
+│                 │            │     │ │     │ │     │
+│   More Power    │     vs     │ App │ │ App │ │ App │
+│   Same Machine  │            │     │ │     │ │     │
+│                 │            └─────┘ └─────┘ └─────┘
+└─────────────────┘
+```
+
+#### Load Balancing Strategies
+- **Round Robin**: Equal distribution
+- **Weighted Round Robin**: Based on server capacity
+- **Least Connections**: Route to server with fewest active connections
+- **IP Hash**: Route based on client IP hash
+- **Health Check**: Remove unhealthy servers
+
+#### Database Scaling
+```
+Read Replicas Pattern:
+┌────────────┐    Write    ┌─────────────┐
+│Application │────────────▶│ Primary DB  │
+│   Server   │             │             │
+└────────────┘             └─────────────┘
+       │                          │
+       │                    Replication
+       │                          ▼
+       │    Read         ┌─────────────────────┐
+       └────────────────▶│   Read Replicas     │
+                         │ ┌─────┐ ┌─────┐     │
+                         │ │ DB1 │ │ DB2 │     │
+                         │ └─────┘ └─────┘     │
+                         └─────────────────────┘
+```
+
+### 2. Consistency Patterns
+
+#### CAP Theorem
+- **Consistency**: All nodes see the same data simultaneously
+- **Availability**: System remains operational
+- **Partition Tolerance**: System continues despite network failures
+
+*You can only guarantee 2 out of 3*
+
+#### Consistency Models
+- **Strong Consistency**: Immediate consistency across all nodes
+- **Eventual Consistency**: System will become consistent over time
+- **Weak Consistency**: No guarantees when all nodes will be consistent
+
+### 3. Caching Strategies
+
+```
+Cache Patterns:
+
+1. Cache-Aside (Lazy Loading)
+┌─────────────┐    Cache Miss   ┌─────────┐    Query    ┌──────────┐
+│Application  │────────────────▶│  Cache  │             │ Database │
+└─────────────┘                 └─────────┘             └──────────┘
+       │                              ▲                       ▲
+       └──────────────────────────────┼───────────────────────┘
+                    Update Cache      │       Return Data
+
+2. Write-Through
+┌─────────────┐     Write      ┌─────────┐     Write    ┌──────────┐
+│Application  │───────────────▶│  Cache  │─────────────▶│ Database │
+└─────────────┘                └─────────┘              └──────────┘
+
+3. Write-Behind (Write-Back)
+┌─────────────┐     Write      ┌─────────┐   Async Write ┌──────────┐
+│Application  │───────────────▶│  Cache  │──────────────▶│ Database │
+└─────────────┘                └─────────┘               └──────────┘
+```
+
+### 4. Database Design Patterns
+
+#### SQL vs NoSQL Decision Matrix
+
+| Factor | SQL | NoSQL |
+|--------|-----|-------|
+| Schema | Fixed schema | Flexible schema |
+| ACID | Full ACID support | Eventual consistency |
+| Scaling | Vertical (primarily) | Horizontal |
+| Queries | Complex queries (JOIN) | Simple queries |
+| Use Cases | Financial, Traditional apps | Real-time, Big data |
+
+#### Database Sharding
+```
+Horizontal Partitioning (Sharding):
+
+User Data Distribution by User ID:
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Shard 1   │  │   Shard 2   │  │   Shard 3   │
+│ Users 0-33% │  │Users 34-66% │  │Users 67-100%│
+└─────────────┘  └─────────────┘  └─────────────┘
+
+Sharding Key Selection:
+- Range-based: Partition by value ranges
+- Hash-based: Partition by hash function
+- Directory-based: Lookup service for shard location
+```
+
+---
+
+## Interview Templates
+
+### Template 1: System Design Interview Structure (45-60 minutes)
+
+#### Phase 1: Requirements Gathering (10 minutes)
+```
+Questions to Ask:
+□ What are the core features needed?
+□ How many users are expected?
+□ What's the scale (reads vs writes)?
+□ What's the latency requirement?
+□ Do we need to handle failures?
+□ Any specific technology constraints?
+
+Example Clarification:
+"For a URL shortener:
+- Do we need custom URLs?
+- Should URLs expire?
+- Do we need analytics?
+- What's the expected QPS?"
+```
+
+#### Phase 2: Capacity Estimation (10 minutes)
+```
+Estimation Template:
+□ Daily Active Users (DAU)
+□ Queries Per Second (QPS)
+  - Write QPS = DAU * writes_per_user / seconds_per_day
+  - Read QPS = Write QPS * read_to_write_ratio
+□ Storage Requirements
+  - Data per record * records_per_day * retention_days
+□ Bandwidth Requirements
+  - QPS * average_request_size
+
+Example Calculation:
+"URL Shortener with 100M URLs/day:
+- Write QPS: 100M / 86400 = ~1200 QPS
+- Read QPS: 1200 * 100 = 120K QPS
+- Storage: 500 bytes * 100M * 365 = ~18TB/year"
+```
+
+#### Phase 3: High-Level Design (15 minutes)
+```
+Design Steps:
+□ Draw basic architecture
+□ Identify major components
+□ Show data flow
+□ Discuss technology choices
+
+Components Checklist:
+□ Load Balancer
+□ Web Servers
+□ Application Servers
+□ Database (Primary/Replica)
+□ Cache Layer
+□ Message Queues (if needed)
+□ CDN (if needed)
+```
+
+#### Phase 4: Deep Dive - Database Design (10 minutes)
+```
+Database Design Template:
+□ Define main entities
+□ Create table schemas
+□ Define relationships
+□ Consider indexing strategy
+□ Discuss partitioning/sharding
+
+Schema Template:
+table_name (
+  primary_key TYPE PRIMARY KEY,
+  column1 TYPE constraints,
+  column2 TYPE constraints,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP,
+
+  INDEX idx_name (columns),
+  FOREIGN KEY constraints
+)
+```
+
+#### Phase 5: Scaling and Reliability (10 minutes)
+```
+Scaling Checklist:
+□ How to handle increased load?
+□ Database scaling strategy
+□ Caching strategy
+□ CDN usage
+□ Load balancing
+
+Reliability Checklist:
+□ Single points of failure
+□ Data backup strategy
+□ Disaster recovery
+□ Monitoring and alerting
+□ Circuit breakers
+```
+
+### Template 2: API Design Template
+
+```yaml
+# Standard API Design Template
+paths:
+  /api/v1/resource:
+    get:
+      summary: Get resources
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resource'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      summary: Create resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+```
+
+### Template 3: Class Design Template
+
+```java
+// Service Layer Template
+@Service
+public class ResourceService {
+    private final ResourceRepository repository;
+    private final CacheService cacheService;
+    private final ValidationService validationService;
+
+    public ResourceService(
+        ResourceRepository repository,
+        CacheService cacheService,
+        ValidationService validationService
+    ) {
+        this.repository = repository;
+        this.cacheService = cacheService;
+        this.validationService = validationService;
+    }
+
+    public CreateResourceResponse createResource(CreateResourceRequest request) {
+        // 1. Validate input
+        validationService.validate(request);
+
+        // 2. Business logic
+        Resource resource = new Resource(
+            generateId(),
+            request.getName(),
+            request.getDescription(),
+            System.currentTimeMillis()
+        );
+
+        // 3. Persist
+        Resource savedResource = repository.save(resource);
+
+        // 4. Cache
+        cacheService.put(getCacheKey(savedResource.getId()), savedResource);
+
+        // 5. Return response
+        return new CreateResourceResponse(savedResource);
+    }
+
+    public GetResourceResponse getResource(String resourceId) {
+        // 1. Check cache
+        Resource cachedResource = cacheService.get(getCacheKey(resourceId));
+        if (cachedResource != null) {
+            return new GetResourceResponse(cachedResource);
+        }
+
+        // 2. Query database
+        Resource resource = repository.findById(resourceId)
+            .orElseThrow(() -> new ResourceNotFoundException(resourceId));
+
+        // 3. Cache result
+        cacheService.put(getCacheKey(resourceId), resource, TTL_SECONDS);
+
+        return new GetResourceResponse(resource);
+    }
+
+    private String getCacheKey(String resourceId) {
+        return "resource:" + resourceId;
+    }
+}
+
+// Repository Interface Template
+public interface ResourceRepository {
+    Resource save(Resource resource);
+    Optional<Resource> findById(String id);
+    List<Resource> findByUserId(String userId, int limit, int offset);
+    void deleteById(String id);
+    boolean existsById(String id);
+}
+
+// Model Template
+public class Resource {
+    private final String id;
+    private String name;
+    private String description;
+    private final String userId;
+    private final long createdAt;
+    private long updatedAt;
+
+    public Resource(String id, String name, String description, String userId, long createdAt) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.userId = userId;
+        this.createdAt = createdAt;
+        this.updatedAt = createdAt;
+    }
+
+    // Getters and business methods
+    public void updateDetails(String newName, String newDescription) {
+        this.name = newName;
+        this.description = newDescription;
+        this.updatedAt = System.currentTimeMillis();
+    }
+}
+```
+
+---
+
+## Common Design Patterns
+
+### 1. Microservices Patterns
+
+#### Service Decomposition
+```
+Decomposition Strategies:
+□ By Business Capability
+□ By Domain (DDD)
+□ By Transaction
+□ By Team Structure (Conway's Law)
+
+Example: E-commerce Decomposition
+┌─────────────────────────────────────────────────────────┐
+│                    API Gateway                           │
+└─────────────────┬───────────────────────────────────────┘
+                  │
+    ┌─────────────┼─────────────┬─────────────┬─────────────┐
+    │             │             │             │             │
+    ▼             ▼             ▼             ▼             ▼
+┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+│ User    │ │Product  │ │Inventory│ │ Order   │ │Payment  │
+│Service  │ │Service  │ │Service  │ │Service  │ │Service  │
+└─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
+     │           │           │           │           │
+     ▼           ▼           ▼           ▼           ▼
+┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+│User DB  │ │Product  │ │Inventory│ │Order DB │ │Payment  │
+│         │ │   DB    │ │   DB    │ │         │ │   DB    │
+└─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
+```
+
+#### Communication Patterns
+```
+1. Synchronous Communication
+   Client ──HTTP──▶ Service A ──HTTP──▶ Service B
+
+2. Asynchronous Communication
+   Service A ──Message──▶ Queue ──Message──▶ Service B
+
+3. Event-Driven Architecture
+   Service A ──Event──▶ Event Bus ──Event──▶ Multiple Services
+```
+
+### 2. Data Management Patterns
+
+#### Database per Service
+```json
+{
+  "pattern": "Database per Service",
+  "benefits": [
+    "Service independence",
+    "Technology diversity",
+    "Fault isolation"
+  ],
+  "challenges": [
+    "Data consistency",
+    "Complex queries across services",
+    "Data duplication"
+  ],
+  "solutions": {
+    "consistency": "Saga Pattern",
+    "queries": "CQRS + Event Sourcing",
+    "duplication": "Eventual consistency"
+  }
+}
+```
+
+#### CQRS (Command Query Responsibility Segregation)
+```
+Write Side (Commands):          Read Side (Queries):
+┌─────────────┐                ┌─────────────┐
+│   Command   │                │    Query    │
+│   Handler   │                │   Handler   │
+└─────────────┘                └─────────────┘
+       │                               │
+       ▼                               ▼
+┌─────────────┐    Events     ┌─────────────┐
+│  Write DB   │─────────────▶ │   Read DB   │
+│(Normalized) │               │(Denormalized)│
+└─────────────┘               └─────────────┘
+```
+
+### 3. Resilience Patterns
+
+#### Circuit Breaker Pattern
+```java
+public class CircuitBreaker {
+    private State state = State.CLOSED;
+    private int failureCount = 0;
+    private long lastFailureTime = 0;
+
+    public <T> T execute(Supplier<T> operation) throws Exception {
+        if (state == State.OPEN) {
+            if (System.currentTimeMillis() - lastFailureTime > timeout) {
+                state = State.HALF_OPEN;
+            } else {
+                throw new CircuitBreakerOpenException();
+            }
+        }
+
+        try {
+            T result = operation.get();
+            onSuccess();
+            return result;
+        } catch (Exception e) {
+            onFailure();
+            throw e;
+        }
+    }
+
+    private void onSuccess() {
+        failureCount = 0;
+        state = State.CLOSED;
+    }
+
+    private void onFailure() {
+        failureCount++;
+        lastFailureTime = System.currentTimeMillis();
+
+        if (failureCount >= failureThreshold) {
+            state = State.OPEN;
+        }
+    }
+
+    enum State { CLOSED, OPEN, HALF_OPEN }
+}
+```
+
+#### Bulkhead Pattern
+```
+Resource Isolation:
+
+┌─────────────────────────────────────────┐
+│            Application                  │
+├─────────────┬─────────────┬─────────────┤
+│Thread Pool 1│Thread Pool 2│Thread Pool 3│
+│ Critical    │   Normal    │    Batch    │
+│ Operations  │ Operations  │ Operations  │
+│     10      │     20      │     5       │
+│  threads    │  threads    │  threads    │
+└─────────────┴─────────────┴─────────────┘
+```
+
+---
+
+## Case Studies
+
+### Case Study 1: Design a Chat Application (like WhatsApp)
+
+#### Requirements Analysis
+```
+Functional Requirements:
+□ Send/receive messages
+□ Group chats
+□ Online status
+□ Message history
+□ Push notifications
+
+Non-Functional Requirements:
+□ 1B users, 50B messages/day
+□ Real-time messaging
+□ 99.9% availability
+□ Support multimedia messages
+```
+
+#### High-Level Architecture
+```
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐
+│Mobile Apps  │───▶│ Load Balancer│───▶│   Gateway   │
+└─────────────┘    │   (Layer 7)  │    │   Service   │
+                   └──────────────┘    └─────────────┘
+                                              │
+                          ┌───────────────────┼───────────────────┐
+                          │                   │                   │
+                          ▼                   ▼                   ▼
+                   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+                   │   Chat      │   │   User      │   │Notification │
+                   │  Service    │   │  Service    │   │  Service    │
+                   └─────────────┘   └─────────────┘   └─────────────┘
+                          │                   │                   │
+                          ▼                   ▼                   ▼
+                   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+                   │   Message   │   │    User     │   │   Device    │
+                   │ Database    │   │  Database   │   │  Database   │
+                   │(Cassandra)  │   │ (MongoDB)   │   │  (Redis)    │
+                   └─────────────┘   └─────────────┘   └─────────────┘
+
+Additional Components:
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│   Message   │   │    Media    │   │   Push      │
+│    Queue    │   │   Storage   │   │ Notification│
+│  (Kafka)    │   │    (S3)     │   │   (FCM)     │
+└─────────────┘   └─────────────┘   └─────────────┘
+```
+
+#### Database Design
+```sql
+-- Messages Table (Cassandra-style)
+CREATE TABLE messages (
+    chat_id TEXT,
+    message_id TIMEUUID,
+    sender_id TEXT,
+    content TEXT,
+    message_type TEXT, -- text, image, video
+    created_at TIMESTAMP,
+
+    PRIMARY KEY (chat_id, message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+
+-- User Chats Table
+CREATE TABLE user_chats (
+    user_id TEXT,
+    chat_id TEXT,
+    chat_type TEXT, -- direct, group
+    last_read_message_id TIMEUUID,
+    created_at TIMESTAMP,
+
+    PRIMARY KEY (user_id, chat

@@ -1,0 +1,1620 @@
+# Complete SQL & MySQL Guide for Java Developers
+
+A comprehensive guide covering SQL fundamentals, MySQL specifics, and Java integration patterns for database development.
+
+## Table of Contents
+
+- [SQL Fundamentals](#sql-fundamentals)
+- [MySQL Specifics](#mysql-specifics)
+- [Data Types](#data-types)
+- [Database Operations](#database-operations)
+- [Advanced SQL Concepts](#advanced-sql-concepts)
+- [Indexes and Performance](#indexes-and-performance)
+- [Transactions and ACID](#transactions-and-acid)
+- [Stored Procedures and Functions](#stored-procedures-and-functions)
+- [Java Database Connectivity](#java-database-connectivity)
+- [Best Practices](#best-practices)
+
+---
+
+## SQL Fundamentals
+
+### What is SQL?
+SQL (Structured Query Language) is a standard language for managing relational databases. It's used to create, read, update, and delete data (CRUD operations).
+
+### SQL Categories
+1. **DDL (Data Definition Language):** CREATE, ALTER, DROP
+2. **DML (Data Manipulation Language):** INSERT, UPDATE, DELETE, SELECT
+3. **DCL (Data Control Language):** GRANT, REVOKE
+4. **TCL (Transaction Control Language):** COMMIT, ROLLBACK, SAVEPOINT
+
+### Basic SQL Syntax Rules
+- SQL statements end with semicolon (;)
+- SQL is case-insensitive for keywords
+- String literals use single quotes ('')
+- Comments: `--` for single line, `/* */` for multi-line
+
+---
+
+## MySQL Specifics
+
+### MySQL Architecture
+- **Storage Engines:** InnoDB (default), MyISAM, Memory, Archive
+- **Query Cache:** Caches SELECT statement results
+- **Connection Layer:** Handles client connections
+- **SQL Layer:** Parses and optimizes queries
+- **Storage Layer:** Manages data storage
+
+### MySQL Installation and Configuration
+```bash
+# Ubuntu/Debian
+sudo apt-get install mysql-server
+
+# Start MySQL service
+sudo systemctl start mysql
+
+# Connect to MySQL
+mysql -u username -p
+```
+
+### Basic MySQL Commands
+```sql
+-- Show databases
+SHOW DATABASES;
+
+-- Create database
+CREATE DATABASE company_db;
+
+-- Use database
+USE company_db;
+
+-- Show tables
+SHOW TABLES;
+
+-- Describe table structure
+DESCRIBE table_name;
+DESC table_name;
+```
+
+---
+
+## Data Types
+
+### Numeric Data Types
+```sql
+-- Integer types
+TINYINT     -- 1 byte (-128 to 127)
+SMALLINT    -- 2 bytes (-32,768 to 32,767)
+MEDIUMINT   -- 3 bytes
+INT         -- 4 bytes (-2,147,483,648 to 2,147,483,647)
+BIGINT      -- 8 bytes
+
+-- Decimal types
+DECIMAL(M,D)  -- Fixed-point number
+FLOAT(M,D)    -- Single precision floating-point
+DOUBLE(M,D)   -- Double precision floating-point
+```
+
+### String Data Types
+```sql
+CHAR(n)       -- Fixed-length string (0-255)
+VARCHAR(n)    -- Variable-length string (0-65,535)
+TEXT          -- Variable-length text (0-65,535)
+MEDIUMTEXT    -- Variable-length text (0-16,777,215)
+LONGTEXT      -- Variable-length text (0-4,294,967,295)
+BINARY(n)     -- Fixed-length binary
+VARBINARY(n)  -- Variable-length binary
+BLOB          -- Binary Large Object
+```
+
+### Date and Time Data Types
+```sql
+DATE          -- YYYY-MM-DD
+TIME          -- HH:MM:SS
+DATETIME      -- YYYY-MM-DD HH:MM:SS
+TIMESTAMP     -- YYYY-MM-DD HH:MM:SS (with timezone)
+YEAR          -- YYYY or YY
+```
+
+### JSON Data Type (MySQL 5.7+)
+```sql
+-- JSON column
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    attributes JSON
+);
+
+-- Insert JSON data
+INSERT INTO products VALUES (1, '{"color": "red", "size": "medium"}');
+```
+
+---
+
+## Database Operations
+
+### Creating Databases and Tables
+```sql
+-- Create database with character set
+CREATE DATABASE company_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+-- Create table with constraints
+CREATE TABLE employees (
+    employee_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    hire_date DATE,
+    salary DECIMAL(10,2),
+    department_id INT,
+    manager_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Foreign key constraints
+    FOREIGN KEY (department_id) REFERENCES departments(dept_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id),
+
+    -- Check constraints (MySQL 8.0+)
+    CONSTRAINT chk_salary CHECK (salary >= 0)
+);
+```
+
+### Altering Tables
+```sql
+-- Add column
+ALTER TABLE employees ADD COLUMN phone VARCHAR(15);
+
+-- Modify column
+ALTER TABLE employees MODIFY COLUMN salary DECIMAL(12,2);
+
+-- Drop column
+ALTER TABLE employees DROP COLUMN phone;
+
+-- Add index
+ALTER TABLE employees ADD INDEX idx_last_name (last_name);
+
+-- Add foreign key
+ALTER TABLE employees
+ADD CONSTRAINT fk_dept
+FOREIGN KEY (department_id) REFERENCES departments(dept_id);
+```
+
+### Data Manipulation (CRUD Operations)
+
+#### INSERT Operations
+```sql
+-- Single row insert
+INSERT INTO employees (first_name, last_name, email, hire_date, salary)
+VALUES ('John', 'Doe', 'john.doe@company.com', '2024-01-15', 75000.00);
+
+-- Multiple rows insert
+INSERT INTO employees (first_name, last_name, email, salary) VALUES
+('Jane', 'Smith', 'jane.smith@company.com', 80000.00),
+('Bob', 'Johnson', 'bob.johnson@company.com', 65000.00),
+('Alice', 'Brown', 'alice.brown@company.com', 70000.00);
+
+-- Insert with ON DUPLICATE KEY UPDATE
+INSERT INTO employees (employee_id, first_name, last_name, salary)
+VALUES (1, 'John', 'Doe', 76000.00)
+ON DUPLICATE KEY UPDATE salary = VALUES(salary);
+
+-- Insert from SELECT
+INSERT INTO archived_employees
+SELECT * FROM employees WHERE hire_date < '2020-01-01';
+```
+
+#### SELECT Operations
+```sql
+-- Basic SELECT
+SELECT first_name, last_name, salary
+FROM employees;
+
+-- SELECT with WHERE clause
+SELECT * FROM employees
+WHERE salary > 70000 AND department_id = 1;
+
+-- SELECT with ORDER BY
+SELECT first_name, last_name, salary
+FROM employees
+ORDER BY salary DESC, last_name ASC;
+
+-- SELECT with LIMIT and OFFSET
+SELECT * FROM employees
+ORDER BY hire_date
+LIMIT 10 OFFSET 20;
+
+-- SELECT DISTINCT
+SELECT DISTINCT department_id FROM employees;
+
+-- SELECT with aggregate functions
+SELECT
+    department_id,
+    COUNT(*) as employee_count,
+    AVG(salary) as avg_salary,
+    MIN(salary) as min_salary,
+    MAX(salary) as max_salary,
+    SUM(salary) as total_salary
+FROM employees
+GROUP BY department_id
+HAVING AVG(salary) > 60000;
+```
+
+#### UPDATE Operations
+```sql
+-- Basic UPDATE
+UPDATE employees
+SET salary = salary * 1.05
+WHERE department_id = 1;
+
+-- UPDATE with JOIN
+UPDATE employees e
+JOIN departments d ON e.department_id = d.dept_id
+SET e.salary = e.salary * 1.10
+WHERE d.dept_name = 'Engineering';
+
+-- UPDATE with subquery
+UPDATE employees
+SET salary = (
+    SELECT AVG(salary) * 1.1
+    FROM (SELECT salary FROM employees) as temp
+)
+WHERE employee_id = 1;
+```
+
+#### DELETE Operations
+```sql
+-- Basic DELETE
+DELETE FROM employees
+WHERE hire_date < '2020-01-01';
+
+-- DELETE with JOIN
+DELETE e FROM employees e
+JOIN departments d ON e.department_id = d.dept_id
+WHERE d.dept_name = 'Discontinued';
+
+-- DELETE with subquery
+DELETE FROM employees
+WHERE employee_id IN (
+    SELECT employee_id FROM performance_reviews
+    WHERE rating < 2
+);
+```
+
+---
+
+## Advanced SQL Concepts
+
+### Joins
+```sql
+-- INNER JOIN
+SELECT e.first_name, e.last_name, d.dept_name
+FROM employees e
+INNER JOIN departments d ON e.department_id = d.dept_id;
+
+-- LEFT JOIN
+SELECT e.first_name, e.last_name, d.dept_name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.dept_id;
+
+-- RIGHT JOIN
+SELECT e.first_name, e.last_name, d.dept_name
+FROM employees e
+RIGHT JOIN departments d ON e.department_id = d.dept_id;
+
+-- FULL OUTER JOIN (MySQL doesn't support directly, use UNION)
+SELECT e.first_name, e.last_name, d.dept_name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.dept_id
+UNION
+SELECT e.first_name, e.last_name, d.dept_name
+FROM employees e
+RIGHT JOIN departments d ON e.department_id = d.dept_id;
+
+-- SELF JOIN
+SELECT e1.first_name as employee, e2.first_name as manager
+FROM employees e1
+LEFT JOIN employees e2 ON e1.manager_id = e2.employee_id;
+
+-- CROSS JOIN
+SELECT e.first_name, p.project_name
+FROM employees e
+CROSS JOIN projects p;
+```
+
+### Subqueries
+```sql
+-- Subquery in WHERE clause
+SELECT first_name, last_name, salary
+FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- Subquery in FROM clause
+SELECT dept_stats.dept_name, dept_stats.avg_salary
+FROM (
+    SELECT d.dept_name, AVG(e.salary) as avg_salary
+    FROM employees e
+    JOIN departments d ON e.department_id = d.dept_id
+    GROUP BY d.dept_name
+) as dept_stats
+WHERE dept_stats.avg_salary > 70000;
+
+-- Correlated subquery
+SELECT e1.first_name, e1.last_name, e1.salary
+FROM employees e1
+WHERE e1.salary > (
+    SELECT AVG(e2.salary)
+    FROM employees e2
+    WHERE e2.department_id = e1.department_id
+);
+
+-- EXISTS
+SELECT d.dept_name
+FROM departments d
+WHERE EXISTS (
+    SELECT 1 FROM employees e
+    WHERE e.department_id = d.dept_id
+);
+```
+
+### Window Functions (MySQL 8.0+)
+```sql
+-- ROW_NUMBER
+SELECT
+    first_name,
+    last_name,
+    salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) as rank_by_salary
+FROM employees;
+
+-- RANK and DENSE_RANK
+SELECT
+    first_name,
+    last_name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) as rank,
+    DENSE_RANK() OVER (ORDER BY salary DESC) as dense_rank
+FROM employees;
+
+-- PARTITION BY
+SELECT
+    first_name,
+    last_name,
+    department_id,
+    salary,
+    ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC) as dept_rank
+FROM employees;
+
+-- LAG and LEAD
+SELECT
+    first_name,
+    last_name,
+    salary,
+    LAG(salary, 1) OVER (ORDER BY hire_date) as previous_salary,
+    LEAD(salary, 1) OVER (ORDER BY hire_date) as next_salary
+FROM employees;
+
+-- Aggregate window functions
+SELECT
+    first_name,
+    last_name,
+    salary,
+    SUM(salary) OVER (ORDER BY hire_date) as running_total,
+    AVG(salary) OVER (ORDER BY hire_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) as moving_avg
+FROM employees;
+```
+
+### Common Table Expressions (CTEs) - MySQL 8.0+
+```sql
+-- Simple CTE
+WITH high_earners AS (
+    SELECT first_name, last_name, salary, department_id
+    FROM employees
+    WHERE salary > 75000
+)
+SELECT he.first_name, he.last_name, d.dept_name
+FROM high_earners he
+JOIN departments d ON he.department_id = d.dept_id;
+
+-- Recursive CTE (Employee hierarchy)
+WITH RECURSIVE employee_hierarchy AS (
+    -- Anchor member (top-level managers)
+    SELECT employee_id, first_name, last_name, manager_id, 0 as level
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive member
+    SELECT e.employee_id, e.first_name, e.last_name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.employee_id
+)
+SELECT * FROM employee_hierarchy ORDER BY level, last_name;
+```
+
+### Views
+```sql
+-- Create view
+CREATE VIEW employee_summary AS
+SELECT
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    e.salary,
+    d.dept_name,
+    CASE
+        WHEN e.salary > 80000 THEN 'High'
+        WHEN e.salary > 60000 THEN 'Medium'
+        ELSE 'Low'
+    END as salary_grade
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.dept_id;
+
+-- Use view
+SELECT * FROM employee_summary WHERE salary_grade = 'High';
+
+-- Update view (if updatable)
+UPDATE employee_summary SET salary = 85000 WHERE employee_id = 1;
+
+-- Drop view
+DROP VIEW employee_summary;
+```
+
+---
+
+## Indexes and Performance
+
+### Types of Indexes
+```sql
+-- Primary key (automatically creates clustered index)
+ALTER TABLE employees ADD PRIMARY KEY (employee_id);
+
+-- Unique index
+CREATE UNIQUE INDEX idx_email ON employees (email);
+
+-- Regular index
+CREATE INDEX idx_last_name ON employees (last_name);
+
+-- Composite index
+CREATE INDEX idx_dept_salary ON employees (department_id, salary);
+
+-- Partial index (with WHERE clause)
+CREATE INDEX idx_active_employees ON employees (last_name)
+WHERE status = 'active';
+
+-- Fulltext index
+CREATE FULLTEXT INDEX idx_fulltext_name ON employees (first_name, last_name);
+```
+
+### Index Analysis
+```sql
+-- Show indexes
+SHOW INDEXES FROM employees;
+
+-- Explain query execution plan
+EXPLAIN SELECT * FROM employees WHERE last_name = 'Smith';
+
+-- Analyze table
+ANALYZE TABLE employees;
+
+-- Check index usage
+SHOW STATUS LIKE 'Handler_read%';
+```
+
+### Query Optimization Tips
+```sql
+-- Use EXPLAIN to understand query execution
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, d.dept_name
+FROM employees e
+JOIN departments d ON e.department_id = d.dept_id
+WHERE e.salary > 70000;
+
+-- Use indexes effectively
+-- Good: Uses index on last_name
+SELECT * FROM employees WHERE last_name = 'Smith';
+
+-- Bad: Function on column prevents index usage
+SELECT * FROM employees WHERE UPPER(last_name) = 'SMITH';
+
+-- Better: Store uppercase values or use functional index
+SELECT * FROM employees WHERE last_name = 'Smith';
+
+-- Use LIMIT for large result sets
+SELECT * FROM employees ORDER BY hire_date DESC LIMIT 10;
+
+-- Avoid SELECT * when possible
+SELECT first_name, last_name FROM employees;
+```
+
+---
+
+## Transactions and ACID
+
+### ACID Properties
+- **Atomicity:** All operations in a transaction succeed or fail together
+- **Consistency:** Database remains in a valid state
+- **Isolation:** Transactions don't interfere with each other
+- **Durability:** Committed changes persist
+
+### Transaction Control
+```sql
+-- Start transaction
+START TRANSACTION;
+-- or
+BEGIN;
+
+-- Perform operations
+UPDATE accounts SET balance = balance - 1000 WHERE account_id = 1;
+UPDATE accounts SET balance = balance + 1000 WHERE account_id = 2;
+
+-- Commit transaction
+COMMIT;
+
+-- Rollback transaction (if error occurs)
+ROLLBACK;
+
+-- Savepoints
+START TRANSACTION;
+UPDATE accounts SET balance = balance - 500 WHERE account_id = 1;
+SAVEPOINT sp1;
+UPDATE accounts SET balance = balance + 300 WHERE account_id = 2;
+SAVEPOINT sp2;
+-- Rollback to savepoint
+ROLLBACK TO sp1;
+COMMIT;
+```
+
+### Isolation Levels
+```sql
+-- Set isolation level
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;  -- MySQL default
+SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Check current isolation level
+SELECT @@transaction_isolation;
+```
+
+### Locking
+```sql
+-- Explicit locking
+SELECT * FROM employees WHERE employee_id = 1 FOR UPDATE;
+SELECT * FROM employees WHERE department_id = 1 FOR SHARE;
+
+-- Table locking
+LOCK TABLES employees READ;
+-- Perform read operations
+UNLOCK TABLES;
+
+LOCK TABLES employees WRITE;
+-- Perform write operations
+UNLOCK TABLES;
+```
+
+---
+
+## Stored Procedures and Functions
+
+### Stored Procedures
+```sql
+-- Create procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDepartment(IN dept_id INT)
+BEGIN
+    SELECT employee_id, first_name, last_name, salary
+    FROM employees
+    WHERE department_id = dept_id;
+END //
+DELIMITER ;
+
+-- Call procedure
+CALL GetEmployeesByDepartment(1);
+
+-- Procedure with OUT parameter
+DELIMITER //
+CREATE PROCEDURE GetEmployeeCount(IN dept_id INT, OUT emp_count INT)
+BEGIN
+    SELECT COUNT(*) INTO emp_count
+    FROM employees
+    WHERE department_id = dept_id;
+END //
+DELIMITER ;
+
+-- Call with OUT parameter
+CALL GetEmployeeCount(1, @count);
+SELECT @count;
+
+-- Complex procedure with error handling
+DELIMITER //
+CREATE PROCEDURE TransferMoney(
+    IN from_account INT,
+    IN to_account INT,
+    IN amount DECIMAL(10,2)
+)
+BEGIN
+    DECLARE insufficient_funds CONDITION FOR SQLSTATE '45000';
+    DECLARE from_balance DECIMAL(10,2);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Check balance
+    SELECT balance INTO from_balance
+    FROM accounts
+    WHERE account_id = from_account;
+
+    IF from_balance < amount THEN
+        SIGNAL insufficient_funds
+        SET MESSAGE_TEXT = 'Insufficient funds';
+    END IF;
+
+    -- Transfer money
+    UPDATE accounts SET balance = balance - amount
+    WHERE account_id = from_account;
+
+    UPDATE accounts SET balance = balance + amount
+    WHERE account_id = to_account;
+
+    COMMIT;
+END //
+DELIMITER ;
+```
+
+### Functions
+```sql
+-- Create function
+DELIMITER //
+CREATE FUNCTION CalculateBonus(salary DECIMAL(10,2))
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+DETERMINISTIC
+BEGIN
+    DECLARE bonus DECIMAL(10,2);
+    IF salary > 80000 THEN
+        SET bonus = salary * 0.15;
+    ELSEIF salary > 60000 THEN
+        SET bonus = salary * 0.10;
+    ELSE
+        SET bonus = salary * 0.05;
+    END IF;
+    RETURN bonus;
+END //
+DELIMITER ;
+
+-- Use function
+SELECT
+    first_name,
+    last_name,
+    salary,
+    CalculateBonus(salary) as bonus
+FROM employees;
+```
+
+### Triggers
+```sql
+-- BEFORE INSERT trigger
+DELIMITER //
+CREATE TRIGGER before_employee_insert
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+    -- Set created timestamp
+    SET NEW.created_at = NOW();
+
+    -- Validate email format
+    IF NEW.email NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid email format';
+    END IF;
+END //
+DELIMITER ;
+
+-- AFTER UPDATE trigger for audit
+DELIMITER //
+CREATE TRIGGER after_employee_update
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO employee_audit (
+        employee_id,
+        old_salary,
+        new_salary,
+        change_date,
+        changed_by
+    )
+    VALUES (
+        NEW.employee_id,
+        OLD.salary,
+        NEW.salary,
+        NOW(),
+        USER()
+    );
+END //
+DELIMITER ;
+```
+
+---
+
+## Java Database Connectivity
+
+### JDBC Basics
+```java
+// Add MySQL JDBC driver dependency
+// Maven: mysql-connector-java or mysql-connector-j (newer)
+
+// Database connection
+String url = "jdbc:mysql://localhost:3306/company_db";
+String username = "your_username";
+String password = "your_password";
+
+try (Connection conn = DriverManager.getConnection(url, username, password)) {
+    // Database operations
+} catch (SQLException e) {
+    e.printStackTrace();
+}
+```
+
+### Connection Pooling with HikariCP
+```java
+// Maven dependency: com.zaxxer:HikariCP
+
+HikariConfig config = new HikariConfig();
+config.setJdbcUrl("jdbc:mysql://localhost:3306/company_db");
+config.setUsername("your_username");
+config.setPassword("your_password");
+config.setMaximumPoolSize(20);
+config.setMinimumIdle(5);
+config.setConnectionTimeout(30000);
+config.setIdleTimeout(600000);
+config.setMaxLifetime(1800000);
+
+HikariDataSource dataSource = new HikariDataSource(config);
+
+// Use connection from pool
+try (Connection conn = dataSource.getConnection()) {
+    // Database operations
+}
+```
+
+### CRUD Operations in Java
+```java
+public class EmployeeDAO {
+    private DataSource dataSource;
+
+    // Create
+    public void insertEmployee(Employee employee) throws SQLException {
+        String sql = "INSERT INTO employees (first_name, last_name, email, salary, department_id) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            stmt.setString(1, employee.getFirstName());
+            stmt.setString(2, employee.getLastName());
+            stmt.setString(3, employee.getEmail());
+            stmt.setBigDecimal(4, employee.getSalary());
+            stmt.setInt(5, employee.getDepartmentId());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        employee.setEmployeeId(rs.getInt(1));
+                    }
+                }
+            }
+        }
+    }
+
+    // Read
+    public Employee findById(int employeeId) throws SQLException {
+        String sql = "SELECT * FROM employees WHERE employee_id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, employeeId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToEmployee(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    // Update
+    public void updateEmployee(Employee employee) throws SQLException {
+        String sql = "UPDATE employees SET first_name = ?, last_name = ?, email = ?, salary = ?, department_id = ? WHERE employee_id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, employee.getFirstName());
+            stmt.setString(2, employee.getLastName());
+            stmt.setString(3, employee.getEmail());
+            stmt.setBigDecimal(4, employee.getSalary());
+            stmt.setInt(5, employee.getDepartmentId());
+            stmt.setInt(6, employee.getEmployeeId());
+
+            stmt.executeUpdate();
+        }
+    }
+
+    // Delete
+    public void deleteEmployee(int employeeId) throws SQLException {
+        String sql = "DELETE FROM employees WHERE employee_id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, employeeId);
+            stmt.executeUpdate();
+        }
+    }
+
+    // List with pagination
+    public List<Employee> findAll(int page, int pageSize) throws SQLException {
+        String sql = "SELECT * FROM employees ORDER BY employee_id LIMIT ? OFFSET ?";
+        List<Employee> employees = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, pageSize);
+            stmt.setInt(2, page * pageSize);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    employees.add(mapResultSetToEmployee(rs));
+                }
+            }
+        }
+        return employees;
+    }
+
+    private Employee mapResultSetToEmployee(ResultSet rs) throws SQLException {
+        Employee employee = new Employee();
+        employee.setEmployeeId(rs.getInt("employee_id"));
+        employee.setFirstName(rs.getString("first_name"));
+        employee.setLastName(rs.getString("last_name"));
+        employee.setEmail(rs.getString("email"));
+        employee.setSalary(rs.getBigDecimal("salary"));
+        employee.setDepartmentId(rs.getInt("department_id"));
+        employee.setHireDate(rs.getDate("hire_date"));
+        return employee;
+    }
+}
+```
+
+### Transaction Management in Java
+```java
+public class EmployeeService {
+    private DataSource dataSource;
+
+    public void transferEmployeeBetweenDepartments(int employeeId, int fromDeptId, int toDeptId) throws SQLException {
+        Connection conn = null;
+        try {
+            conn = dataSource.getConnection();
+            conn.setAutoCommit(false);
+
+            // Update employee department
+            String updateEmployeeSql = "UPDATE employees SET department_id = ? WHERE employee_id = ? AND department_id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(updateEmployeeSql)) {
+                stmt.setInt(1, toDeptId);
+                stmt.setInt(2, employeeId);
+                stmt.setInt(3, fromDeptId);
+
+                int affectedRows = stmt.executeUpdate();
+                if (affectedRows == 0) {
+                    throw new SQLException("Employee not found in source department");
+                }
+            }
+
+            // Update department counts
+            String updateDeptCountSql = "UPDATE departments SET employee_count = employee_count + ? WHERE dept_id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(updateDeptCountSql)) {
+                // Decrease source department count
+                stmt.setInt(1, -1);
+                stmt.setInt(2, fromDeptId);
+                stmt.executeUpdate();
+
+                // Increase target department count
+                stmt.setInt(1, 1);
+                stmt.setInt(2, toDeptId);
+                stmt.executeUpdate();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    e.addSuppressed(ex);
+                }
+            }
+            throw e;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    // Log error
+                }
+            }
+        }
+    }
+}
+```
+
+### JPA/Hibernate Integration
+```java
+// Entity class
+@Entity
+@Table(name = "employees")
+public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "employee_id")
+    private Integer employeeId;
+
+    @Column(name = "first_name", nullable = false, length = 50)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    private String lastName;
+
+    @Column(name = "email", unique = true, length = 100)
+    private String email;
+
+    @Column(name = "salary", precision = 10, scale = 2)
+    private BigDecimal salary;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private Employee manager;
+
+    @OneToMany(mappedBy = "manager", fetch = FetchType.LAZY)
+    private List<Employee> subordinates = new ArrayList<>();
+
+    // Constructors, getters, setters
+}
+
+// Repository interface (Spring Data JPA)
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee, Integer> {
+    List<Employee> findByDepartmentId(Integer departmentId);
+
+    @Query("SELECT e FROM Employee e WHERE e.salary > :minSalary ORDER BY e.salary DESC")
+    List<Employee> findHighEarners(@Param("minSalary") BigDecimal minSalary);
+
+    @Modifying
+    @Query("UPDATE Employee e SET e.salary = e.salary * :factor WHERE e.department.id = :deptId")
+    int increaseSalaryByDepartment(@Param("factor") BigDecimal factor, @Param("deptId") Integer deptId);
+}
+```
+
+---
+
+## Best Practices
+
+### Database Design Best Practices
+1. **Normalization:** Eliminate data redundancy while maintaining performance
+2. **Primary Keys:** Always use primary keys, prefer surrogate keys
+3. **Foreign Keys:** Maintain referential integrity
+4. **Indexing Strategy:** Index frequently queried columns
+5. **Data Types:** Choose appropriate data types for storage efficiency
+6. **Naming Conventions:** Use consistent, descriptive names
+
+### SQL Query Best Practices
+```sql
+-- Use specific column names instead of SELECT *
+SELECT first_name, last_name, salary FROM employees;
+
+-- Use WHERE clauses to limit result sets
+SELECT * FROM employees WHERE department_id = 1;
+
+-- Use appropriate JOIN types
+SELECT e.first_name, d.dept_name
+FROM employees e
+INNER JOIN departments d ON e.department_id = d.dept_id;
+
+-- Use LIMIT for large result sets
+SELECT * FROM employees ORDER BY hire_date DESC LIMIT 10;
+
+-- Use EXISTS instead of IN for better performance
+SELECT d.dept_name
+FROM departments d
+WHERE EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.dept_id);
+
+-- Use UNION ALL instead of UNION when duplicates are acceptable
+SELECT first_name FROM employees WHERE department_id = 1
+UNION ALL
+SELECT first_name FROM employees WHERE department_id = 2;
+```
+
+### Java Integration Best Practices
+```java
+// Use try-with-resources for automatic resource management
+try (Connection conn = dataSource.getConnection();
+     PreparedStatement stmt = conn.prepareStatement(sql);
+     ResultSet rs = stmt.executeQuery()) {
+    // Process results
+} catch (SQLException e) {
+    // Handle exception
+}
+
+// Always use PreparedStatement to prevent SQL injection
+String sql = "SELECT * FROM employees WHERE employee_id = ?";
+try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+    stmt.setInt(1, employeeId);
+    // Execute query
+}
+
+// Use batch operations for multiple inserts
+String sql = "INSERT INTO employees (first_name, last_name, email) VALUES (?, ?, ?)";
+try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+    for (Employee emp : employees) {
+        stmt.setString(1, emp.getFirstName());
+        stmt.setString(2, emp.getLastName());
+        stmt.setString(3, emp.getEmail());
+        stmt.addBatch();
+    }
+    stmt.executeBatch();
+}
+```
+
+### Performance Optimization
+1. **Connection Pooling:** Use connection pools to manage database connections
+2. **Prepared Statements:** Use for repeated queries with different parameters
+3. **Batch Operations:** Group multiple operations together
+4. **Result Set Processing:** Process results efficiently, avoid loading large result sets into memory
+5. **Query Optimization:** Use EXPLAIN to analyze query performance
+
+### Security Best Practices
+1. **SQL Injection Prevention:** Always use parameterized queries
+2. **Principle of Least Privilege:** Grant minimum necessary permissions
+3. **Input Validation:** Validate all user inputs
+4. **Connection Security:** Use SSL/TLS for database connections
+5. **Password Security:** Use strong passwords and rotate regularly
+
+---
+
+## Advanced Topics
+
+### MySQL Configuration and Tuning
+```sql
+-- Show current configuration
+SHOW VARIABLES;
+SHOW VARIABLES LIKE 'innodb%';
+
+-- Important configuration parameters
+-- my.cnf or my.ini file
+[mysqld]
+innodb_buffer_pool_size = 1G          -- 70-80% of available RAM
+innodb_log_file_size = 256M           -- 25% of buffer pool size
+max_connections = 200                 -- Based on application needs
+query_cache_size = 64M               -- For read-heavy workloads
+tmp_table_size = 64M                 -- Temporary table size
+max_heap_table_size = 64M            -- Memory table size
+
+-- Runtime configuration changes
+SET GLOBAL innodb_buffer_pool_size = 1073741824;  -- 1GB
+SET GLOBAL max_connections = 200;
+```
+
+### Monitoring and Diagnostics
+```sql
+-- Performance monitoring
+SHOW PROCESSLIST;
+SHOW ENGINE INNODB STATUS;
+
+-- Query performance
+SELECT * FROM performance_schema.events_statements_summary_by_digest
+ORDER BY sum_timer_wait DESC LIMIT 10;
+
+-- Index usage
+SELECT * FROM sys.schema_unused_indexes;
+SELECT * FROM sys.schema_redundant_indexes;
+
+-- Slow query log
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 2;
+
+-- Table statistics
+SELECT
+    table_name,
+    table_rows,
+    data_length,
+    index_length,
+    data_length + index_length AS total_size
+FROM information_schema.tables
+WHERE table_schema = 'company_db';
+```
+
+### Replication and High Availability
+```sql
+-- Master configuration (my.cnf)
+[mysqld]
+server-id = 1
+log-bin = mysql-bin
+binlog-format = ROW
+sync_binlog = 1
+innodb_flush_log_at_trx_commit = 1
+
+-- Slave configuration (my.cnf)
+[mysqld]
+server-id = 2
+relay-log = mysql-relay-bin
+read_only = 1
+
+-- Setup replication on slave
+CHANGE MASTER TO
+    MASTER_HOST='master_server_ip',
+    MASTER_USER='replication_user',
+    MASTER_PASSWORD='replication_password',
+    MASTER_LOG_FILE='mysql-bin.000001',
+    MASTER_LOG_POS=154;
+
+START SLAVE;
+SHOW SLAVE STATUS\G;
+```
+
+### Backup and Recovery
+```bash
+# Full database backup
+mysqldump -u username -p --single-transaction --routines --triggers company_db > backup.sql
+
+# Backup with compression
+mysqldump -u username -p --single-transaction company_db | gzip > backup.sql.gz
+
+# Backup specific tables
+mysqldump -u username -p company_db employees departments > tables_backup.sql
+
+# Point-in-time recovery
+mysqlbinlog --start-datetime="2024-01-01 00:00:00" --stop-datetime="2024-01-01 12:00:00" mysql-bin.000001 | mysql -u username -p
+
+# Restore database
+mysql -u username -p company_db < backup.sql
+```
+
+### JSON Operations (MySQL 5.7+)
+```sql
+-- Create table with JSON column
+CREATE TABLE user_profiles (
+    user_id INT PRIMARY KEY,
+    profile_data JSON
+);
+
+-- Insert JSON data
+INSERT INTO user_profiles VALUES
+(1, '{"name": "John", "age": 30, "hobbies": ["reading", "swimming"]}'),
+(2, '{"name": "Jane", "age": 25, "address": {"city": "New York", "zip": "10001"}}');
+
+-- Query JSON data
+SELECT user_id, JSON_EXTRACT(profile_data, '$.name') as name
+FROM user_profiles;
+
+-- Use -> operator (shorthand for JSON_EXTRACT)
+SELECT user_id, profile_data->'$.name' as name
+FROM user_profiles;
+
+-- Use ->> operator (unquotes the result)
+SELECT user_id, profile_data->>'$.name' as name
+FROM user_profiles;
+
+-- Query nested JSON
+SELECT user_id, profile_data->'$.address.city' as city
+FROM user_profiles
+WHERE profile_data->'$.address.city' IS NOT NULL;
+
+-- Query JSON arrays
+SELECT user_id, JSON_EXTRACT(profile_data, '$.hobbies[0]') as first_hobby
+FROM user_profiles
+WHERE JSON_EXTRACT(profile_data, '$.hobbies') IS NOT NULL;
+
+-- Update JSON data
+UPDATE user_profiles
+SET profile_data = JSON_SET(profile_data, '$.age', 31)
+WHERE user_id = 1;
+
+-- Add to JSON array
+UPDATE user_profiles
+SET profile_data = JSON_ARRAY_APPEND(profile_data, '$.hobbies', 'cycling')
+WHERE user_id = 1;
+
+-- Remove from JSON
+UPDATE user_profiles
+SET profile_data = JSON_REMOVE(profile_data, '$.age')
+WHERE user_id = 1;
+
+-- JSON functions
+SELECT
+    JSON_KEYS(profile_data) as keys,
+    JSON_LENGTH(profile_data) as length,
+    JSON_VALID(profile_data) as is_valid
+FROM user_profiles;
+```
+
+### Partitioning
+```sql
+-- Range partitioning by date
+CREATE TABLE sales (
+    sale_id INT,
+    sale_date DATE,
+    amount DECIMAL(10,2),
+    customer_id INT
+)
+PARTITION BY RANGE (YEAR(sale_date)) (
+    PARTITION p2020 VALUES LESS THAN (2021),
+    PARTITION p2021 VALUES LESS THAN (2022),
+    PARTITION p2022 VALUES LESS THAN (2023),
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- Hash partitioning
+CREATE TABLE customer_data (
+    customer_id INT,
+    customer_name VARCHAR(100),
+    created_date DATE
+)
+PARTITION BY HASH(customer_id)
+PARTITIONS 4;
+
+-- List partitioning
+CREATE TABLE regional_sales (
+    sale_id INT,
+    region VARCHAR(20),
+    amount DECIMAL(10,2)
+)
+PARTITION BY LIST (region) (
+    PARTITION p_north VALUES IN ('North', 'Northeast'),
+    PARTITION p_south VALUES IN ('South', 'Southeast'),
+    PARTITION p_west VALUES IN ('West', 'Southwest'),
+    PARTITION p_central VALUES IN ('Central', 'Midwest')
+);
+
+-- Partition management
+ALTER TABLE sales ADD PARTITION (PARTITION p2024 VALUES LESS THAN (2025));
+ALTER TABLE sales DROP PARTITION p2020;
+ALTER TABLE sales REORGANIZE PARTITION p_future INTO (
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+```
+
+---
+
+## Common Patterns and Solutions
+
+### Pagination Patterns
+```sql
+-- Offset-based pagination (can be slow for large offsets)
+SELECT * FROM employees
+ORDER BY employee_id
+LIMIT 10 OFFSET 20;
+
+-- Cursor-based pagination (better for large datasets)
+SELECT * FROM employees
+WHERE employee_id > 20
+ORDER BY employee_id
+LIMIT 10;
+
+-- Java implementation with cursor-based pagination
+public class PaginationResult<T> {
+    private List<T> data;
+    private String nextCursor;
+    private boolean hasMore;
+
+    // constructors, getters, setters
+}
+
+public PaginationResult<Employee> getEmployees(String cursor, int limit) {
+    String sql = cursor == null ?
+        "SELECT * FROM employees ORDER BY employee_id LIMIT ?" :
+        "SELECT * FROM employees WHERE employee_id > ? ORDER BY employee_id LIMIT ?";
+
+    List<Employee> employees = new ArrayList<>();
+    String nextCursor = null;
+
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        if (cursor == null) {
+            stmt.setInt(1, limit + 1);  // Get one extra to check if more exist
+        } else {
+            stmt.setInt(1, Integer.parseInt(cursor));
+            stmt.setInt(2, limit + 1);
+        }
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                employees.add(mapResultSetToEmployee(rs));
+            }
+        }
+    }
+
+    boolean hasMore = employees.size() > limit;
+    if (hasMore) {
+        employees.remove(employees.size() - 1);  // Remove the extra record
+        nextCursor = String.valueOf(employees.get(employees.size() - 1).getEmployeeId());
+    }
+
+    return new PaginationResult<>(employees, nextCursor, hasMore);
+}
+```
+
+### Hierarchical Data Patterns
+```sql
+-- Adjacency List Model (simple but limited)
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY,
+    category_name VARCHAR(100),
+    parent_id INT,
+    FOREIGN KEY (parent_id) REFERENCES categories(category_id)
+);
+
+-- Get all descendants (requires recursive query)
+WITH RECURSIVE category_tree AS (
+    SELECT category_id, category_name, parent_id, 0 as level
+    FROM categories
+    WHERE category_id = 1  -- Root category
+
+    UNION ALL
+
+    SELECT c.category_id, c.category_name, c.parent_id, ct.level + 1
+    FROM categories c
+    JOIN category_tree ct ON c.parent_id = ct.category_id
+)
+SELECT * FROM category_tree;
+
+-- Nested Set Model (complex updates but efficient queries)
+CREATE TABLE categories_nested (
+    category_id INT PRIMARY KEY,
+    category_name VARCHAR(100),
+    lft INT NOT NULL,
+    rgt INT NOT NULL,
+    INDEX (lft, rgt)
+);
+
+-- Get all descendants (simple query)
+SELECT child.*
+FROM categories_nested parent
+JOIN categories_nested child ON child.lft BETWEEN parent.lft AND parent.rgt
+WHERE parent.category_id = 1;
+
+-- Get path to root
+SELECT parent.*
+FROM categories_nested child
+JOIN categories_nested parent ON child.lft BETWEEN parent.lft AND parent.rgt
+WHERE child.category_id = 5
+ORDER BY parent.lft;
+```
+
+### Audit Trail Pattern
+```sql
+-- Audit table
+CREATE TABLE employee_audit (
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    operation_type ENUM('INSERT', 'UPDATE', 'DELETE'),
+    old_values JSON,
+    new_values JSON,
+    changed_by VARCHAR(100),
+    change_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (employee_id, change_timestamp)
+);
+
+-- Trigger for audit trail
+DELIMITER //
+CREATE TRIGGER employee_audit_trigger
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO employee_audit (
+        employee_id,
+        operation_type,
+        old_values,
+        new_values,
+        changed_by
+    ) VALUES (
+        NEW.employee_id,
+        'UPDATE',
+        JSON_OBJECT(
+            'first_name', OLD.first_name,
+            'last_name', OLD.last_name,
+            'salary', OLD.salary,
+            'department_id', OLD.department_id
+        ),
+        JSON_OBJECT(
+            'first_name', NEW.first_name,
+            'last_name', NEW.last_name,
+            'salary', NEW.salary,
+            'department_id', NEW.department_id
+        ),
+        USER()
+    );
+END //
+DELIMITER ;
+```
+
+### Soft Delete Pattern
+```sql
+-- Add deleted_at column
+ALTER TABLE employees ADD COLUMN deleted_at TIMESTAMP NULL;
+ALTER TABLE employees ADD INDEX idx_deleted_at (deleted_at);
+
+-- Soft delete
+UPDATE employees SET deleted_at = NOW() WHERE employee_id = 1;
+
+-- Active employees view
+CREATE VIEW active_employees AS
+SELECT * FROM employees WHERE deleted_at IS NULL;
+
+-- Restore deleted employee
+UPDATE employees SET deleted_at = NULL WHERE employee_id = 1;
+
+-- Java implementation
+@Entity
+@Table(name = "employees")
+@SQLDelete(sql = "UPDATE employees SET deleted_at = NOW() WHERE employee_id = ?")
+@Where(clause = "deleted_at IS NULL")
+public class Employee {
+    // ... other fields
+
+    @Column(name = "deleted_at")
+    private Timestamp deletedAt;
+
+    // getters and setters
+}
+```
+
+### Optimistic Locking Pattern
+```sql
+-- Add version column
+ALTER TABLE employees ADD COLUMN version INT DEFAULT 1;
+
+-- Update with version check
+UPDATE employees
+SET first_name = ?, last_name = ?, salary = ?, version = version + 1
+WHERE employee_id = ? AND version = ?;
+
+-- Java implementation
+@Entity
+public class Employee {
+    @Version
+    @Column(name = "version")
+    private Integer version;
+
+    // other fields, getters, setters
+}
+
+// Service method
+public void updateEmployee(Employee employee) {
+    try {
+        employeeRepository.save(employee);
+    } catch (OptimisticLockingFailureException e) {
+        throw new ConcurrentModificationException("Employee was modified by another user");
+    }
+}
+```
+
+---
+
+## Troubleshooting Common Issues
+
+### Connection Issues
+```java
+// Connection timeout
+HikariConfig config = new HikariConfig();
+config.setConnectionTimeout(30000);  // 30 seconds
+config.setIdleTimeout(600000);       // 10 minutes
+config.setMaxLifetime(1800000);      // 30 minutes
+config.setLeakDetectionThreshold(60000);  // 1 minute
+
+// Test connection validity
+config.setConnectionTestQuery("SELECT 1");
+```
+
+### Performance Issues
+```sql
+-- Identify slow queries
+SELECT
+    digest_text,
+    count_star,
+    avg_timer_wait/1000000000 as avg_time_sec,
+    sum_timer_wait/1000000000 as total_time_sec
+FROM performance_schema.events_statements_summary_by_digest
+ORDER BY sum_timer_wait DESC
+LIMIT 10;
+
+-- Check table locks
+SHOW OPEN TABLES WHERE In_use > 0;
+
+-- Check for blocking queries
+SELECT
+    r.trx_id waiting_trx_id,
+    r.trx_mysql_thread_id waiting_thread,
+    r.trx_query waiting_query,
+    b.trx_id blocking_trx_id,
+    b.trx_mysql_thread_id blocking_thread,
+    b.trx_query blocking_query
+FROM information_schema.innodb_lock_waits w
+INNER JOIN information_schema.innodb_trx b ON b.trx_id = w.blocking_trx_id
+INNER JOIN information_schema.innodb_trx r ON r.trx_id = w.requesting_trx_id;
+```
+
+### Memory Issues
+```sql
+-- Check buffer pool usage
+SELECT
+    (SELECT variable_value FROM information_schema.global_status WHERE variable_name = 'Innodb_buffer_pool_pages_data') /
+    (SELECT variable_value FROM information_schema.global_status WHERE variable_name = 'Innodb_buffer_pool_pages_total') * 100
+    as buffer_pool_utilization;
+
+-- Check temporary table usage
+SHOW STATUS LIKE 'Created_tmp%';
+
+-- Memory usage per connection
+SELECT
+    id,
+    user,
+    host,
+    db,
+    command,
+    time,
+    state,
+    info
+FROM information_schema.processlist
+WHERE command != 'Sleep'
+ORDER BY time DESC;
+```
+
+---
+
+## Summary and Next Steps
+
+This comprehensive guide covers:
+
+1. **SQL Fundamentals** - Basic syntax, data types, and operations
+2. **MySQL Specifics** - Architecture, configuration, and MySQL-specific features
+3. **Advanced Concepts** - Joins, subqueries, window functions, CTEs
+4. **Performance Optimization** - Indexing, query optimization, monitoring
+5. **Java Integration** - JDBC, connection pooling, ORM patterns
+6. **Best Practices** - Security, performance, maintainability
+7. **Advanced Topics** - JSON, partitioning, replication, backup/recovery
+8. **Common Patterns** - Pagination, hierarchical data, audit trails
+9. **Troubleshooting** - Performance issues, connection problems
+
+### Recommended Learning Path:
+1. Master basic SQL operations and joins
+2. Understand indexing and query optimization
+3. Learn transaction management and concurrency
+4. Practice with Java integration patterns
+5. Study advanced features like JSON, CTEs, window functions
+6. Explore performance tuning and monitoring
+7. Understand high availability and scaling patterns
+
+### Additional Resources:
+- MySQL Official Documentation
+- Java JDBC API Documentation
+- Spring Data JPA Reference
+- Hibernate ORM Documentation
+- Database design patterns and best practices
+
+Keep practicing with real-world scenarios and always consider performance implications when designing database schemas and writing queries.
