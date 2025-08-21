@@ -1,0 +1,1916 @@
+# Stack
+
+A comprehensive guide to stack algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Introduction to Stacks](#introduction-to-stacks)
+2. [Basic Stack Operations](#basic-stack-operations)
+3. [Stack Implementation](#stack-implementation)
+4. [Basic Stack Problems](#basic-stack-problems)
+5. [Expression Evaluation](#expression-evaluation)
+6. [Parentheses Problems](#parentheses-problems)
+7. [Monotonic Stack](#monotonic-stack)
+8. [Stack in Recursion](#stack-in-recursion)
+9. [Two Stacks Problems](#two-stacks-problems)
+10. [Stack with Additional Operations](#stack-with-additional-operations)
+11. [Advanced Stack Patterns](#advanced-stack-patterns)
+12. [Stack in Graph Algorithms](#stack-in-graph-algorithms)
+13. [Memory Management](#memory-management)
+14. [Common Optimization Tricks](#common-optimization-tricks)
+
+---
+
+## Introduction to Stacks
+
+A **Stack** is a linear data structure that follows the **Last In First Out (LIFO)** principle. Elements are added and removed from the same end, called the "top" of the stack.
+
+### Core Concepts
+
+**LIFO Principle:** The last element pushed onto the stack is the first one to be popped off.
+
+**Main Operations:**
+- **Push:** Add an element to the top
+- **Pop:** Remove the top element
+- **Peek/Top:** View the top element without removing it
+- **isEmpty:** Check if stack is empty
+
+### Basic Template
+
+```javascript
+class Stack {
+    constructor() {
+        this.items = [];
+    }
+
+    push(element) {
+        this.items.push(element);
+    }
+
+    pop() {
+        if (this.isEmpty()) return null;
+        return this.items.pop();
+    }
+
+    peek() {
+        if (this.isEmpty()) return null;
+        return this.items[this.items.length - 1];
+    }
+
+    isEmpty() {
+        return this.items.length === 0;
+    }
+
+    size() {
+        return this.items.length;
+    }
+}
+```
+
+---
+
+## Basic Stack Operations
+
+### 1. Stack Using Array
+
+```javascript
+class ArrayStack {
+    constructor(maxSize = 1000) {
+        this.items = new Array(maxSize);
+        this.top = -1;
+        this.maxSize = maxSize;
+    }
+
+    push(element) {
+        if (this.isFull()) {
+            throw new Error("Stack Overflow");
+        }
+        this.items[++this.top] = element;
+    }
+
+    pop() {
+        if (this.isEmpty()) {
+            throw new Error("Stack Underflow");
+        }
+        return this.items[this.top--];
+    }
+
+    peek() {
+        if (this.isEmpty()) return null;
+        return this.items[this.top];
+    }
+
+    isEmpty() {
+        return this.top === -1;
+    }
+
+    isFull() {
+        return this.top === this.maxSize - 1;
+    }
+
+    size() {
+        return this.top + 1;
+    }
+}
+```
+
+### 2. Stack Using Linked List
+
+```javascript
+class Node {
+    constructor(data) {
+        this.data = data;
+        this.next = null;
+    }
+}
+
+class LinkedListStack {
+    constructor() {
+        this.head = null;
+        this.stackSize = 0;
+    }
+
+    push(element) {
+        const newNode = new Node(element);
+        newNode.next = this.head;
+        this.head = newNode;
+        this.stackSize++;
+    }
+
+    pop() {
+        if (this.isEmpty()) return null;
+
+        const poppedData = this.head.data;
+        this.head = this.head.next;
+        this.stackSize--;
+        return poppedData;
+    }
+
+    peek() {
+        return this.isEmpty() ? null : this.head.data;
+    }
+
+    isEmpty() {
+        return this.head === null;
+    }
+
+    size() {
+        return this.stackSize;
+    }
+}
+```
+
+---
+
+## Basic Stack Problems
+
+### 1. Reverse a String
+
+```javascript
+function reverseString(str) {
+    const stack = new Stack();
+
+    // Push all characters
+    for (const char of str) {
+        stack.push(char);
+    }
+
+    // Pop all characters
+    let reversed = "";
+    while (!stack.isEmpty()) {
+        reversed += stack.pop();
+    }
+
+    return reversed;
+}
+```
+
+### 2. Check Palindrome
+
+```javascript
+function isPalindrome(str) {
+    const stack = new Stack();
+    const n = str.length;
+
+    // Push first half
+    for (let i = 0; i < Math.floor(n / 2); i++) {
+        stack.push(str[i]);
+    }
+
+    // Compare second half with stack
+    let start = n % 2 === 0 ? Math.floor(n / 2) : Math.floor(n / 2) + 1;
+
+    for (let i = start; i < n; i++) {
+        if (stack.pop() !== str[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+### 3. Next Greater Element
+
+```javascript
+function nextGreaterElement(arr) {
+    const result = new Array(arr.length).fill(-1);
+    const stack = new Stack();
+
+    for (let i = 0; i < arr.length; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] < arr[i]) {
+            const index = stack.pop();
+            result[index] = arr[i];
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+---
+
+## Expression Evaluation
+
+### 1. Infix to Postfix Conversion
+
+```javascript
+function infixToPostfix(infix) {
+    const stack = new Stack();
+    let postfix = "";
+
+    const precedence = {
+        '+': 1, '-': 1,
+        '*': 2, '/': 2,
+        '^': 3
+    };
+
+    const isOperator = (char) => precedence.hasOwnProperty(char);
+    const isOperand = (char) => /[a-zA-Z0-9]/.test(char);
+
+    for (const char of infix) {
+        if (isOperand(char)) {
+            postfix += char;
+        } else if (char === '(') {
+            stack.push(char);
+        } else if (char === ')') {
+            while (!stack.isEmpty() && stack.peek() !== '(') {
+                postfix += stack.pop();
+            }
+            stack.pop(); // Remove '('
+        } else if (isOperator(char)) {
+            while (!stack.isEmpty() &&
+                   stack.peek() !== '(' &&
+                   precedence[stack.peek()] >= precedence[char]) {
+                postfix += stack.pop();
+            }
+            stack.push(char);
+        }
+    }
+
+    while (!stack.isEmpty()) {
+        postfix += stack.pop();
+    }
+
+    return postfix;
+}
+```
+
+### 2. Postfix Evaluation
+
+```javascript
+function evaluatePostfix(postfix) {
+    const stack = new Stack();
+
+    for (const char of postfix) {
+        if (/\d/.test(char)) {
+            stack.push(parseInt(char));
+        } else {
+            const operand2 = stack.pop();
+            const operand1 = stack.pop();
+
+            let result;
+            switch (char) {
+                case '+': result = operand1 + operand2; break;
+                case '-': result = operand1 - operand2; break;
+                case '*': result = operand1 * operand2; break;
+                case '/': result = operand1 / operand2; break;
+                case '^': result = Math.pow(operand1, operand2); break;
+            }
+
+            stack.push(result);
+        }
+    }
+
+    return stack.pop();
+}
+```
+
+### 3. Basic Calculator
+
+```javascript
+function calculate(s) {
+    const stack = new Stack();
+    let num = 0;
+    let sign = 1; // 1 for positive, -1 for negative
+    let result = 0;
+
+    for (let i = 0; i < s.length; i++) {
+        const char = s[i];
+
+        if (/\d/.test(char)) {
+            num = num * 10 + parseInt(char);
+        } else if (char === '+' || char === '-') {
+            result += sign * num;
+            num = 0;
+            sign = char === '+' ? 1 : -1;
+        } else if (char === '(') {
+            // Save current result and sign
+            stack.push(result);
+            stack.push(sign);
+            result = 0;
+            sign = 1;
+        } else if (char === ')') {
+            result += sign * num;
+            num = 0;
+
+            // Restore previous sign and result
+            result *= stack.pop(); // Previous sign
+            result += stack.pop(); // Previous result
+        }
+    }
+
+    return result + sign * num;
+}
+```
+
+---
+
+## Parentheses Problems
+
+### 1. Valid Parentheses
+
+```javascript
+function isValid(s) {
+    const stack = new Stack();
+    const mapping = {
+        ')': '(',
+        '}': '{',
+        ']': '['
+    };
+
+    for (const char of s) {
+        if (char === '(' || char === '{' || char === '[') {
+            stack.push(char);
+        } else if (char === ')' || char === '}' || char === ']') {
+            if (stack.isEmpty() || stack.pop() !== mapping[char]) {
+                return false;
+            }
+        }
+    }
+
+    return stack.isEmpty();
+}
+```
+
+### 2. Generate Parentheses
+
+```javascript
+function generateParenthesis(n) {
+    const result = [];
+
+    function backtrack(current, open, close) {
+        if (current.length === 2 * n) {
+            result.push(current);
+            return;
+        }
+
+        if (open < n) {
+            backtrack(current + '(', open + 1, close);
+        }
+
+        if (close < open) {
+            backtrack(current + ')', open, close + 1);
+        }
+    }
+
+    backtrack('', 0, 0);
+    return result;
+}
+```
+
+### 3. Longest Valid Parentheses
+
+```javascript
+function longestValidParentheses(s) {
+    const stack = new Stack();
+    stack.push(-1); // Base for calculating length
+    let maxLength = 0;
+
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '(') {
+            stack.push(i);
+        } else {
+            stack.pop();
+
+            if (stack.isEmpty()) {
+                stack.push(i);
+            } else {
+                maxLength = Math.max(maxLength, i - stack.peek());
+            }
+        }
+    }
+
+    return maxLength;
+}
+```
+
+### 4. Remove Invalid Parentheses
+
+```javascript
+function removeInvalidParentheses(s) {
+    // Count invalid parentheses
+    let leftRemove = 0, rightRemove = 0;
+
+    for (const char of s) {
+        if (char === '(') {
+            leftRemove++;
+        } else if (char === ')') {
+            if (leftRemove > 0) {
+                leftRemove--;
+            } else {
+                rightRemove++;
+            }
+        }
+    }
+
+    const result = new Set();
+
+    function dfs(index, leftCount, rightCount, leftRem, rightRem, current) {
+        if (index === s.length) {
+            if (leftRem === 0 && rightRem === 0) {
+                result.add(current);
+            }
+            return;
+        }
+
+        const char = s[index];
+
+        // Option 1: Remove current character
+        if ((char === '(' && leftRem > 0) || (char === ')' && rightRem > 0)) {
+            dfs(index + 1, leftCount, rightCount,
+                leftRem - (char === '(' ? 1 : 0),
+                rightRem - (char === ')' ? 1 : 0),
+                current);
+        }
+
+        // Option 2: Keep current character
+        if (char !== '(' && char !== ')') {
+            dfs(index + 1, leftCount, rightCount, leftRem, rightRem, current + char);
+        } else if (char === '(') {
+            dfs(index + 1, leftCount + 1, rightCount, leftRem, rightRem, current + char);
+        } else if (rightCount < leftCount) {
+            dfs(index + 1, leftCount, rightCount + 1, leftRem, rightRem, current + char);
+        }
+    }
+
+    dfs(0, 0, 0, leftRemove, rightRemove, '');
+    return Array.from(result);
+}
+```
+
+---
+
+## Monotonic Stack
+
+A **monotonic stack** maintains elements in either increasing or decreasing order. It's extremely useful for finding next/previous greater/smaller elements.
+
+### 1. Next Greater Element Pattern
+
+```javascript
+// Template for Next Greater Element problems
+function nextGreaterElements(arr) {
+    const result = new Array(arr.length).fill(-1);
+    const stack = []; // Monotonic decreasing stack
+
+    for (let i = 0; i < arr.length; i++) {
+        // Pop elements smaller than current
+        while (stack.length > 0 && arr[stack[stack.length - 1]] < arr[i]) {
+            const index = stack.pop();
+            result[index] = arr[i];
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+### 2. Next Greater Element II (Circular Array)
+
+```javascript
+function nextGreaterElementsII(nums) {
+    const n = nums.length;
+    const result = new Array(n).fill(-1);
+    const stack = [];
+
+    // Process array twice to handle circular nature
+    for (let i = 0; i < 2 * n; i++) {
+        const index = i % n;
+
+        while (stack.length > 0 && nums[stack[stack.length - 1]] < nums[index]) {
+            const idx = stack.pop();
+            result[idx] = nums[index];
+        }
+
+        if (i < n) {
+            stack.push(index);
+        }
+    }
+
+    return result;
+}
+```
+
+### 3. Daily Temperatures
+
+```javascript
+function dailyTemperatures(temperatures) {
+    const result = new Array(temperatures.length).fill(0);
+    const stack = []; // Store indices
+
+    for (let i = 0; i < temperatures.length; i++) {
+        while (stack.length > 0 && temperatures[stack[stack.length - 1]] < temperatures[i]) {
+            const index = stack.pop();
+            result[index] = i - index;
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+### 4. Largest Rectangle in Histogram
+
+```javascript
+function largestRectangleArea(heights) {
+    const stack = []; // Monotonic increasing stack
+    let maxArea = 0;
+    let index = 0;
+
+    while (index < heights.length) {
+        if (stack.length === 0 || heights[index] >= heights[stack[stack.length - 1]]) {
+            stack.push(index++);
+        } else {
+            const top = stack.pop();
+            const width = stack.length === 0 ? index : index - stack[stack.length - 1] - 1;
+            const area = heights[top] * width;
+            maxArea = Math.max(maxArea, area);
+        }
+    }
+
+    while (stack.length > 0) {
+        const top = stack.pop();
+        const width = stack.length === 0 ? index : index - stack[stack.length - 1] - 1;
+        const area = heights[top] * width;
+        maxArea = Math.max(maxArea, area);
+    }
+
+    return maxArea;
+}
+```
+
+### 5. Maximal Rectangle
+
+```javascript
+function maximalRectangle(matrix) {
+    if (!matrix || matrix.length === 0) return 0;
+
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    const heights = new Array(cols).fill(0);
+    let maxArea = 0;
+
+    for (let i = 0; i < rows; i++) {
+        // Update heights array
+        for (let j = 0; j < cols; j++) {
+            heights[j] = matrix[i][j] === '1' ? heights[j] + 1 : 0;
+        }
+
+        // Calculate max rectangle for current row
+        maxArea = Math.max(maxArea, largestRectangleArea(heights));
+    }
+
+    return maxArea;
+}
+```
+
+### 6. Trapping Rain Water
+
+```javascript
+function trap(height) {
+    const stack = [];
+    let water = 0;
+
+    for (let i = 0; i < height.length; i++) {
+        while (stack.length > 0 && height[i] > height[stack[stack.length - 1]]) {
+            const bottom = stack.pop();
+
+            if (stack.length === 0) break;
+
+            const distance = i - stack[stack.length - 1] - 1;
+            const boundedHeight = Math.min(height[i], height[stack[stack.length - 1]]) - height[bottom];
+            water += distance * boundedHeight;
+        }
+        stack.push(i);
+    }
+
+    return water;
+}
+```
+
+### 7. Sum of Subarray Minimums
+
+```javascript
+function sumSubarrayMins(arr) {
+    const MOD = 1000000007;
+    const n = arr.length;
+
+    // Find previous less element
+    const prevLess = new Array(n).fill(-1);
+    let stack = [];
+
+    for (let i = 0; i < n; i++) {
+        while (stack.length > 0 && arr[stack[stack.length - 1]] >= arr[i]) {
+            stack.pop();
+        }
+        if (stack.length > 0) {
+            prevLess[i] = stack[stack.length - 1];
+        }
+        stack.push(i);
+    }
+
+    // Find next less element
+    const nextLess = new Array(n).fill(n);
+    stack = [];
+
+    for (let i = n - 1; i >= 0; i--) {
+        while (stack.length > 0 && arr[stack[stack.length - 1]] > arr[i]) {
+            stack.pop();
+        }
+        if (stack.length > 0) {
+            nextLess[i] = stack[stack.length - 1];
+        }
+        stack.push(i);
+    }
+
+    // Calculate sum
+    let result = 0;
+    for (let i = 0; i < n; i++) {
+        const left = i - prevLess[i];
+        const right = nextLess[i] - i;
+        result = (result + (arr[i] * left * right) % MOD) % MOD;
+    }
+
+    return result;
+}
+```
+
+---
+
+## Stack in Recursion
+
+### 1. Binary Tree Traversal (Iterative)
+
+```javascript
+// Preorder Traversal
+function preorderTraversal(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+        result.push(node.val);
+
+        if (node.right) stack.push(node.right);
+        if (node.left) stack.push(node.left);
+    }
+
+    return result;
+}
+
+// Inorder Traversal
+function inorderTraversal(root) {
+    const result = [];
+    const stack = [];
+    let current = root;
+
+    while (current || stack.length > 0) {
+        while (current) {
+            stack.push(current);
+            current = current.left;
+        }
+
+        current = stack.pop();
+        result.push(current.val);
+        current = current.right;
+    }
+
+    return result;
+}
+
+// Postorder Traversal
+function postorderTraversal(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [];
+    let lastVisited = null;
+    let current = root;
+
+    while (current || stack.length > 0) {
+        if (current) {
+            stack.push(current);
+            current = current.left;
+        } else {
+            const peekNode = stack[stack.length - 1];
+            if (peekNode.right && lastVisited !== peekNode.right) {
+                current = peekNode.right;
+            } else {
+                result.push(peekNode.val);
+                lastVisited = stack.pop();
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. Flatten Binary Tree to Linked List
+
+```javascript
+function flatten(root) {
+    if (!root) return;
+
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+
+        if (node.right) stack.push(node.right);
+        if (node.left) stack.push(node.left);
+
+        if (stack.length > 0) {
+            node.right = stack[stack.length - 1];
+        }
+        node.left = null;
+    }
+}
+```
+
+### 3. Path Sum II
+
+```javascript
+function pathSum(root, targetSum) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [[root, [root.val], root.val]];
+
+    while (stack.length > 0) {
+        const [node, path, sum] = stack.pop();
+
+        if (!node.left && !node.right && sum === targetSum) {
+            result.push([...path]);
+        }
+
+        if (node.right) {
+            stack.push([node.right, [...path, node.right.val], sum + node.right.val]);
+        }
+
+        if (node.left) {
+            stack.push([node.left, [...path, node.left.val], sum + node.left.val]);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Two Stacks Problems
+
+### 1. Implement Queue using Stacks
+
+```javascript
+class MyQueue {
+    constructor() {
+        this.stack1 = []; // For enqueue
+        this.stack2 = []; // For dequeue
+    }
+
+    push(x) {
+        this.stack1.push(x);
+    }
+
+    pop() {
+        this.moveStack1ToStack2();
+        return this.stack2.pop();
+    }
+
+    peek() {
+        this.moveStack1ToStack2();
+        return this.stack2[this.stack2.length - 1];
+    }
+
+    empty() {
+        return this.stack1.length === 0 && this.stack2.length === 0;
+    }
+
+    moveStack1ToStack2() {
+        if (this.stack2.length === 0) {
+            while (this.stack1.length > 0) {
+                this.stack2.push(this.stack1.pop());
+            }
+        }
+    }
+}
+```
+
+### 2. Sort Stack
+
+```javascript
+function sortStack(stack) {
+    const tempStack = [];
+
+    while (stack.length > 0) {
+        const temp = stack.pop();
+
+        while (tempStack.length > 0 && tempStack[tempStack.length - 1] > temp) {
+            stack.push(tempStack.pop());
+        }
+
+        tempStack.push(temp);
+    }
+
+    // Move back to original stack
+    while (tempStack.length > 0) {
+        stack.push(tempStack.pop());
+    }
+
+    return stack;
+}
+```
+
+---
+
+## Stack with Additional Operations
+
+### 1. Min Stack
+
+```javascript
+class MinStack {
+    constructor() {
+        this.stack = [];
+        this.minStack = [];
+    }
+
+    push(val) {
+        this.stack.push(val);
+
+        if (this.minStack.length === 0 || val <= this.getMin()) {
+            this.minStack.push(val);
+        }
+    }
+
+    pop() {
+        const popped = this.stack.pop();
+
+        if (popped === this.getMin()) {
+            this.minStack.pop();
+        }
+
+        return popped;
+    }
+
+    top() {
+        return this.stack[this.stack.length - 1];
+    }
+
+    getMin() {
+        return this.minStack[this.minStack.length - 1];
+    }
+}
+```
+
+### 2. Max Stack
+
+```javascript
+class MaxStack {
+    constructor() {
+        this.stack = [];
+        this.maxStack = [];
+        this.id = 0;
+    }
+
+    push(x) {
+        const currentId = this.id++;
+        this.stack.push([x, currentId]);
+
+        if (this.maxStack.length === 0 || x >= this.maxStack[this.maxStack.length - 1][0]) {
+            this.maxStack.push([x, currentId]);
+        }
+    }
+
+    pop() {
+        const [val, id] = this.stack.pop();
+
+        if (this.maxStack.length > 0 && this.maxStack[this.maxStack.length - 1][1] === id) {
+            this.maxStack.pop();
+        }
+
+        return val;
+    }
+
+    top() {
+        return this.stack[this.stack.length - 1][0];
+    }
+
+    peekMax() {
+        return this.maxStack[this.maxStack.length - 1][0];
+    }
+
+    popMax() {
+        const [maxVal, maxId] = this.maxStack.pop();
+        const buffer = [];
+
+        // Remove elements until we find the max
+        while (this.stack[this.stack.length - 1][1] !== maxId) {
+            buffer.push(this.stack.pop());
+        }
+
+        this.stack.pop(); // Remove the max element
+
+        // Push back other elements
+        while (buffer.length > 0) {
+            const [val] = buffer.pop();
+            this.push(val);
+        }
+
+        return maxVal;
+    }
+}
+```
+
+---
+
+## Advanced Stack Patterns
+
+### 1. Asteroid Collision
+
+```javascript
+function asteroidCollision(asteroids) {
+    const stack = [];
+
+    for (const asteroid of asteroids) {
+        let exploded = false;
+
+        while (stack.length > 0 && asteroid < 0 && stack[stack.length - 1] > 0) {
+            if (stack[stack.length - 1] < -asteroid) {
+                stack.pop();
+                continue;
+            } else if (stack[stack.length - 1] === -asteroid) {
+                stack.pop();
+            }
+            exploded = true;
+            break;
+        }
+
+        if (!exploded) {
+            stack.push(asteroid);
+        }
+    }
+
+    return stack;
+}
+```
+
+### 2. Decode String
+
+```javascript
+function decodeString(s) {
+    const stack = [];
+    let currentString = '';
+    let currentNum = 0;
+
+    for (const char of s) {
+        if (/\d/.test(char)) {
+            currentNum = currentNum * 10 + parseInt(char);
+        } else if (char === '[') {
+            stack.push([currentString, currentNum]);
+            currentString = '';
+            currentNum = 0;
+        } else if (char === ']') {
+            const [prevString, num] = stack.pop();
+            currentString = prevString + currentString.repeat(num);
+        } else {
+            currentString += char;
+        }
+    }
+
+    return currentString;
+}
+```
+
+### 3. Remove K Digits
+
+```javascript
+function removeKdigits(num, k) {
+    const stack = [];
+    let toRemove = k;
+
+    for (const digit of num) {
+        while (stack.length > 0 && stack[stack.length - 1] > digit && toRemove > 0) {
+            stack.pop();
+            toRemove--;
+        }
+        stack.push(digit);
+    }
+
+    // Remove remaining digits from the end
+    while (toRemove > 0) {
+        stack.pop();
+        toRemove--;
+    }
+
+    // Build result and handle leading zeros
+    const result = stack.join('').replace(/^0+/, '');
+    return result === '' ? '0' : result;
+}
+```
+
+### 4. Valid Stack Sequences
+
+```javascript
+function validateStackSequences(pushed, popped) {
+    const stack = [];
+    let popIndex = 0;
+
+    for (const num of pushed) {
+        stack.push(num);
+
+        while (stack.length > 0 && stack[stack.length - 1] === popped[popIndex]) {
+            stack.pop();
+            popIndex++;
+        }
+    }
+
+    return stack.length === 0;
+}
+```
+
+---
+
+## Stack in Graph Algorithms
+
+### 1. Depth-First Search (DFS)
+
+```javascript
+function dfsIterative(graph, start) {
+    const visited = new Set();
+    const stack = [start];
+    const result = [];
+
+    while (stack.length > 0) {
+        const vertex = stack.pop();
+
+        if (!visited.has(vertex)) {
+            visited.add(vertex);
+            result.push(vertex);
+
+            // Add neighbors to stack
+            for (const neighbor of graph[vertex]) {
+                if (!visited.has(neighbor)) {
+                    stack.push(neighbor);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. Topological Sort
+
+```javascript
+function topologicalSort(graph) {
+    const visited = new Set();
+    const stack = [];
+
+    function dfs(vertex) {
+        visited.add(vertex);
+
+        for (const neighbor of graph[vertex] || []) {
+            if (!visited.has(neighbor)) {
+                dfs(neighbor);
+            }
+        }
+
+        stack.push(vertex);
+    }
+
+    // Visit all vertices
+    for (const vertex in graph) {
+        if (!visited.has(vertex)) {
+            dfs(vertex);
+        }
+    }
+
+    return stack.reverse();
+}
+```
+
+### 3. Find Strongly Connected Components
+
+```javascript
+function stronglyConnectedComponents(graph) {
+    const visited = new Set();
+    const finishOrder = [];
+
+    // First DFS to get finish order
+    function dfs1(vertex) {
+        visited.add(vertex);
+
+        for (const neighbor of graph[vertex] || []) {
+            if (!visited.has(neighbor)) {
+                dfs1(neighbor);
+            }
+        }
+        finishOrder.push(vertex);
+    }
+
+    // Get transpose graph
+    function getTranspose(graph) {
+        const transpose = {};
+        for (const vertex in graph) {
+            for (const neighbor of graph[vertex] || []) {
+                if (!transpose[neighbor]) transpose[neighbor] = [];
+                transpose[neighbor].push(vertex);
+            }
+        }
+        return transpose;
+    }
+
+    // First DFS on original graph
+    for (const vertex in graph) {
+        if (!visited.has(vertex)) {
+            dfs1(vertex);
+        }
+    }
+
+    // Second DFS on transpose graph in reverse finish order
+    const transpose = getTranspose(graph);
+    visited.clear();
+    const components = [];
+
+    function dfs2(vertex, component) {
+        visited.add(vertex);
+        component.push(vertex);
+
+        for (const neighbor of transpose[vertex] || []) {
+            if (!visited.has(neighbor)) {
+                dfs2(neighbor, component);
+            }
+        }
+    }
+
+    while (finishOrder.length > 0) {
+        const vertex = finishOrder.pop();
+        if (!visited.has(vertex)) {
+            const component = [];
+            dfs2(vertex, component);
+            components.push(component);
+        }
+    }
+
+    return components;
+}
+```
+
+### 4. Detect Cycle in Directed Graph
+
+```javascript
+function hasCycle(graph) {
+    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const colors = {};
+
+    // Initialize all vertices as WHITE
+    for (const vertex in graph) {
+        colors[vertex] = WHITE;
+    }
+
+    function dfs(vertex) {
+        colors[vertex] = GRAY;
+
+        for (const neighbor of graph[vertex] || []) {
+            if (colors[neighbor] === GRAY) {
+                return true; // Back edge found - cycle detected
+            }
+
+            if (colors[neighbor] === WHITE && dfs(neighbor)) {
+                return true;
+            }
+        }
+
+        colors[vertex] = BLACK;
+        return false;
+    }
+
+    for (const vertex in graph) {
+        if (colors[vertex] === WHITE && dfs(vertex)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+```
+
+---
+
+## Memory Management
+
+### 1. Stack Overflow Prevention
+
+```javascript
+class SafeStack {
+    constructor(maxSize = 1000) {
+        this.items = [];
+        this.maxSize = maxSize;
+    }
+
+    push(element) {
+        if (this.items.length >= this.maxSize) {
+            throw new Error(`Stack overflow: Cannot exceed ${this.maxSize} elements`);
+        }
+        this.items.push(element);
+    }
+
+    pop() {
+        if (this.isEmpty()) {
+            throw new Error("Stack underflow: Cannot pop from empty stack");
+        }
+        return this.items.pop();
+    }
+
+    // Rest of the methods...
+    peek() { return this.items[this.items.length - 1]; }
+    isEmpty() { return this.items.length === 0; }
+    size() { return this.items.length; }
+    clear() { this.items = []; }
+}
+```
+
+### 2. Memory-Efficient Stack
+
+```javascript
+class MemoryEfficientStack {
+    constructor() {
+        this.head = null;
+        this.stackSize = 0;
+    }
+
+    push(data) {
+        const newNode = { data, next: this.head };
+        this.head = newNode;
+        this.stackSize++;
+    }
+
+    pop() {
+        if (!this.head) return null;
+
+        const data = this.head.data;
+        this.head = this.head.next;
+        this.stackSize--;
+        return data;
+    }
+
+    peek() {
+        return this.head ? this.head.data : null;
+    }
+
+    isEmpty() {
+        return this.head === null;
+    }
+
+    size() {
+        return this.stackSize;
+    }
+}
+```
+
+---
+
+## Common Optimization Tricks
+
+### 1. Stack with O(1) Min/Max Operations
+
+```javascript
+class OptimizedMinMaxStack {
+    constructor() {
+        this.stack = [];
+    }
+
+    push(val) {
+        if (this.stack.length === 0) {
+            this.stack.push({ val, min: val, max: val });
+        } else {
+            const top = this.stack[this.stack.length - 1];
+            this.stack.push({
+                val,
+                min: Math.min(val, top.min),
+                max: Math.max(val, top.max)
+            });
+        }
+    }
+
+    pop() {
+        return this.stack.pop();
+    }
+
+    top() {
+        return this.stack[this.stack.length - 1].val;
+    }
+
+    getMin() {
+        return this.stack[this.stack.length - 1].min;
+    }
+
+    getMax() {
+        return this.stack[this.stack.length - 1].max;
+    }
+}
+```
+
+### 2. Multiple Stacks in Single Array
+
+```javascript
+class MultiStack {
+    constructor(stackCount, capacity) {
+        this.stackCount = stackCount;
+        this.capacity = capacity;
+        this.array = new Array(stackCount * capacity);
+        this.tops = new Array(stackCount).fill(-1);
+    }
+
+    push(stackNum, value) {
+        if (this.isFull(stackNum)) {
+            throw new Error(`Stack ${stackNum} is full`);
+        }
+
+        this.tops[stackNum]++;
+        const index = stackNum * this.capacity + this.tops[stackNum];
+        this.array[index] = value;
+    }
+
+    pop(stackNum) {
+        if (this.isEmpty(stackNum)) {
+            throw new Error(`Stack ${stackNum} is empty`);
+        }
+
+        const index = stackNum * this.capacity + this.tops[stackNum];
+        const value = this.array[index];
+        this.array[index] = null;
+        this.tops[stackNum]--;
+
+        return value;
+    }
+
+    peek(stackNum) {
+        if (this.isEmpty(stackNum)) return null;
+
+        const index = stackNum * this.capacity + this.tops[stackNum];
+        return this.array[index];
+    }
+
+    isEmpty(stackNum) {
+        return this.tops[stackNum] === -1;
+    }
+
+    isFull(stackNum) {
+        return this.tops[stackNum] === this.capacity - 1;
+    }
+}
+```
+
+### 3. Stack with Increment Operation
+
+```javascript
+class CustomStack {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.stack = [];
+        this.increments = []; // Lazy propagation array
+    }
+
+    push(x) {
+        if (this.stack.length < this.maxSize) {
+            this.stack.push(x);
+            this.increments.push(0);
+        }
+    }
+
+    pop() {
+        if (this.stack.length === 0) return -1;
+
+        const index = this.stack.length - 1;
+
+        // Apply increment to previous element (lazy propagation)
+        if (index > 0) {
+            this.increments[index - 1] += this.increments[index];
+        }
+
+        const result = this.stack.pop() + this.increments.pop();
+        return result;
+    }
+
+    increment(k, val) {
+        const limit = Math.min(k, this.stack.length);
+        if (limit > 0) {
+            this.increments[limit - 1] += val;
+        }
+    }
+}
+```
+
+### 4. Stack with getMiddle Operation
+
+```javascript
+class StackWithMiddle {
+    constructor() {
+        this.count = 0;
+        this.head = null;
+        this.mid = null;
+    }
+
+    push(data) {
+        const newNode = { data, next: null, prev: null };
+
+        if (this.count === 0) {
+            this.head = newNode;
+            this.mid = newNode;
+        } else {
+            newNode.next = this.head;
+            this.head.prev = newNode;
+            this.head = newNode;
+
+            if (this.count % 2 === 1) {
+                this.mid = this.mid.prev;
+            }
+        }
+
+        this.count++;
+    }
+
+    pop() {
+        if (this.count === 0) return null;
+
+        const data = this.head.data;
+        this.head = this.head.next;
+
+        if (this.head) {
+            this.head.prev = null;
+        }
+
+        this.count--;
+
+        if (this.count % 2 === 0 && this.count > 0) {
+            this.mid = this.mid.next;
+        }
+
+        return data;
+    }
+
+    findMiddle() {
+        return this.mid ? this.mid.data : null;
+    }
+
+    deleteMiddle() {
+        if (this.count === 0) return null;
+
+        const data = this.mid.data;
+
+        if (this.count === 1) {
+            this.head = null;
+            this.mid = null;
+        } else {
+            if (this.mid.prev) {
+                this.mid.prev.next = this.mid.next;
+            }
+            if (this.mid.next) {
+                this.mid.next.prev = this.mid.prev;
+            }
+
+            if (this.count % 2 === 1) {
+                this.mid = this.mid.next;
+            } else {
+                this.mid = this.mid.prev;
+            }
+        }
+
+        this.count--;
+        return data;
+    }
+}
+```
+
+---
+
+## Problem-Solving Patterns
+
+### 1. When to Use Stack
+
+**Stack is suitable for problems involving:**
+- **LIFO operations:** Last element processed first
+- **Matching/Pairing:** Parentheses, brackets, tags
+- **Undo operations:** Editor undo, browser back
+- **Expression evaluation:** Infix to postfix, calculator
+- **Recursion simulation:** Tree traversal, DFS
+- **Monotonic properties:** Next greater/smaller element
+
+### 2. Stack Problem Templates
+
+#### Template 1: Basic Stack Operations
+```javascript
+function basicStackProblem(input) {
+    const stack = [];
+
+    for (const element of input) {
+        // Process element based on problem logic
+        if (conditionToPush(element)) {
+            stack.push(element);
+        }
+
+        while (stack.length > 0 && conditionToPop(stack[stack.length - 1], element)) {
+            const popped = stack.pop();
+            // Process popped element
+        }
+    }
+
+    // Process remaining elements in stack
+    while (stack.length > 0) {
+        processRemaining(stack.pop());
+    }
+
+    return result;
+}
+```
+
+#### Template 2: Monotonic Stack
+```javascript
+function monotonicStackProblem(arr) {
+    const result = [];
+    const stack = []; // Stores indices or values
+
+    for (let i = 0; i < arr.length; i++) {
+        // Maintain monotonic property
+        while (stack.length > 0 &&
+               compareCondition(arr[stack[stack.length - 1]], arr[i])) {
+            const index = stack.pop();
+            // Process the relationship between index and i
+            result[index] = processRelation(index, i);
+        }
+
+        stack.push(i);
+    }
+
+    // Handle remaining elements
+    while (stack.length > 0) {
+        const index = stack.pop();
+        result[index] = defaultValue;
+    }
+
+    return result;
+}
+```
+
+#### Template 3: Expression Parsing
+```javascript
+function parseExpression(expression) {
+    const operators = [];
+    const operands = [];
+
+    for (const token of tokenize(expression)) {
+        if (isOperand(token)) {
+            operands.push(token);
+        } else if (isOperator(token)) {
+            while (operators.length > 0 &&
+                   precedence(operators[operators.length - 1]) >= precedence(token)) {
+                applyOperator(operands, operators.pop());
+            }
+            operators.push(token);
+        } else if (token === '(') {
+            operators.push(token);
+        } else if (token === ')') {
+            while (operators.length > 0 && operators[operators.length - 1] !== '(') {
+                applyOperator(operands, operators.pop());
+            }
+            operators.pop(); // Remove '('
+        }
+    }
+
+    while (operators.length > 0) {
+        applyOperator(operands, operators.pop());
+    }
+
+    return operands[0];
+}
+```
+
+---
+
+## Testing and Debugging
+
+### 1. Stack Testing Framework
+
+```javascript
+class StackTester {
+    static testStack(StackClass) {
+        const tests = [
+            {
+                name: "Basic Operations",
+                test: () => {
+                    const stack = new StackClass();
+                    stack.push(1);
+                    stack.push(2);
+                    stack.push(3);
+
+                    console.assert(stack.peek() === 3, "Peek should return 3");
+                    console.assert(stack.pop() === 3, "Pop should return 3");
+                    console.assert(stack.size() === 2, "Size should be 2");
+                    console.assert(!stack.isEmpty(), "Stack should not be empty");
+
+                    stack.pop();
+                    stack.pop();
+                    console.assert(stack.isEmpty(), "Stack should be empty");
+                }
+            },
+            {
+                name: "Edge Cases",
+                test: () => {
+                    const stack = new StackClass();
+                    console.assert(stack.isEmpty(), "New stack should be empty");
+                    console.assert(stack.peek() === null || stack.peek() === undefined,
+                                 "Peek on empty stack");
+                    console.assert(stack.pop() === null || stack.pop() === undefined,
+                                 "Pop on empty stack");
+                }
+            }
+        ];
+
+        tests.forEach(({ name, test }) => {
+            try {
+                test();
+                console.log(`✅ ${name} passed`);
+            } catch (error) {
+                console.log(`❌ ${name} failed:`, error.message);
+            }
+        });
+    }
+}
+
+// Usage
+StackTester.testStack(Stack);
+```
+
+### 2. Stack Visualization
+
+```javascript
+class VisualStack extends Stack {
+    push(element) {
+        super.push(element);
+        this.visualize();
+    }
+
+    pop() {
+        const result = super.pop();
+        this.visualize();
+        return result;
+    }
+
+    visualize() {
+        console.log("Stack visualization:");
+        console.log("Top");
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            console.log(`|  ${this.items[i]}  |`);
+        }
+        console.log("--------");
+        console.log("Bottom");
+        console.log(`Size: ${this.size()}\n`);
+    }
+}
+```
+
+---
+
+## Performance Analysis
+
+### Time Complexity Summary
+
+| Operation | Array-based | Linked List-based |
+|-----------|-------------|-------------------|
+| Push      | O(1)*       | O(1)              |
+| Pop       | O(1)        | O(1)              |
+| Peek      | O(1)        | O(1)              |
+| Search    | O(n)        | O(n)              |
+| Space     | O(n)        | O(n)              |
+
+*Amortized O(1) for dynamic arrays
+
+### Space Complexity Considerations
+
+```javascript
+// Space-efficient stack for specific use cases
+class CompactStack {
+    constructor() {
+        this.data = 0;
+        this.count = 0;
+    }
+
+    // Only works for small integers
+    push(val) {
+        if (val < 0 || val > 9) throw new Error("Value out of range");
+        this.data = this.data * 10 + val;
+        this.count++;
+    }
+
+    pop() {
+        if (this.count === 0) return null;
+        const result = this.data % 10;
+        this.data = Math.floor(this.data / 10);
+        this.count--;
+        return result;
+    }
+
+    peek() {
+        return this.count === 0 ? null : this.data % 10;
+    }
+
+    isEmpty() {
+        return this.count === 0;
+    }
+}
+```
+
+---
+
+## Real-World Applications
+
+### 1. Browser History
+
+```javascript
+class BrowserHistory {
+    constructor(homepage) {
+        this.history = [homepage];
+        this.currentIndex = 0;
+    }
+
+    visit(url) {
+        // Remove forward history
+        this.history = this.history.slice(0, this.currentIndex + 1);
+        this.history.push(url);
+        this.currentIndex++;
+    }
+
+    back(steps) {
+        this.currentIndex = Math.max(0, this.currentIndex - steps);
+        return this.history[this.currentIndex];
+    }
+
+    forward(steps) {
+        this.currentIndex = Math.min(this.history.length - 1, this.currentIndex + steps);
+        return this.history[this.currentIndex];
+    }
+}
+```
+
+### 2. Undo/Redo System
+
+```javascript
+class UndoRedoSystem {
+    constructor() {
+        this.undoStack = [];
+        this.redoStack = [];
+    }
+
+    executeCommand(command) {
+        command.execute();
+        this.undoStack.push(command);
+        this.redoStack = []; // Clear redo stack
+    }
+
+    undo() {
+        if (this.undoStack.length === 0) return false;
+
+        const command = this.undoStack.pop();
+        command.undo();
+        this.redoStack.push(command);
+        return true;
+    }
+
+    redo() {
+        if (this.redoStack.length === 0) return false;
+
+        const command = this.redoStack.pop();
+        command.execute();
+        this.undoStack.push(command);
+        return true;
+    }
+}
+```
+
+### 3. Function Call Stack Simulator
+
+```javascript
+class CallStack {
+    constructor() {
+        this.stack = [];
+        this.maxSize = 1000;
+    }
+
+    call(functionName, parameters = {}) {
+        if (this.stack.length >= this.maxSize) {
+            throw new Error("Stack overflow: Maximum call stack size exceeded");
+        }
+
+        const frame = {
+            function: functionName,
+            parameters,
+            timestamp: Date.now(),
+            locals: {}
+        };
+
+        this.stack.push(frame);
+        console.log(`Calling: ${functionName}(${JSON.stringify(parameters)})`);
+    }
+
+    return(value) {
+        if (this.stack.length === 0) {
+            throw new Error("No function to return from");
+        }
+
+        const frame = this.stack.pop();
+        console.log(`Returning from: ${frame.function} with value: ${value}`);
+        return value;
+    }
+
+    getCurrentFrame() {
+        return this.stack.length > 0 ? this.stack[this.stack.length - 1] : null;
+    }
+
+    getStackTrace() {
+        return this.stack.map(frame => frame.function).reverse();
+    }
+}
+```
+
+---
+
+## Conclusion
+
+Stacks are fundamental data structures with wide applications in computer science. Key takeaways:
+
+### **Essential Patterns:**
+1. **Basic Stack Operations** - LIFO principle, push/pop operations
+2. **Monotonic Stack** - Maintaining order for next/previous greater/smaller problems
+3. **Expression Evaluation** - Parsing and evaluating mathematical expressions
+4. **Recursive Simulation** - Converting recursive algorithms to iterative using stacks
+
+### **When to Use Stacks:**
+- **Matching problems** (parentheses, brackets)
+- **Expression parsing** and evaluation
+- **Undo/Redo** functionality
+- **Function call** management
+- **Tree/Graph traversal** (DFS)
+- **Monotonic relationships** in arrays
+
+### **Optimization Techniques:**
+- **Space optimization** for specific constraints
+- **Lazy propagation** for bulk operations
+- **Multiple stacks** in single array
+- **Auxiliary stacks** for additional operations
+
+### **Best Practices:**
+- Always check for **empty stack** before pop/peek
+- Handle **stack overflow** in bounded implementations
+- Use **appropriate data structure** (array vs linked list)
+- Consider **space-time tradeoffs** for your use case
+
+> **💡 Pro Tip:** When solving stack problems, think about what information needs to be "remembered" and accessed in LIFO order. Often, the stack stores indices rather than values to maintain relationships between elements.

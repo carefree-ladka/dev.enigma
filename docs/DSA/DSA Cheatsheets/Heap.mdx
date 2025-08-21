@@ -1,0 +1,1401 @@
+# Heap
+
+A comprehensive guide to heap algorithms and techniques for Data Structures and Algorithms in JavaScript.
+
+## Table of Contents
+
+1. [Basic Heap Concepts](#basic-heap-concepts)
+2. [Heap Implementation](#heap-implementation)
+3. [Basic Heap Operations](#basic-heap-operations)
+4. [Priority Queue Implementation](#priority-queue-implementation)
+5. [Heap Sort Algorithm](#heap-sort-algorithm)
+6. [K-way Problems](#k-way-problems)
+7. [Advanced Heap Techniques](#advanced-heap-techniques)
+8. [Custom Comparator Heaps](#custom-comparator-heaps)
+9. [Usage Examples](#usage-examples)
+
+---
+
+## Basic Heap Concepts
+
+A heap is a complete binary tree that satisfies the heap property. It's commonly implemented using arrays for efficiency.
+
+### Heap Properties
+
+- **Max Heap**: Parent ≥ Children (root is maximum)
+- **Min Heap**: Parent ≤ Children (root is minimum)
+- **Complete Binary Tree**: All levels filled except possibly the last, which fills left to right
+
+### Array Representation
+
+For a node at index `i`:
+- Parent: `Math.floor((i - 1) / 2)`
+- Left Child: `2 * i + 1`
+- Right Child: `2 * i + 2`
+
+---
+
+## Heap Implementation
+
+### Basic Heap Class
+
+```javascript
+class MinHeap {
+    constructor() {
+        this.heap = [];
+    }
+
+    // Get parent, left child, right child indices
+    getParentIndex(index) {
+        return Math.floor((index - 1) / 2);
+    }
+
+    getLeftChildIndex(index) {
+        return 2 * index + 1;
+    }
+
+    getRightChildIndex(index) {
+        return 2 * index + 2;
+    }
+
+    // Check if indices exist
+    hasParent(index) {
+        return this.getParentIndex(index) >= 0;
+    }
+
+    hasLeftChild(index) {
+        return this.getLeftChildIndex(index) < this.heap.length;
+    }
+
+    hasRightChild(index) {
+        return this.getRightChildIndex(index) < this.heap.length;
+    }
+
+    // Get values
+    parent(index) {
+        return this.heap[this.getParentIndex(index)];
+    }
+
+    leftChild(index) {
+        return this.heap[this.getLeftChildIndex(index)];
+    }
+
+    rightChild(index) {
+        return this.heap[this.getRightChildIndex(index)];
+    }
+
+    // Utility methods
+    swap(index1, index2) {
+        [this.heap[index1], this.heap[index2]] = [this.heap[index2], this.heap[index1]];
+    }
+
+    peek() {
+        if (this.heap.length === 0) throw new Error("Heap is empty");
+        return this.heap[0];
+    }
+
+    size() {
+        return this.heap.length;
+    }
+
+    isEmpty() {
+        return this.heap.length === 0;
+    }
+}
+```
+
+### Max Heap Implementation
+
+```javascript
+class MaxHeap {
+    constructor() {
+        this.heap = [];
+    }
+
+    getParentIndex(index) {
+        return Math.floor((index - 1) / 2);
+    }
+
+    getLeftChildIndex(index) {
+        return 2 * index + 1;
+    }
+
+    getRightChildIndex(index) {
+        return 2 * index + 2;
+    }
+
+    hasParent(index) {
+        return this.getParentIndex(index) >= 0;
+    }
+
+    hasLeftChild(index) {
+        return this.getLeftChildIndex(index) < this.heap.length;
+    }
+
+    hasRightChild(index) {
+        return this.getRightChildIndex(index) < this.heap.length;
+    }
+
+    parent(index) {
+        return this.heap[this.getParentIndex(index)];
+    }
+
+    leftChild(index) {
+        return this.heap[this.getLeftChildIndex(index)];
+    }
+
+    rightChild(index) {
+        return this.heap[this.getRightChildIndex(index)];
+    }
+
+    swap(index1, index2) {
+        [this.heap[index1], this.heap[index2]] = [this.heap[index2], this.heap[index1]];
+    }
+
+    peek() {
+        if (this.heap.length === 0) throw new Error("Heap is empty");
+        return this.heap[0];
+    }
+
+    size() {
+        return this.heap.length;
+    }
+
+    isEmpty() {
+        return this.heap.length === 0;
+    }
+}
+```
+
+---
+
+## Basic Heap Operations
+
+### 1. Insert (Add Element)
+
+```javascript
+// MinHeap insert
+insert(item) {
+    this.heap.push(item);
+    this.heapifyUp();
+}
+
+heapifyUp() {
+    let index = this.heap.length - 1;
+
+    while (this.hasParent(index) && this.parent(index) > this.heap[index]) {
+        this.swap(this.getParentIndex(index), index);
+        index = this.getParentIndex(index);
+    }
+}
+
+// MaxHeap insert
+insert(item) {
+    this.heap.push(item);
+    this.heapifyUp();
+}
+
+heapifyUp() {
+    let index = this.heap.length - 1;
+
+    while (this.hasParent(index) && this.parent(index) < this.heap[index]) {
+        this.swap(this.getParentIndex(index), index);
+        index = this.getParentIndex(index);
+    }
+}
+```
+
+**Time Complexity:** O(log n)
+
+### 2. Extract Min/Max (Remove Root)
+
+```javascript
+// MinHeap extract
+extractMin() {
+    if (this.heap.length === 0) throw new Error("Heap is empty");
+
+    const item = this.heap[0];
+    this.heap[0] = this.heap[this.heap.length - 1];
+    this.heap.pop();
+
+    if (this.heap.length > 0) {
+        this.heapifyDown();
+    }
+
+    return item;
+}
+
+heapifyDown() {
+    let index = 0;
+
+    while (this.hasLeftChild(index)) {
+        let smallerChildIndex = this.getLeftChildIndex(index);
+
+        if (this.hasRightChild(index) &&
+            this.rightChild(index) < this.leftChild(index)) {
+            smallerChildIndex = this.getRightChildIndex(index);
+        }
+
+        if (this.heap[index] < this.heap[smallerChildIndex]) {
+            break;
+        } else {
+            this.swap(index, smallerChildIndex);
+        }
+
+        index = smallerChildIndex;
+    }
+}
+
+// MaxHeap extract
+extractMax() {
+    if (this.heap.length === 0) throw new Error("Heap is empty");
+
+    const item = this.heap[0];
+    this.heap[0] = this.heap[this.heap.length - 1];
+    this.heap.pop();
+
+    if (this.heap.length > 0) {
+        this.heapifyDown();
+    }
+
+    return item;
+}
+
+heapifyDown() {
+    let index = 0;
+
+    while (this.hasLeftChild(index)) {
+        let largerChildIndex = this.getLeftChildIndex(index);
+
+        if (this.hasRightChild(index) &&
+            this.rightChild(index) > this.leftChild(index)) {
+            largerChildIndex = this.getRightChildIndex(index);
+        }
+
+        if (this.heap[index] > this.heap[largerChildIndex]) {
+            break;
+        } else {
+            this.swap(index, largerChildIndex);
+        }
+
+        index = largerChildIndex;
+    }
+}
+```
+
+**Time Complexity:** O(log n)
+
+### 3. Build Heap from Array
+
+```javascript
+buildHeap(array) {
+    this.heap = [...array];
+
+    // Start from last non-leaf node and heapify down
+    for (let i = Math.floor(this.heap.length / 2) - 1; i >= 0; i--) {
+        this.heapifyDownFrom(i);
+    }
+}
+
+heapifyDownFrom(index) {
+    while (this.hasLeftChild(index)) {
+        let smallerChildIndex = this.getLeftChildIndex(index);
+
+        if (this.hasRightChild(index) &&
+            this.rightChild(index) < this.leftChild(index)) {
+            smallerChildIndex = this.getRightChildIndex(index);
+        }
+
+        if (this.heap[index] < this.heap[smallerChildIndex]) {
+            break;
+        } else {
+            this.swap(index, smallerChildIndex);
+        }
+
+        index = smallerChildIndex;
+    }
+}
+```
+
+**Time Complexity:** O(n)
+
+> **💡 Pro Tip:** Building a heap from an array is more efficient than inserting elements one by one!
+
+---
+
+## Priority Queue Implementation
+
+### Basic Priority Queue
+
+```javascript
+class PriorityQueue {
+    constructor(compareFn) {
+        this.heap = [];
+        this.compare = compareFn || ((a, b) => a - b); // Default: min heap
+    }
+
+    insert(item) {
+        this.heap.push(item);
+        this.heapifyUp();
+    }
+
+    extractTop() {
+        if (this.heap.length === 0) return null;
+
+        const top = this.heap[0];
+        const last = this.heap.pop();
+
+        if (this.heap.length > 0) {
+            this.heap[0] = last;
+            this.heapifyDown();
+        }
+
+        return top;
+    }
+
+    peek() {
+        return this.heap.length > 0 ? this.heap[0] : null;
+    }
+
+    size() {
+        return this.heap.length;
+    }
+
+    isEmpty() {
+        return this.heap.length === 0;
+    }
+
+    heapifyUp() {
+        let index = this.heap.length - 1;
+
+        while (index > 0) {
+            const parentIndex = Math.floor((index - 1) / 2);
+
+            if (this.compare(this.heap[index], this.heap[parentIndex]) >= 0) {
+                break;
+            }
+
+            [this.heap[index], this.heap[parentIndex]] =
+            [this.heap[parentIndex], this.heap[index]];
+
+            index = parentIndex;
+        }
+    }
+
+    heapifyDown() {
+        let index = 0;
+
+        while (2 * index + 1 < this.heap.length) {
+            let childIndex = 2 * index + 1;
+
+            if (2 * index + 2 < this.heap.length &&
+                this.compare(this.heap[2 * index + 2], this.heap[childIndex]) < 0) {
+                childIndex = 2 * index + 2;
+            }
+
+            if (this.compare(this.heap[index], this.heap[childIndex]) <= 0) {
+                break;
+            }
+
+            [this.heap[index], this.heap[childIndex]] =
+            [this.heap[childIndex], this.heap[index]];
+
+            index = childIndex;
+        }
+    }
+}
+```
+
+### Priority Queue with Objects
+
+```javascript
+class TaskPriorityQueue {
+    constructor() {
+        this.heap = [];
+    }
+
+    enqueue(task, priority) {
+        const node = { task, priority };
+        this.heap.push(node);
+        this.heapifyUp();
+    }
+
+    dequeue() {
+        if (this.isEmpty()) return null;
+
+        const top = this.heap[0];
+        const last = this.heap.pop();
+
+        if (!this.isEmpty()) {
+            this.heap[0] = last;
+            this.heapifyDown();
+        }
+
+        return top.task;
+    }
+
+    heapifyUp() {
+        let index = this.heap.length - 1;
+
+        while (index > 0) {
+            const parentIndex = Math.floor((index - 1) / 2);
+
+            if (this.heap[parentIndex].priority <= this.heap[index].priority) {
+                break;
+            }
+
+            [this.heap[index], this.heap[parentIndex]] =
+            [this.heap[parentIndex], this.heap[index]];
+
+            index = parentIndex;
+        }
+    }
+
+    heapifyDown() {
+        let index = 0;
+
+        while (2 * index + 1 < this.heap.length) {
+            let childIndex = 2 * index + 1;
+
+            if (2 * index + 2 < this.heap.length &&
+                this.heap[2 * index + 2].priority < this.heap[childIndex].priority) {
+                childIndex = 2 * index + 2;
+            }
+
+            if (this.heap[index].priority <= this.heap[childIndex].priority) {
+                break;
+            }
+
+            [this.heap[index], this.heap[childIndex]] =
+            [this.heap[childIndex], this.heap[index]];
+
+            index = childIndex;
+        }
+    }
+
+    isEmpty() {
+        return this.heap.length === 0;
+    }
+
+    size() {
+        return this.heap.length;
+    }
+}
+```
+
+---
+
+## Heap Sort Algorithm
+
+### In-place Heap Sort
+
+```javascript
+function heapSort(arr) {
+    const n = arr.length;
+
+    // Build max heap
+    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+        heapify(arr, n, i);
+    }
+
+    // Extract elements one by one
+    for (let i = n - 1; i > 0; i--) {
+        // Move current root to end
+        [arr[0], arr[i]] = [arr[i], arr[0]];
+
+        // Call heapify on the reduced heap
+        heapify(arr, i, 0);
+    }
+
+    return arr;
+}
+
+function heapify(arr, heapSize, rootIndex) {
+    let largest = rootIndex;
+    let left = 2 * rootIndex + 1;
+    let right = 2 * rootIndex + 2;
+
+    // If left child is larger than root
+    if (left < heapSize && arr[left] > arr[largest]) {
+        largest = left;
+    }
+
+    // If right child is larger than largest so far
+    if (right < heapSize && arr[right] > arr[largest]) {
+        largest = right;
+    }
+
+    // If largest is not root
+    if (largest !== rootIndex) {
+        [arr[rootIndex], arr[largest]] = [arr[largest], arr[rootIndex]];
+
+        // Recursively heapify the affected sub-tree
+        heapify(arr, heapSize, largest);
+    }
+}
+```
+
+**Time Complexity:** O(n log n) | **Space Complexity:** O(1)
+
+---
+
+## K-way Problems
+
+### 1. Find K Largest Elements
+
+```javascript
+function findKLargest(arr, k) {
+    const minHeap = new MinHeap();
+
+    for (const num of arr) {
+        if (minHeap.size() < k) {
+            minHeap.insert(num);
+        } else if (num > minHeap.peek()) {
+            minHeap.extractMin();
+            minHeap.insert(num);
+        }
+    }
+
+    const result = [];
+    while (!minHeap.isEmpty()) {
+        result.unshift(minHeap.extractMin());
+    }
+
+    return result;
+}
+```
+
+### 2. Find K Smallest Elements
+
+```javascript
+function findKSmallest(arr, k) {
+    const maxHeap = new MaxHeap();
+
+    for (const num of arr) {
+        if (maxHeap.size() < k) {
+            maxHeap.insert(num);
+        } else if (num < maxHeap.peek()) {
+            maxHeap.extractMax();
+            maxHeap.insert(num);
+        }
+    }
+
+    const result = [];
+    while (!maxHeap.isEmpty()) {
+        result.push(maxHeap.extractMax());
+    }
+
+    return result.reverse();
+}
+```
+
+### 3. Kth Largest Element
+
+```javascript
+function findKthLargest(nums, k) {
+    const minHeap = new MinHeap();
+
+    for (const num of nums) {
+        minHeap.insert(num);
+
+        if (minHeap.size() > k) {
+            minHeap.extractMin();
+        }
+    }
+
+    return minHeap.peek();
+}
+```
+
+### 4. Top K Frequent Elements
+
+```javascript
+function topKFrequent(nums, k) {
+    // Count frequencies
+    const freqMap = new Map();
+    for (const num of nums) {
+        freqMap.set(num, (freqMap.get(num) || 0) + 1);
+    }
+
+    // Use min heap to keep track of top k frequent elements
+    const minHeap = new PriorityQueue((a, b) => a[1] - b[1]);
+
+    for (const [num, freq] of freqMap) {
+        minHeap.insert([num, freq]);
+
+        if (minHeap.size() > k) {
+            minHeap.extractTop();
+        }
+    }
+
+    const result = [];
+    while (!minHeap.isEmpty()) {
+        result.unshift(minHeap.extractTop()[0]);
+    }
+
+    return result;
+}
+```
+
+### 5. Merge K Sorted Arrays
+
+```javascript
+function mergeKSortedArrays(arrays) {
+    const minHeap = new PriorityQueue((a, b) => a.val - b.val);
+    const result = [];
+
+    // Initialize heap with first element from each array
+    for (let i = 0; i < arrays.length; i++) {
+        if (arrays[i].length > 0) {
+            minHeap.insert({
+                val: arrays[i][0],
+                arrayIndex: i,
+                elementIndex: 0
+            });
+        }
+    }
+
+    while (!minHeap.isEmpty()) {
+        const { val, arrayIndex, elementIndex } = minHeap.extractTop();
+        result.push(val);
+
+        // Add next element from same array if available
+        if (elementIndex + 1 < arrays[arrayIndex].length) {
+            minHeap.insert({
+                val: arrays[arrayIndex][elementIndex + 1],
+                arrayIndex: arrayIndex,
+                elementIndex: elementIndex + 1
+            });
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Advanced Heap Techniques
+
+### 1. Running Median
+
+```javascript
+class MedianFinder {
+    constructor() {
+        this.maxHeap = new MaxHeap(); // For smaller half
+        this.minHeap = new MinHeap(); // For larger half
+    }
+
+    addNum(num) {
+        // Add to max heap first
+        this.maxHeap.insert(num);
+
+        // Move the largest from max heap to min heap
+        this.minHeap.insert(this.maxHeap.extractMax());
+
+        // Balance the heaps
+        if (this.minHeap.size() > this.maxHeap.size()) {
+            this.maxHeap.insert(this.minHeap.extractMin());
+        }
+    }
+
+    findMedian() {
+        if (this.maxHeap.size() > this.minHeap.size()) {
+            return this.maxHeap.peek();
+        }
+
+        return (this.maxHeap.peek() + this.minHeap.peek()) / 2.0;
+    }
+}
+```
+
+### 2. Task Scheduler with Cooling Period
+
+```javascript
+function leastInterval(tasks, n) {
+    const freqMap = new Map();
+
+    // Count task frequencies
+    for (const task of tasks) {
+        freqMap.set(task, (freqMap.get(task) || 0) + 1);
+    }
+
+    // Max heap for frequencies
+    const maxHeap = new MaxHeap();
+    for (const freq of freqMap.values()) {
+        maxHeap.insert(freq);
+    }
+
+    const queue = []; // [frequency, available_time]
+    let time = 0;
+
+    while (!maxHeap.isEmpty() || queue.length > 0) {
+        time++;
+
+        // Add back tasks that are available
+        if (queue.length > 0 && queue[0][1] === time) {
+            maxHeap.insert(queue.shift()[0]);
+        }
+
+        if (!maxHeap.isEmpty()) {
+            const freq = maxHeap.extractMax() - 1;
+
+            if (freq > 0) {
+                queue.push([freq, time + n + 1]);
+            }
+        }
+    }
+
+    return time;
+}
+```
+
+### 3. Sliding Window Maximum
+
+```javascript
+function maxSlidingWindow(nums, k) {
+    const result = [];
+    const maxHeap = new PriorityQueue((a, b) => b.val - a.val);
+
+    for (let i = 0; i < nums.length; i++) {
+        // Add current element
+        maxHeap.insert({ val: nums[i], index: i });
+
+        // Remove elements outside window
+        while (!maxHeap.isEmpty() && maxHeap.peek().index <= i - k) {
+            maxHeap.extractTop();
+        }
+
+        // Add to result if window is complete
+        if (i >= k - 1) {
+            result.push(maxHeap.peek().val);
+        }
+    }
+
+    return result;
+}
+```
+
+### 4. Meeting Rooms II (Minimum Conference Rooms)
+
+```javascript
+function minMeetingRooms(intervals) {
+    if (intervals.length === 0) return 0;
+
+    // Sort by start time
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    // Min heap to track end times
+    const minHeap = new MinHeap();
+
+    for (const interval of intervals) {
+        // If current meeting starts after earliest ending meeting
+        if (!minHeap.isEmpty() && minHeap.peek() <= interval[0]) {
+            minHeap.extractMin();
+        }
+
+        // Add current meeting's end time
+        minHeap.insert(interval[1]);
+    }
+
+    return minHeap.size();
+}
+```
+
+---
+
+## Custom Comparator Heaps
+
+### 1. Custom Object Heap
+
+```javascript
+class CustomHeap {
+    constructor(compareFn) {
+        this.heap = [];
+        this.compare = compareFn;
+    }
+
+    insert(item) {
+        this.heap.push(item);
+        this.heapifyUp();
+    }
+
+    extractTop() {
+        if (this.heap.length === 0) return null;
+
+        const top = this.heap[0];
+        const last = this.heap.pop();
+
+        if (this.heap.length > 0) {
+            this.heap[0] = last;
+            this.heapifyDown();
+        }
+
+        return top;
+    }
+
+    heapifyUp() {
+        let index = this.heap.length - 1;
+
+        while (index > 0) {
+            const parentIndex = Math.floor((index - 1) / 2);
+
+            if (this.compare(this.heap[index], this.heap[parentIndex]) >= 0) {
+                break;
+            }
+
+            [this.heap[index], this.heap[parentIndex]] =
+            [this.heap[parentIndex], this.heap[index]];
+
+            index = parentIndex;
+        }
+    }
+
+    heapifyDown() {
+        let index = 0;
+
+        while (2 * index + 1 < this.heap.length) {
+            let childIndex = 2 * index + 1;
+
+            if (2 * index + 2 < this.heap.length &&
+                this.compare(this.heap[2 * index + 2], this.heap[childIndex]) < 0) {
+                childIndex = 2 * index + 2;
+            }
+
+            if (this.compare(this.heap[index], this.heap[childIndex]) <= 0) {
+                break;
+            }
+
+            [this.heap[index], this.heap[childIndex]] =
+            [this.heap[childIndex], this.heap[index]];
+
+            index = childIndex;
+        }
+    }
+
+    peek() {
+        return this.heap.length > 0 ? this.heap[0] : null;
+    }
+
+    size() {
+        return this.heap.length;
+    }
+
+    isEmpty() {
+        return this.heap.length === 0;
+    }
+}
+```
+
+### 2. Distance-based Heap
+
+```javascript
+// Find K closest points to origin
+function kClosest(points, k) {
+    const distance = (point) => point[0] * point[0] + point[1] * point[1];
+
+    const maxHeap = new CustomHeap((a, b) => distance(b) - distance(a));
+
+    for (const point of points) {
+        maxHeap.insert(point);
+
+        if (maxHeap.size() > k) {
+            maxHeap.extractTop();
+        }
+    }
+
+    const result = [];
+    while (!maxHeap.isEmpty()) {
+        result.push(maxHeap.extractTop());
+    }
+
+    return result;
+}
+```
+
+### 3. String Length Heap
+
+```javascript
+// Custom heap for string lengths
+function organizeStrings(strings) {
+    const lengthHeap = new CustomHeap((a, b) => a.length - b.length);
+
+    for (const str of strings) {
+        lengthHeap.insert(str);
+    }
+
+    const organized = [];
+    while (!lengthHeap.isEmpty()) {
+        organized.push(lengthHeap.extractTop());
+    }
+
+    return organized;
+}
+```
+
+---
+
+## Usage Examples
+
+```javascript
+console.log("=== Heap Techniques Demo ===");
+
+// Basic Min Heap
+const minHeap = new MinHeap();
+[3, 1, 4, 1, 5, 9, 2, 6].forEach(num => minHeap.insert(num));
+console.log("Min Heap peek:", minHeap.peek()); // 1
+
+// Basic Max Heap
+const maxHeap = new MaxHeap();
+[3, 1, 4, 1, 5, 9, 2, 6].forEach(num => maxHeap.insert(num));
+console.log("Max Heap peek:", maxHeap.peek()); // 9
+
+// Priority Queue
+const pq = new TaskPriorityQueue();
+pq.enqueue("Low priority task", 3);
+pq.enqueue("High priority task", 1);
+pq.enqueue("Medium priority task", 2);
+
+console.log("Priority Queue order:");
+while (!pq.isEmpty()) {
+    console.log(pq.dequeue());
+}
+// Output: High priority task, Medium priority task, Low priority task
+
+// Heap Sort
+const unsorted = [64, 34, 25, 12, 22, 11, 90];
+console.log("Original array:", unsorted);
+console.log("Heap sorted:", heapSort([...unsorted]));
+
+// K largest elements
+const numbers = [3, 2, 1, 5, 6, 4];
+console.log("3 largest elements:", findKLargest(numbers, 3)); // [6, 5, 4]
+
+// Running median
+const medianFinder = new MedianFinder();
+[1, 2, 3, 4, 5].forEach(num => {
+    medianFinder.addNum(num);
+    console.log(`After adding ${num}, median:`, medianFinder.findMedian());
+});
+
+// Top K frequent elements
+const nums = [1, 1, 1, 2, 2, 3];
+console.log("Top 2 frequent:", topKFrequent(nums, 2)); // [1, 2]
+
+// Merge K sorted arrays
+const sortedArrays = [[1, 4, 5], [1, 3, 4], [2, 6]];
+console.log("Merged arrays:", mergeKSortedArrays(sortedArrays)); // [1,1,2,3,4,4,5,6]
+
+// Custom heap demo
+const customHeap = new CustomHeap((a, b) => a.priority - b.priority);
+customHeap.insert({ name: "Task A", priority: 3 });
+customHeap.insert({ name: "Task B", priority: 1 });
+customHeap.insert({ name: "Task C", priority: 2 });
+
+console.log("Custom heap order:");
+while (!customHeap.isEmpty()) {
+    console.log(customHeap.extractTop().name);
+}
+// Output: Task B, Task C, Task A
+```
+
+---
+
+## Time Complexity Summary
+
+| Operation | Time Complexity | Space Complexity |
+|-----------|----------------|------------------|
+| Insert | O(log n) | O(1) |
+| Extract Min/Max | O(log n) | O(1) |
+| Peek | O(1) | O(1) |
+| Build Heap | O(n) | O(1) |
+| Heap Sort | O(n log n) | O(1) |
+| Find K Largest | O(n log k) | O(k) |
+| Merge K Arrays | O(n log k) | O(k) |
+| Running Median | O(log n) insert | O(n) |
+
+---
+
+## Common Patterns to Remember
+
+### 1. **Min Heap for K Largest**
+Use min heap of size k to find k largest elements:
+```javascript
+if (minHeap.size() < k) {
+    minHeap.insert(element);
+} else if (element > minHeap.peek()) {
+    minHeap.extractMin();
+    minHeap.insert(element);
+}
+```
+
+### 2. **Max Heap for K Smallest**
+Use max heap of size k to find k smallest elements:
+```javascript
+if (maxHeap.size() < k) {
+    maxHeap.insert(element);
+} else if (element < maxHeap.peek()) {
+    maxHeap.extractMax();
+    maxHeap.insert(element);
+}
+```
+
+### 3. **Two Heaps for Median**
+- Max heap for smaller half
+- Min heap for larger half
+- Balance: max heap size ≥ min heap size
+
+### 4. **Priority Queue Pattern**
+```javascript
+while (!pq.isEmpty()) {
+    const current = pq.extractTop();
+    // Process current
+    // Add new elements to pq based on processing
+}
+```
+
+### 5. **Heap with Index Tracking**
+For sliding window problems:
+```javascript
+heap.insert({ value: nums[i], index: i });
+// Remove elements outside window
+while (heap.peek().index <= i - k) {
+    heap.extractTop();
+}
+```
+
+---
+
+## Key Interview Tips
+
+1. **Choose the right heap**: Min heap for k largest, max heap for k smallest
+2. **Two heaps pattern**: For median problems, use one max heap and one min heap
+3. **Custom comparators**: Define comparison logic for complex objects
+4. **Index tracking**: For sliding window problems, store both value and index
+5. **Build vs Insert**: Building heap from array is O(n), inserting n elements is O(n log n)
+6. **Priority queues**: Heaps are perfect for implementing priority queues
+7. **Memory efficiency**: Heaps use less memory than balanced BSTs for similar operations
+
+---
+
+## Advanced Problem Patterns
+
+### 1. **Interval Scheduling Pattern**
+```javascript
+// Sort by start time, use min heap for end times
+intervals.sort((a, b) => a[0] - b[0]);
+const endTimes = new MinHeap();
+```
+
+### 2. **Multi-way Merge Pattern**
+```javascript
+// Initialize heap with first element from each source
+for (let i = 0; i < sources.length; i++) {
+    if (sources[i].length > 0) {
+        heap.insert({ val: sources[i][0], sourceIndex: i, elementIndex: 0 });
+    }
+}
+```
+
+### 3. **Top-K Pattern**
+```javascript
+// Maintain heap of size k
+if (heap.size() < k) {
+    heap.insert(element);
+} else if (shouldReplace(element, heap.peek())) {
+    heap.extractTop();
+    heap.insert(element);
+}
+```
+
+---
+
+## Real-World Applications
+
+### 1. **CPU Task Scheduling**
+```javascript
+class CPUScheduler {
+    constructor() {
+        this.taskQueue = new PriorityQueue((a, b) => a.priority - b.priority);
+    }
+
+    addTask(task, priority) {
+        this.taskQueue.insert({ task, priority, timestamp: Date.now() });
+    }
+
+    getNextTask() {
+        return this.taskQueue.isEmpty() ? null : this.taskQueue.extractTop();
+    }
+}
+```
+
+### 2. **Network Request Prioritization**
+```javascript
+class NetworkManager {
+    constructor() {
+        this.requestQueue = new PriorityQueue((a, b) => {
+            // Higher priority first, then by timestamp for fairness
+            if (a.priority !== b.priority) {
+                return a.priority - b.priority;
+            }
+            return a.timestamp - b.timestamp;
+        });
+    }
+
+    enqueueRequest(request, priority) {
+        this.requestQueue.insert({
+            ...request,
+            priority,
+            timestamp: Date.now()
+        });
+    }
+
+    processNextRequest() {
+        return this.requestQueue.extractTop();
+    }
+}
+```
+
+### 3. **Event Simulation**
+```javascript
+class EventSimulator {
+    constructor() {
+        this.eventQueue = new PriorityQueue((a, b) => a.time - b.time);
+        this.currentTime = 0;
+    }
+
+    scheduleEvent(event, time) {
+        this.eventQueue.insert({ ...event, time });
+    }
+
+    runSimulation() {
+        while (!this.eventQueue.isEmpty()) {
+            const event = this.eventQueue.extractTop();
+            this.currentTime = event.time;
+            this.processEvent(event);
+        }
+    }
+
+    processEvent(event) {
+        // Process event and potentially schedule new events
+        console.log(`Processing ${event.type} at time ${event.time}`);
+    }
+}
+```
+
+---
+
+## Optimization Techniques
+
+### 1. **Lazy Deletion**
+```javascript
+class LazyHeap {
+    constructor() {
+        this.heap = [];
+        this.deleted = new Set();
+    }
+
+    insert(item) {
+        this.heap.push(item);
+        this.heapifyUp();
+    }
+
+    delete(item) {
+        this.deleted.add(item);
+    }
+
+    extractTop() {
+        while (!this.isEmpty() && this.deleted.has(this.heap[0])) {
+            const top = this.heap[0];
+            this.heap[0] = this.heap[this.heap.length - 1];
+            this.heap.pop();
+            this.deleted.delete(top);
+            if (!this.isEmpty()) {
+                this.heapifyDown();
+            }
+        }
+
+        if (this.isEmpty()) return null;
+
+        const top = this.heap[0];
+        this.heap[0] = this.heap[this.heap.length - 1];
+        this.heap.pop();
+        if (!this.isEmpty()) {
+            this.heapifyDown();
+        }
+
+        return top;
+    }
+}
+```
+
+### 2. **Batch Operations**
+```javascript
+class BatchHeap {
+    constructor() {
+        this.heap = [];
+        this.pendingInserts = [];
+    }
+
+    insert(item) {
+        this.pendingInserts.push(item);
+    }
+
+    flush() {
+        if (this.pendingInserts.length > 0) {
+            this.heap.push(...this.pendingInserts);
+            this.buildHeap();
+            this.pendingInserts = [];
+        }
+    }
+
+    extractTop() {
+        this.flush();
+        if (this.heap.length === 0) return null;
+
+        const top = this.heap[0];
+        this.heap[0] = this.heap[this.heap.length - 1];
+        this.heap.pop();
+        if (this.heap.length > 0) {
+            this.heapifyDown();
+        }
+
+        return top;
+    }
+}
+```
+
+---
+
+## Common Mistakes to Avoid
+
+### 1. **Wrong Heap Type**
+```javascript
+// ❌ Wrong: Using max heap for k smallest
+const maxHeap = new MaxHeap();
+for (const num of nums) {
+    maxHeap.insert(num);
+    if (maxHeap.size() > k) {
+        maxHeap.extractMax(); // This removes largest, not what we want!
+    }
+}
+
+// ✅ Correct: Using max heap for k smallest
+const maxHeap = new MaxHeap();
+for (const num of nums) {
+    if (maxHeap.size() < k) {
+        maxHeap.insert(num);
+    } else if (num < maxHeap.peek()) {
+        maxHeap.extractMax();
+        maxHeap.insert(num);
+    }
+}
+```
+
+### 2. **Incorrect Heapify Direction**
+```javascript
+// ❌ Wrong: Not handling parent-child relationship correctly
+heapifyUp() {
+    let index = this.heap.length - 1;
+    while (index > 0 && this.heap[index] < this.heap[index - 1]) { // Wrong comparison
+        // This compares with previous element, not parent!
+    }
+}
+
+// ✅ Correct: Compare with actual parent
+heapifyUp() {
+    let index = this.heap.length - 1;
+    while (index > 0) {
+        const parentIndex = Math.floor((index - 1) / 2);
+        if (this.heap[index] >= this.heap[parentIndex]) break;
+        [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
+        index = parentIndex;
+    }
+}
+```
+
+### 3. **Forgetting Edge Cases**
+```javascript
+// ✅ Always check for empty heap
+peek() {
+    if (this.heap.length === 0) {
+        throw new Error("Heap is empty");
+    }
+    return this.heap[0];
+}
+
+extractTop() {
+    if (this.heap.length === 0) {
+        return null; // or throw error
+    }
+    // ... rest of implementation
+}
+```
+
+---
+
+## Testing Your Heap Implementation
+
+```javascript
+function testHeap() {
+    console.log("=== Testing Heap Implementation ===");
+
+    // Test Min Heap
+    const minHeap = new MinHeap();
+    const testData = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5];
+
+    console.log("Inserting:", testData);
+    testData.forEach(num => minHeap.insert(num));
+
+    console.log("Extracting in ascending order:");
+    const extracted = [];
+    while (!minHeap.isEmpty()) {
+        extracted.push(minHeap.extractMin());
+    }
+    console.log(extracted);
+
+    // Test should show sorted array
+    const sorted = [...testData].sort((a, b) => a - b);
+    console.log("Expected:", sorted);
+    console.log("Test passed:", JSON.stringify(extracted) === JSON.stringify(sorted));
+
+    // Test Priority Queue
+    const pq = new PriorityQueue((a, b) => a.priority - b.priority);
+    pq.insert({ task: "Low", priority: 3 });
+    pq.insert({ task: "High", priority: 1 });
+    pq.insert({ task: "Medium", priority: 2 });
+
+    console.log("\nPriority Queue test:");
+    while (!pq.isEmpty()) {
+        console.log(pq.extractTop());
+    }
+}
+
+// Run tests
+testHeap();
+```
+
+---
+
+## Practice Problems
+
+### Easy Level
+1. **Kth Largest Element in Array**
+2. **Last Stone Weight**
+3. **Find K Largest Elements**
+4. **Merge Two Sorted Lists**
+
+### Medium Level
+1. **Top K Frequent Elements**
+2. **Meeting Rooms II**
+3. **Task Scheduler**
+4. **Find Median from Data Stream**
+5. **Kth Smallest Element in Sorted Matrix**
+
+### Hard Level
+1. **Merge K Sorted Lists**
+2. **Sliding Window Maximum**
+3. **Smallest Range Covering Elements from K Lists**
+4. **Trapping Rain Water II**
+
+This comprehensive guide covers all essential heap concepts and techniques needed for coding interviews and competitive programming. The key is understanding when to use heaps and which type (min/max) is appropriate for each problem!

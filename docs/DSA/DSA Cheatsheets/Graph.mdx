@@ -1,0 +1,1446 @@
+# Graph
+
+A comprehensive guide to graph algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Graph Representations](#graph-representations)
+2. [Graph Traversal Techniques](#graph-traversal-techniques)
+3. [Shortest Path Algorithms](#shortest-path-algorithms)
+4. [Cycle Detection](#cycle-detection)
+5. [Topological Sorting](#topological-sorting)
+6. [Connected Components](#connected-components)
+7. [Minimum Spanning Tree](#minimum-spanning-tree)
+8. [Advanced Graph Algorithms](#advanced-graph-algorithms)
+9. [Graph Coloring](#graph-coloring)
+10. [Usage Examples](#usage-examples)
+
+---
+
+## Graph Representations
+
+Graphs can be represented in multiple ways, each with its own advantages and use cases.
+
+### 1. Adjacency List (Most Common)
+
+```javascript
+class Graph {
+    constructor() {
+        this.adjacencyList = new Map();
+    }
+
+    addVertex(vertex) {
+        if (!this.adjacencyList.has(vertex)) {
+            this.adjacencyList.set(vertex, []);
+        }
+    }
+
+    addEdge(v1, v2, directed = false) {
+        this.addVertex(v1);
+        this.addVertex(v2);
+
+        this.adjacencyList.get(v1).push(v2);
+        if (!directed) {
+            this.adjacencyList.get(v2).push(v1);
+        }
+    }
+
+    removeEdge(v1, v2, directed = false) {
+        if (this.adjacencyList.has(v1)) {
+            this.adjacencyList.set(v1,
+                this.adjacencyList.get(v1).filter(v => v !== v2)
+            );
+        }
+        if (!directed && this.adjacencyList.has(v2)) {
+            this.adjacencyList.set(v2,
+                this.adjacencyList.get(v2).filter(v => v !== v1)
+            );
+        }
+    }
+
+    removeVertex(vertex) {
+        if (!this.adjacencyList.has(vertex)) return;
+
+        // Remove all edges to this vertex
+        for (let adjacentVertex of this.adjacencyList.get(vertex)) {
+            this.removeEdge(vertex, adjacentVertex);
+        }
+
+        this.adjacencyList.delete(vertex);
+    }
+
+    getNeighbors(vertex) {
+        return this.adjacencyList.get(vertex) || [];
+    }
+
+    getVertices() {
+        return Array.from(this.adjacencyList.keys());
+    }
+
+    hasEdge(v1, v2) {
+        return this.adjacencyList.has(v1) &&
+               this.adjacencyList.get(v1).includes(v2);
+    }
+}
+```
+
+**Space Complexity:** O(V + E) where V = vertices, E = edges
+
+### 2. Adjacency Matrix
+
+```javascript
+class GraphMatrix {
+    constructor(numVertices) {
+        this.numVertices = numVertices;
+        this.matrix = Array(numVertices)
+            .fill()
+            .map(() => Array(numVertices).fill(0));
+    }
+
+    addEdge(v1, v2, weight = 1, directed = false) {
+        this.matrix[v1][v2] = weight;
+        if (!directed) {
+            this.matrix[v2][v1] = weight;
+        }
+    }
+
+    removeEdge(v1, v2, directed = false) {
+        this.matrix[v1][v2] = 0;
+        if (!directed) {
+            this.matrix[v2][v1] = 0;
+        }
+    }
+
+    hasEdge(v1, v2) {
+        return this.matrix[v1][v2] !== 0;
+    }
+
+    getNeighbors(vertex) {
+        const neighbors = [];
+        for (let i = 0; i < this.numVertices; i++) {
+            if (this.matrix[vertex][i] !== 0) {
+                neighbors.push(i);
+            }
+        }
+        return neighbors;
+    }
+}
+```
+
+**Space Complexity:** O(V²)
+
+### 3. Edge List
+
+```javascript
+class EdgeList {
+    constructor() {
+        this.edges = [];
+        this.vertices = new Set();
+    }
+
+    addEdge(v1, v2, weight = 1) {
+        this.edges.push({ from: v1, to: v2, weight });
+        this.vertices.add(v1);
+        this.vertices.add(v2);
+    }
+
+    getEdges() {
+        return this.edges;
+    }
+
+    getVertices() {
+        return Array.from(this.vertices);
+    }
+}
+```
+
+---
+
+## Graph Traversal Techniques
+
+### 1. Depth-First Search (DFS)
+
+#### Recursive Implementation
+
+```javascript
+function dfsRecursive(graph, startVertex, visited = new Set()) {
+    const result = [];
+
+    function dfs(vertex) {
+        visited.add(vertex);
+        result.push(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs(neighbor);
+            }
+        }
+    }
+
+    dfs(startVertex);
+    return result;
+}
+```
+
+#### Iterative Implementation
+
+```javascript
+function dfsIterative(graph, startVertex) {
+    const result = [];
+    const visited = new Set();
+    const stack = [startVertex];
+
+    while (stack.length > 0) {
+        const vertex = stack.pop();
+
+        if (!visited.has(vertex)) {
+            visited.add(vertex);
+            result.push(vertex);
+
+            // Add neighbors to stack (in reverse order for consistent traversal)
+            const neighbors = graph.getNeighbors(vertex);
+            for (let i = neighbors.length - 1; i >= 0; i--) {
+                if (!visited.has(neighbors[i])) {
+                    stack.push(neighbors[i]);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** O(V + E) | **Space Complexity:** O(V)
+
+### 2. Breadth-First Search (BFS)
+
+```javascript
+function bfs(graph, startVertex) {
+    const result = [];
+    const visited = new Set();
+    const queue = [startVertex];
+
+    visited.add(startVertex);
+
+    while (queue.length > 0) {
+        const vertex = queue.shift();
+        result.push(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push(neighbor);
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** O(V + E) | **Space Complexity:** O(V)
+
+> **💡 Pro Tip:** BFS finds shortest path in unweighted graphs!
+
+### 3. BFS Level-by-Level
+
+```javascript
+function bfsByLevels(graph, startVertex) {
+    const levels = [];
+    const visited = new Set();
+    let queue = [startVertex];
+
+    visited.add(startVertex);
+
+    while (queue.length > 0) {
+        const currentLevel = [...queue];
+        levels.push(currentLevel);
+        queue = [];
+
+        for (let vertex of currentLevel) {
+            for (let neighbor of graph.getNeighbors(vertex)) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push(neighbor);
+                }
+            }
+        }
+    }
+
+    return levels;
+}
+```
+
+---
+
+## Shortest Path Algorithms
+
+### 1. Dijkstra's Algorithm (Single Source Shortest Path)
+
+```javascript
+class PriorityQueue {
+    constructor() {
+        this.values = [];
+    }
+
+    enqueue(val, priority) {
+        this.values.push({ val, priority });
+        this.sort();
+    }
+
+    dequeue() {
+        return this.values.shift();
+    }
+
+    sort() {
+        this.values.sort((a, b) => a.priority - b.priority);
+    }
+
+    isEmpty() {
+        return this.values.length === 0;
+    }
+}
+
+function dijkstra(graph, start, end) {
+    const distances = {};
+    const previous = {};
+    const pq = new PriorityQueue();
+    const path = [];
+
+    // Initialize distances and previous
+    for (let vertex of graph.getVertices()) {
+        if (vertex === start) {
+            distances[vertex] = 0;
+            pq.enqueue(vertex, 0);
+        } else {
+            distances[vertex] = Infinity;
+            pq.enqueue(vertex, Infinity);
+        }
+        previous[vertex] = null;
+    }
+
+    while (!pq.isEmpty()) {
+        let smallest = pq.dequeue().val;
+
+        if (smallest === end) {
+            // Build path
+            while (previous[smallest]) {
+                path.push(smallest);
+                smallest = previous[smallest];
+            }
+            break;
+        }
+
+        if (smallest || distances[smallest] !== Infinity) {
+            for (let neighbor of graph.getNeighbors(smallest)) {
+                // Calculate new distance
+                let candidate = distances[smallest] + getWeight(smallest, neighbor);
+                let nextNeighbor = neighbor;
+
+                if (candidate < distances[nextNeighbor]) {
+                    distances[nextNeighbor] = candidate;
+                    previous[nextNeighbor] = smallest;
+                    pq.enqueue(nextNeighbor, candidate);
+                }
+            }
+        }
+    }
+
+    return {
+        path: path.concat(start).reverse(),
+        distance: distances[end]
+    };
+}
+
+// Helper function for weighted graphs
+function getWeight(v1, v2) {
+    // This would be implemented based on your graph representation
+    return 1; // Default weight for unweighted graphs
+}
+```
+
+**Time Complexity:** O((V + E) log V) with binary heap
+
+### 2. Bellman-Ford Algorithm (Handles Negative Weights)
+
+```javascript
+function bellmanFord(edges, vertices, start) {
+    const distances = {};
+
+    // Initialize distances
+    for (let vertex of vertices) {
+        distances[vertex] = vertex === start ? 0 : Infinity;
+    }
+
+    // Relax edges V-1 times
+    for (let i = 0; i < vertices.length - 1; i++) {
+        for (let edge of edges) {
+            const { from, to, weight } = edge;
+            if (distances[from] !== Infinity &&
+                distances[from] + weight < distances[to]) {
+                distances[to] = distances[from] + weight;
+            }
+        }
+    }
+
+    // Check for negative cycles
+    for (let edge of edges) {
+        const { from, to, weight } = edge;
+        if (distances[from] !== Infinity &&
+            distances[from] + weight < distances[to]) {
+            throw new Error("Graph contains negative cycle");
+        }
+    }
+
+    return distances;
+}
+```
+
+**Time Complexity:** O(VE) | **Space Complexity:** O(V)
+
+### 3. Floyd-Warshall Algorithm (All Pairs Shortest Path)
+
+```javascript
+function floydWarshall(matrix) {
+    const n = matrix.length;
+    const dist = matrix.map(row => [...row]); // Deep copy
+
+    // Replace 0 with Infinity for non-diagonal elements
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            if (i !== j && dist[i][j] === 0) {
+                dist[i][j] = Infinity;
+            }
+        }
+    }
+
+    // Floyd-Warshall algorithm
+    for (let k = 0; k < n; k++) {
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                if (dist[i][k] + dist[k][j] < dist[i][j]) {
+                    dist[i][j] = dist[i][k] + dist[k][j];
+                }
+            }
+        }
+    }
+
+    return dist;
+}
+```
+
+**Time Complexity:** O(V³) | **Space Complexity:** O(V²)
+
+---
+
+## Cycle Detection
+
+### 1. Cycle Detection in Undirected Graph (DFS)
+
+```javascript
+function hasCycleUndirected(graph) {
+    const visited = new Set();
+
+    function dfs(vertex, parent) {
+        visited.add(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                if (dfs(neighbor, vertex)) {
+                    return true;
+                }
+            } else if (neighbor !== parent) {
+                return true; // Back edge found
+            }
+        }
+
+        return false;
+    }
+
+    // Check all components
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            if (dfs(vertex, null)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+```
+
+### 2. Cycle Detection in Directed Graph (DFS)
+
+```javascript
+function hasCycleDirected(graph) {
+    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const colors = new Map();
+
+    // Initialize all vertices as WHITE
+    for (let vertex of graph.getVertices()) {
+        colors.set(vertex, WHITE);
+    }
+
+    function dfs(vertex) {
+        colors.set(vertex, GRAY);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (colors.get(neighbor) === GRAY) {
+                return true; // Back edge found
+            }
+            if (colors.get(neighbor) === WHITE && dfs(neighbor)) {
+                return true;
+            }
+        }
+
+        colors.set(vertex, BLACK);
+        return false;
+    }
+
+    // Check all vertices
+    for (let vertex of graph.getVertices()) {
+        if (colors.get(vertex) === WHITE) {
+            if (dfs(vertex)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+```
+
+### 3. Union-Find for Cycle Detection
+
+```javascript
+class UnionFind {
+    constructor(n) {
+        this.parent = Array(n).fill().map((_, i) => i);
+        this.rank = Array(n).fill(0);
+    }
+
+    find(x) {
+        if (this.parent[x] !== x) {
+            this.parent[x] = this.find(this.parent[x]); // Path compression
+        }
+        return this.parent[x];
+    }
+
+    union(x, y) {
+        const rootX = this.find(x);
+        const rootY = this.find(y);
+
+        if (rootX === rootY) {
+            return false; // Already in same set (cycle detected)
+        }
+
+        // Union by rank
+        if (this.rank[rootX] < this.rank[rootY]) {
+            this.parent[rootX] = rootY;
+        } else if (this.rank[rootX] > this.rank[rootY]) {
+            this.parent[rootY] = rootX;
+        } else {
+            this.parent[rootY] = rootX;
+            this.rank[rootX]++;
+        }
+
+        return true;
+    }
+}
+
+function detectCycleUnionFind(edges, numVertices) {
+    const uf = new UnionFind(numVertices);
+
+    for (let edge of edges) {
+        const [u, v] = edge;
+        if (!uf.union(u, v)) {
+            return true; // Cycle detected
+        }
+    }
+
+    return false;
+}
+```
+
+---
+
+## Topological Sorting
+
+### 1. Kahn's Algorithm (BFS-based)
+
+```javascript
+function topologicalSortKahn(graph) {
+    const inDegree = new Map();
+    const queue = [];
+    const result = [];
+
+    // Initialize in-degrees
+    for (let vertex of graph.getVertices()) {
+        inDegree.set(vertex, 0);
+    }
+
+    // Calculate in-degrees
+    for (let vertex of graph.getVertices()) {
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            inDegree.set(neighbor, inDegree.get(neighbor) + 1);
+        }
+    }
+
+    // Add vertices with 0 in-degree to queue
+    for (let [vertex, degree] of inDegree) {
+        if (degree === 0) {
+            queue.push(vertex);
+        }
+    }
+
+    while (queue.length > 0) {
+        const vertex = queue.shift();
+        result.push(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            inDegree.set(neighbor, inDegree.get(neighbor) - 1);
+            if (inDegree.get(neighbor) === 0) {
+                queue.push(neighbor);
+            }
+        }
+    }
+
+    // Check if graph has cycle
+    if (result.length !== graph.getVertices().length) {
+        throw new Error("Graph has cycle - topological sort not possible");
+    }
+
+    return result;
+}
+```
+
+### 2. DFS-based Topological Sort
+
+```javascript
+function topologicalSortDFS(graph) {
+    const visited = new Set();
+    const stack = [];
+
+    function dfs(vertex) {
+        visited.add(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs(neighbor);
+            }
+        }
+
+        stack.push(vertex); // Push to stack after visiting all neighbors
+    }
+
+    // Visit all vertices
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            dfs(vertex);
+        }
+    }
+
+    return stack.reverse();
+}
+```
+
+**Time Complexity:** O(V + E) | **Space Complexity:** O(V)
+
+---
+
+## Connected Components
+
+### 1. Find Connected Components (Undirected Graph)
+
+```javascript
+function findConnectedComponents(graph) {
+    const visited = new Set();
+    const components = [];
+
+    function dfs(vertex, component) {
+        visited.add(vertex);
+        component.push(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs(neighbor, component);
+            }
+        }
+    }
+
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            const component = [];
+            dfs(vertex, component);
+            components.push(component);
+        }
+    }
+
+    return components;
+}
+```
+
+### 2. Strongly Connected Components (Kosaraju's Algorithm)
+
+```javascript
+function stronglyConnectedComponents(graph) {
+    const visited = new Set();
+    const stack = [];
+
+    // Step 1: Fill stack with vertices in finishing time order
+    function dfs1(vertex) {
+        visited.add(vertex);
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs1(neighbor);
+            }
+        }
+        stack.push(vertex);
+    }
+
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            dfs1(vertex);
+        }
+    }
+
+    // Step 2: Create transpose graph
+    const transpose = new Graph();
+    for (let vertex of graph.getVertices()) {
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            transpose.addEdge(neighbor, vertex, true); // Reverse edge
+        }
+    }
+
+    // Step 3: DFS on transpose graph in stack order
+    visited.clear();
+    const sccs = [];
+
+    function dfs2(vertex, scc) {
+        visited.add(vertex);
+        scc.push(vertex);
+        for (let neighbor of transpose.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs2(neighbor, scc);
+            }
+        }
+    }
+
+    while (stack.length > 0) {
+        const vertex = stack.pop();
+        if (!visited.has(vertex)) {
+            const scc = [];
+            dfs2(vertex, scc);
+            sccs.push(scc);
+        }
+    }
+
+    return sccs;
+}
+```
+
+**Time Complexity:** O(V + E) | **Space Complexity:** O(V)
+
+---
+
+## Minimum Spanning Tree
+
+### 1. Kruskal's Algorithm
+
+```javascript
+function kruskalMST(edges, numVertices) {
+    const mst = [];
+    const uf = new UnionFind(numVertices);
+
+    // Sort edges by weight
+    edges.sort((a, b) => a.weight - b.weight);
+
+    for (let edge of edges) {
+        const { from, to, weight } = edge;
+
+        if (uf.union(from, to)) {
+            mst.push(edge);
+            if (mst.length === numVertices - 1) {
+                break;
+            }
+        }
+    }
+
+    return mst;
+}
+```
+
+**Time Complexity:** O(E log E) | **Space Complexity:** O(V)
+
+### 2. Prim's Algorithm
+
+```javascript
+function primMST(graph, startVertex) {
+    const mst = [];
+    const visited = new Set();
+    const pq = new PriorityQueue();
+
+    visited.add(startVertex);
+
+    // Add all edges from start vertex
+    for (let neighbor of graph.getNeighbors(startVertex)) {
+        pq.enqueue(
+            { from: startVertex, to: neighbor, weight: getWeight(startVertex, neighbor) },
+            getWeight(startVertex, neighbor)
+        );
+    }
+
+    while (!pq.isEmpty() && mst.length < graph.getVertices().length - 1) {
+        const edge = pq.dequeue().val;
+        const { from, to, weight } = edge;
+
+        if (visited.has(to)) continue;
+
+        visited.add(to);
+        mst.push(edge);
+
+        // Add all edges from newly added vertex
+        for (let neighbor of graph.getNeighbors(to)) {
+            if (!visited.has(neighbor)) {
+                pq.enqueue(
+                    { from: to, to: neighbor, weight: getWeight(to, neighbor) },
+                    getWeight(to, neighbor)
+                );
+            }
+        }
+    }
+
+    return mst;
+}
+```
+
+**Time Complexity:** O(E log V) | **Space Complexity:** O(V)
+
+---
+
+## Advanced Graph Algorithms
+
+### 1. Articulation Points (Cut Vertices)
+
+```javascript
+function findArticulationPoints(graph) {
+    const visited = new Set();
+    const disc = new Map(); // Discovery time
+    const low = new Map();  // Lowest discovery time reachable
+    const parent = new Map();
+    const ap = new Set();   // Articulation points
+    let time = 0;
+
+    function dfs(u) {
+        let children = 0;
+        visited.add(u);
+        disc.set(u, time);
+        low.set(u, time);
+        time++;
+
+        for (let v of graph.getNeighbors(u)) {
+            if (!visited.has(v)) {
+                children++;
+                parent.set(v, u);
+                dfs(v);
+
+                low.set(u, Math.min(low.get(u), low.get(v)));
+
+                // Root is articulation point if it has more than one child
+                if (!parent.has(u) && children > 1) {
+                    ap.add(u);
+                }
+
+                // Non-root is articulation point if low[v] >= disc[u]
+                if (parent.has(u) && low.get(v) >= disc.get(u)) {
+                    ap.add(u);
+                }
+            } else if (v !== parent.get(u)) {
+                low.set(u, Math.min(low.get(u), disc.get(v)));
+            }
+        }
+    }
+
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            dfs(vertex);
+        }
+    }
+
+    return Array.from(ap);
+}
+```
+
+### 2. Bridges in Graph
+
+```javascript
+function findBridges(graph) {
+    const visited = new Set();
+    const disc = new Map();
+    const low = new Map();
+    const parent = new Map();
+    const bridges = [];
+    let time = 0;
+
+    function dfs(u) {
+        visited.add(u);
+        disc.set(u, time);
+        low.set(u, time);
+        time++;
+
+        for (let v of graph.getNeighbors(u)) {
+            if (!visited.has(v)) {
+                parent.set(v, u);
+                dfs(v);
+
+                low.set(u, Math.min(low.get(u), low.get(v)));
+
+                // If low[v] > disc[u], then u-v is a bridge
+                if (low.get(v) > disc.get(u)) {
+                    bridges.push([u, v]);
+                }
+            } else if (v !== parent.get(u)) {
+                low.set(u, Math.min(low.get(u), disc.get(v)));
+            }
+        }
+    }
+
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            dfs(vertex);
+        }
+    }
+
+    return bridges;
+}
+```
+
+### 3. Maximum Flow (Ford-Fulkerson with DFS)
+
+```javascript
+function maxFlow(graph, source, sink) {
+    // Create residual graph
+    const residualGraph = createResidualGraph(graph);
+    let maxFlowValue = 0;
+
+    function dfs(current, sink, visited, pathFlow) {
+        if (current === sink) return pathFlow;
+
+        visited.add(current);
+
+        for (let neighbor of residualGraph.getNeighbors(current)) {
+            const capacity = getCapacity(residualGraph, current, neighbor);
+
+            if (!visited.has(neighbor) && capacity > 0) {
+                const minFlow = Math.min(pathFlow, capacity);
+                const flow = dfs(neighbor, sink, visited, minFlow);
+
+                if (flow > 0) {
+                    // Update residual graph
+                    updateCapacity(residualGraph, current, neighbor, -flow);
+                    updateCapacity(residualGraph, neighbor, current, flow);
+                    return flow;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    while (true) {
+        const visited = new Set();
+        const pathFlow = dfs(source, sink, visited, Infinity);
+
+        if (pathFlow === 0) break;
+        maxFlowValue += pathFlow;
+    }
+
+    return maxFlowValue;
+}
+
+// Helper functions for capacity management
+function createResidualGraph(graph) {
+    // Implementation depends on your graph representation
+    // This would create a copy with capacity information
+}
+
+function getCapacity(graph, from, to) {
+    // Return current capacity between vertices
+}
+
+function updateCapacity(graph, from, to, delta) {
+    // Update capacity by delta amount
+}
+```
+
+---
+
+## Graph Coloring
+
+### 1. Graph Coloring (Greedy)
+
+```javascript
+function greedyColoring(graph) {
+    const colors = new Map();
+    const vertices = graph.getVertices();
+
+    if (vertices.length === 0) return colors;
+
+    // Color first vertex with color 0
+    colors.set(vertices[0], 0);
+
+    for (let i = 1; i < vertices.length; i++) {
+        const vertex = vertices[i];
+        const unavailableColors = new Set();
+
+        // Find colors used by adjacent vertices
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (colors.has(neighbor)) {
+                unavailableColors.add(colors.get(neighbor));
+            }
+        }
+
+        // Find first available color
+        let color = 0;
+        while (unavailableColors.has(color)) {
+            color++;
+        }
+
+        colors.set(vertex, color);
+    }
+
+    return colors;
+}
+```
+
+### 2. Check if Graph is Bipartite
+
+```javascript
+function isBipartite(graph) {
+    const colors = new Map();
+
+    function bfs(start) {
+        const queue = [start];
+        colors.set(start, 0);
+
+        while (queue.length > 0) {
+            const vertex = queue.shift();
+            const currentColor = colors.get(vertex);
+
+            for (let neighbor of graph.getNeighbors(vertex)) {
+                if (!colors.has(neighbor)) {
+                    colors.set(neighbor, 1 - currentColor);
+                    queue.push(neighbor);
+                } else if (colors.get(neighbor) === currentColor) {
+                    return false; // Adjacent vertices have same color
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // Check all components
+    for (let vertex of graph.getVertices()) {
+        if (!colors.has(vertex)) {
+            if (!bfs(vertex)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+```
+
+---
+
+## Usage Examples
+
+Here's how to use these graph techniques:
+
+```javascript
+console.log("=== Graph Techniques Demo ===");
+
+// Create sample graph
+const graph = new Graph();
+const vertices = ['A', 'B', 'C', 'D', 'E'];
+vertices.forEach(v => graph.addVertex(v));
+
+graph.addEdge('A', 'B');
+graph.addEdge('A', 'C');
+graph.addEdge('B', 'D');
+graph.addEdge('C', 'D');
+graph.addEdge('D', 'E');
+
+console.log("DFS Traversal:", dfsRecursive(graph, 'A'));
+console.log("BFS Traversal:", bfs(graph, 'A'));
+console.log("BFS by Levels:", bfsByLevels(graph, 'A'));
+
+console.log("Has Cycle (Undirected):", hasCycleUndirected(graph));
+console.log("Connected Components:", findConnectedComponents(graph));
+
+// Create directed graph for topological sort
+const directedGraph = new Graph();
+['0', '1', '2', '3', '4', '5'].forEach(v => directedGraph.addVertex(v));
+directedGraph.addEdge('5', '2', true);
+directedGraph.addEdge('5', '0', true);
+directedGraph.addEdge('4', '0', true);
+directedGraph.addEdge('4', '1', true);
+directedGraph.addEdge('2', '3', true);
+directedGraph.addEdge('3', '1', true);
+
+console.log("Topological Sort (Kahn):", topologicalSortKahn(directedGraph));
+console.log("Topological Sort (DFS):", topologicalSortDFS(directedGraph));
+
+console.log("Is Bipartite:", isBipartite(graph));
+
+// Graph coloring
+const coloring = greedyColoring(graph);
+console.log("Graph Coloring:", coloring);
+
+// Articulation points and bridges
+console.log("Articulation Points:", findArticulationPoints(graph));
+console.log("Bridges:", findBridges(graph));
+```
+
+---
+
+## Time Complexity Summary
+
+| Algorithm | Time Complexity | Space Complexity | Use Case |
+|-----------|----------------|------------------|----------|
+| DFS/BFS | O(V + E) | O(V) | Traversal, connectivity |
+| Dijkstra | O((V + E) log V) | O(V) | Single-source shortest path |
+| Bellman-Ford | O(VE) | O(V) | Shortest path with negative weights |
+| Floyd-Warshall | O(V³) | O(V²) | All-pairs shortest path |
+| Topological Sort | O(V + E) | O(V) | Task scheduling, dependency resolution |
+| Union-Find | O(α(V)) per operation | O(V) | Cycle detection, connectivity |
+| Kruskal's MST | O(E log E) | O(V) | Minimum spanning tree |
+| Prim's MST | O(E log V) | O(V) | Minimum spanning tree |
+| Tarjan's SCC | O(V + E) | O(V) | Strongly connected components |
+| Max Flow | O(VE²) | O(V) | Network flow problems |
+
+---
+
+## Graph Representations Comparison
+
+| Representation | Space | Add Vertex | Add Edge | Remove Vertex | Remove Edge | Check Edge |
+|----------------|-------|------------|----------|---------------|-------------|------------|
+| Adjacency List | O(V + E) | O(1) | O(1) | O(V + E) | O(V) | O(V) |
+| Adjacency Matrix | O(V²) | O(V²) | O(1) | O(V²) | O(1) | O(1) |
+| Edge List | O(E) | O(1) | O(1) | O(E) | O(E) | O(E) |
+
+---
+
+## Common Graph Patterns
+
+### 1. **Graph Traversal Pattern**
+```javascript
+function graphTraversal(graph, start, method = 'dfs') {
+    const visited = new Set();
+    const result = [];
+
+    if (method === 'dfs') {
+        function dfs(vertex) {
+            visited.add(vertex);
+            result.push(vertex);
+
+            for (let neighbor of graph.getNeighbors(vertex)) {
+                if (!visited.has(neighbor)) {
+                    dfs(neighbor);
+                }
+            }
+        }
+        dfs(start);
+    } else {
+        // BFS implementation
+        const queue = [start];
+        visited.add(start);
+
+        while (queue.length > 0) {
+            const vertex = queue.shift();
+            result.push(vertex);
+
+            for (let neighbor of graph.getNeighbors(vertex)) {
+                if (!visited.has(neighbor)) {
+                    visited.add(neighbor);
+                    queue.push(neighbor);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. **Path Finding Pattern**
+```javascript
+function findPath(graph, start, end) {
+    const visited = new Set();
+    const parent = new Map();
+    const queue = [start];
+
+    visited.add(start);
+    parent.set(start, null);
+
+    while (queue.length > 0) {
+        const vertex = queue.shift();
+
+        if (vertex === end) {
+            // Reconstruct path
+            const path = [];
+            let current = end;
+            while (current !== null) {
+                path.unshift(current);
+                current = parent.get(current);
+            }
+            return path;
+        }
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                parent.set(neighbor, vertex);
+                queue.push(neighbor);
+            }
+        }
+    }
+
+    return null; // No path found
+}
+```
+
+### 3. **Component Detection Pattern**
+```javascript
+function processAllComponents(graph, processComponent) {
+    const visited = new Set();
+    const components = [];
+
+    function dfs(vertex, component) {
+        visited.add(vertex);
+        component.push(vertex);
+
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                dfs(neighbor, component);
+            }
+        }
+    }
+
+    for (let vertex of graph.getVertices()) {
+        if (!visited.has(vertex)) {
+            const component = [];
+            dfs(vertex, component);
+            components.push(processComponent(component));
+        }
+    }
+
+    return components;
+}
+```
+
+---
+
+## Advanced Problem Patterns
+
+### 1. **Graph Validation Problems**
+
+#### Valid Tree (N nodes, N-1 edges, connected, no cycles)
+```javascript
+function validTree(n, edges) {
+    if (edges.length !== n - 1) return false;
+
+    const graph = new Graph();
+    for (let i = 0; i < n; i++) {
+        graph.addVertex(i);
+    }
+
+    for (let [u, v] of edges) {
+        graph.addEdge(u, v);
+    }
+
+    // Check if connected (BFS from node 0 should visit all nodes)
+    const visited = new Set();
+    const queue = [0];
+    visited.add(0);
+
+    while (queue.length > 0) {
+        const vertex = queue.shift();
+        for (let neighbor of graph.getNeighbors(vertex)) {
+            if (!visited.has(neighbor)) {
+                visited.add(neighbor);
+                queue.push(neighbor);
+            }
+        }
+    }
+
+    return visited.size === n;
+}
+```
+
+#### Number of Islands
+```javascript
+function numIslands(grid) {
+    if (!grid || grid.length === 0) return 0;
+
+    const rows = grid.length;
+    const cols = grid[0].length;
+    let count = 0;
+
+    function dfs(i, j) {
+        if (i < 0 || i >= rows || j < 0 || j >= cols || grid[i][j] !== '1') {
+            return;
+        }
+
+        grid[i][j] = '0'; // Mark as visited
+
+        // Check 4 directions
+        dfs(i + 1, j);
+        dfs(i - 1, j);
+        dfs(i, j + 1);
+        dfs(i, j - 1);
+    }
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            if (grid[i][j] === '1') {
+                count++;
+                dfs(i, j);
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+### 2. **Course Schedule Problems**
+
+```javascript
+// Course Schedule I - Can finish all courses?
+function canFinish(numCourses, prerequisites) {
+    const graph = new Graph();
+
+    // Build graph
+    for (let i = 0; i < numCourses; i++) {
+        graph.addVertex(i);
+    }
+
+    for (let [course, prereq] of prerequisites) {
+        graph.addEdge(prereq, course, true); // Directed edge
+    }
+
+    // Check for cycle using DFS
+    return !hasCycleDirected(graph);
+}
+
+// Course Schedule II - Return valid order
+function findOrder(numCourses, prerequisites) {
+    const graph = new Graph();
+
+    // Build graph
+    for (let i = 0; i < numCourses; i++) {
+        graph.addVertex(i);
+    }
+
+    for (let [course, prereq] of prerequisites) {
+        graph.addEdge(prereq, course, true);
+    }
+
+    try {
+        return topologicalSortKahn(graph);
+    } catch (error) {
+        return []; // Has cycle
+    }
+}
+```
+
+### 3. **Word Ladder Problem**
+
+```javascript
+function ladderLength(beginWord, endWord, wordList) {
+    const wordSet = new Set(wordList);
+    if (!wordSet.has(endWord)) return 0;
+
+    const queue = [[beginWord, 1]];
+    const visited = new Set([beginWord]);
+
+    while (queue.length > 0) {
+        const [word, level] = queue.shift();
+
+        if (word === endWord) return level;
+
+        // Generate all possible next words
+        for (let i = 0; i < word.length; i++) {
+            for (let c = 0; c < 26; c++) {
+                const newChar = String.fromCharCode(97 + c); // 'a' + c
+                const newWord = word.slice(0, i) + newChar + word.slice(i + 1);
+
+                if (wordSet.has(newWord) && !visited.has(newWord)) {
+                    visited.add(newWord);
+                    queue.push([newWord, level + 1]);
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+```
+
+---
+
+## Key Interview Tips
+
+### **When to Use Each Algorithm:**
+
+1. **DFS**: When you need to explore all paths, detect cycles, or solve puzzles
+2. **BFS**: For shortest path in unweighted graphs, level-order traversal
+3. **Dijkstra**: Single-source shortest path with non-negative weights
+4. **Bellman-Ford**: When graph has negative weights
+5. **Topological Sort**: For dependency resolution, task scheduling
+6. **Union-Find**: For dynamic connectivity, cycle detection in undirected graphs
+
+### **Common Mistakes to Avoid:**
+
+1. **Not handling disconnected graphs**: Always check all vertices
+2. **Forgetting to mark vertices as visited**: Leads to infinite loops
+3. **Using wrong data structure**: Stack for DFS, Queue for BFS
+4. **Not considering edge cases**: Empty graph, single vertex, no path exists
+
+### **Optimization Techniques:**
+
+1. **Path Compression in Union-Find**: Reduces time complexity
+2. **Early termination**: Stop when target is found
+3. **Bidirectional search**: For shortest path problems
+4. **Memoization**: For overlapping subproblems
+
+---
+
+## Real-World Applications
+
+### **Social Networks:**
+- Friend recommendations (graph traversal)
+- Shortest connection path (BFS/Dijkstra)
+- Community detection (connected components)
+
+### **Transportation:**
+- Route planning (shortest path algorithms)
+- Traffic flow optimization (max flow)
+- Critical road detection (bridges/articulation points)
+
+### **Computer Networks:**
+- Network topology analysis
+- Routing protocols
+- Fault tolerance (connectivity)
+
+### **Scheduling:**
+- Task dependencies (topological sort)
+- Resource allocation
+- Project planning
+
+This comprehensive guide provides all the essential graph algorithms and techniques needed for coding interviews, competitive programming, and real-world applications!

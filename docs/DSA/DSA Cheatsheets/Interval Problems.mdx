@@ -1,0 +1,800 @@
+# Interval Problems
+
+## Table of Contents
+1. [Core Concepts](#core-concepts)
+2. [Sorting-Based Patterns](#sorting-based-patterns)
+3. [Merge Intervals Pattern](#merge-intervals-pattern)
+4. [Insert Interval Pattern](#insert-interval-pattern)
+5. [Meeting Rooms Pattern](#meeting-rooms-pattern)
+6. [Sweep Line Algorithm](#sweep-line-algorithm)
+7. [Interval Tree & Advanced Structures](#interval-tree--advanced-structures)
+8. [Two Pointers on Intervals](#two-pointers-on-intervals)
+9. [Priority Queue Patterns](#priority-queue-patterns)
+10. [Common Problem Types](#common-problem-types)
+
+## Core Concepts
+
+### Basic Interval Representation
+
+```javascript
+// Simple interval structure
+class Interval {
+    constructor(start, end) {
+        this.start = start;
+        this.end = end;
+    }
+}
+
+// Array representation: [start, end]
+const intervals = [[1, 3], [2, 6], [8, 10], [15, 18]];
+
+// Object representation
+const meetings = [
+    { start: 1, end: 3 },
+    { start: 2, end: 6 },
+    { start: 8, end: 10 }
+];
+```
+
+### Key Properties & Relationships
+
+```javascript
+// Interval relationships
+function getRelationship(interval1, interval2) {
+    const [a1, a2] = interval1;
+    const [b1, b2] = interval2;
+
+    // No overlap
+    if (a2 < b1 || b2 < a1) return 'separate';
+
+    // Touch at endpoints
+    if (a2 === b1 || b2 === a1) return 'adjacent';
+
+    // Overlap cases
+    if (a1 === b1 && a2 === b2) return 'identical';
+    if (a1 >= b1 && a2 <= b2) return 'a_inside_b';
+    if (b1 >= a1 && b2 <= a2) return 'b_inside_a';
+
+    return 'partial_overlap';
+}
+
+// Check if intervals overlap
+function overlaps(interval1, interval2) {
+    return Math.max(interval1[0], interval2[0]) < Math.min(interval1[1], interval2[1]);
+}
+
+// Merge two overlapping intervals
+function merge(interval1, interval2) {
+    return [
+        Math.min(interval1[0], interval2[0]),
+        Math.max(interval1[1], interval2[1])
+    ];
+}
+```
+
+## Sorting-Based Patterns
+
+**Core Idea**: Sort intervals by start time, then process sequentially.
+
+### Template Pattern
+
+```javascript
+function processIntervals(intervals) {
+    if (intervals.length <= 1) return intervals;
+
+    // Sort by start time
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    const result = [];
+    let current = intervals[0];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const next = intervals[i];
+
+        if (shouldCombine(current, next)) {
+            current = combine(current, next);
+        } else {
+            result.push(current);
+            current = next;
+        }
+    }
+
+    result.push(current);
+    return result;
+}
+```
+
+## Merge Intervals Pattern
+
+**Use Case**: Combine overlapping intervals into non-overlapping ones.
+
+### Classic Merge Intervals
+
+```javascript
+function merge(intervals) {
+    if (intervals.length <= 1) return intervals;
+
+    // Sort by start time
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    const merged = [intervals[0]];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const lastMerged = merged[merged.length - 1];
+
+        // If current interval overlaps with last merged interval
+        if (current[0] <= lastMerged[1]) {
+            // Merge them by extending the end time
+            lastMerged[1] = Math.max(lastMerged[1], current[1]);
+        } else {
+            // No overlap, add current interval
+            merged.push(current);
+        }
+    }
+
+    return merged;
+}
+
+// Example usage
+console.log(merge([[1,3],[2,6],[8,10],[15,18]]));
+// Output: [[1,6],[8,10],[15,18]]
+```
+
+### Merge with Custom Logic
+
+```javascript
+// Merge intervals with minimum gap
+function mergeWithGap(intervals, gap) {
+    if (intervals.length <= 1) return intervals;
+
+    intervals.sort((a, b) => a[0] - b[0]);
+    const merged = [intervals[0]];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const lastMerged = merged[merged.length - 1];
+
+        // Merge if overlap or gap is within threshold
+        if (current[0] - lastMerged[1] <= gap) {
+            lastMerged[1] = Math.max(lastMerged[1], current[1]);
+        } else {
+            merged.push(current);
+        }
+    }
+
+    return merged;
+}
+```
+
+## Insert Interval Pattern
+
+**Use Case**: Insert a new interval into a sorted list of non-overlapping intervals.
+
+### Insert Interval Implementation
+
+```javascript
+function insert(intervals, newInterval) {
+    const result = [];
+    let i = 0;
+
+    // Add all intervals that end before new interval starts
+    while (i < intervals.length && intervals[i][1] < newInterval[0]) {
+        result.push(intervals[i]);
+        i++;
+    }
+
+    // Merge all overlapping intervals with new interval
+    while (i < intervals.length && intervals[i][0] <= newInterval[1]) {
+        newInterval[0] = Math.min(newInterval[0], intervals[i][0]);
+        newInterval[1] = Math.max(newInterval[1], intervals[i][1]);
+        i++;
+    }
+    result.push(newInterval);
+
+    // Add remaining intervals
+    while (i < intervals.length) {
+        result.push(intervals[i]);
+        i++;
+    }
+
+    return result;
+}
+
+// Example usage
+console.log(insert([[1,3],[6,9]], [2,5]));
+// Output: [[1,5],[6,9]]
+```
+
+### Insert Multiple Intervals
+
+```javascript
+function insertMultiple(intervals, newIntervals) {
+    // Sort new intervals by start time
+    newIntervals.sort((a, b) => a[0] - b[0]);
+
+    let result = intervals;
+
+    for (const newInterval of newIntervals) {
+        result = insert(result, newInterval);
+    }
+
+    return result;
+}
+```
+
+## Meeting Rooms Pattern
+
+**Use Case**: Determine if meetings can be scheduled or find minimum rooms needed.
+
+### Meeting Rooms I (Can Attend All)
+
+```javascript
+function canAttendMeetings(intervals) {
+    if (intervals.length <= 1) return true;
+
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    for (let i = 1; i < intervals.length; i++) {
+        // If current meeting starts before previous ends
+        if (intervals[i][0] < intervals[i-1][1]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+### Meeting Rooms II (Minimum Rooms)
+
+```javascript
+function minMeetingRooms(intervals) {
+    if (intervals.length === 0) return 0;
+
+    const starts = intervals.map(interval => interval[0]).sort((a, b) => a - b);
+    const ends = intervals.map(interval => interval[1]).sort((a, b) => a - b);
+
+    let rooms = 0;
+    let maxRooms = 0;
+    let startPtr = 0;
+    let endPtr = 0;
+
+    while (startPtr < intervals.length) {
+        // A meeting starts
+        if (starts[startPtr] < ends[endPtr]) {
+            rooms++;
+            maxRooms = Math.max(maxRooms, rooms);
+            startPtr++;
+        } else {
+            // A meeting ends
+            rooms--;
+            endPtr++;
+        }
+    }
+
+    return maxRooms;
+}
+```
+
+### Meeting Rooms with Priority Queue
+
+```javascript
+class MinHeap {
+    constructor() {
+        this.heap = [];
+    }
+
+    push(val) {
+        this.heap.push(val);
+        this._heapifyUp();
+    }
+
+    pop() {
+        if (this.heap.length === 0) return null;
+        if (this.heap.length === 1) return this.heap.pop();
+
+        const min = this.heap[0];
+        this.heap[0] = this.heap.pop();
+        this._heapifyDown();
+        return min;
+    }
+
+    peek() {
+        return this.heap.length > 0 ? this.heap[0] : null;
+    }
+
+    size() {
+        return this.heap.length;
+    }
+
+    _heapifyUp() {
+        let idx = this.heap.length - 1;
+        while (idx > 0) {
+            const parentIdx = Math.floor((idx - 1) / 2);
+            if (this.heap[parentIdx] <= this.heap[idx]) break;
+            [this.heap[parentIdx], this.heap[idx]] = [this.heap[idx], this.heap[parentIdx]];
+            idx = parentIdx;
+        }
+    }
+
+    _heapifyDown() {
+        let idx = 0;
+        while (2 * idx + 1 < this.heap.length) {
+            let minChildIdx = 2 * idx + 1;
+            if (2 * idx + 2 < this.heap.length && this.heap[2 * idx + 2] < this.heap[minChildIdx]) {
+                minChildIdx = 2 * idx + 2;
+            }
+            if (this.heap[idx] <= this.heap[minChildIdx]) break;
+            [this.heap[idx], this.heap[minChildIdx]] = [this.heap[minChildIdx], this.heap[idx]];
+            idx = minChildIdx;
+        }
+    }
+}
+
+function minMeetingRoomsHeap(intervals) {
+    if (intervals.length === 0) return 0;
+
+    intervals.sort((a, b) => a[0] - b[0]);
+    const endTimes = new MinHeap();
+
+    for (const interval of intervals) {
+        // If earliest ending meeting has ended, reuse that room
+        if (endTimes.size() > 0 && endTimes.peek() <= interval[0]) {
+            endTimes.pop();
+        }
+        endTimes.push(interval[1]);
+    }
+
+    return endTimes.size();
+}
+```
+
+## Sweep Line Algorithm
+
+**Use Case**: Process events in chronological order to track active intervals.
+
+### Event-Based Processing
+
+```javascript
+function sweepLine(intervals) {
+    const events = [];
+
+    // Create events for interval starts and ends
+    for (const [start, end] of intervals) {
+        events.push([start, 'start']);
+        events.push([end, 'end']);
+    }
+
+    // Sort events by time, with 'end' events before 'start' events at same time
+    events.sort((a, b) => {
+        if (a[0] !== b[0]) return a[0] - b[0];
+        return a[1] === 'end' ? -1 : 1;
+    });
+
+    let activeIntervals = 0;
+    let maxActive = 0;
+
+    for (const [time, type] of events) {
+        if (type === 'start') {
+            activeIntervals++;
+            maxActive = Math.max(maxActive, activeIntervals);
+        } else {
+            activeIntervals--;
+        }
+    }
+
+    return maxActive;
+}
+```
+
+### Sweep Line for Range Sum Queries
+
+```javascript
+function rangeSum(intervals, queries) {
+    const events = [];
+
+    // Create events for intervals
+    for (let i = 0; i < intervals.length; i++) {
+        const [start, end] = intervals[i];
+        events.push([start, 'start', i]);
+        events.push([end, 'end', i]);
+    }
+
+    // Create events for queries
+    for (let i = 0; i < queries.length; i++) {
+        const [point] = queries[i];
+        events.push([point, 'query', i]);
+    }
+
+    events.sort((a, b) => a[0] - b[0]);
+
+    const activeIntervals = new Set();
+    const results = new Array(queries.length);
+
+    for (const [time, type, idx] of events) {
+        if (type === 'start') {
+            activeIntervals.add(idx);
+        } else if (type === 'end') {
+            activeIntervals.delete(idx);
+        } else { // query
+            results[idx] = activeIntervals.size;
+        }
+    }
+
+    return results;
+}
+```
+
+## Interval Tree & Advanced Structures
+
+### Simple Interval Tree Node
+
+```javascript
+class IntervalTreeNode {
+    constructor(interval) {
+        this.interval = interval;
+        this.max = interval[1];
+        this.left = null;
+        this.right = null;
+    }
+}
+
+class IntervalTree {
+    constructor() {
+        this.root = null;
+    }
+
+    insert(interval) {
+        this.root = this._insert(this.root, interval);
+    }
+
+    _insert(node, interval) {
+        if (!node) return new IntervalTreeNode(interval);
+
+        // Update max value
+        node.max = Math.max(node.max, interval[1]);
+
+        // Insert based on start time
+        if (interval[0] < node.interval[0]) {
+            node.left = this._insert(node.left, interval);
+        } else {
+            node.right = this._insert(node.right, interval);
+        }
+
+        return node;
+    }
+
+    search(interval) {
+        return this._search(this.root, interval);
+    }
+
+    _search(node, interval) {
+        if (!node) return null;
+
+        // Check if current interval overlaps
+        if (this._overlaps(node.interval, interval)) {
+            return node.interval;
+        }
+
+        // If left subtree can contain overlapping interval
+        if (node.left && node.left.max >= interval[0]) {
+            return this._search(node.left, interval);
+        }
+
+        return this._search(node.right, interval);
+    }
+
+    _overlaps(a, b) {
+        return Math.max(a[0], b[0]) < Math.min(a[1], b[1]);
+    }
+}
+```
+
+## Two Pointers on Intervals
+
+**Use Case**: Compare or merge two sorted lists of intervals.
+
+### Intersection of Two Interval Lists
+
+```javascript
+function intervalIntersection(firstList, secondList) {
+    const result = [];
+    let i = 0, j = 0;
+
+    while (i < firstList.length && j < secondList.length) {
+        const [start1, end1] = firstList[i];
+        const [start2, end2] = secondList[j];
+
+        // Find intersection
+        const start = Math.max(start1, start2);
+        const end = Math.min(end1, end2);
+
+        if (start < end) {
+            result.push([start, end]);
+        }
+
+        // Move pointer for interval that ends first
+        if (end1 < end2) {
+            i++;
+        } else {
+            j++;
+        }
+    }
+
+    return result;
+}
+```
+
+### Merge Two Sorted Interval Lists
+
+```javascript
+function mergeTwoLists(list1, list2) {
+    const result = [];
+    let i = 0, j = 0;
+
+    while (i < list1.length && j < list2.length) {
+        if (list1[i][0] <= list2[j][0]) {
+            result.push(list1[i]);
+            i++;
+        } else {
+            result.push(list2[j]);
+            j++;
+        }
+    }
+
+    while (i < list1.length) {
+        result.push(list1[i]);
+        i++;
+    }
+
+    while (j < list2.length) {
+        result.push(list2[j]);
+        j++;
+    }
+
+    return merge(result); // Apply merge intervals pattern
+}
+```
+
+## Priority Queue Patterns
+
+### Interval Scheduling with Weights
+
+```javascript
+function maxWeight(intervals) {
+    // Add weight as third element: [start, end, weight]
+    intervals.sort((a, b) => a[1] - b[1]); // Sort by end time
+
+    const n = intervals.length;
+    const dp = new Array(n + 1).fill(0);
+
+    for (let i = 1; i <= n; i++) {
+        const [start, end, weight] = intervals[i - 1];
+
+        // Find latest non-overlapping interval
+        let j = i - 1;
+        while (j > 0 && intervals[j - 1][1] > start) {
+            j--;
+        }
+
+        // Take or skip current interval
+        dp[i] = Math.max(
+            dp[i - 1], // Skip
+            dp[j] + weight // Take
+        );
+    }
+
+    return dp[n];
+}
+```
+
+### CPU Scheduling Simulation
+
+```javascript
+function scheduleCPU(processes) {
+    // Process: [arrivalTime, burstTime, priority]
+    const events = [];
+    const completed = [];
+    let currentTime = 0;
+    let runningProcess = null;
+
+    // Create arrival events
+    for (let i = 0; i < processes.length; i++) {
+        events.push([processes[i][0], 'arrival', i]);
+    }
+
+    events.sort((a, b) => a[0] - b[0]);
+    const readyQueue = new MinHeap(); // Priority-based
+
+    for (const [time, type, processId] of events) {
+        currentTime = Math.max(currentTime, time);
+
+        if (type === 'arrival') {
+            const process = { ...processes[processId], id: processId };
+            readyQueue.push(process);
+
+            // Preempt if higher priority process arrives
+            if (!runningProcess || process.priority < runningProcess.priority) {
+                if (runningProcess) {
+                    readyQueue.push(runningProcess);
+                }
+                runningProcess = readyQueue.pop();
+            }
+        }
+
+        // Process completion logic here...
+    }
+
+    return completed;
+}
+```
+
+## Common Problem Types
+
+### 1. Non-Overlapping Intervals (Greedy)
+
+```javascript
+function eraseOverlapIntervals(intervals) {
+    if (intervals.length <= 1) return 0;
+
+    intervals.sort((a, b) => a[1] - b[1]); // Sort by end time
+
+    let count = 0;
+    let lastEnd = intervals[0][1];
+
+    for (let i = 1; i < intervals.length; i++) {
+        if (intervals[i][0] < lastEnd) {
+            count++; // Remove current interval
+        } else {
+            lastEnd = intervals[i][1];
+        }
+    }
+
+    return count;
+}
+```
+
+### 2. Minimum Arrows to Burst Balloons
+
+```javascript
+function findMinArrowShots(points) {
+    if (points.length === 0) return 0;
+
+    points.sort((a, b) => a[1] - b[1]); // Sort by end position
+
+    let arrows = 1;
+    let arrowPos = points[0][1];
+
+    for (let i = 1; i < points.length; i++) {
+        if (points[i][0] > arrowPos) {
+            arrows++;
+            arrowPos = points[i][1];
+        }
+    }
+
+    return arrows;
+}
+```
+
+### 3. Activity Selection Problem
+
+```javascript
+function activitySelection(activities) {
+    // Activity: [start, end]
+    activities.sort((a, b) => a[1] - b[1]);
+
+    const selected = [activities[0]];
+    let lastEnd = activities[0][1];
+
+    for (let i = 1; i < activities.length; i++) {
+        if (activities[i][0] >= lastEnd) {
+            selected.push(activities[i]);
+            lastEnd = activities[i][1];
+        }
+    }
+
+    return selected;
+}
+```
+
+### 4. Calendar Scheduling
+
+```javascript
+class MyCalendar {
+    constructor() {
+        this.bookings = [];
+    }
+
+    book(start, end) {
+        // Check for conflicts
+        for (const [s, e] of this.bookings) {
+            if (Math.max(start, s) < Math.min(end, e)) {
+                return false; // Conflict found
+            }
+        }
+
+        this.bookings.push([start, end]);
+        this.bookings.sort((a, b) => a[0] - b[0]);
+        return true;
+    }
+}
+
+class MyCalendarTwo {
+    constructor() {
+        this.bookings = [];
+        this.overlaps = [];
+    }
+
+    book(start, end) {
+        // Check for triple booking
+        for (const [s, e] of this.overlaps) {
+            if (Math.max(start, s) < Math.min(end, e)) {
+                return false;
+            }
+        }
+
+        // Add to overlaps if it conflicts with existing booking
+        for (const [s, e] of this.bookings) {
+            if (Math.max(start, s) < Math.min(end, e)) {
+                this.overlaps.push([Math.max(start, s), Math.min(end, e)]);
+            }
+        }
+
+        this.bookings.push([start, end]);
+        return true;
+    }
+}
+```
+
+## Complexity Analysis & Tips
+
+### Time Complexities:
+- **Sorting**: O(n log n)
+- **Merge intervals**: O(n log n)
+- **Meeting rooms**: O(n log n)
+- **Sweep line**: O(n log n)
+- **Interval tree search**: O(log n)
+
+### Space Complexities:
+- **Basic operations**: O(1) to O(n)
+- **Priority queue**: O(n)
+- **Interval tree**: O(n)
+
+### Key Optimization Strategies:
+
+1. **Sort First**: Most interval problems benefit from sorting
+2. **Greedy Approach**: Often optimal for scheduling problems
+3. **Two Pointers**: Efficient for merging sorted interval lists
+4. **Event Processing**: Sweep line for complex overlapping scenarios
+5. **Data Structures**: Use appropriate structures (heaps, trees) for dynamic scenarios
+
+### Common Pitfalls:
+
+```javascript
+// 1. Edge case handling
+if (intervals.length <= 1) return intervals;
+
+// 2. Boundary conditions
+if (start === end) continue; // Empty interval
+
+// 3. Sorting stability
+intervals.sort((a, b) => {
+    if (a[0] !== b[0]) return a[0] - b[0];
+    return a[1] - b[1]; // Secondary sort by end time
+});
+
+// 4. Inclusive vs exclusive intervals
+const overlaps = start1 < end2 && start2 < end1; // Exclusive
+const overlapsInclusive = start1 <= end2 && start2 <= end1; // Inclusive
+```
+
+## Summary
+
+Master these patterns to solve any interval problem:
+
+1. **Sort by start/end time** as needed
+2. **Use greedy algorithms** for optimization problems
+3. **Apply sweep line** for complex event processing
+4. **Utilize data structures** (heaps, trees) for dynamic scenarios
+5. **Handle edge cases** carefully (empty intervals, single interval, etc.)

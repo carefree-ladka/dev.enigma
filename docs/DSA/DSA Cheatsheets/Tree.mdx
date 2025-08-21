@@ -1,0 +1,603 @@
+# Binary Tree
+
+A comprehensive guide to tree algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Basic Tree Node Structure](#basic-tree-node-structure)
+2. [Tree Traversal Techniques](#tree-traversal-techniques)
+3. [Tree Properties and Measurements](#tree-properties-and-measurements)
+4. [Tree Search Techniques](#tree-search-techniques)
+5. [Path Finding Techniques](#path-finding-techniques)
+6. [Tree Modification Techniques](#tree-modification-techniques)
+7. [Binary Search Tree Operations](#binary-search-tree-operations)
+8. [Advanced Tree Techniques](#advanced-tree-techniques)
+9. [Usage Examples](#usage-examples)
+
+---
+
+## Basic Tree Node Structure
+
+The foundation of all tree operations starts with a simple node structure:
+
+```javascript
+class TreeNode {
+    constructor(val, left = null, right = null) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+```
+
+### Helper Function: Create Sample Tree
+
+```javascript
+function createSampleTree() {
+    //       1
+    //      / \
+    //     2   3
+    //    / \   \
+    //   4   5   6
+    const root = new TreeNode(1);
+    root.left = new TreeNode(2);
+    root.right = new TreeNode(3);
+    root.left.left = new TreeNode(4);
+    root.left.right = new TreeNode(5);
+    root.right.right = new TreeNode(6);
+    return root;
+}
+```
+
+---
+
+## Tree Traversal Techniques
+
+Tree traversal is fundamental to most tree operations. There are two main categories: **Depth-First Search (DFS)** and **Breadth-First Search (BFS)**.
+
+### Depth-First Search (DFS) Traversals
+
+#### 1. Pre-order Traversal: Root → Left → Right
+
+```javascript
+function preorderTraversal(root) {
+    const result = [];
+
+    function dfs(node) {
+        if (!node) return;
+        result.push(node.val);  // Process root first
+        dfs(node.left);         // Then left subtree
+        dfs(node.right);        // Then right subtree
+    }
+
+    dfs(root);
+    return result;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(h) where h is height
+
+#### 2. In-order Traversal: Left → Root → Right
+
+```javascript
+function inorderTraversal(root) {
+    const result = [];
+
+    function dfs(node) {
+        if (!node) return;
+        dfs(node.left);         // Left subtree first
+        result.push(node.val);  // Then process root
+        dfs(node.right);        // Then right subtree
+    }
+
+    dfs(root);
+    return result;
+}
+```
+
+> **💡 Pro Tip:** In-order traversal gives sorted order for Binary Search Trees!
+
+#### 3. Post-order Traversal: Left → Right → Root
+
+```javascript
+function postorderTraversal(root) {
+    const result = [];
+
+    function dfs(node) {
+        if (!node) return;
+        dfs(node.left);         // Left subtree first
+        dfs(node.right);        // Then right subtree
+        result.push(node.val);  // Process root last
+    }
+
+    dfs(root);
+    return result;
+}
+```
+
+### Breadth-First Search (BFS)
+
+#### Level Order Traversal
+
+```javascript
+function levelOrderTraversal(root) {
+    if (!root) return [];
+
+    const result = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const node = queue.shift();
+        result.push(node.val);
+
+        if (node.left) queue.push(node.left);
+        if (node.right) queue.push(node.right);
+    }
+
+    return result;
+}
+```
+
+#### Level Order with Level Separation
+
+```javascript
+function levelOrderByLevels(root) {
+    if (!root) return [];
+
+    const result = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const levelSize = queue.length;
+        const currentLevel = [];
+
+        for (let i = 0; i < levelSize; i++) {
+            const node = queue.shift();
+            currentLevel.push(node.val);
+
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+        }
+
+        result.push(currentLevel);
+    }
+
+    return result;
+}
+```
+
+---
+
+## Tree Properties and Measurements
+
+### Calculate Tree Height/Depth
+
+```javascript
+function maxDepth(root) {
+    if (!root) return 0;
+    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+}
+```
+
+### Calculate Minimum Depth
+
+```javascript
+function minDepth(root) {
+    if (!root) return 0;
+    if (!root.left && !root.right) return 1;
+
+    let minLeft = root.left ? minDepth(root.left) : Infinity;
+    let minRight = root.right ? minDepth(root.right) : Infinity;
+
+    return 1 + Math.min(minLeft, minRight);
+}
+```
+
+### Count Total Nodes
+
+```javascript
+function countNodes(root) {
+    if (!root) return 0;
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+```
+
+### Check if Tree is Balanced
+
+A tree is balanced if the height difference between left and right subtrees is ≤ 1.
+
+```javascript
+function isBalanced(root) {
+    function checkBalance(node) {
+        if (!node) return 0;
+
+        const leftHeight = checkBalance(node.left);
+        if (leftHeight === -1) return -1;
+
+        const rightHeight = checkBalance(node.right);
+        if (rightHeight === -1) return -1;
+
+        if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+
+    return checkBalance(root) !== -1;
+}
+```
+
+---
+
+## Tree Search Techniques
+
+### Search in Binary Tree
+
+```javascript
+function searchBinaryTree(root, target) {
+    if (!root) return false;
+    if (root.val === target) return true;
+
+    return searchBinaryTree(root.left, target) || searchBinaryTree(root.right, target);
+}
+```
+
+**Time Complexity:** O(n)
+
+### Search in Binary Search Tree (Optimized)
+
+```javascript
+function searchBST(root, target) {
+    if (!root) return null;
+
+    if (root.val === target) return root;
+
+    if (target < root.val) {
+        return searchBST(root.left, target);
+    } else {
+        return searchBST(root.right, target);
+    }
+}
+```
+
+**Time Complexity:** O(log n) average, O(n) worst case
+
+---
+
+## Path Finding Techniques
+
+### Find Path from Root to Target
+
+```javascript
+function findPath(root, target) {
+    const path = [];
+
+    function dfs(node) {
+        if (!node) return false;
+
+        path.push(node.val);
+
+        if (node.val === target) return true;
+
+        if (dfs(node.left) || dfs(node.right)) return true;
+
+        path.pop(); // Backtrack
+        return false;
+    }
+
+    return dfs(root) ? path : [];
+}
+```
+
+### Find All Root-to-Leaf Paths
+
+```javascript
+function allRootToLeafPaths(root) {
+    const paths = [];
+
+    function dfs(node, currentPath) {
+        if (!node) return;
+
+        currentPath.push(node.val);
+
+        // If it's a leaf node, add the path
+        if (!node.left && !node.right) {
+            paths.push([...currentPath]);
+        } else {
+            dfs(node.left, currentPath);
+            dfs(node.right, currentPath);
+        }
+
+        currentPath.pop(); // Backtrack
+    }
+
+    dfs(root, []);
+    return paths;
+}
+```
+
+### Check Path Sum
+
+```javascript
+function hasPathSum(root, targetSum) {
+    if (!root) return false;
+
+    if (!root.left && !root.right) {
+        return root.val === targetSum;
+    }
+
+    const remainingSum = targetSum - root.val;
+    return hasPathSum(root.left, remainingSum) || hasPathSum(root.right, remainingSum);
+}
+```
+
+---
+
+## Tree Modification Techniques
+
+### Invert/Mirror Binary Tree
+
+```javascript
+function invertTree(root) {
+    if (!root) return null;
+
+    // Swap left and right children
+    const temp = root.left;
+    root.left = root.right;
+    root.right = temp;
+
+    // Recursively invert subtrees
+    invertTree(root.left);
+    invertTree(root.right);
+
+    return root;
+}
+```
+
+### Flatten Binary Tree to Linked List
+
+```javascript
+function flattenToLinkedList(root) {
+    if (!root) return;
+
+    flattenToLinkedList(root.left);
+    flattenToLinkedList(root.right);
+
+    const tempRight = root.right;
+    root.right = root.left;
+    root.left = null;
+
+    // Find the rightmost node
+    let current = root;
+    while (current.right) {
+        current = current.right;
+    }
+    current.right = tempRight;
+}
+```
+
+---
+
+## Binary Search Tree Operations
+
+### Insert into BST
+
+```javascript
+function insertIntoBST(root, val) {
+    if (!root) return new TreeNode(val);
+
+    if (val < root.val) {
+        root.left = insertIntoBST(root.left, val);
+    } else {
+        root.right = insertIntoBST(root.right, val);
+    }
+
+    return root;
+}
+```
+
+### Find Minimum Value
+
+```javascript
+function findMin(root) {
+    while (root && root.left) {
+        root = root.left;
+    }
+    return root ? root.val : null;
+}
+```
+
+### Delete from BST
+
+```javascript
+function deleteFromBST(root, key) {
+    if (!root) return null;
+
+    if (key < root.val) {
+        root.left = deleteFromBST(root.left, key);
+    } else if (key > root.val) {
+        root.right = deleteFromBST(root.right, key);
+    } else {
+        // Node to delete found
+        if (!root.left) return root.right;
+        if (!root.right) return root.left;
+
+        // Node has two children
+        const minRight = findMin(root.right);
+        root.val = minRight;
+        root.right = deleteFromBST(root.right, minRight);
+    }
+
+    return root;
+}
+```
+
+### Validate BST
+
+```javascript
+function isValidBST(root) {
+    function validate(node, min, max) {
+        if (!node) return true;
+
+        if (node.val <= min || node.val >= max) return false;
+
+        return validate(node.left, min, node.val) &&
+               validate(node.right, node.val, max);
+    }
+
+    return validate(root, -Infinity, Infinity);
+}
+```
+
+---
+
+## Advanced Tree Techniques
+
+### Lowest Common Ancestor (LCA)
+
+```javascript
+function lowestCommonAncestor(root, p, q) {
+    if (!root || root === p || root === q) return root;
+
+    const left = lowestCommonAncestor(root.left, p, q);
+    const right = lowestCommonAncestor(root.right, p, q);
+
+    if (left && right) return root;
+    return left || right;
+}
+```
+
+### Tree Diameter
+
+Find the longest path between any two nodes:
+
+```javascript
+function diameterOfBinaryTree(root) {
+    let maxDiameter = 0;
+
+    function height(node) {
+        if (!node) return 0;
+
+        const leftHeight = height(node.left);
+        const rightHeight = height(node.right);
+
+        // Update diameter if current path is longer
+        maxDiameter = Math.max(maxDiameter, leftHeight + rightHeight);
+
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+
+    height(root);
+    return maxDiameter;
+}
+```
+
+### Serialize and Deserialize
+
+#### Serialize Tree
+
+```javascript
+function serialize(root) {
+    const result = [];
+
+    function preorder(node) {
+        if (!node) {
+            result.push('null');
+            return;
+        }
+        result.push(node.val.toString());
+        preorder(node.left);
+        preorder(node.right);
+    }
+
+    preorder(root);
+    return result.join(',');
+}
+```
+
+#### Deserialize Tree
+
+```javascript
+function deserialize(data) {
+    const values = data.split(',');
+    let index = 0;
+
+    function buildTree() {
+        if (values[index] === 'null') {
+            index++;
+            return null;
+        }
+
+        const node = new TreeNode(parseInt(values[index]));
+        index++;
+        node.left = buildTree();
+        node.right = buildTree();
+        return node;
+    }
+
+    return buildTree();
+}
+```
+
+---
+
+## Usage Examples
+
+Here's how to use these techniques:
+
+```javascript
+console.log("=== Tree Techniques Demo ===");
+
+const tree = createSampleTree();
+
+console.log("Pre-order:", preorderTraversal(tree));
+console.log("In-order:", inorderTraversal(tree));
+console.log("Post-order:", postorderTraversal(tree));
+console.log("Level-order:", levelOrderTraversal(tree));
+console.log("Level-order by levels:", levelOrderByLevels(tree));
+
+console.log("Max depth:", maxDepth(tree));
+console.log("Min depth:", minDepth(tree));
+console.log("Total nodes:", countNodes(tree));
+console.log("Is balanced:", isBalanced(tree));
+
+console.log("Search for 5:", searchBinaryTree(tree, 5));
+console.log("Path to 5:", findPath(tree, 5));
+console.log("All root-to-leaf paths:", allRootToLeafPaths(tree));
+
+console.log("Tree diameter:", diameterOfBinaryTree(tree));
+
+const serialized = serialize(tree);
+console.log("Serialized:", serialized);
+const deserialized = deserialize(serialized);
+console.log("Deserialized pre-order:", preorderTraversal(deserialized));
+```
+
+---
+
+## Time Complexity Summary
+
+| Operation | Time Complexity | Space Complexity |
+|-----------|----------------|------------------|
+| Traversal | O(n) | O(h) |
+| Search (Binary Tree) | O(n) | O(h) |
+| Search (BST) | O(log n) avg, O(n) worst | O(h) |
+| Insert (BST) | O(log n) avg, O(n) worst | O(h) |
+| Delete (BST) | O(log n) avg, O(n) worst | O(h) |
+| Height Calculation | O(n) | O(h) |
+| LCA | O(n) | O(h) |
+| Serialize/Deserialize | O(n) | O(n) |
+
+> **Note:** h represents the height of the tree. In a balanced tree, h = log n.
+
+---
+
+## Key Patterns to Remember
+
+1. **Recursive Pattern**: Most tree problems use recursion naturally
+2. **Base Case**: Always handle null nodes first
+3. **Divide and Conquer**: Break problem into left and right subtrees
+4. **Backtracking**: Use for path-finding problems
+5. **Level Order**: Use queue for BFS traversal
+6. **BST Property**: Left < Root < Right for optimization
+
+This comprehensive guide covers the essential tree techniques you'll need for coding interviews and competitive programming!
