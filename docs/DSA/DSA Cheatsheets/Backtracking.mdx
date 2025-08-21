@@ -1,0 +1,1645 @@
+# Backtracking
+
+A comprehensive guide to backtracking algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Core Backtracking Concepts](#core-backtracking-concepts)
+2. [The Backtracking Template](#the-backtracking-template)
+3. [Subset Generation Patterns](#subset-generation-patterns)
+4. [Permutation Patterns](#permutation-patterns)
+5. [Combination Patterns](#combination-patterns)
+6. [Constraint Satisfaction Problems](#constraint-satisfaction-problems)
+7. [Grid/Matrix Backtracking](#gridmatrix-backtracking)
+8. [String Backtracking](#string-backtracking)
+9. [Tree Path Backtracking](#tree-path-backtracking)
+10. [Game Theory Backtracking](#game-theory-backtracking)
+11. [Optimization Techniques](#optimization-techniques)
+12. [Common Pitfalls & Best Practices](#common-pitfalls--best-practices)
+
+---
+
+## Core Backtracking Concepts
+
+**Backtracking** is a systematic way to explore all possible solutions by incrementally building candidates and abandoning ("backtracking") candidates that cannot lead to valid solutions.
+
+### Key Characteristics:
+- **Recursive**: Explores solutions recursively
+- **Incremental**: Builds solution step by step
+- **Pruning**: Abandons invalid paths early
+- **Complete Search**: Explores all possibilities (if needed)
+
+### When to Use Backtracking:
+- Finding all possible solutions
+- Finding one valid solution
+- Optimization problems with constraints
+- Combinatorial problems (subsets, permutations, combinations)
+
+---
+
+## The Backtracking Template
+
+This is the fundamental template that applies to most backtracking problems:
+
+```javascript
+function backtrack(state, choices, constraints) {
+    // Base case: valid solution found
+    if (isValidSolution(state)) {
+        recordSolution(state);
+        return;
+    }
+
+    // Try all possible choices
+    for (let choice of getValidChoices(choices, state)) {
+        // Make choice
+        state.push(choice);
+
+        // Recurse with updated state
+        if (isValid(state, constraints)) {
+            backtrack(state, getNewChoices(choices, choice), constraints);
+        }
+
+        // Backtrack: undo choice
+        state.pop();
+    }
+}
+```
+
+### Generic Backtracking Framework
+
+```javascript
+class BacktrackSolver {
+    constructor() {
+        this.solutions = [];
+    }
+
+    solve(problem) {
+        this.solutions = [];
+        this.backtrack([], problem.choices, problem.constraints);
+        return this.solutions;
+    }
+
+    backtrack(currentSolution, availableChoices, constraints) {
+        // Base case
+        if (this.isComplete(currentSolution, constraints)) {
+            this.solutions.push([...currentSolution]);
+            return;
+        }
+
+        // Try each valid choice
+        for (let choice of this.getValidChoices(availableChoices, currentSolution, constraints)) {
+            // Make choice
+            currentSolution.push(choice);
+
+            // Recurse if still valid
+            if (this.isValidPartial(currentSolution, constraints)) {
+                this.backtrack(
+                    currentSolution,
+                    this.updateChoices(availableChoices, choice),
+                    constraints
+                );
+            }
+
+            // Backtrack
+            currentSolution.pop();
+        }
+    }
+
+    isComplete(solution, constraints) { /* Override */ }
+    isValidPartial(solution, constraints) { /* Override */ }
+    getValidChoices(choices, solution, constraints) { /* Override */ }
+    updateChoices(choices, selectedChoice) { /* Override */ }
+}
+```
+
+---
+
+## Subset Generation Patterns
+
+### 1. All Subsets (Power Set)
+
+Generate all possible subsets of a given set.
+
+```javascript
+function subsets(nums) {
+    const result = [];
+
+    function backtrack(start, currentSubset) {
+        // Every recursive call represents a valid subset
+        result.push([...currentSubset]);
+
+        // Try adding each remaining element
+        for (let i = start; i < nums.length; i++) {
+            currentSubset.push(nums[i]);
+            backtrack(i + 1, currentSubset);
+            currentSubset.pop(); // Backtrack
+        }
+    }
+
+    backtrack(0, []);
+    return result;
+}
+
+// Example: [1,2,3] → [[], [1], [2], [3], [1,2], [1,3], [2,3], [1,2,3]]
+```
+
+### 2. Subsets with Target Sum
+
+Find all subsets that sum to a target value.
+
+```javascript
+function subsetsWithTargetSum(nums, target) {
+    const result = [];
+
+    function backtrack(start, currentSubset, currentSum) {
+        if (currentSum === target) {
+            result.push([...currentSubset]);
+            return;
+        }
+
+        if (currentSum > target) return; // Pruning
+
+        for (let i = start; i < nums.length; i++) {
+            currentSubset.push(nums[i]);
+            backtrack(i + 1, currentSubset, currentSum + nums[i]);
+            currentSubset.pop();
+        }
+    }
+
+    backtrack(0, [], 0);
+    return result;
+}
+```
+
+### 3. Subsets with Duplicates
+
+Handle arrays with duplicate elements.
+
+```javascript
+function subsetsWithDup(nums) {
+    nums.sort(); // Important: sort to handle duplicates
+    const result = [];
+
+    function backtrack(start, currentSubset) {
+        result.push([...currentSubset]);
+
+        for (let i = start; i < nums.length; i++) {
+            // Skip duplicates: only use first occurrence at each level
+            if (i > start && nums[i] === nums[i - 1]) continue;
+
+            currentSubset.push(nums[i]);
+            backtrack(i + 1, currentSubset);
+            currentSubset.pop();
+        }
+    }
+
+    backtrack(0, []);
+    return result;
+}
+```
+
+---
+
+## Permutation Patterns
+
+### 1. All Permutations
+
+Generate all possible arrangements of elements.
+
+```javascript
+function permute(nums) {
+    const result = [];
+
+    function backtrack(currentPermutation, used) {
+        if (currentPermutation.length === nums.length) {
+            result.push([...currentPermutation]);
+            return;
+        }
+
+        for (let i = 0; i < nums.length; i++) {
+            if (used[i]) continue; // Skip used elements
+
+            // Make choice
+            currentPermutation.push(nums[i]);
+            used[i] = true;
+
+            backtrack(currentPermutation, used);
+
+            // Backtrack
+            currentPermutation.pop();
+            used[i] = false;
+        }
+    }
+
+    backtrack([], new Array(nums.length).fill(false));
+    return result;
+}
+```
+
+### 2. Permutations with Duplicates
+
+Handle arrays with duplicate elements.
+
+```javascript
+function permuteUnique(nums) {
+    nums.sort(); // Sort to group duplicates
+    const result = [];
+    const used = new Array(nums.length).fill(false);
+
+    function backtrack(currentPermutation) {
+        if (currentPermutation.length === nums.length) {
+            result.push([...currentPermutation]);
+            return;
+        }
+
+        for (let i = 0; i < nums.length; i++) {
+            if (used[i]) continue;
+
+            // Skip duplicates: use duplicate only if previous same element is used
+            if (i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) {
+                continue;
+            }
+
+            currentPermutation.push(nums[i]);
+            used[i] = true;
+
+            backtrack(currentPermutation);
+
+            currentPermutation.pop();
+            used[i] = false;
+        }
+    }
+
+    backtrack([]);
+    return result;
+}
+```
+
+### 3. Next Permutation
+
+Find lexicographically next permutation.
+
+```javascript
+function nextPermutation(nums) {
+    // Step 1: Find the largest index i such that nums[i] < nums[i + 1]
+    let i = nums.length - 2;
+    while (i >= 0 && nums[i] >= nums[i + 1]) {
+        i--;
+    }
+
+    if (i >= 0) {
+        // Step 2: Find the largest index j such that nums[i] < nums[j]
+        let j = nums.length - 1;
+        while (nums[j] <= nums[i]) {
+            j--;
+        }
+        // Step 3: Swap nums[i] and nums[j]
+        [nums[i], nums[j]] = [nums[j], nums[i]];
+    }
+
+    // Step 4: Reverse the suffix starting at nums[i + 1]
+    reverse(nums, i + 1);
+
+    function reverse(arr, start) {
+        let left = start, right = arr.length - 1;
+        while (left < right) {
+            [arr[left], arr[right]] = [arr[right], arr[left]];
+            left++;
+            right--;
+        }
+    }
+}
+```
+
+---
+
+## Combination Patterns
+
+### 1. Combinations of Size K
+
+Generate all combinations of k elements.
+
+```javascript
+function combine(n, k) {
+    const result = [];
+
+    function backtrack(start, currentCombination) {
+        if (currentCombination.length === k) {
+            result.push([...currentCombination]);
+            return;
+        }
+
+        // Optimization: only continue if we have enough elements left
+        for (let i = start; i <= n - (k - currentCombination.length) + 1; i++) {
+            currentCombination.push(i);
+            backtrack(i + 1, currentCombination);
+            currentCombination.pop();
+        }
+    }
+
+    backtrack(1, []);
+    return result;
+}
+```
+
+### 2. Combination Sum
+
+Find combinations that sum to target (elements can be reused).
+
+```javascript
+function combinationSum(candidates, target) {
+    const result = [];
+
+    function backtrack(start, currentCombination, currentSum) {
+        if (currentSum === target) {
+            result.push([...currentCombination]);
+            return;
+        }
+
+        if (currentSum > target) return; // Pruning
+
+        for (let i = start; i < candidates.length; i++) {
+            currentCombination.push(candidates[i]);
+            // Note: i (not i+1) because we can reuse the same element
+            backtrack(i, currentCombination, currentSum + candidates[i]);
+            currentCombination.pop();
+        }
+    }
+
+    backtrack(0, [], 0);
+    return result;
+}
+```
+
+### 3. Combination Sum II
+
+Each element can only be used once, handle duplicates.
+
+```javascript
+function combinationSum2(candidates, target) {
+    candidates.sort();
+    const result = [];
+
+    function backtrack(start, currentCombination, currentSum) {
+        if (currentSum === target) {
+            result.push([...currentCombination]);
+            return;
+        }
+
+        for (let i = start; i < candidates.length; i++) {
+            if (currentSum + candidates[i] > target) break; // Pruning
+
+            // Skip duplicates
+            if (i > start && candidates[i] === candidates[i - 1]) continue;
+
+            currentCombination.push(candidates[i]);
+            backtrack(i + 1, currentCombination, currentSum + candidates[i]);
+            currentCombination.pop();
+        }
+    }
+
+    backtrack(0, [], 0);
+    return result;
+}
+```
+
+---
+
+## Constraint Satisfaction Problems
+
+### 1. N-Queens Problem
+
+Place N queens on N×N chessboard so none attack each other.
+
+```javascript
+function solveNQueens(n) {
+    const result = [];
+    const board = Array(n).fill().map(() => Array(n).fill('.'));
+
+    function backtrack(row) {
+        if (row === n) {
+            result.push(board.map(row => row.join('')));
+            return;
+        }
+
+        for (let col = 0; col < n; col++) {
+            if (isValid(row, col)) {
+                board[row][col] = 'Q';
+                backtrack(row + 1);
+                board[row][col] = '.';
+            }
+        }
+    }
+
+    function isValid(row, col) {
+        // Check column
+        for (let i = 0; i < row; i++) {
+            if (board[i][col] === 'Q') return false;
+        }
+
+        // Check diagonal (top-left to bottom-right)
+        for (let i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--) {
+            if (board[i][j] === 'Q') return false;
+        }
+
+        // Check diagonal (top-right to bottom-left)
+        for (let i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++) {
+            if (board[i][j] === 'Q') return false;
+        }
+
+        return true;
+    }
+
+    backtrack(0);
+    return result;
+}
+```
+
+### 2. Sudoku Solver
+
+Solve 9×9 Sudoku puzzle.
+
+```javascript
+function solveSudoku(board) {
+    function backtrack() {
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                if (board[row][col] === '.') {
+                    for (let num = '1'; num <= '9'; num++) {
+                        if (isValid(board, row, col, num)) {
+                            board[row][col] = num;
+
+                            if (backtrack()) return true;
+
+                            board[row][col] = '.'; // Backtrack
+                        }
+                    }
+                    return false; // No valid number found
+                }
+            }
+        }
+        return true; // All cells filled
+    }
+
+    function isValid(board, row, col, num) {
+        // Check row
+        for (let j = 0; j < 9; j++) {
+            if (board[row][j] === num) return false;
+        }
+
+        // Check column
+        for (let i = 0; i < 9; i++) {
+            if (board[i][col] === num) return false;
+        }
+
+        // Check 3×3 box
+        const boxRow = Math.floor(row / 3) * 3;
+        const boxCol = Math.floor(col / 3) * 3;
+        for (let i = boxRow; i < boxRow + 3; i++) {
+            for (let j = boxCol; j < boxCol + 3; j++) {
+                if (board[i][j] === num) return false;
+            }
+        }
+
+        return true;
+    }
+
+    backtrack();
+}
+```
+
+---
+
+## Grid/Matrix Backtracking
+
+### 1. Word Search
+
+Find if word exists in 2D grid.
+
+```javascript
+function exist(board, word) {
+    const m = board.length;
+    const n = board[0].length;
+
+    function backtrack(row, col, index) {
+        if (index === word.length) return true;
+
+        if (row < 0 || row >= m || col < 0 || col >= n ||
+            board[row][col] !== word[index]) {
+            return false;
+        }
+
+        // Mark as visited
+        const temp = board[row][col];
+        board[row][col] = '#';
+
+        // Explore all 4 directions
+        const found = backtrack(row + 1, col, index + 1) ||
+                     backtrack(row - 1, col, index + 1) ||
+                     backtrack(row, col + 1, index + 1) ||
+                     backtrack(row, col - 1, index + 1);
+
+        // Backtrack: restore original value
+        board[row][col] = temp;
+
+        return found;
+    }
+
+    for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+            if (backtrack(i, j, 0)) return true;
+        }
+    }
+
+    return false;
+}
+```
+
+### 2. Number of Islands
+
+Count connected components in grid.
+
+```javascript
+function numIslands(grid) {
+    if (!grid || grid.length === 0) return 0;
+
+    const m = grid.length;
+    const n = grid[0].length;
+    let count = 0;
+
+    function dfs(i, j) {
+        if (i < 0 || i >= m || j < 0 || j >= n || grid[i][j] !== '1') {
+            return;
+        }
+
+        grid[i][j] = '0'; // Mark as visited
+
+        // Explore all 4 directions
+        dfs(i + 1, j);
+        dfs(i - 1, j);
+        dfs(i, j + 1);
+        dfs(i, j - 1);
+    }
+
+    for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+            if (grid[i][j] === '1') {
+                count++;
+                dfs(i, j);
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+### 3. Rat in Maze
+
+Find path from source to destination.
+
+```javascript
+function ratInMaze(maze) {
+    const n = maze.length;
+    const solution = Array(n).fill().map(() => Array(n).fill(0));
+
+    function isSafe(x, y) {
+        return x >= 0 && x < n && y >= 0 && y < n && maze[x][y] === 1;
+    }
+
+    function backtrack(x, y) {
+        // Base case: reached destination
+        if (x === n - 1 && y === n - 1 && maze[x][y] === 1) {
+            solution[x][y] = 1;
+            return true;
+        }
+
+        if (isSafe(x, y)) {
+            solution[x][y] = 1;
+
+            // Move right
+            if (backtrack(x, y + 1)) return true;
+
+            // Move down
+            if (backtrack(x + 1, y)) return true;
+
+            // Backtrack
+            solution[x][y] = 0;
+        }
+
+        return false;
+    }
+
+    if (backtrack(0, 0)) {
+        return solution;
+    }
+
+    return null; // No solution
+}
+```
+
+---
+
+## String Backtracking
+
+### 1. Generate Parentheses
+
+Generate all valid parentheses combinations.
+
+```javascript
+function generateParenthesis(n) {
+    const result = [];
+
+    function backtrack(current, open, close) {
+        if (current.length === 2 * n) {
+            result.push(current);
+            return;
+        }
+
+        // Add opening parenthesis if we haven't used all
+        if (open < n) {
+            backtrack(current + '(', open + 1, close);
+        }
+
+        // Add closing parenthesis if it won't make invalid combination
+        if (close < open) {
+            backtrack(current + ')', open, close + 1);
+        }
+    }
+
+    backtrack('', 0, 0);
+    return result;
+}
+```
+
+### 2. Letter Combinations of Phone Number
+
+Map phone digits to letters.
+
+```javascript
+function letterCombinations(digits) {
+    if (!digits) return [];
+
+    const digitMap = {
+        '2': 'abc', '3': 'def', '4': 'ghi', '5': 'jkl',
+        '6': 'mno', '7': 'pqrs', '8': 'tuv', '9': 'wxyz'
+    };
+
+    const result = [];
+
+    function backtrack(index, current) {
+        if (index === digits.length) {
+            result.push(current);
+            return;
+        }
+
+        const letters = digitMap[digits[index]];
+        for (let letter of letters) {
+            backtrack(index + 1, current + letter);
+        }
+    }
+
+    backtrack(0, '');
+    return result;
+}
+```
+
+### 3. Palindrome Partitioning
+
+Partition string into palindromic substrings.
+
+```javascript
+function partition(s) {
+    const result = [];
+
+    function isPalindrome(str, left, right) {
+        while (left < right) {
+            if (str[left] !== str[right]) return false;
+            left++;
+            right--;
+        }
+        return true;
+    }
+
+    function backtrack(start, currentPartition) {
+        if (start === s.length) {
+            result.push([...currentPartition]);
+            return;
+        }
+
+        for (let end = start; end < s.length; end++) {
+            if (isPalindrome(s, start, end)) {
+                currentPartition.push(s.substring(start, end + 1));
+                backtrack(end + 1, currentPartition);
+                currentPartition.pop();
+            }
+        }
+    }
+
+    backtrack(0, []);
+    return result;
+}
+```
+
+---
+
+## Tree Path Backtracking
+
+### 1. Binary Tree Paths
+
+Find all root-to-leaf paths.
+
+```javascript
+function binaryTreePaths(root) {
+    const result = [];
+
+    function backtrack(node, currentPath) {
+        if (!node) return;
+
+        currentPath.push(node.val);
+
+        // If leaf node, add path to result
+        if (!node.left && !node.right) {
+            result.push(currentPath.join('->'));
+        } else {
+            backtrack(node.left, currentPath);
+            backtrack(node.right, currentPath);
+        }
+
+        currentPath.pop(); // Backtrack
+    }
+
+    backtrack(root, []);
+    return result;
+}
+```
+
+### 2. Path Sum II
+
+Find all paths with given sum.
+
+```javascript
+function pathSum(root, targetSum) {
+    const result = [];
+
+    function backtrack(node, currentPath, currentSum) {
+        if (!node) return;
+
+        currentPath.push(node.val);
+        currentSum += node.val;
+
+        // If leaf and sum matches target
+        if (!node.left && !node.right && currentSum === targetSum) {
+            result.push([...currentPath]);
+        } else {
+            backtrack(node.left, currentPath, currentSum);
+            backtrack(node.right, currentPath, currentSum);
+        }
+
+        currentPath.pop(); // Backtrack
+    }
+
+    backtrack(root, [], 0);
+    return result;
+}
+```
+
+---
+
+## Game Theory Backtracking
+
+### 1. Tic-Tac-Toe Winner
+
+Check if current player can win.
+
+```javascript
+function canWin(board) {
+    function getValidMoves() {
+        const moves = [];
+        for (let i = 0; i < board.length; i++) {
+            if (board[i] === ' ') moves.push(i);
+        }
+        return moves;
+    }
+
+    function isWinning(board) {
+        const lines = [
+            [0,1,2], [3,4,5], [6,7,8], // rows
+            [0,3,6], [1,4,7], [2,5,8], // columns
+            [0,4,8], [2,4,6]           // diagonals
+        ];
+
+        for (let [a,b,c] of lines) {
+            if (board[a] === board[b] && board[b] === board[c] && board[a] !== ' ') {
+                return board[a];
+            }
+        }
+        return null;
+    }
+
+    function backtrack(isMaxPlayer) {
+        const winner = isWinning(board);
+        if (winner === 'X') return 1;   // Max player wins
+        if (winner === 'O') return -1;  // Min player wins
+
+        const validMoves = getValidMoves();
+        if (validMoves.length === 0) return 0; // Draw
+
+        if (isMaxPlayer) {
+            let maxScore = -Infinity;
+            for (let move of validMoves) {
+                board[move] = 'X';
+                const score = backtrack(false);
+                board[move] = ' ';
+                maxScore = Math.max(maxScore, score);
+            }
+            return maxScore;
+        } else {
+            let minScore = Infinity;
+            for (let move of validMoves) {
+                board[move] = 'O';
+                const score = backtrack(true);
+                board[move] = ' ';
+                minScore = Math.min(minScore, score);
+            }
+            return minScore;
+        }
+    }
+
+    return backtrack(true) > 0;
+}
+```
+
+---
+
+## Optimization Techniques
+
+### 1. Memoization
+
+Cache results to avoid recomputation.
+
+```javascript
+function uniquePathsWithMemo(m, n, obstacles) {
+    const memo = new Map();
+
+    function backtrack(row, col) {
+        if (row >= m || col >= n || obstacles[row][col] === 1) {
+            return 0;
+        }
+
+        if (row === m - 1 && col === n - 1) {
+            return 1;
+        }
+
+        const key = `${row},${col}`;
+        if (memo.has(key)) {
+            return memo.get(key);
+        }
+
+        const paths = backtrack(row + 1, col) + backtrack(row, col + 1);
+        memo.set(key, paths);
+
+        return paths;
+    }
+
+    return backtrack(0, 0);
+}
+```
+
+### 2. Early Termination
+
+Stop search when optimal solution found.
+
+```javascript
+function findFirstSolution(candidates, target) {
+    function backtrack(start, current, sum) {
+        if (sum === target) {
+            return [...current]; // Return first valid solution
+        }
+
+        if (sum > target) return null;
+
+        for (let i = start; i < candidates.length; i++) {
+            current.push(candidates[i]);
+
+            const result = backtrack(i + 1, current, sum + candidates[i]);
+            if (result) return result; // Early termination
+
+            current.pop();
+        }
+
+        return null;
+    }
+
+    return backtrack(0, [], 0);
+}
+```
+
+### 3. Pruning Strategies
+
+Eliminate invalid branches early.
+
+```javascript
+function combinationSumOptimized(candidates, target) {
+    candidates.sort(); // Sort for pruning
+    const result = [];
+
+    function backtrack(start, current, sum) {
+        if (sum === target) {
+            result.push([...current]);
+            return;
+        }
+
+        for (let i = start; i < candidates.length; i++) {
+            // Pruning: if current candidate exceeds target, break
+            if (sum + candidates[i] > target) break;
+
+            current.push(candidates[i]);
+            backtrack(i, current, sum + candidates[i]);
+            current.pop();
+        }
+    }
+
+    backtrack(0, [], 0);
+    return result;
+}
+```
+
+---
+
+## Common Pitfalls & Best Practices
+
+### ❌ Common Mistakes
+
+1. **Forgetting to Backtrack**
+```javascript
+// Wrong: Missing backtrack
+function wrong(nums) {
+    const result = [];
+    const current = [];
+
+    function dfs(index) {
+        if (index === nums.length) {
+            result.push(current); // BUG: Reference to same array
+            return;
+        }
+
+        current.push(nums[index]);
+        dfs(index + 1);
+        // Missing: current.pop();
+    }
+}
+
+// Correct: Proper backtracking
+function correct(nums) {
+    const result = [];
+    const current = [];
+
+    function dfs(index) {
+        if (index === nums.length) {
+            result.push([...current]); // Create copy
+            return;
+        }
+
+        current.push(nums[index]);
+        dfs(index + 1);
+        current.pop(); // Backtrack
+    }
+}
+```
+
+2. **Infinite Recursion**
+```javascript
+// Wrong: No base case or improper progression
+function infiniteRecursion(nums) {
+    function backtrack(current) {
+        // Missing base case
+        for (let num of nums) {
+            current.push(num);
+            backtrack(current); // Same state, infinite loop
+            current.pop();
+        }
+    }
+}
+```
+
+3. **Not Handling Duplicates Properly**
+```javascript
+// Wrong: Doesn't skip duplicates
+function wrongDuplicates(nums) {
+    const result = [];
+
+    function backtrack(start, current) {
+        result.push([...current]);
+
+        for (let i = start; i < nums.length; i++) {
+            current.push(nums[i]);
+            backtrack(i + 1, current);
+            current.pop();
+        }
+    }
+
+    backtrack(0, []);
+    return result; // Will have duplicates
+}
+```
+
+### ✅ Best Practices
+
+1. **Always Make Copies When Storing Results**
+```javascript
+result.push([...currentSolution]); // Good
+result.push(currentSolution);       // Bad - stores reference
+```
+
+2. **Use Early Pruning**
+```javascript
+if (currentSum > target) return; // Stop early if invalid
+```
+
+3. **Sort Arrays When Dealing with Duplicates**
+```javascript
+nums.sort(); // Helps group duplicates together
+```
+
+4. **Use Clear Variable Names**
+```javascript
+function backtrack(startIndex, currentCombination, remainingSum) {
+    // Clear parameter names make code readable
+}
+```
+
+5. **Add Comments for Complex Logic**
+```javascript
+// Skip duplicates: only use first occurrence at each level
+if (i > start && nums[i] === nums[i - 1]) continue;
+```
+
+### Time Complexity Analysis
+
+| Problem Type | Time Complexity | Space Complexity |
+|-------------|----------------|------------------|
+| All Subsets | O(2^n) | O(n) |
+| All Permutations | O(n! × n) | O(n) |
+| Combinations | O(C(n,k)) | O(k) |
+| N-Queens | O(N!) | O(N) |
+| Sudoku | O(9^(n×n)) | O(n×n) |
+| Word Search | O(4^L) where L is word length | O(L) |
+
+### Memory Optimization Tips
+
+1. **Reuse Data Structures**
+```javascript
+const used = new Array(nums.length).fill(false);
+// Reuse same boolean array instead of creating new ones
+```
+
+2. **Use Bit Manipulation for States**
+```javascript
+function backtrackWithBitmask(nums) {
+    function dfs(mask, current) {
+        if (mask === (1 << nums.length) - 1) {
+            // All elements used
+            return [...current];
+        }
+
+        for (let i = 0; i < nums.length; i++) {
+            if (mask & (1 << i)) continue; // Already used
+
+            current.push(nums[i]);
+            const result = dfs(mask | (1 << i), current);
+            if (result) return result;
+            current.pop();
+        }
+    }
+
+    return dfs(0, []);
+}
+```
+
+3. **In-Place Modifications**
+```javascript
+function wordSearchOptimized(board, word) {
+    function dfs(i, j, k) {
+        if (k === word.length) return true;
+        if (i < 0 || i >= board.length || j < 0 || j >= board[0].length) return false;
+        if (board[i][j] !== word[k]) return false;
+
+        // In-place modification instead of separate visited array
+        const temp = board[i][j];
+        board[i][j] = '#';
+
+        const found = dfs(i+1,j,k+1) || dfs(i-1,j,k+1) || dfs(i,j+1,k+1) || dfs(i,j-1,k+1);
+
+        board[i][j] = temp; // Restore
+        return found;
+    }
+}
+```
+
+---
+
+## Advanced Patterns & Techniques
+
+### 1. Multi-Dimensional Backtracking
+
+Solve problems with multiple constraints simultaneously.
+
+```javascript
+function wordBreakII(s, wordDict) {
+    const wordSet = new Set(wordDict);
+    const result = [];
+
+    function backtrack(start, currentSentence) {
+        if (start === s.length) {
+            result.push(currentSentence.join(' '));
+            return;
+        }
+
+        for (let end = start + 1; end <= s.length; end++) {
+            const word = s.slice(start, end);
+            if (wordSet.has(word)) {
+                currentSentence.push(word);
+                backtrack(end, currentSentence);
+                currentSentence.pop();
+            }
+        }
+    }
+
+    backtrack(0, []);
+    return result;
+}
+
+// Expression Add Operators
+function addOperators(num, target) {
+    const result = [];
+
+    function backtrack(index, expression, value, prev) {
+        if (index === num.length) {
+            if (value === target) {
+                result.push(expression);
+            }
+            return;
+        }
+
+        for (let i = index; i < num.length; i++) {
+            const currentStr = num.slice(index, i + 1);
+            const currentNum = parseInt(currentStr);
+
+            // Skip numbers with leading zeros (except single digit)
+            if (currentStr.length > 1 && currentStr[0] === '0') break;
+
+            if (index === 0) {
+                // First number
+                backtrack(i + 1, currentStr, currentNum, currentNum);
+            } else {
+                // Try addition
+                backtrack(i + 1, expression + '+' + currentStr, value + currentNum, currentNum);
+
+                // Try subtraction
+                backtrack(i + 1, expression + '-' + currentStr, value - currentNum, -currentNum);
+
+                // Try multiplication
+                backtrack(i + 1, expression + '*' + currentStr,
+                         value - prev + prev * currentNum, prev * currentNum);
+            }
+        }
+    }
+
+    backtrack(0, '', 0, 0);
+    return result;
+}
+```
+
+### 2. Backtracking with State Compression
+
+Use efficient state representation for complex problems.
+
+```javascript
+function shortestPathVisitingAllNodes(graph) {
+    const n = graph.length;
+    const queue = [];
+    const visited = new Set();
+
+    // Initialize: start from each node
+    for (let i = 0; i < n; i++) {
+        const state = 1 << i; // Visited only node i
+        queue.push([i, state, 0]); // [node, visitedMask, distance]
+        visited.add(`${i},${state}`);
+    }
+
+    const targetMask = (1 << n) - 1; // All nodes visited
+
+    while (queue.length > 0) {
+        const [node, visitedMask, dist] = queue.shift();
+
+        if (visitedMask === targetMask) {
+            return dist;
+        }
+
+        for (let neighbor of graph[node]) {
+            const newMask = visitedMask | (1 << neighbor);
+            const stateKey = `${neighbor},${newMask}`;
+
+            if (!visited.has(stateKey)) {
+                visited.add(stateKey);
+                queue.push([neighbor, newMask, dist + 1]);
+            }
+        }
+    }
+
+    return -1;
+}
+```
+
+### 3. Iterative Backtracking
+
+Convert recursive solutions to iterative for better space complexity.
+
+```javascript
+function permutationsIterative(nums) {
+    const result = [];
+    const stack = [{ permutation: [], used: new Array(nums.length).fill(false) }];
+
+    while (stack.length > 0) {
+        const { permutation, used } = stack.pop();
+
+        if (permutation.length === nums.length) {
+            result.push([...permutation]);
+            continue;
+        }
+
+        for (let i = 0; i < nums.length; i++) {
+            if (used[i]) continue;
+
+            const newPermutation = [...permutation, nums[i]];
+            const newUsed = [...used];
+            newUsed[i] = true;
+
+            stack.push({ permutation: newPermutation, used: newUsed });
+        }
+    }
+
+    return result;
+}
+```
+
+### 4. Parallel Backtracking Concepts
+
+Understanding how backtracking can be parallelized.
+
+```javascript
+function parallelSubsets(nums) {
+    // Conceptual: In practice, use Web Workers or similar
+    const workers = [];
+    const results = [];
+
+    // Divide work among workers based on first choice
+    for (let i = 0; i < nums.length; i++) {
+        workers.push({
+            startsWith: nums[i],
+            remainingNums: nums.slice(i + 1),
+            task: 'generateSubsetsStartingWith'
+        });
+    }
+
+    // Each worker processes subsets starting with specific element
+    function generateSubsetsStartingWith(startElement, remaining) {
+        const localResults = [[]]; // Empty subset
+
+        function backtrack(start, current) {
+            localResults.push([...current]);
+
+            for (let j = start; j < remaining.length; j++) {
+                current.push(remaining[j]);
+                backtrack(j + 1, current);
+                current.pop();
+            }
+        }
+
+        // Generate subsets starting with startElement
+        backtrack(0, [startElement]);
+        return localResults;
+    }
+
+    return results.flat();
+}
+```
+
+---
+
+## Problem-Specific Optimizations
+
+### 1. Constraint-Specific Pruning
+
+```javascript
+function combinationSumWithConstraints(candidates, target, maxCount) {
+    candidates.sort();
+    const result = [];
+
+    function backtrack(start, current, sum, count) {
+        if (sum === target && count <= maxCount) {
+            result.push([...current]);
+            return;
+        }
+
+        // Pruning conditions
+        if (sum > target || count > maxCount) return;
+
+        for (let i = start; i < candidates.length; i++) {
+            // Skip if remaining candidates can't reach target
+            if (sum + candidates[i] * (maxCount - count) < target) continue;
+
+            // Skip if single candidate exceeds remaining target
+            if (sum + candidates[i] > target) break;
+
+            current.push(candidates[i]);
+            backtrack(i, current, sum + candidates[i], count + 1);
+            current.pop();
+        }
+    }
+
+    backtrack(0, [], 0, 0);
+    return result;
+}
+```
+
+### 2. Dynamic Constraint Updates
+
+```javascript
+function solveConstraintSatisfaction(variables, domains, constraints) {
+    function backtrack(assignment) {
+        if (Object.keys(assignment).length === variables.length) {
+            return assignment; // Solution found
+        }
+
+        const unassigned = variables.filter(v => !(v in assignment));
+        const variable = selectUnassignedVariable(unassigned, assignment);
+
+        for (let value of orderDomainValues(variable, assignment)) {
+            if (isConsistent(variable, value, assignment)) {
+                assignment[variable] = value;
+
+                // Update constraints dynamically
+                const inferences = inferenceStep(variable, value, assignment);
+                if (inferences !== null) {
+                    Object.assign(assignment, inferences);
+
+                    const result = backtrack(assignment);
+                    if (result) return result;
+
+                    // Remove inferences on backtrack
+                    for (let key of Object.keys(inferences)) {
+                        delete assignment[key];
+                    }
+                }
+
+                delete assignment[variable];
+            }
+        }
+
+        return null;
+    }
+
+    function selectUnassignedVariable(unassigned, assignment) {
+        // Most constrained variable heuristic
+        return unassigned.reduce((best, variable) => {
+            const currentDomain = getDomainSize(variable, assignment);
+            const bestDomain = getDomainSize(best, assignment);
+            return currentDomain < bestDomain ? variable : best;
+        });
+    }
+
+    function orderDomainValues(variable, assignment) {
+        // Least constraining value heuristic
+        return domains[variable].sort((a, b) => {
+            const aConstraints = countConstraints(variable, a, assignment);
+            const bConstraints = countConstraints(variable, b, assignment);
+            return aConstraints - bConstraints;
+        });
+    }
+
+    return backtrack({});
+}
+```
+
+---
+
+## Testing & Debugging Backtracking
+
+### 1. Debug Visualization
+
+```javascript
+function debugBacktrack(nums) {
+    const result = [];
+    let callCount = 0;
+    let maxDepth = 0;
+
+    function backtrack(current, depth = 0) {
+        callCount++;
+        maxDepth = Math.max(maxDepth, depth);
+
+        console.log(`${'  '.repeat(depth)}Depth ${depth}: ${JSON.stringify(current)}`);
+
+        if (current.length === nums.length) {
+            console.log(`${'  '.repeat(depth)}✓ Solution found: ${JSON.stringify(current)}`);
+            result.push([...current]);
+            return;
+        }
+
+        for (let num of nums) {
+            if (current.includes(num)) continue;
+
+            console.log(`${'  '.repeat(depth)}→ Trying: ${num}`);
+            current.push(num);
+            backtrack(current, depth + 1);
+            current.pop();
+            console.log(`${'  '.repeat(depth)}← Backtrack from: ${num}`);
+        }
+    }
+
+    backtrack([]);
+    console.log(`\nTotal calls: ${callCount}, Max depth: ${maxDepth}`);
+    return result;
+}
+```
+
+### 2. Performance Monitoring
+
+```javascript
+class BacktrackProfiler {
+    constructor() {
+        this.stats = {
+            totalCalls: 0,
+            solutionsFound: 0,
+            pruningCount: 0,
+            maxDepth: 0,
+            startTime: null
+        };
+    }
+
+    start() {
+        this.stats.startTime = Date.now();
+    }
+
+    recordCall(depth) {
+        this.stats.totalCalls++;
+        this.stats.maxDepth = Math.max(this.stats.maxDepth, depth);
+    }
+
+    recordSolution() {
+        this.stats.solutionsFound++;
+    }
+
+    recordPruning() {
+        this.stats.pruningCount++;
+    }
+
+    getReport() {
+        const duration = Date.now() - this.stats.startTime;
+        return {
+            ...this.stats,
+            duration: `${duration}ms`,
+            callsPerMs: (this.stats.totalCalls / duration).toFixed(2),
+            pruningEfficiency: (this.stats.pruningCount / this.stats.totalCalls * 100).toFixed(1) + '%'
+        };
+    }
+}
+
+// Usage example
+function profiledBacktrack(nums) {
+    const profiler = new BacktrackProfiler();
+    const result = [];
+
+    profiler.start();
+
+    function backtrack(current, depth = 0) {
+        profiler.recordCall(depth);
+
+        if (current.length === nums.length) {
+            profiler.recordSolution();
+            result.push([...current]);
+            return;
+        }
+
+        for (let num of nums) {
+            if (current.includes(num)) {
+                profiler.recordPruning();
+                continue;
+            }
+
+            current.push(num);
+            backtrack(current, depth + 1);
+            current.pop();
+        }
+    }
+
+    backtrack([]);
+
+    console.log('Performance Report:', profiler.getReport());
+    return result;
+}
+```
+
+---
+
+## Real-World Applications
+
+### 1. Schedule Optimization
+
+```javascript
+function scheduleOptimization(tasks, resources, constraints) {
+    const schedule = new Map();
+
+    function backtrack(taskIndex) {
+        if (taskIndex === tasks.length) {
+            return validateSchedule(schedule);
+        }
+
+        const task = tasks[taskIndex];
+
+        for (let resource of resources) {
+            for (let timeSlot of getAvailableSlots(resource, task.duration)) {
+                if (satisfiesConstraints(task, resource, timeSlot, constraints)) {
+                    schedule.set(task.id, { resource, timeSlot });
+
+                    if (backtrack(taskIndex + 1)) {
+                        return true;
+                    }
+
+                    schedule.delete(task.id);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    return backtrack(0) ? schedule : null;
+}
+```
+
+### 2. Configuration Management
+
+```javascript
+function generateConfigurations(components, dependencies, requirements) {
+    const validConfigs = [];
+
+    function backtrack(configIndex, currentConfig) {
+        if (configIndex === components.length) {
+            if (meetsAllRequirements(currentConfig, requirements)) {
+                validConfigs.push({ ...currentConfig });
+            }
+            return;
+        }
+
+        const component = components[configIndex];
+
+        for (let option of component.options) {
+            if (isCompatible(option, currentConfig, dependencies)) {
+                currentConfig[component.name] = option;
+                backtrack(configIndex + 1, currentConfig);
+                delete currentConfig[component.name];
+            }
+        }
+    }
+
+    backtrack(0, {});
+    return validConfigs;
+}
+```
+
+---
+
+## Quick Reference
+
+### Common Backtracking Patterns
+
+| Pattern | Template | Use Case |
+|---------|----------|----------|
+| **Subsets** | `for i in start..n` | Generate all subsets |
+| **Permutations** | `for i in 0..n` with `used[]` | All arrangements |
+| **Combinations** | `for i in start..n` with size limit | Fixed-size selections |
+| **Constraints** | Early termination on invalid | Sudoku, N-Queens |
+| **Paths** | DFS with visited tracking | Tree/Graph paths |
+| **Partitioning** | Try all valid cuts | String partitioning |
+
+### Optimization Checklist
+
+- ✅ **Sort input** when dealing with duplicates
+- ✅ **Early pruning** on constraint violations
+- ✅ **Memoization** for overlapping subproblems
+- ✅ **Bit manipulation** for state compression
+- ✅ **In-place modifications** to save space
+- ✅ **Iterative conversion** for deep recursion
+- ✅ **Profile and measure** performance bottlenecks
+
+### Time Complexity Quick Reference
+
+```
+Subsets:       O(2^n)        - Each element: include or exclude
+Permutations:  O(n!)         - n choices for first, (n-1) for second, etc.
+Combinations:  O(C(n,k))     - n choose k combinations
+N-Queens:      O(N!)         - Exponential with heavy pruning
+Sudoku:        O(9^(empty))  - 9 choices per empty cell
+```

@@ -1,0 +1,5783 @@
+# Complete Recursion
+
+A comprehensive guide to recursion algorithms, patterns, and all types of recursive techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Core Recursion Concepts](#core-recursion-concepts)
+2. [Types of Recursion](#types-of-recursion)
+3. [The Recursion Template](#the-recursion-template)
+4. [Linear Recursion Patterns](#linear-recursion-patterns)
+5. [Binary Recursion Patterns](#binary-recursion-patterns)
+6. [Multiple Recursion Patterns](#multiple-recursion-patterns)
+7. [Tail Recursion Optimization](#tail-recursion-optimization)
+8. [Mutual Recursion Patterns](#mutual-recursion-patterns)
+9. [Indirect Recursion](#indirect-recursion)
+10. [Nested Recursion](#nested-recursion)
+11. [Tree Recursion Patterns](#tree-recursion-patterns)
+12. [Mathematical Recursion](#mathematical-recursion)
+13. [String Recursion Patterns](#string-recursion-patterns)
+14. [Array & List Recursion](#array--list-recursion)
+15. [Divide and Conquer](#divide-and-conquer)
+16. [Dynamic Programming with Recursion](#dynamic-programming-with-recursion)
+17. [Recursion Optimization Techniques](#recursion-optimization-techniques)
+18. [Converting Recursion to Iteration](#converting-recursion-to-iteration)
+19. [Common Pitfalls & Debugging](#common-pitfalls--debugging)
+20. [Real-World Applications](#real-world-applications)
+
+---
+
+## Core Recursion Concepts
+
+**Recursion** is a problem-solving technique where a function calls itself to solve smaller instances of the same problem.
+
+### Essential Components:
+1. **Base Case**: Condition to stop recursion
+2. **Recursive Case**: Function calls itself with modified parameters
+3. **Progress**: Each call moves toward base case
+4. **Return**: Combines results from recursive calls
+
+### When to Use Recursion:
+- Problem can be broken into similar smaller subproblems
+- Natural recursive structure (trees, fractals)
+- Mathematical sequences and formulas
+- Divide and conquer algorithms
+- Exploring all possibilities (backtracking)
+
+---
+
+## Types of Recursion
+
+### 1. **Linear Recursion**
+- Function makes **one recursive call** per execution
+- Forms a linear chain of calls
+
+### 2. **Binary Recursion**
+- Function makes **two recursive calls** per execution
+- Common in binary trees and divide-and-conquer
+
+### 3. **Multiple Recursion**
+- Function makes **multiple recursive calls** (more than 2)
+- Seen in tree traversals with multiple children
+
+### 4. **Tail Recursion**
+- Recursive call is the **last operation** in function
+- Can be optimized to iteration by compilers
+
+### 5. **Head Recursion**
+- Recursive call is **before** other operations
+- Processing happens on the way back
+
+### 6. **Mutual Recursion**
+- **Two or more functions** call each other recursively
+- Creates interdependent recursive relationships
+
+### 7. **Indirect Recursion**
+- Function A calls function B, which eventually calls A
+- More complex call chain than direct recursion
+
+### 8. **Nested Recursion**
+- Recursive call uses **another recursive call as parameter**
+- Very complex, like Ackermann function
+
+---
+
+## The Recursion Template
+
+### Basic Recursion Template
+
+```javascript
+function recursiveFunction(parameters) {
+    // Base case(s) - Stop condition
+    if (baseCondition(parameters)) {
+        return baseValue;
+    }
+
+    // Recursive case - Self-call with modified parameters
+    return combineResults(
+        recursiveFunction(modifyParameters(parameters)),
+        // possibly more recursive calls
+        otherProcessing(parameters)
+    );
+}
+```
+
+### Generic Recursion Framework
+
+```javascript
+class RecursionSolver {
+    constructor() {
+        this.memo = new Map(); // For memoization
+        this.callStack = [];   // For debugging
+    }
+
+    solve(problem, enableMemo = false) {
+        if (enableMemo) {
+            return this.solveWithMemo(problem);
+        }
+        return this.recursiveSolve(problem);
+    }
+
+    recursiveSolve(problem) {
+        // Add to call stack for debugging
+        this.callStack.push(problem);
+
+        // Base case check
+        if (this.isBaseCase(problem)) {
+            this.callStack.pop();
+            return this.getBaseValue(problem);
+        }
+
+        // Break into subproblems
+        const subproblems = this.decompose(problem);
+        const results = [];
+
+        // Solve each subproblem
+        for (let subproblem of subproblems) {
+            results.push(this.recursiveSolve(subproblem));
+        }
+
+        // Combine results
+        const finalResult = this.combine(results, problem);
+
+        this.callStack.pop();
+        return finalResult;
+    }
+
+    solveWithMemo(problem) {
+        const key = this.getKey(problem);
+        if (this.memo.has(key)) {
+            return this.memo.get(key);
+        }
+
+        const result = this.recursiveSolve(problem);
+        this.memo.set(key, result);
+        return result;
+    }
+
+    // Abstract methods to override
+    isBaseCase(problem) { throw new Error("Override this method"); }
+    getBaseValue(problem) { throw new Error("Override this method"); }
+    decompose(problem) { throw new Error("Override this method"); }
+    combine(results, problem) { throw new Error("Override this method"); }
+    getKey(problem) { return JSON.stringify(problem); }
+}
+```
+
+---
+
+## Linear Recursion Patterns
+
+Linear recursion makes exactly **one recursive call** per execution.
+
+### 1. Simple Linear Recursion - Factorial
+
+```javascript
+function factorial(n) {
+    // Base case
+    if (n <= 1) return 1;
+
+    // Recursive case: one recursive call
+    return n * factorial(n - 1);
+}
+
+// Call trace for factorial(4):
+// factorial(4) = 4 * factorial(3)
+// factorial(3) = 3 * factorial(2)
+// factorial(2) = 2 * factorial(1)
+// factorial(1) = 1
+// Result: 4 * 3 * 2 * 1 = 24
+```
+
+### 2. Linear Search in Array
+
+```javascript
+function linearSearchRecursive(arr, target, index = 0) {
+    // Base case: not found
+    if (index >= arr.length) return -1;
+
+    // Base case: found
+    if (arr[index] === target) return index;
+
+    // Recursive case: search in rest of array
+    return linearSearchRecursive(arr, target, index + 1);
+}
+```
+
+### 3. Sum of Array Elements
+
+```javascript
+function arraySum(arr, index = 0) {
+    // Base case
+    if (index >= arr.length) return 0;
+
+    // Recursive case
+    return arr[index] + arraySum(arr, index + 1);
+}
+```
+
+### 4. Linked List Operations
+
+```javascript
+class ListNode {
+    constructor(val, next = null) {
+        this.val = val;
+        this.next = next;
+    }
+}
+
+function linkedListLength(head) {
+    // Base case
+    if (!head) return 0;
+
+    // Recursive case
+    return 1 + linkedListLength(head.next);
+}
+
+function linkedListSearch(head, target) {
+    // Base case: not found
+    if (!head) return null;
+
+    // Base case: found
+    if (head.val === target) return head;
+
+    // Recursive case
+    return linkedListSearch(head.next, target);
+}
+
+function reverseLinkedList(head) {
+    // Base case
+    if (!head || !head.next) return head;
+
+    // Recursive case
+    const newHead = reverseLinkedList(head.next);
+    head.next.next = head;
+    head.next = null;
+
+    return newHead;
+}
+```
+
+### 5. String Processing
+
+```javascript
+function isPalindrome(str, left = 0, right = str.length - 1) {
+    // Base case
+    if (left >= right) return true;
+
+    // Check current characters and recurse
+    if (str[left] !== str[right]) return false;
+    return isPalindrome(str, left + 1, right - 1);
+}
+
+function reverseString(str) {
+    // Base case
+    if (str.length <= 1) return str;
+
+    // Recursive case
+    return str[str.length - 1] + reverseString(str.slice(0, -1));
+}
+```
+
+---
+
+## Binary Recursion Patterns
+
+Binary recursion makes exactly **two recursive calls** per execution.
+
+### 1. Classic Binary Recursion - Fibonacci
+
+```javascript
+function fibonacci(n) {
+    // Base cases
+    if (n <= 1) return n;
+
+    // Binary recursive case
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Optimized with memoization
+function fibonacciMemo(n, memo = {}) {
+    if (n in memo) return memo[n];
+    if (n <= 1) return n;
+
+    memo[n] = fibonacciMemo(n - 1, memo) + fibonacciMemo(n - 2, memo);
+    return memo[n];
+}
+```
+
+### 2. Binary Tree Operations
+
+```javascript
+class TreeNode {
+    constructor(val, left = null, right = null) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// Tree height/depth
+function maxDepth(root) {
+    // Base case
+    if (!root) return 0;
+
+    // Binary recursive case
+    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+}
+
+// Count total nodes
+function countNodes(root) {
+    if (!root) return 0;
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+
+// Check if tree is balanced
+function isBalanced(root) {
+    function checkHeight(node) {
+        if (!node) return 0;
+
+        const leftHeight = checkHeight(node.left);
+        if (leftHeight === -1) return -1;
+
+        const rightHeight = checkHeight(node.right);
+        if (rightHeight === -1) return -1;
+
+        if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+
+    return checkHeight(root) !== -1;
+}
+
+// Binary tree paths
+function binaryTreePaths(root, currentPath = "", paths = []) {
+    if (!root) return paths;
+
+    currentPath += root.val;
+
+    // Leaf node
+    if (!root.left && !root.right) {
+        paths.push(currentPath);
+    } else {
+        // Binary recursion
+        if (root.left) binaryTreePaths(root.left, currentPath + "->", paths);
+        if (root.right) binaryTreePaths(root.right, currentPath + "->", paths);
+    }
+
+    return paths;
+}
+```
+
+### 3. Binary Search
+
+```javascript
+function binarySearch(arr, target, left = 0, right = arr.length - 1) {
+    // Base case: not found
+    if (left > right) return -1;
+
+    const mid = Math.floor((left + right) / 2);
+
+    // Base case: found
+    if (arr[mid] === target) return mid;
+
+    // Binary recursive cases
+    if (target < arr[mid]) {
+        return binarySearch(arr, target, left, mid - 1);
+    } else {
+        return binarySearch(arr, target, mid + 1, right);
+    }
+}
+```
+
+### 4. Merge Sort (Divide and Conquer)
+
+```javascript
+function mergeSort(arr) {
+    // Base case
+    if (arr.length <= 1) return arr;
+
+    // Divide
+    const mid = Math.floor(arr.length / 2);
+    const left = arr.slice(0, mid);
+    const right = arr.slice(mid);
+
+    // Binary recursive calls
+    const sortedLeft = mergeSort(left);
+    const sortedRight = mergeSort(right);
+
+    // Conquer
+    return merge(sortedLeft, sortedRight);
+}
+
+function merge(left, right) {
+    const result = [];
+    let i = 0, j = 0;
+
+    while (i < left.length && j < right.length) {
+        if (left[i] <= right[j]) {
+            result.push(left[i++]);
+        } else {
+            result.push(right[j++]);
+        }
+    }
+
+    return result.concat(left.slice(i)).concat(right.slice(j));
+}
+```
+
+---
+
+## Multiple Recursion Patterns
+
+Multiple recursion makes **more than two recursive calls** per execution.
+
+### 1. Tree with Multiple Children
+
+```javascript
+class TreeNode {
+    constructor(val, children = []) {
+        this.val = val;
+        this.children = children;
+    }
+}
+
+function maxDepthNary(root) {
+    if (!root) return 0;
+
+    let maxChildDepth = 0;
+    // Multiple recursive calls for each child
+    for (let child of root.children) {
+        maxChildDepth = Math.max(maxChildDepth, maxDepthNary(child));
+    }
+
+    return 1 + maxChildDepth;
+}
+
+function naryTreePaths(root, currentPath = [], allPaths = []) {
+    if (!root) return allPaths;
+
+    currentPath.push(root.val);
+
+    if (root.children.length === 0) {
+        // Leaf node
+        allPaths.push([...currentPath]);
+    } else {
+        // Multiple recursive calls
+        for (let child of root.children) {
+            naryTreePaths(child, currentPath, allPaths);
+        }
+    }
+
+    currentPath.pop(); // Backtrack
+    return allPaths;
+}
+```
+
+### 2. Maze Solving (4 Directions)
+
+```javascript
+function solveMaze(maze, x = 0, y = 0, solution = null) {
+    const n = maze.length;
+    if (!solution) {
+        solution = Array(n).fill().map(() => Array(n).fill(0));
+    }
+
+    // Base case: reached destination
+    if (x === n - 1 && y === n - 1) {
+        solution[x][y] = 1;
+        return true;
+    }
+
+    // Check if current position is valid
+    if (x >= 0 && x < n && y >= 0 && y < n && maze[x][y] === 1) {
+        solution[x][y] = 1;
+
+        // Multiple recursive calls for 4 directions
+        if (solveMaze(maze, x + 1, y, solution) ||  // Down
+            solveMaze(maze, x, y + 1, solution) ||  // Right
+            solveMaze(maze, x - 1, y, solution) ||  // Up
+            solveMaze(maze, x, y - 1, solution)) {  // Left
+            return true;
+        }
+
+        // Backtrack
+        solution[x][y] = 0;
+    }
+
+    return false;
+}
+```
+
+### 3. Generate All Subsets
+
+```javascript
+function generateSubsets(nums, index = 0, current = [], result = []) {
+    // Base case
+    if (index === nums.length) {
+        result.push([...current]);
+        return result;
+    }
+
+    // Two recursive calls: include or exclude current element
+    // Include current element
+    current.push(nums[index]);
+    generateSubsets(nums, index + 1, current, result);
+
+    // Exclude current element (backtrack)
+    current.pop();
+    generateSubsets(nums, index + 1, current, result);
+
+    return result;
+}
+```
+
+### 4. Tower of Hanoi
+
+```javascript
+function towerOfHanoi(n, source, destination, auxiliary, moves = []) {
+    // Base case
+    if (n === 1) {
+        moves.push(`Move disk 1 from ${source} to ${destination}`);
+        return moves;
+    }
+
+    // Three recursive calls
+    // Move n-1 disks to auxiliary peg
+    towerOfHanoi(n - 1, source, auxiliary, destination, moves);
+
+    // Move the bottom disk to destination
+    moves.push(`Move disk ${n} from ${source} to ${destination}`);
+
+    // Move n-1 disks from auxiliary to destination
+    towerOfHanoi(n - 1, auxiliary, destination, source, moves);
+
+    return moves;
+}
+```
+
+---
+
+## Tail Recursion Optimization
+
+**Tail recursion** occurs when the recursive call is the **last operation** in the function.
+
+### 1. Tail Recursive Factorial
+
+```javascript
+// Non-tail recursive (traditional)
+function factorial(n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1); // Multiplication after recursive call
+}
+
+// Tail recursive version
+function factorialTail(n, accumulator = 1) {
+    if (n <= 1) return accumulator;
+    return factorialTail(n - 1, n * accumulator); // Recursive call is last
+}
+```
+
+### 2. Tail Recursive Sum
+
+```javascript
+// Non-tail recursive
+function sum(n) {
+    if (n <= 0) return 0;
+    return n + sum(n - 1); // Addition after recursive call
+}
+
+// Tail recursive version
+function sumTail(n, accumulator = 0) {
+    if (n <= 0) return accumulator;
+    return sumTail(n - 1, accumulator + n); // Recursive call is last
+}
+```
+
+### 3. Tail Recursive Fibonacci
+
+```javascript
+function fibonacciTail(n, a = 0, b = 1) {
+    if (n === 0) return a;
+    if (n === 1) return b;
+    return fibonacciTail(n - 1, b, a + b); // Tail recursive
+}
+```
+
+### 4. Converting to Iterative
+
+```javascript
+// Tail recursion can be easily converted to iteration
+function factorialIterative(n) {
+    let accumulator = 1;
+    while (n > 1) {
+        accumulator *= n;
+        n--;
+    }
+    return accumulator;
+}
+
+// Generic tail recursion to iteration converter
+function tailRecursionToIteration(initialValue, condition, update, extract) {
+    let current = initialValue;
+
+    while (!condition(current)) {
+        current = update(current);
+    }
+
+    return extract(current);
+}
+
+// Usage example
+const factorial_n = tailRecursionToIteration(
+    { n: 5, acc: 1 },
+    state => state.n <= 1,
+    state => ({ n: state.n - 1, acc: state.acc * state.n }),
+    state => state.acc
+);
+```
+
+---
+
+## Mutual Recursion Patterns
+
+**Mutual recursion** occurs when two or more functions call each other recursively.
+
+### 1. Even/Odd Check
+
+```javascript
+function isEven(n) {
+    if (n === 0) return true;
+    return isOdd(n - 1);
+}
+
+function isOdd(n) {
+    if (n === 0) return false;
+    return isEven(n - 1);
+}
+
+// Usage
+console.log(isEven(4)); // true
+console.log(isOdd(5));  // true
+```
+
+### 2. Expression Parsing
+
+```javascript
+function parseExpression(tokens, index) {
+    let result = parseTerm(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '+' || tokens[index.value] === '-')) {
+        const operator = tokens[index.value++];
+        const term = parseTerm(tokens, index);
+        result = operator === '+' ? result + term : result - term;
+    }
+
+    return result;
+}
+
+function parseTerm(tokens, index) {
+    let result = parseFactor(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '*' || tokens[index.value] === '/')) {
+        const operator = tokens[index.value++];
+        const factor = parseFactor(tokens, index);
+        result = operator === '*' ? result * factor : result / factor;
+    }
+
+    return result;
+}
+
+function parseFactor(tokens, index) {
+    if (tokens[index.value] === '(') {
+        index.value++; // Skip '('
+        const result = parseExpression(tokens, index); // Mutual recursion
+        index.value++; // Skip ')'
+        return result;
+    }
+
+    return parseInt(tokens[index.value++]);
+}
+```
+
+### 3. Grammar Parsing
+
+```javascript
+function parseStatement(code, pos) {
+    if (code[pos.index] === 'if') {
+        return parseIfStatement(code, pos);
+    } else if (code[pos.index] === 'while') {
+        return parseWhileStatement(code, pos);
+    } else {
+        return parseAssignment(code, pos);
+    }
+}
+
+function parseIfStatement(code, pos) {
+    pos.index++; // Skip 'if'
+    const condition = parseExpression(code, pos);
+    const thenStmt = parseStatement(code, pos); // Mutual recursion
+
+    let elseStmt = null;
+    if (pos.index < code.length && code[pos.index] === 'else') {
+        pos.index++; // Skip 'else'
+        elseStmt = parseStatement(code, pos); // Mutual recursion
+    }
+
+    return { type: 'if', condition, then: thenStmt, else: elseStmt };
+}
+
+function parseWhileStatement(code, pos) {
+    pos.index++; // Skip 'while'
+    const condition = parseExpression(code, pos);
+    const body = parseStatement(code, pos); // Mutual recursion
+
+    return { type: 'while', condition, body };
+}
+```
+
+### 4. State Machine
+
+```javascript
+function stateA(input, index) {
+    if (index >= input.length) return true;
+
+    if (input[index] === '0') {
+        return stateB(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateA(input, index + 1);
+    }
+
+    return false;
+}
+
+function stateB(input, index) {
+    if (index >= input.length) return false;
+
+    if (input[index] === '0') {
+        return stateA(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateB(input, index + 1);
+    }
+
+    return false;
+}
+
+// Check if string is accepted by the state machine
+function isAccepted(input) {
+    return stateA(input, 0);
+}
+```
+
+---
+
+## Indirect Recursion
+
+**Indirect recursion** involves a chain of function calls that eventually leads back to the original function.
+
+### 1. Three-Function Chain
+
+```javascript
+function functionA(n) {
+    console.log(`A: ${n}`);
+    if (n > 0) {
+        return functionB(n - 1);
+    }
+    return 0;
+}
+
+function functionB(n) {
+    console.log(`B: ${n}`);
+    if (n > 0) {
+        return functionC(n - 1);
+    }
+    return 1;
+}
+
+function functionC(n) {
+    console.log(`C: ${n}`);
+    if (n > 0) {
+        return functionA(n - 1); // Back to A
+    }
+    return 2;
+}
+
+// Call chain: A -> B -> C -> A -> B -> C -> ...
+functionA(5);
+```
+
+### 2. Complex Number Calculation
+
+```javascript
+function calculateReal(complex, depth) {
+    if (depth === 0) return complex.real;
+
+    const imagResult = calculateImaginary(
+        { real: complex.real * 0.5, imaginary: complex.imaginary * 0.5 },
+        depth - 1
+    );
+
+    return complex.real + imagResult;
+}
+
+function calculateImaginary(complex, depth) {
+    if (depth === 0) return complex.imaginary;
+
+    const realResult = calculateReal(
+        { real: complex.imaginary * 0.3, imaginary: complex.real * 0.7 },
+        depth - 1
+    );
+
+    return complex.imaginary + realResult;
+}
+
+function processComplex(complex, depth) {
+    const realPart = calculateReal(complex, depth);
+    const imagPart = calculateImaginary(complex, depth);
+
+    if (depth > 1) {
+        return processComplex(
+            { real: realPart, imaginary: imagPart },
+            depth - 1
+        );
+    }
+
+    return { real: realPart, imaginary: imagPart };
+}
+```
+
+### 3. Document Processing Chain
+
+```javascript
+function processDocument(doc, stage) {
+    switch (stage) {
+        case 'parse':
+            return parseDocument(doc, 'validate');
+        case 'validate':
+            return validateDocument(doc, 'transform');
+        case 'transform':
+            return transformDocument(doc, 'output');
+        case 'output':
+            return doc;
+        default:
+            return null;
+    }
+}
+
+function parseDocument(doc, nextStage) {
+    const parsed = { ...doc, parsed: true };
+    if (parsed.needsValidation) {
+        return processDocument(parsed, nextStage);
+    }
+    return parsed;
+}
+
+function validateDocument(doc, nextStage) {
+    const validated = { ...doc, valid: doc.parsed };
+    if (validated.needsTransformation) {
+        return processDocument(validated, nextStage);
+    }
+    return validated;
+}
+
+function transformDocument(doc, nextStage) {
+    const transformed = { ...doc, transformed: doc.valid };
+    return processDocument(transformed, nextStage);
+}
+```
+
+---
+
+## Nested Recursion
+
+**Nested recursion** occurs when a recursive call uses another recursive call as its parameter.
+
+### 1. Ackermann Function
+
+```javascript
+function ackermann(m, n) {
+    if (m === 0) {
+        return n + 1;
+    } else if (m > 0 && n === 0) {
+        return ackermann(m - 1, 1);
+    } else if (m > 0 && n > 0) {
+        // Nested recursion: recursive call as parameter
+        return ackermann(m - 1, ackermann(m, n - 1));
+    }
+}
+
+// Extremely fast-growing function
+console.log(ackermann(3, 2)); // 29
+```
+
+### 2. McCarthy's 91 Function
+
+```javascript
+function mcCarthy91(n) {
+    if (n > 100) {
+        return n - 10;
+    } else {
+        // Nested recursion
+        return mcCarthy91(mcCarthy91(n + 11));
+    }
+}
+
+// Always returns 91 for n <= 100
+console.log(mcCarthy91(50)); // 91
+console.log(mcCarthy91(99)); // 91
+```
+
+### 3. Nested Tree Processing
+
+```javascript
+function processNestedTree(node) {
+    if (!node) return null;
+
+    if (node.type === 'leaf') {
+        return node.value;
+    }
+
+    if (node.type === 'transform') {
+        // Nested recursion: recursive call as parameter to another recursive call
+        return applyTransform(
+            processNestedTree(node.input),
+            processNestedTree(node.transform)
+        );
+    }
+
+    return processChildren(node.children);
+}
+
+function applyTransform(data, transform) {
+    if (!transform) return data;
+
+    if (transform.type === 'nested') {
+        // Another level of nesting
+        return applyTransform(
+            data,
+            processNestedTree(transform.nestedTransform)
+        );
+    }
+
+    return transform.fn(data);
+}
+
+function processChildren(children) {
+    if (!children || children.length === 0) return [];
+
+    return children.map(child => processNestedTree(child));
+}
+```
+
+### 4. Complex Mathematical Functions
+
+```javascript
+function nestedMath(x, depth) {
+    if (depth === 0) return x;
+
+    if (x < 0) {
+        return -nestedMath(-x, depth - 1);
+    }
+
+    // Nested recursion with complex parameter
+    return Math.sqrt(
+        nestedMath(
+            x * nestedMath(x / 2, depth - 1),
+            depth - 1
+        )
+    );
+}
+```
+
+---
+
+## Tree Recursion Patterns
+
+Tree recursion involves recursive calls that form a tree-like structure of execution.
+
+### 1. Binary Tree Traversals
+
+```javascript
+// Preorder: Root -> Left -> Right
+function preorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    result.push(root.val);              // Process root
+    preorderTraversal(root.left, result);   // Recurse left
+    preorderTraversal(root.right, result);  // Recurse right
+
+    return result;
+}
+
+// Inorder: Left -> Root -> Right
+function inorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    inorderTraversal(root.left, result);    // Recurse left
+    result.push(root.val);              // Process root
+    inorderTraversal(root.right, result);   // Recurse right
+
+    return result;
+}
+
+// Postorder: Left -> Right -> Root
+function postorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    postorderTraversal(root.left, result);  // Recurse left
+    postorderTraversal(root.right, result); // Recurse right
+    result.push(root.val);              // Process root
+
+    return result;
+}
+```
+
+### 2. Tree Validation
+
+```javascript
+function isValidBST(root, min = -Infinity, max = Infinity) {
+    if (!root) return true;
+
+    if (root.val <= min || root.val >= max) return false;
+
+    // Tree recursion with different constraints
+    return isValidBST(root.left, min, root.val) &&
+           isValidBST(root.right, root.val, max);
+}
+```
+
+
+---
+
+## Dynamic Programming with Recursion
+
+Dynamic Programming combines recursion with memoization to solve optimization problems.
+
+### 1. Classic DP Problems
+
+```javascript
+// Longest Common Subsequence with Memoization
+function longestCommonSubsequenceMemo(str1, str2, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === str1.length || j === str2.length) {
+        return memo[key] = 0;
+    }
+
+    if (str1[i] === str2[j]) {
+        return memo[key] = 1 + longestCommonSubsequenceMemo(str1, str2, i + 1, j + 1, memo);
+    } else {
+        return memo[key] = Math.max(
+            longestCommonSubsequenceMemo(str1, str2, i + 1, j, memo),
+            longestCommonSubsequenceMemo(str1, str2, i, j + 1, memo)
+        );
+    }
+}
+
+// Edit Distance (Levenshtein Distance)
+function editDistance(str1, str2, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === str1.length) return memo[key] = str2.length - j;
+    if (j === str2.length) return memo[key] = str1.length - i;
+
+    if (str1[i] === str2[j]) {
+        return memo[key] = editDistance(str1, str2, i + 1, j + 1, memo);
+    } else {
+        const insert = editDistance(str1, str2, i, j + 1, memo);
+        const delete_ = editDistance(str1, str2, i + 1, j, memo);
+        const replace = editDistance(str1, str2, i + 1, j + 1, memo);
+
+        return memo[key] = 1 + Math.min(insert, delete_, replace);
+    }
+}
+
+// 0/1 Knapsack Problem
+function knapsack(weights, values, capacity, index = 0, memo = {}) {
+    const key = `${capacity},${index}`;
+    if (key in memo) return memo[key];
+
+    if (index === weights.length || capacity === 0) {
+        return memo[key] = 0;
+    }
+
+    // Don't take current item
+    let maxValue = knapsack(weights, values, capacity, index + 1, memo);
+
+    // Take current item if it fits
+    if (weights[index] <= capacity) {
+        const valueWithCurrent = values[index] +
+            knapsack(weights, values, capacity - weights[index], index + 1, memo);
+        maxValue = Math.max(maxValue, valueWithCurrent);
+    }
+
+    return memo[key] = maxValue;
+}
+```
+
+### 2. Coin Change Problems
+
+```javascript
+// Coin Change - Minimum coins
+function coinChangeMinCoins(coins, amount, memo = {}) {
+    if (amount in memo) return memo[amount];
+    if (amount === 0) return 0;
+    if (amount < 0) return Infinity;
+
+    let minCoins = Infinity;
+    for (let coin of coins) {
+        const result = coinChangeMinCoins(coins, amount - coin, memo);
+        if (result !== Infinity) {
+            minCoins = Math.min(minCoins, 1 + result);
+        }
+    }
+
+    return memo[amount] = minCoins === Infinity ? -1 : minCoins;
+}
+
+// Coin Change - Number of ways
+function coinChangeWays(coins, amount, index = 0, memo = {}) {
+    const key = `${amount},${index}`;
+    if (key in memo) return memo[key];
+
+    if (amount === 0) return 1;
+    if (amount < 0 || index >= coins.length) return 0;
+
+    // Include current coin + exclude current coin
+    return memo[key] = coinChangeWays(coins, amount - coins[index], index, memo) +
+                      coinChangeWays(coins, amount, index + 1, memo);
+}
+```
+
+### 3. Path Problems
+
+```javascript
+// Unique Paths in Grid
+function uniquePaths(m, n, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === m - 1 && j === n - 1) return 1;
+    if (i >= m || j >= n) return 0;
+
+    return memo[key] = uniquePaths(m, n, i + 1, j, memo) +
+                      uniquePaths(m, n, i, j + 1, memo);
+}
+```
+---
+
+## Linear Recursion Patterns
+
+Linear recursion makes exactly **one recursive call** per execution.
+
+### 1. Simple Linear Recursion - Factorial
+
+```javascript
+function factorial(n) {
+    // Base case
+    if (n <= 1) return 1;
+
+    // Recursive case: one recursive call
+    return n * factorial(n - 1);
+}
+
+// Call trace for factorial(4):
+// factorial(4) = 4 * factorial(3)
+// factorial(3) = 3 * factorial(2)
+// factorial(2) = 2 * factorial(1)
+// factorial(1) = 1
+// Result: 4 * 3 * 2 * 1 = 24
+```
+
+### 2. Linear Search in Array
+
+```javascript
+function linearSearchRecursive(arr, target, index = 0) {
+    // Base case: not found
+    if (index >= arr.length) return -1;
+
+    // Base case: found
+    if (arr[index] === target) return index;
+
+    // Recursive case: search in rest of array
+    return linearSearchRecursive(arr, target, index + 1);
+}
+```
+
+### 3. Sum of Array Elements
+
+```javascript
+function arraySum(arr, index = 0) {
+    // Base case
+    if (index >= arr.length) return 0;
+
+    // Recursive case
+    return arr[index] + arraySum(arr, index + 1);
+}
+```
+
+### 4. Linked List Operations
+
+```javascript
+class ListNode {
+    constructor(val, next = null) {
+        this.val = val;
+        this.next = next;
+    }
+}
+
+function linkedListLength(head) {
+    // Base case
+    if (!head) return 0;
+
+    // Recursive case
+    return 1 + linkedListLength(head.next);
+}
+
+function linkedListSearch(head, target) {
+    // Base case: not found
+    if (!head) return null;
+
+    // Base case: found
+    if (head.val === target) return head;
+
+    // Recursive case
+    return linkedListSearch(head.next, target);
+}
+
+function reverseLinkedList(head) {
+    // Base case
+    if (!head || !head.next) return head;
+
+    // Recursive case
+    const newHead = reverseLinkedList(head.next);
+    head.next.next = head;
+    head.next = null;
+
+    return newHead;
+}
+```
+
+### 5. String Processing
+
+```javascript
+function isPalindrome(str, left = 0, right = str.length - 1) {
+    // Base case
+    if (left >= right) return true;
+
+    // Check current characters and recurse
+    if (str[left] !== str[right]) return false;
+    return isPalindrome(str, left + 1, right - 1);
+}
+
+function reverseString(str) {
+    // Base case
+    if (str.length <= 1) return str;
+
+    // Recursive case
+    return str[str.length - 1] + reverseString(str.slice(0, -1));
+}
+```
+
+---
+
+## Binary Recursion Patterns
+
+Binary recursion makes exactly **two recursive calls** per execution.
+
+### 1. Classic Binary Recursion - Fibonacci
+
+```javascript
+function fibonacci(n) {
+    // Base cases
+    if (n <= 1) return n;
+
+    // Binary recursive case
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Optimized with memoization
+function fibonacciMemo(n, memo = {}) {
+    if (n in memo) return memo[n];
+    if (n <= 1) return n;
+
+    memo[n] = fibonacciMemo(n - 1, memo) + fibonacciMemo(n - 2, memo);
+    return memo[n];
+}
+```
+
+### 2. Binary Tree Operations
+
+```javascript
+class TreeNode {
+    constructor(val, left = null, right = null) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// Tree height/depth
+function maxDepth(root) {
+    // Base case
+    if (!root) return 0;
+
+    // Binary recursive case
+    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+}
+
+// Count total nodes
+function countNodes(root) {
+    if (!root) return 0;
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+
+// Check if tree is balanced
+function isBalanced(root) {
+    function checkHeight(node) {
+        if (!node) return 0;
+
+        const leftHeight = checkHeight(node.left);
+        if (leftHeight === -1) return -1;
+
+        const rightHeight = checkHeight(node.right);
+        if (rightHeight === -1) return -1;
+
+        if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+
+    return checkHeight(root) !== -1;
+}
+
+// Binary tree paths
+function binaryTreePaths(root, currentPath = "", paths = []) {
+    if (!root) return paths;
+
+    currentPath += root.val;
+
+    // Leaf node
+    if (!root.left && !root.right) {
+        paths.push(currentPath);
+    } else {
+        // Binary recursion
+        if (root.left) binaryTreePaths(root.left, currentPath + "->", paths);
+        if (root.right) binaryTreePaths(root.right, currentPath + "->", paths);
+    }
+
+    return paths;
+}
+```
+
+### 3. Binary Search
+
+```javascript
+function binarySearch(arr, target, left = 0, right = arr.length - 1) {
+    // Base case: not found
+    if (left > right) return -1;
+
+    const mid = Math.floor((left + right) / 2);
+
+    // Base case: found
+    if (arr[mid] === target) return mid;
+
+    // Binary recursive cases
+    if (target < arr[mid]) {
+        return binarySearch(arr, target, left, mid - 1);
+    } else {
+        return binarySearch(arr, target, mid + 1, right);
+    }
+}
+```
+
+### 4. Merge Sort (Divide and Conquer)
+
+```javascript
+function mergeSort(arr) {
+    // Base case
+    if (arr.length <= 1) return arr;
+
+    // Divide
+    const mid = Math.floor(arr.length / 2);
+    const left = arr.slice(0, mid);
+    const right = arr.slice(mid);
+
+    // Binary recursive calls
+    const sortedLeft = mergeSort(left);
+    const sortedRight = mergeSort(right);
+
+    // Conquer
+    return merge(sortedLeft, sortedRight);
+}
+
+function merge(left, right) {
+    const result = [];
+    let i = 0, j = 0;
+
+    while (i < left.length && j < right.length) {
+        if (left[i] <= right[j]) {
+            result.push(left[i++]);
+        } else {
+            result.push(right[j++]);
+        }
+    }
+
+    return result.concat(left.slice(i)).concat(right.slice(j));
+}
+```
+
+---
+
+## Multiple Recursion Patterns
+
+Multiple recursion makes **more than two recursive calls** per execution.
+
+### 1. Tree with Multiple Children
+
+```javascript
+class TreeNode {
+    constructor(val, children = []) {
+        this.val = val;
+        this.children = children;
+    }
+}
+
+function maxDepthNary(root) {
+    if (!root) return 0;
+
+    let maxChildDepth = 0;
+    // Multiple recursive calls for each child
+    for (let child of root.children) {
+        maxChildDepth = Math.max(maxChildDepth, maxDepthNary(child));
+    }
+
+    return 1 + maxChildDepth;
+}
+
+function naryTreePaths(root, currentPath = [], allPaths = []) {
+    if (!root) return allPaths;
+
+    currentPath.push(root.val);
+
+    if (root.children.length === 0) {
+        // Leaf node
+        allPaths.push([...currentPath]);
+    } else {
+        // Multiple recursive calls
+        for (let child of root.children) {
+            naryTreePaths(child, currentPath, allPaths);
+        }
+    }
+
+    currentPath.pop(); // Backtrack
+    return allPaths;
+}
+```
+
+### 2. Maze Solving (4 Directions)
+
+```javascript
+function solveMaze(maze, x = 0, y = 0, solution = null) {
+    const n = maze.length;
+    if (!solution) {
+        solution = Array(n).fill().map(() => Array(n).fill(0));
+    }
+
+    // Base case: reached destination
+    if (x === n - 1 && y === n - 1) {
+        solution[x][y] = 1;
+        return true;
+    }
+
+    // Check if current position is valid
+    if (x >= 0 && x < n && y >= 0 && y < n && maze[x][y] === 1) {
+        solution[x][y] = 1;
+
+        // Multiple recursive calls for 4 directions
+        if (solveMaze(maze, x + 1, y, solution) ||  // Down
+            solveMaze(maze, x, y + 1, solution) ||  // Right
+            solveMaze(maze, x - 1, y, solution) ||  // Up
+            solveMaze(maze, x, y - 1, solution)) {  // Left
+            return true;
+        }
+
+        // Backtrack
+        solution[x][y] = 0;
+    }
+
+    return false;
+}
+```
+
+### 3. Generate All Subsets
+
+```javascript
+function generateSubsets(nums, index = 0, current = [], result = []) {
+    // Base case
+    if (index === nums.length) {
+        result.push([...current]);
+        return result;
+    }
+
+    // Two recursive calls: include or exclude current element
+    // Include current element
+    current.push(nums[index]);
+    generateSubsets(nums, index + 1, current, result);
+
+    // Exclude current element (backtrack)
+    current.pop();
+    generateSubsets(nums, index + 1, current, result);
+
+    return result;
+}
+```
+
+### 4. Tower of Hanoi
+
+```javascript
+function towerOfHanoi(n, source, destination, auxiliary, moves = []) {
+    // Base case
+    if (n === 1) {
+        moves.push(`Move disk 1 from ${source} to ${destination}`);
+        return moves;
+    }
+
+    // Three recursive calls
+    // Move n-1 disks to auxiliary peg
+    towerOfHanoi(n - 1, source, auxiliary, destination, moves);
+
+    // Move the bottom disk to destination
+    moves.push(`Move disk ${n} from ${source} to ${destination}`);
+
+    // Move n-1 disks from auxiliary to destination
+    towerOfHanoi(n - 1, auxiliary, destination, source, moves);
+
+    return moves;
+}
+```
+
+---
+
+## Tail Recursion Optimization
+
+**Tail recursion** occurs when the recursive call is the **last operation** in the function.
+
+### 1. Tail Recursive Factorial
+
+```javascript
+// Non-tail recursive (traditional)
+function factorial(n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1); // Multiplication after recursive call
+}
+
+// Tail recursive version
+function factorialTail(n, accumulator = 1) {
+    if (n <= 1) return accumulator;
+    return factorialTail(n - 1, n * accumulator); // Recursive call is last
+}
+```
+
+### 2. Tail Recursive Sum
+
+```javascript
+// Non-tail recursive
+function sum(n) {
+    if (n <= 0) return 0;
+    return n + sum(n - 1); // Addition after recursive call
+}
+
+// Tail recursive version
+function sumTail(n, accumulator = 0) {
+    if (n <= 0) return accumulator;
+    return sumTail(n - 1, accumulator + n); // Recursive call is last
+}
+```
+
+### 3. Tail Recursive Fibonacci
+
+```javascript
+function fibonacciTail(n, a = 0, b = 1) {
+    if (n === 0) return a;
+    if (n === 1) return b;
+    return fibonacciTail(n - 1, b, a + b); // Tail recursive
+}
+```
+
+### 4. Converting to Iterative
+
+```javascript
+// Tail recursion can be easily converted to iteration
+function factorialIterative(n) {
+    let accumulator = 1;
+    while (n > 1) {
+        accumulator *= n;
+        n--;
+    }
+    return accumulator;
+}
+
+// Generic tail recursion to iteration converter
+function tailRecursionToIteration(initialValue, condition, update, extract) {
+    let current = initialValue;
+
+    while (!condition(current)) {
+        current = update(current);
+    }
+
+    return extract(current);
+}
+
+// Usage example
+const factorial_n = tailRecursionToIteration(
+    { n: 5, acc: 1 },
+    state => state.n <= 1,
+    state => ({ n: state.n - 1, acc: state.acc * state.n }),
+    state => state.acc
+);
+```
+
+---
+
+## Mutual Recursion Patterns
+
+**Mutual recursion** occurs when two or more functions call each other recursively.
+
+### 1. Even/Odd Check
+
+```javascript
+function isEven(n) {
+    if (n === 0) return true;
+    return isOdd(n - 1);
+}
+
+function isOdd(n) {
+    if (n === 0) return false;
+    return isEven(n - 1);
+}
+
+// Usage
+console.log(isEven(4)); // true
+console.log(isOdd(5));  // true
+```
+
+### 2. Expression Parsing
+
+```javascript
+function parseExpression(tokens, index) {
+    let result = parseTerm(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '+' || tokens[index.value] === '-')) {
+        const operator = tokens[index.value++];
+        const term = parseTerm(tokens, index);
+        result = operator === '+' ? result + term : result - term;
+    }
+
+    return result;
+}
+
+function parseTerm(tokens, index) {
+    let result = parseFactor(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '*' || tokens[index.value] === '/')) {
+        const operator = tokens[index.value++];
+        const factor = parseFactor(tokens, index);
+        result = operator === '*' ? result * factor : result / factor;
+    }
+
+    return result;
+}
+
+function parseFactor(tokens, index) {
+    if (tokens[index.value] === '(') {
+        index.value++; // Skip '('
+        const result = parseExpression(tokens, index); // Mutual recursion
+        index.value++; // Skip ')'
+        return result;
+    }
+
+    return parseInt(tokens[index.value++]);
+}
+```
+
+### 3. Grammar Parsing
+
+```javascript
+function parseStatement(code, pos) {
+    if (code[pos.index] === 'if') {
+        return parseIfStatement(code, pos);
+    } else if (code[pos.index] === 'while') {
+        return parseWhileStatement(code, pos);
+    } else {
+        return parseAssignment(code, pos);
+    }
+}
+
+function parseIfStatement(code, pos) {
+    pos.index++; // Skip 'if'
+    const condition = parseExpression(code, pos);
+    const thenStmt = parseStatement(code, pos); // Mutual recursion
+
+    let elseStmt = null;
+    if (pos.index < code.length && code[pos.index] === 'else') {
+        pos.index++; // Skip 'else'
+        elseStmt = parseStatement(code, pos); // Mutual recursion
+    }
+
+    return { type: 'if', condition, then: thenStmt, else: elseStmt };
+}
+
+function parseWhileStatement(code, pos) {
+    pos.index++; // Skip 'while'
+    const condition = parseExpression(code, pos);
+    const body = parseStatement(code, pos); // Mutual recursion
+
+    return { type: 'while', condition, body };
+}
+```
+
+### 4. State Machine
+
+```javascript
+function stateA(input, index) {
+    if (index >= input.length) return true;
+
+    if (input[index] === '0') {
+        return stateB(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateA(input, index + 1);
+    }
+
+    return false;
+}
+
+function stateB(input, index) {
+    if (index >= input.length) return false;
+
+    if (input[index] === '0') {
+        return stateA(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateB(input, index + 1);
+    }
+
+    return false;
+}
+
+// Check if string is accepted by the state machine
+function isAccepted(input) {
+    return stateA(input, 0);
+}
+```
+
+---
+
+## Indirect Recursion
+
+**Indirect recursion** involves a chain of function calls that eventually leads back to the original function.
+
+### 1. Three-Function Chain
+
+```javascript
+function functionA(n) {
+    console.log(`A: ${n}`);
+    if (n > 0) {
+        return functionB(n - 1);
+    }
+    return 0;
+}
+
+function functionB(n) {
+    console.log(`B: ${n}`);
+    if (n > 0) {
+        return functionC(n - 1);
+    }
+    return 1;
+}
+
+function functionC(n) {
+    console.log(`C: ${n}`);
+    if (n > 0) {
+        return functionA(n - 1); // Back to A
+    }
+    return 2;
+}
+
+// Call chain: A -> B -> C -> A -> B -> C -> ...
+functionA(5);
+```
+
+### 2. Complex Number Calculation
+
+```javascript
+function calculateReal(complex, depth) {
+    if (depth === 0) return complex.real;
+
+    const imagResult = calculateImaginary(
+        { real: complex.real * 0.5, imaginary: complex.imaginary * 0.5 },
+        depth - 1
+    );
+
+    return complex.real + imagResult;
+}
+
+function calculateImaginary(complex, depth) {
+    if (depth === 0) return complex.imaginary;
+
+    const realResult = calculateReal(
+        { real: complex.imaginary * 0.3, imaginary: complex.real * 0.7 },
+        depth - 1
+    );
+
+    return complex.imaginary + realResult;
+}
+
+function processComplex(complex, depth) {
+    const realPart = calculateReal(complex, depth);
+    const imagPart = calculateImaginary(complex, depth);
+
+    if (depth > 1) {
+        return processComplex(
+            { real: realPart, imaginary: imagPart },
+            depth - 1
+        );
+    }
+
+    return { real: realPart, imaginary: imagPart };
+}
+```
+
+### 3. Document Processing Chain
+
+```javascript
+function processDocument(doc, stage) {
+    switch (stage) {
+        case 'parse':
+            return parseDocument(doc, 'validate');
+        case 'validate':
+            return validateDocument(doc, 'transform');
+        case 'transform':
+            return transformDocument(doc, 'output');
+        case 'output':
+            return doc;
+        default:
+            return null;
+    }
+}
+
+function parseDocument(doc, nextStage) {
+    const parsed = { ...doc, parsed: true };
+    if (parsed.needsValidation) {
+        return processDocument(parsed, nextStage);
+    }
+    return parsed;
+}
+
+function validateDocument(doc, nextStage) {
+    const validated = { ...doc, valid: doc.parsed };
+    if (validated.needsTransformation) {
+        return processDocument(validated, nextStage);
+    }
+    return validated;
+}
+
+function transformDocument(doc, nextStage) {
+    const transformed = { ...doc, transformed: doc.valid };
+    return processDocument(transformed, nextStage);
+}
+```
+
+---
+
+## Nested Recursion
+
+**Nested recursion** occurs when a recursive call uses another recursive call as its parameter.
+
+### 1. Ackermann Function
+
+```javascript
+function ackermann(m, n) {
+    if (m === 0) {
+        return n + 1;
+    } else if (m > 0 && n === 0) {
+        return ackermann(m - 1, 1);
+    } else if (m > 0 && n > 0) {
+        // Nested recursion: recursive call as parameter
+        return ackermann(m - 1, ackermann(m, n - 1));
+    }
+}
+
+// Extremely fast-growing function
+console.log(ackermann(3, 2)); // 29
+```
+
+### 2. McCarthy's 91 Function
+
+```javascript
+function mcCarthy91(n) {
+    if (n > 100) {
+        return n - 10;
+    } else {
+        // Nested recursion
+        return mcCarthy91(mcCarthy91(n + 11));
+    }
+}
+
+// Always returns 91 for n <= 100
+console.log(mcCarthy91(50)); // 91
+console.log(mcCarthy91(99)); // 91
+```
+
+### 3. Nested Tree Processing
+
+```javascript
+function processNestedTree(node) {
+    if (!node) return null;
+
+    if (node.type === 'leaf') {
+        return node.value;
+    }
+
+    if (node.type === 'transform') {
+        // Nested recursion: recursive call as parameter to another recursive call
+        return applyTransform(
+            processNestedTree(node.input),
+            processNestedTree(node.transform)
+        );
+    }
+
+    return processChildren(node.children);
+}
+
+function applyTransform(data, transform) {
+    if (!transform) return data;
+
+    if (transform.type === 'nested') {
+        // Another level of nesting
+        return applyTransform(
+            data,
+            processNestedTree(transform.nestedTransform)
+        );
+    }
+
+    return transform.fn(data);
+}
+
+function processChildren(children) {
+    if (!children || children.length === 0) return [];
+
+    return children.map(child => processNestedTree(child));
+}
+```
+
+### 4. Complex Mathematical Functions
+
+```javascript
+function nestedMath(x, depth) {
+    if (depth === 0) return x;
+
+    if (x < 0) {
+        return -nestedMath(-x, depth - 1);
+    }
+
+    // Nested recursion with complex parameter
+    return Math.sqrt(
+        nestedMath(
+            x * nestedMath(x / 2, depth - 1),
+            depth - 1
+        )
+    );
+}
+```
+
+---
+
+## Tree Recursion Patterns
+
+Tree recursion involves recursive calls that form a tree-like structure of execution.
+
+### 1. Binary Tree Traversals
+
+```javascript
+// Preorder: Root -> Left -> Right
+function preorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    result.push(root.val);              // Process root
+    preorderTraversal(root.left, result);   // Recurse left
+    preorderTraversal(root.right, result);  // Recurse right
+
+    return result;
+}
+
+// Inorder: Left -> Root -> Right
+function inorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    inorderTraversal(root.left, result);    // Recurse left
+    result.push(root.val);              // Process root
+    inorderTraversal(root.right, result);   // Recurse right
+
+    return result;
+}
+
+// Postorder: Left -> Right -> Root
+function postorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    postorderTraversal(root.left, result);  // Recurse left
+    postorderTraversal(root.right, result); // Recurse right
+    result.push(root.val);              // Process root
+
+    return result;
+}
+```
+
+### 2. Tree Validation
+
+```javascript
+function isValidBST(root, min = -Infinity, max = Infinity) {
+    if (!root) return true;
+
+    if (root.val <= min || root.val >= max) return false;
+
+    // Tree recursion with different constraints
+    return isValidBST(root.left, min, root.val) &&
+           isValidBST(root.right, root.val, max);
+}
+
+function isSameTree(p, q) {
+    // Both null
+    if (!p && !q) return true;
+
+    // One null, one not
+    if (!p || !q) return false;
+
+    // Different values
+    if (p.val !== q.val) return false;
+
+    // Tree recursion
+    return isSameTree(p.left, q.left) && isSameTree(p.right, q.right);
+}
+
+function isSymmetric(root) {
+    if (!root) return true;
+
+    function isMirror(left, right) {
+        if (!left && !right) return true;
+        if (!left || !right) return false;
+
+        return left.val === right.val &&
+               isMirror(left.left, right.right) &&
+               isMirror(left.right, right.left);
+    }
+
+    return isMirror(root.left, root.right);
+}
+```
+
+### 3. Path Finding in Trees
+
+```javascript
+function hasPathSum(root, targetSum) {
+    if (!root) return false;
+
+    // Leaf node
+    if (!root.left && !root.right) {
+        return root.val === targetSum;
+    }
+
+    // Tree recursion
+    return hasPathSum(root.left, targetSum - root.val) ||
+           hasPathSum(root.right, targetSum - root.val);
+}
+
+function pathSum(root, targetSum, currentPath = [], allPaths = []) {
+    if (!root) return allPaths;
+
+    currentPath.push(root.val);
+
+    // Leaf node with target sum
+    if (!root.left && !root.right &&
+        currentPath.reduce((sum, val) => sum + val, 0) === targetSum) {
+        allPaths.push([...currentPath]);
+    }
+
+    // Tree recursion
+    pathSum(root.left, targetSum, currentPath, allPaths);
+    pathSum(root.right, targetSum, currentPath, allPaths);
+
+    currentPath.pop(); // Backtrack
+    return allPaths;
+}
+```
+
+### 4. Tree Construction
+
+```javascript
+function buildTreeFromPreorderInorder(preorder, inorder) {
+    if (preorder.length === 0) return null;
+
+    const rootVal = preorder[0];
+    const root = new TreeNode(rootVal);
+
+    const rootIndex = inorder.indexOf(rootVal);
+
+    // Tree recursion to build left and right subtrees
+    root.left = buildTreeFromPreorderInorder(
+        preorder.slice(1, rootIndex + 1),
+        inorder.slice(0, rootIndex)
+    );
+
+    root.right = buildTreeFromPreorderInorder(
+        preorder.slice(rootIndex + 1),
+        inorder.slice(rootIndex + 1)
+    );
+
+    return root;
+}
+```
+
+---
+
+## Mathematical Recursion
+
+Mathematical recursion deals with recursive mathematical formulas and sequences.
+
+### 1. Greatest Common Divisor (GCD)
+
+```javascript
+function gcd(a, b) {
+    // Base case
+    if (b === 0) return a;
+
+    // Recursive case: Euclidean algorithm
+    return gcd(b, a % b);
+}
+
+// Extended Euclidean Algorithm
+function extendedGCD(a, b) {
+    if (b === 0) {
+        return { gcd: a, x: 1, y: 0 };
+    }
+
+    const result = extendedGCD(b, a % b);
+    const x = result.y;
+    const y = result.x - Math.floor(a / b) * result.y;
+
+    return { gcd: result.gcd, x, y };
+}
+```
+
+### 2. Power Function
+
+```javascript
+// Naive recursive power
+function power(base, exponent) {
+    if (exponent === 0) return 1;
+    if (exponent === 1) return base;
+
+    return base * power(base, exponent - 1);
+}
+
+// Optimized power (fast exponentiation)
+function fastPower(base, exponent) {
+    if (exponent === 0) return 1;
+
+    if (exponent % 2 === 0) {
+        const halfPower = fastPower(base, exponent / 2);
+        return halfPower * halfPower;
+    } else {
+        return base * fastPower(base, exponent - 1);
+    }
+}
+
+// Power with modulo
+function powerMod(base, exponent, mod) {
+    if (exponent === 0) return 1;
+
+    if (exponent % 2 === 0) {
+        const halfPower = powerMod(base, exponent / 2, mod);
+        return (halfPower * halfPower) % mod;
+    } else {
+        return (base * powerMod(base, exponent - 1, mod)) % mod;
+    }
+}
+```
+
+### 3. Combinatorics
+
+```javascript
+// Combinations C(n, k)
+function combinations(n, k) {
+    // Base cases
+    if (k === 0 || k === n) return 1;
+    if (k > n) return 0;
+
+    // Recursive case: Pascal's triangle
+    return combinations(n - 1, k - 1) + combinations(n - 1, k);
+}
+
+// Permutations P(n, k)
+function permutations(n, k) {
+    if (k === 0) return 1;
+    if (k > n) return 0;
+
+    return n * permutations(n - 1, k - 1);
+}
+
+// Catalan Numbers
+function catalan(n) {
+    if (n <= 1) return 1;
+
+    let result = 0;
+    for (let i = 0; i < n; i++) {
+        result += catalan(i) * catalan(n - 1 - i);
+    }
+
+    return result;
+}
+```
+
+### 4. Number Theory
+
+```javascript
+// Prime factorization
+function primeFactors(n, factor = 2, factors = []) {
+    if (n === 1) return factors;
+
+    if (n % factor === 0) {
+        factors.push(factor);
+        return primeFactors(n / factor, factor, factors);
+    }
+
+    return primeFactors(n, factor + 1, factors);
+}
+
+// Sum of digits
+function sumOfDigits(n) {
+    if (n === 0) return 0;
+    return (n % 10) + sumOfDigits(Math.floor(n / 10));
+}
+
+// Reverse number
+function reverseNumber(n, reversed = 0) {
+    if (n === 0) return reversed;
+    return reverseNumber(Math.floor(n / 10), reversed * 10 + (n % 10));
+}
+
+// Check if palindrome number
+function isPalindromeNumber(n) {
+    return n === reverseNumber(n);
+}
+```
+
+---
+
+## String Recursion Patterns
+
+String recursion involves processing strings through recursive decomposition.
+
+### 1. String Manipulation
+
+```javascript
+// Remove character from string
+function removeChar(str, char) {
+    if (str.length === 0) return "";
+
+    if (str[0] === char) {
+        return removeChar(str.slice(1), char);
+    } else {
+        return str[0] + removeChar(str.slice(1), char);
+    }
+}
+
+// Replace character in string
+function replaceChar(str, oldChar, newChar) {
+    if (str.length === 0) return "";
+
+    const firstChar = str[0] === oldChar ? newChar : str[0];
+    return firstChar + replaceChar(str.slice(1), oldChar, newChar);
+}
+
+// Count occurrences
+function countChar(str, char) {
+    if (str.length === 0) return 0;
+
+    const count = str[0] === char ? 1 : 0;
+    return count + countChar(str.slice(1), char);
+}
+```
+
+### 2. String Validation
+
+```javascript
+// Check if string contains only digits
+function isDigitsOnly(str) {
+    if (str.length === 0) return true;
+
+    if (str[0] < '0' || str[0] > '9') return false;
+
+    return isDigitsOnly(str.slice(1));
+}
+
+// Check balanced parentheses
+function isBalanced(str, index = 0, count = 0) {
+    if (index === str.length) return count === 0;
+
+    if (str[index] === '(') {
+        return isBalanced(str, index + 1, count + 1);
+    } else if (str[index] === ')') {
+        if (count === 0) return false;
+        return isBalanced(str, index + 1, count - 1);
+    } else {
+        return isBalanced(str, index + 1, count);
+    }
+}
+
+// Check if anagram
+function isAnagram(str1, str2) {
+    if (str1.length !== str2.length) return false;
+    if (str1.length === 0) return true;
+
+    const char = str1[0];
+    const index = str2.indexOf(char);
+
+    if (index === -1) return false;
+
+    return isAnagram(
+        str1.slice(1),
+        str2.slice(0, index) + str2.slice(index + 1)
+    );
+}
+```
+
+### 3. Pattern Matching
+
+```javascript
+// Simple pattern matching with wildcards
+function patternMatch(str, pattern, sIndex = 0, pIndex = 0) {
+    // Base cases
+    if (pIndex === pattern.length) return sIndex === str.length;
+    if (sIndex === str.length) return pattern.slice(pIndex).split('').every(c => c === '*');
+
+    if (pattern[pIndex] === '*') {
+        // Try matching zero characters or one character
+        return patternMatch(str, pattern, sIndex, pIndex + 1) ||
+               patternMatch(str, pattern, sIndex + 1, pIndex);
+    } else if (pattern[pIndex] === '?' || pattern[pIndex] === str[sIndex]) {
+        return patternMatch(str, pattern, sIndex + 1, pIndex + 1);
+    }
+
+    return false;
+}
+
+// Longest common subsequence
+function longestCommonSubsequence(str1, str2, i = 0, j = 0) {
+    if (i === str1.length || j === str2.length) return 0;
+
+    if (str1[i] === str2[j]) {
+        return 1 + longestCommonSubsequence(str1, str2, i + 1, j + 1);
+    } else {
+        return Math.max(
+            longestCommonSubsequence(str1, str2, i + 1, j),
+            longestCommonSubsequence(str1, str2, i, j + 1)
+        );
+    }
+}
+```
+
+### 4. String Generation
+
+```javascript
+// Generate all permutations
+function stringPermutations(str, current = "", used = new Set(), result = []) {
+    if (current.length === str.length) {
+        result.push(current);
+        return result;
+    }
+
+    for (let i = 0; i < str.length; i++) {
+        if (!used.has(i)) {
+            used.add(i);
+            stringPermutations(str, current + str[i], used, result);
+            used.delete(i);
+        }
+    }
+
+    return result;
+}
+
+// Generate all subsequences
+function generateSubsequences(str, index = 0, current = "", result = []) {
+    if (index === str.length) {
+        result.push(current);
+        return result;
+    }
+
+    // Include current character
+    generateSubsequences(str, index + 1, current + str[index], result);
+
+    // Exclude current character
+    generateSubsequences(str, index + 1, current, result);
+
+    return result;
+}
+```
+
+---
+
+## Array & List Recursion
+
+Array and list recursion patterns for processing sequential data structures.
+
+### 1. Array Processing
+
+```javascript
+// Find maximum element
+function findMax(arr, index = 0) {
+    if (index === arr.length - 1) return arr[index];
+
+    const maxOfRest = findMax(arr, index + 1);
+    return Math.max(arr[index], maxOfRest);
+}
+
+// Find minimum element
+function findMin(arr, index = 0) {
+    if (index === arr.length - 1) return arr[index];
+
+    const minOfRest = findMin(arr, index + 1);
+    return Math.min(arr[index], minOfRest);
+}
+
+// Array sum
+function arraySum(arr, index = 0) {
+    if (index >= arr.length) return 0;
+    return arr[index] + arraySum(arr, index + 1);
+}
+
+// Array product
+function arrayProduct(arr, index = 0) {
+    if (index >= arr.length) return 1;
+    return arr[index] * arrayProduct(arr, index + 1);
+}
+```
+
+### 2. Array Searching
+
+```javascript
+// Binary search
+function binarySearchRecursive(arr, target, left = 0, right = arr.length - 1) {
+    if (left > right) return -1;
+
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) return mid;
+
+    if (target < arr[mid]) {
+        return binarySearchRecursive(arr, target, left, mid - 1);
+    } else {
+        return binarySearchRecursive(arr, target, mid + 1, right);
+    }
+}
+
+// Find all occurrences
+function findAllOccurrences(arr, target, index = 0, occurrences = []) {
+    if (index >= arr.length) return occurrences;
+
+    if (arr[index] === target) {
+        occurrences.push(index);
+    }
+
+    return findAllOccurrences(arr, target, index + 1, occurrences);
+}
+
+// Check if array is sorted
+function isSorted(arr, index = 0) {
+    if (index >= arr.length - 1) return true;
+
+    if (arr[index] > arr[index + 1]) return false;
+
+    return isSorted(arr, index + 1);
+}
+```
+
+### 3. Array Transformation
+
+```javascript
+// Reverse array
+function reverseArray(arr, start = 0, end = arr.length - 1) {
+    if (start >= end) return arr;
+
+    // Swap elements
+    [arr[start], arr[end]] = [arr[end], arr[start]];
+
+    return reverseArray(arr, start + 1, end - 1);
+}
+
+// Filter array
+function filterArray(arr, predicate, index = 0, result = []) {
+    if (index >= arr.length) return result;
+
+    if (predicate(arr[index])) {
+        result.push(arr[index]);
+    }
+
+    return filterArray(arr, predicate, index + 1, result);
+}
+
+// Map array
+function mapArray(arr, transform, index = 0, result = []) {
+    if (index >= arr.length) return result;
+
+    result.push(transform(arr[index]));
+
+    return mapArray(arr, transform, index + 1, result);
+}
+```
+
+### 4. Advanced Array Operations
+
+```javascript
+// Merge two sorted arrays
+function mergeSortedArrays(arr1, arr2, i = 0, j = 0, result = []) {
+    if (i >= arr1.length && j >= arr2.length) return result;
+
+    if (i >= arr1.length) {
+        result.push(arr2[j]);
+        return mergeSortedArrays(arr1, arr2, i, j + 1, result);
+    }
+
+    if (j >= arr2.length) {
+        result.push(arr1[i]);
+        return mergeSortedArrays(arr1, arr2, i + 1, j, result);
+    }
+
+    if (arr1[i] <= arr2[j]) {
+        result.push(arr1[i]);
+        return mergeSortedArrays(arr1, arr2, i + 1, j, result);
+    } else {
+        result.push(arr2[j]);
+        return mergeSortedArrays(arr1, arr2, i, j + 1, result);
+    }
+}
+
+// Quick select (find kth smallest)
+function quickSelect(arr, k, left = 0, right = arr.length - 1) {
+    if (left === right) return arr[left];
+
+    const pivotIndex = partition(arr, left, right);
+
+    if (k === pivotIndex) {
+        return arr[k];
+    } else if (k < pivotIndex) {
+        return quickSelect(arr, k, left, pivotIndex - 1);
+    } else {
+        return quickSelect(arr, k, pivotIndex + 1, right);
+    }
+}
+
+function partition(arr, left, right) {
+    const pivot = arr[right];
+    let i = left;
+
+    for (let j = left; j < right; j++) {
+        if (arr[j] <= pivot) {
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            i++;
+        }
+    }
+
+    [arr[i], arr[right]] = [arr[right], arr[i]];
+    return i;
+}
+```
+
+---
+
+## Divide and Conquer
+
+Divide and conquer is a recursive algorithm design paradigm.
+
+### 1. Classic Sorting Algorithms
+
+```javascript
+// Quick Sort
+function quickSort(arr, left = 0, right = arr.length - 1) {
+    if (left < right) {
+        const pivotIndex = partition(arr, left, right);
+
+        // Divide and conquer
+        quickSort(arr, left, pivotIndex - 1);
+        quickSort(arr, pivotIndex + 1, right);
+    }
+
+    return arr;
+}
+
+// Merge Sort (already shown earlier)
+function mergeSort(arr) {
+    if (arr.length <= 1) return arr;
+
+    const mid = Math.floor(arr.length / 2);
+    const left = mergeSort(arr.slice(0, mid));
+    const right = mergeSort(arr.slice(mid));
+
+    return merge(left, right);
+}
+```
+
+### 2. Maximum Subarray (Kadane's Algorithm - Divide & Conquer)
+
+```javascript
+function maxSubarrayDivideConquer(arr, left = 0, right = arr.length - 1) {
+    if (left === right) return arr[left];
+
+    const mid = Math.floor((left + right) / 2);
+
+    // Divide
+    const leftMax = maxSubarrayDivideConquer(arr, left, mid);
+    const rightMax = maxSubarrayDivideConquer(arr, mid + 1, right);
+
+    // Conquer - find max crossing subarray
+    let leftSum = -Infinity;
+    let sum = 0;
+    for (let i = mid; i >= left; i--) {
+        sum += arr[i];
+        leftSum = Math.max(leftSum, sum);
+    }
+
+    let rightSum = -Infinity;
+    sum = 0;
+    for (let i = mid + 1; i <= right; i++) {
+        sum += arr[i];
+        rightSum = Math.max(rightSum, sum);
+    }
+
+    const crossSum = leftSum + rightSum;
+
+    // Return maximum of three
+    return Math.max(leftMax, rightMax, crossSum);
+}
+```
+
+### 3. Closest Pair of Points
+
+```javascript
+function closestPairDivideConquer(points) {
+    points.sort((a, b) => a.x - b.x);
+    return closestPairRec(points);
+}
+
+function closestPairRec(points) {
+    const n = points.length;
+
+    if (n <= 3) return bruteForceClosest(points);
+
+    const mid = Math.floor(n / 2);
+    const midPoint = points[mid];
+
+    const leftPoints = points.slice(0, mid);
+    const rightPoints = points.slice(mid);
+
+    // Divide
+    const leftMin = closestPairRec(leftPoints);
+    const rightMin = closestPairRec(rightPoints);
+
+    // Find minimum of two halves
+    const minDist = Math.min(leftMin, rightMin);
+
+    // Conquer - check points near dividing line
+    const strip = points.filter(point =>
+        Math.abs(point.x - midPoint.x) < minDist
+    );
+
+    return Math.min(minDist, stripClosest(strip, minDist));
+}
+
+function distance(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
+function bruteForceClosest(points) {
+    let minDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+            minDist = Math.min(minDist, distance(points[i], points[j]));
+        }
+    }
+    return minDist;
+}
+
+function stripClosest(strip, d) {
+    let minDist = d;
+    strip.sort((a, b) => a.y - b.y);
+
+    for (let i = 0; i < strip.length; i++) {
+        for (let j = i + 1; j < strip.length && (strip[j].y - strip[i].y) < minDist; j++) {
+            minDist = Math.min(minDist, distance(strip[i], strip[j]));
+        }
+    }
+
+    return minDist;
+}
+```
+
+### 4. Matrix Multiplication (Strassen's Algorithm)
+
+```javascript
+function strassenMultiply(A, B) {
+    const n = A.length;
+
+    if (n === 1) {
+        return [[A[0][0] * B[0][0]]];
+    }
+
+    // Divide matrices into quadrants
+    const mid = Math.floor(n / 2);
+    const A11 = getSubMatrix(A, 0, 0, mid);
+    const A12 = getSubMatrix(A, 0, mid, mid);
+    const A21 = getSubMatrix(A, mid, 0, mid);
+    const A22 = getSubMatrix(A, mid, mid, mid);
+
+    const B11 = getSubMatrix(B, 0, 0, mid);
+    const B12 = getSubMatrix(B, 0, mid, mid);
+    const B21 = getSubMatrix(B, mid, 0, mid);
+    const B22 = getSubMatrix(B, mid, mid, mid);
+
+    // Strassen's 7 products
+    const M1 = strassenMultiply(addMatrices(A11, A22), addMatrices(B11, B22));
+    const M2 = strassenMultiply(addMatrices(A21, A22), B11);
+    const M3 = strassenMultiply(A11, subtractMatrices(B12, B22));
+    const M4 = strassenMultiply(A22, subtractMatrices(B21, B11));
+    const M5 = strassenMultiply(addMatrices(A11, A12), B22);
+    const M6 = strassenMultiply(subtractMatrices(A21, A11), addMatrices(B11, B12));
+    const M7 = strassenMultiply(subtractMatrices(A12, A22), addMatrices(B21, B22));
+
+    // Compute result quadrants
+    const C11 = addMatrices(subtractMatrices(addMatrices(M1, M4), M5), M7);
+    const C12 = addMatrices(M3, M5);
+    const C21 = addMatrices(M2, M4);
+    const C22 = addMatrices(subtractMatrices(addMatrices(M1, M3), M2), M6);
+
+    // Combine quadrants
+    return combineMatrices(C11, C12, C21, C22);
+}
+
+function getSubMatrix(matrix, startRow, startCol, size) {
+    const result = [];
+    for (let i = 0; i < size; i++) {
+        result[i] = [];
+        for (let j = 0; j < size; j++) {
+            result[i][j] = matrix[startRow + i][startCol + j];
+        }
+    }
+    return result;
+}
+
+function addMatrices(A, B) {
+    const n = A.length;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        result[i] = [];
+        for (let j = 0; j < n; j++) {
+            result[i][j] = A[i][j] + B[i][j];
+        }
+    }
+    return result;
+}
+
+function subtractMatrices(A, B) {
+    const n = A.length;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        result[i] = [];
+        for (let j = 0; j < n; j++) {
+            result[i][j] = A[i][j] - B[i][j];
+        }
+    }
+    return result;
+}
+
+function combineMatrices(C11, C12, C21, C22) {
+    const n = C11.length;
+    const result = Array(2 * n).fill().map(() => Array(2 * n).fill(0));
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            result[i][j] = C11[i][j];
+            result[i][j + n] = C12[i][j];
+            result[i + n][j] = C21[i][j];
+            result[i + n][j + n] = C22[i][j];
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Dynamic Programming with Recursion
+
+Dynamic Programming combines recursion with memoization to solve optimization problems.
+
+### 1. Classic DP Problems
+
+```javascript
+// Longest Common Subsequence with Memoization
+function longestCommonSubsequenceMemo(str1, str2, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === str1.length || j === str2.length) {
+        return memo[key] = 0;
+    }
+
+    if (str1[i] === str2[j]) {
+        return memo[key] = 1 + longestCommonSubsequenceMemo(str1, str2, i + 1, j + 1, memo);
+    } else {
+        return memo[key] = Math.max(
+            longestCommonSubsequenceMemo(str1, str2, i + 1, j, memo),
+            longestCommonSubsequenceMemo(str1, str2, i, j + 1, memo)
+        );
+    }
+}
+
+// Edit Distance (Levenshtein Distance)
+function editDistance(str1, str2, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === str1.length) return memo[key] = str2.length - j;
+    if (j === str2.length) return memo[key] = str1.length - i;
+
+    if (str1[i] === str2[j]) {
+        return memo[key] = editDistance(str1, str2, i + 1, j + 1, memo);
+    } else {
+        const insert = editDistance(str1, str2, i, j + 1, memo);
+        const delete_ = editDistance(str1, str2, i + 1, j, memo);
+        const replace = editDistance(str1, str2, i + 1, j + 1, memo);
+
+        return memo[key] = 1 + Math.min(insert, delete_, replace);
+    }
+}
+
+// 0/1 Knapsack Problem
+function knapsack(weights, values, capacity, index = 0, memo = {}) {
+    const key = `${capacity},${index}`;
+    if (key in memo) return memo[key];
+
+    if (index === weights.length || capacity === 0) {
+        return memo[key] = 0;
+    }
+
+    // Don't take current item
+    let maxValue = knapsack(weights, values, capacity, index + 1, memo);
+
+    // Take current item if it fits
+    if (weights[index] <= capacity) {
+        const valueWithCurrent = values[index] +
+            knapsack(weights, values, capacity - weights[index], index + 1, memo);
+        maxValue = Math.max(maxValue, valueWithCurrent);
+    }
+
+    return memo[key] = maxValue;
+}
+```
+
+### 2. Coin Change Problems
+
+```javascript
+// Coin Change - Minimum coins
+function coinChangeMinCoins(coins, amount, memo = {}) {
+    if (amount in memo) return memo[amount];
+    if (amount === 0) return 0;
+    if (amount < 0) return Infinity;
+
+    let minCoins = Infinity;
+    for (let coin of coins) {
+        const result = coinChangeMinCoins(coins, amount - coin, memo);
+        if (result !== Infinity) {
+            minCoins = Math.min(minCoins, 1 + result);
+        }
+    }
+
+    return memo[amount] = minCoins === Infinity ? -1 : minCoins;
+}
+
+// Coin Change - Number of ways
+function coinChangeWays(coins, amount, index = 0, memo = {}) {
+    const key = `${amount},${index}`;
+    if (key in memo) return memo[key];
+
+    if (amount === 0) return 1;
+    if (amount < 0 || index >= coins.length) return 0;
+
+    // Include current coin + exclude current coin
+    return memo[key] = coinChangeWays(coins, amount - coins[index], index, memo) +
+                      coinChangeWays(coins, amount, index + 1, memo);
+}
+```
+
+### 3. Path Problems
+
+```javascript
+// Unique Paths in Grid
+function uniquePaths(m, n, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    if (i === m - 1 && j === n - 1) return 1;
+    if (i >= m || j >= n) return 0;
+
+    return memo[key] = uniquePaths(m, n, i + 1, j, memo) +
+                      uniquePaths(m, n, i, j + 1, memo);
+}
+
+// Minimum Path Sum in Grid
+function minPathSum(grid, i = 0, j = 0, memo = {}) {
+    const key = `${i},${j}`;
+    if (key in memo) return memo[key];
+
+    const m = grid.length, n = grid[0].length;
+
+    if (i === m - 1 && j === n - 1) return grid[i][j];
+    if (i >= m || j >= n) return Infinity;
+
+    const down = minPathSum(grid, i + 1, j, memo);
+    const right = minPathSum(grid, i, j + 1, memo);
+
+    return memo[key] = grid[i][j] + Math.min(down, right);
+}
+
+// Maximum Path Sum in Binary Tree
+function maxPathSumTree(root, memo = new Map()) {
+    if (memo.has(root)) return memo.get(root);
+    if (!root) return 0;
+
+    const leftMax = Math.max(0, maxPathSumTree(root.left, memo));
+    const rightMax = Math.max(0, maxPathSumTree(root.right, memo));
+
+    const result = root.val + leftMax + rightMax;
+    memo.set(root, result);
+
+    return result;
+}
+```
+
+### 4. Subsequence Problems
+
+```javascript
+// Longest Increasing Subsequence
+function longestIncreasingSubsequence(nums, index = 0, prev = -Infinity, memo = {}) {
+    const key = `${index},${prev}`;
+    if (key in memo) return memo[key];
+
+    if (index >= nums.length) return 0;
+
+    // Don't take current element
+    let maxLength = longestIncreasingSubsequence(nums, index + 1, prev, memo);
+
+    // Take current element if it's greater than previous
+    if (nums[index] > prev) {
+        const lengthWithCurrent = 1 + longestIncreasingSubsequence(nums, index + 1, nums[index], memo);
+        maxLength = Math.max(maxLength, lengthWithCurrent);
+    }
+
+    return memo[key] = maxLength;
+}
+
+// Longest Palindromic Subsequence
+function longestPalindromicSubsequence(str, left = 0, right = str.length - 1, memo = {}) {
+    const key = `${left},${right}`;
+    if (key in memo) return memo[key];
+
+    if (left > right) return 0;
+    if (left === right) return 1;
+
+    if (str[left] === str[right]) {
+        return memo[key] = 2 + longestPalindromicSubsequence(str, left + 1, right - 1, memo);
+    } else {
+        return memo[key] = Math.max(
+            longestPalindromicSubsequence(str, left + 1, right, memo),
+            longestPalindromicSubsequence(str, left, right - 1, memo)
+        );
+    }
+}
+```
+
+---
+
+## Recursion Optimization Techniques
+
+Techniques to optimize recursive solutions for better performance.
+
+### 1. Memoization
+
+```javascript
+// Generic memoization decorator
+function memoize(fn) {
+    const cache = new Map();
+
+    return function(...args) {
+        const key = JSON.stringify(args);
+
+        if (cache.has(key)) {
+            return cache.get(key);
+        }
+
+        const result = fn.apply(this, args);
+        cache.set(key, result);
+        return result;
+    };
+}
+
+// Usage example
+const fibMemoized = memoize(function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+});
+
+// Class-based memoization
+class MemoizedRecursion {
+    constructor() {
+        this.cache = new Map();
+    }
+
+    memoizedCall(fn, ...args) {
+        const key = `${fn.name}_${JSON.stringify(args)}`;
+
+        if (this.cache.has(key)) {
+            return this.cache.get(key);
+        }
+
+        const result = fn.apply(this, args);
+        this.cache.set(key, result);
+        return result;
+    }
+
+    fibonacci(n) {
+        if (n <= 1) return n;
+        return this.memoizedCall(this.fibonacci, n - 1) +
+               this.memoizedCall(this.fibonacci, n - 2);
+    }
+}
+```
+
+### 2. Tail Call Optimization
+
+```javascript
+// Trampoline technique for tail call optimization
+function trampoline(fn) {
+    return function(...args) {
+        let result = fn.apply(this, args);
+
+        while (typeof result === 'function') {
+            result = result();
+        }
+
+        return result;
+    };
+}
+
+// Tail recursive factorial using trampoline
+const factorialTrampoline = trampoline(function factorial(n, acc = 1) {
+    if (n <= 1) return acc;
+    return () => factorial(n - 1, n * acc);
+});
+
+// Tail recursive sum using trampoline
+const sumTrampoline = trampoline(function sum(n, acc = 0) {
+    if (n <= 0) return acc;
+    return () => sum(n - 1, acc + n);
+});
+```
+
+### 3. Space Optimization
+
+```javascript
+// Convert recursion to iteration to save stack space
+function recursionToIteration(problem, isBaseCase, getBaseValue, decompose, combine) {
+    const stack = [problem];
+    const results = new Map();
+
+    while (stack.length > 0) {
+        const current = stack[stack.length - 1];
+
+        if (isBaseCase(current)) {
+            stack.pop();
+            results.set(JSON.stringify(current), getBaseValue(current));
+        } else {
+            const subproblems = decompose(current);
+            let allSubproblemsResolved = true;
+
+            for (let subproblem of subproblems) {
+                const key = JSON.stringify(subproblem);
+                if (!results.has(key)) {
+                    stack.push(subproblem);
+                    allSubproblemsResolved = false;
+                }
+            }
+
+            if (allSubproblemsResolved) {
+                stack.pop();
+                const subResults = subproblems.map(sub =>
+                    results.get(JSON.stringify(sub))
+                );
+                results.set(JSON.stringify(current), combine(subResults, current));
+            }
+        }
+    }
+
+    return results.get(JSON.stringify(problem));
+}
+
+// Example: Fibonacci using iteration
+function fibonacciIterative(n) {
+    if (n <= 1) return n;
+
+    let a = 0, b = 1;
+    for (let i = 2; i <= n; i++) {
+        [a, b] = [b, a + b];
+    }
+    return b;
+}
+```
+
+### 4. Early Termination
+
+```javascript
+// Optimize search with early termination
+function optimizedSearch(arr, target, predicate) {
+    function search(index) {
+        if (index >= arr.length) return -1;
+
+        // Early termination based on predicate
+        if (!predicate(arr[index], index)) {
+            return -1;
+        }
+
+        if (arr[index] === target) return index;
+
+        return search(index + 1);
+    }
+
+    return search(0);
+}
+
+// Pruned tree traversal
+function prunedTreeTraversal(root, shouldPrune) {
+    if (!root) return null;
+
+    // Early termination - don't traverse subtree
+    if (shouldPrune(root)) {
+        return null;
+    }
+
+    const left = prunedTreeTraversal(root.left, shouldPrune);
+    const right = prunedTreeTraversal(root.right, shouldPrune);
+
+    return {
+        val: root.val,
+        left: left,
+        right: right
+    };
+}
+```
+
+---
+
+## Converting Recursion to Iteration
+
+Systematic approaches to convert recursive algorithms to iterative ones.
+
+### 1. Using Explicit Stack
+
+```javascript
+// Convert tree traversal from recursion to iteration
+function iterativePreorder(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+        result.push(node.val);
+
+        // Push right first, then left (stack is LIFO)
+        if (node.right) stack.push(node.right);
+        if (node.left) stack.push(node.left);
+    }
+
+    return result;
+}
+
+function iterativeInorder(root) {
+    const result = [];
+    const stack = [];
+    let current = root;
+
+    while (current || stack.length > 0) {
+        // Go to leftmost node
+        while (current) {
+            stack.push(current);
+            current = current.left;
+        }
+
+        // Process node
+        current = stack.pop();
+        result.push(current.val);
+
+        // Move to right subtree
+        current = current.right;
+    }
+
+    return result;
+}
+
+function iterativePostorder(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [root];
+    const visited = new Set();
+
+    while (stack.length > 0) {
+        const node = stack[stack.length - 1];
+
+        if (visited.has(node) || (!node.left && !node.right)) {
+            result.push(node.val);
+            stack.pop();
+            visited.add(node);
+        } else {
+            if (node.right) stack.push(node.right);
+            if (node.left) stack.push(node.left);
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. State Machine Approach
+
+```javascript
+// Convert factorial to iteration using state
+function factorialIterativeState(n) {
+    let state = { n: n, result: 1, phase: 'multiply' };
+
+    while (state.phase !== 'done') {
+        switch (state.phase) {
+            case 'multiply':
+                if (state.n <= 1) {
+                    state.phase = 'done';
+                } else {
+                    state.result *= state.n;
+                    state.n--;
+                }
+                break;
+        }
+    }
+
+    return state.result;
+}
+
+// Convert Fibonacci to iteration with state
+function fibonacciIterativeState(n) {
+    if (n <= 1) return n;
+
+    let state = {
+        target: n,
+        current: 2,
+        prev1: 1,  // f(1)
+        prev2: 0,  // f(0)
+        result: 0
+    };
+
+    while (state.current <= state.target) {
+        state.result = state.prev1 + state.prev2;
+        state.prev2 = state.prev1;
+        state.prev1 = state.result;
+        state.current++;
+    }
+
+    return state.result;
+}
+```
+
+### 3. Loop Transformation
+
+```javascript
+// Generic recursion to iteration converter
+class RecursionConverter {
+    static convertTailRecursion(initialArgs, baseCondition, baseValue, updateArgs) {
+        let args = initialArgs;
+
+        while (!baseCondition(args)) {
+            args = updateArgs(args);
+        }
+
+        return baseValue(args);
+    }
+
+    static convertLinearRecursion(initialArgs, baseCondition, baseValue, processStep, combineResults) {
+        const stack = [];
+        let current = initialArgs;
+
+        // Forward pass - build stack
+        while (!baseCondition(current)) {
+            stack.push(current);
+            current = processStep(current);
+        }
+
+        let result = baseValue(current);
+
+        // Backward pass - combine results
+        while (stack.length > 0) {
+            const args = stack.pop();
+            result = combineResults(args, result);
+        }
+
+        return result;
+    }
+}
+
+// Usage examples
+const iterativeFactorial = (n) => RecursionConverter.convertTailRecursion(
+    { n, acc: 1 },
+    args => args.n <= 1,
+    args => args.acc,
+    args => ({ n: args.n - 1, acc: args.acc * args.n })
+);
+
+const iterativeSum = (n) => RecursionConverter.convertLinearRecursion(
+    n,
+    n => n <= 0,
+    n => 0,
+    n => n - 1,
+    (n, result) => n + result
+);
+```
+
+---
+
+## Common Pitfalls & Debugging
+
+Common mistakes in recursive programming and debugging techniques.
+
+### 1. Common Pitfalls
+
+```javascript
+// PITFALL 1: Missing or incorrect base case
+// Wrong:
+function infiniteRecursion(n) {
+    return n * infiniteRecursion(n - 1); // No base case!
+}
+
+// Correct:
+function factorial(n) {
+    if (n <= 1) return 1; // Base case
+    return n * factorial(n - 1);
+}
+
+// PITFALL 2: Not making progress toward base case
+// Wrong:
+function noProgress(n) {
+    if (n === 0) return 0;
+    return noProgress(n); // Same parameter!
+}
+
+// Correct:
+function countdown(n) {
+    if (n === 0) return 0;
+    return countdown(n - 1); // Making progress
+}
+
+// PITFALL 3: Stack overflow from deep recursion
+// Problematic for large inputs:
+function deepRecursion(n) {
+    if (n === 0) return 0;
+    return 1 + deepRecursion(n - 1);
+}
+
+// Better with tail recursion:
+function tailRecursion(n, acc = 0) {
+    if (n === 0) return acc;
+    return tailRecursion(n - 1, acc + 1);
+}
+```
+
+### 2. Debugging Techniques
+
+```javascript
+// Debug wrapper for recursive functions
+function debugRecursion(fn, name) {
+    let depth = 0;
+    const maxDepth = 100; // Prevent infinite recursion during debugging
+
+    return function debugWrapper(...args) {
+        depth++;
+
+        if (depth > maxDepth) {
+            throw new Error(`Maximum recursion depth exceeded in ${name}`);
+        }
+
+        const indent = '  '.repeat(depth - 1);
+        console.log(`${indent}→ ${name}(${args.join(', ')})`);
+
+        try {
+            const result = fn.apply(this, args);
+            console.log(`${indent}← ${name} returns: ${result}`);
+            depth--;
+            return result;
+        } catch (error) {
+            console.log(`${indent}✗ ${name} error: ${error.message}`);
+            depth--;
+            throw error;
+        }
+    };
+}
+
+// Usage
+const debugFactorial = debugRecursion(
+    function factorial(n) {
+        if (n <= 1) return 1;
+        return n * factorial(n - 1);
+    },
+    'factorial'
+);
+
+// Call stack tracer
+class CallStackTracer {
+    constructor() {
+        this.stack = [];
+        this.maxDepth = 0;
+    }
+
+    trace(fn, name) {
+        return (...args) => {
+            this.stack.push({ name, args, timestamp: Date.now() });
+            this.maxDepth = Math.max(this.maxDepth, this.stack.length);
+
+            try {
+                const result = fn.apply(this, args);
+                const call = this.stack.pop();
+                call.result = result;
+                call.duration = Date.now() - call.timestamp;
+                return result;
+            } catch (error) {
+                this.stack.pop();
+                throw error;
+            }
+        };
+    }
+
+    getStats() {
+        return {
+            maxDepth: this.maxDepth,
+            currentDepth: this.stack.length,
+            currentStack: [...this.stack]
+        };
+    }
+}
+```
+
+### 3. Validation and Testing
+
+```javascript
+// Recursive function validator
+class RecursionValidator {
+    static validateBaseCase(fn, baseCaseInputs, expectedOutputs) {
+        for (let i = 0; i < baseCaseInputs.length; i++) {
+            const result = fn(baseCaseInputs[i]);
+            if (result !== expectedOutputs[i]) {
+                throw new Error(`Base case failed: f(${baseCaseInputs[i]}) = ${result}, expected ${expectedOutputs[i]}`);
+            }
+        }
+        return true;
+    }
+
+    static validateProgress(fn, input, maxDepth = 1000) {
+        const visited = new Set();
+        let depth = 0;
+
+        function checkProgress(args) {
+            const key = JSON.stringify(args);
+
+            if (visited.has(key)) {
+                throw new Error(`Infinite recursion detected: revisiting ${key}`);
+            }
+
+            if (depth > maxDepth) {
+                throw new Error(`Maximum depth exceeded: ${depth}`);
+            }
+
+            visited.add(key);
+            depth++;
+        }
+
+        // This is a simplified check - real implementation would need
+        // to intercept the recursive calls
+        return true;
+    }
+}
+
+// Property-based testing for recursive functions
+function testRecursiveProperty(fn, generator, property, numTests = 100) {
+    for (let i = 0; i < numTests; i++) {
+        const input = generator();
+        const result = fn(input);
+
+        if (!property(input, result)) {
+            throw new Error(`Property failed for input: ${JSON.stringify(input)}, result: ${JSON.stringify(result)}`);
+        }
+    }
+
+    return true;
+}
+
+// Example usage
+testRecursiveProperty(
+    factorial,
+    () => Math.floor(Math.random() * 10), // Generate random input
+    (input, result) => {
+        // Property: factorial(n) should be greater than factorial(n-1) for n > 1
+        return input <= 1 || result > factorial(input - 1);
+    }
+);
+```
+
+---
+
+## Real-World Applications
+
+Practical applications of recursion in software development.
+
+### 1. File System Operations
+
+```javascript
+// Recursively traverse directory structure
+async function traverseDirectory(dirPath, callback, options = {}) {
+    const { includeFiles = true, includeDirs = true, maxDepth = Infinity, currentDepth = 0 } = options;
+
+    if (currentDepth >= maxDepth) return;
+
+    try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+
+            if (entry.isDirectory()) {
+                if (includeDirs) callback(fullPath, 'directory', currentDepth);
+
+                // Recursive call for subdirectory
+                await traverseDirectory(fullPath, callback, {
+                    ...options,
+                    currentDepth: currentDepth + 1
+                });
+            } else if (entry.isFile() && includeFiles) {
+                callback(fullPath, 'file', currentDepth);
+            }
+        }
+    } catch (error) {
+        console.error(`Error reading directory ${dirPath}:`, error.message);
+    }
+}
+
+// Calculate total size of directory
+async function calculateDirectorySize(dirPath) {
+    let totalSize = 0;
+
+    await traverseDirectory(dirPath, async (filePath, type) => {
+        if (type === 'file') {
+            try {
+                const stats = await fs.stat(filePath);
+                totalSize += stats.size;
+            } catch (error) {
+                console.error(`Error getting stats for ${filePath}:`, error.message);
+            }
+        }
+    });
+
+    return totalSize;
+}
+
+// Find files matching pattern
+async function findFiles(dirPath, pattern, results = []) {
+    await traverseDirectory(dirPath, (filePath, type) => {
+        if (type === 'file' && pattern.test(path.basename(filePath))) {
+            results.push(filePath);
+        }
+    });
+
+    return results;
+}
+```
+
+### 2. JSON/XML Processing
+
+```javascript
+// Recursively process JSON structure
+function processJSON(obj, processor, path = '') {
+    if (obj === null || typeof obj !== 'object') {
+        return processor(obj, path);
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map((item, index) =>
+            processJSON(item, processor, `${path}[${index}]`)
+        );
+    } else {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+            const newPath = path ? `${path}.${key}` : key;
+            result[key] = processJSON(value, processor, newPath);
+        }
+        return result;
+    }
+}
+
+// Flatten nested JSON
+function flattenJSON(obj, separator = '.', prefix = '') {
+    const result = {};
+
+    function flatten(current, path) {
+        if (current === null || typeof current !== 'object' || Array.isArray(current)) {
+            result[path] = current;
+            return;
+        }
+
+        for (const [key, value] of Object.entries(current)) {
+            const newPath = path ? `${path}${separator}${key}` : key;
+            flatten(value, newPath);
+        }
+    }
+
+    flatten(obj, prefix);
+    return result;
+}
+
+// Deep clone with custom handling
+function deepClone(obj, customCloners = {}, visited = new WeakMap()) {
+    // Handle primitives and null
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+
+    // Handle circular references
+    if (visited.has(obj)) {
+        return visited.get(obj);
+    }
+
+    // Handle custom types
+    for (const [type, cloner] of Object.entries(customCloners)) {
+        if (obj instanceof global[type]) {
+            const cloned = cloner(obj);
+            visited.set(obj, cloned);
+            return cloned;
+        }
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+        const cloned = [];
+        visited.set(obj, cloned);
+        for (let i = 0; i < obj.length; i++) {
+            cloned[i] = deepClone(obj[i], customCloners, visited);
+        }
+        return cloned;
+    }
+
+    // Handle objects
+    const cloned = {};
+    visited.set(obj, cloned);
+    for (const [key, value] of Object.entries(obj)) {
+        cloned[key] = deepClone(value, customCloners, visited);
+    }
+
+    return cloned;
+}
+```
+
+### 3. Algorithm Implementation
+
+```javascript
+// Recursive descent parser
+class RecursiveDescentParser {
+    constructor(tokens) {
+        this.tokens = tokens;
+        this.position = 0;
+    }
+
+    parse() {
+        return this.parseExpression();
+    }
+
+    parseExpression() {
+        let left = this.parseTerm();
+
+        while (this.match('+', '-')) {
+            const operator = this.previous();
+            const right = this.parseTerm();
+            left = { type: 'binary', left, operator: operator.value, right };
+        }
+
+        return left;
+    }
+
+    parseTerm() {
+        let left = this.parseFactor();
+
+        while (this.match('*', '/')) {
+            const operator = this.previous();
+            const right = this.parseFactor();
+            left = { type: 'binary', left, operator: operator.value, right };
+        }
+
+        return left;
+    }
+
+    parseFactor() {
+        if (this.match('NUMBER')) {
+            return { type: 'literal', value: this.previous().value };
+        }
+
+        if (this.match('(')) {
+            const expr = this.parseExpression(); // Recursive call
+            this.consume(')', "Expected ')' after expression");
+            return expr;
+        }
+
+        throw new Error(`Unexpected token: ${this.peek().value}`);
+    }
+
+    match(...types) {
+        for (const type of types) {
+            if (this.check(type)) {
+                this.advance();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    check(type) {
+        if (this.isAtEnd()) return false;
+        return this.peek().type === type;
+    }
+
+    advance() {
+        if (!this.isAtEnd()) this.position++;
+        return this.previous();
+    }
+
+    isAtEnd() {
+        return this.position >= this.tokens.length;
+    }
+
+    peek() {
+        return this.tokens[this.position];
+    }
+
+    previous() {
+        return this.tokens[this.position - 1];
+    }
+
+    consume(type, message) {
+        if (this.check(type)) return this.advance();
+        throw new Error(message);
+    }
+}
+
+// Backtracking algorithm for N-Queens
+function solveNQueens(n) {
+    const solutions = [];
+    const board = Array(n).fill().map(() => Array(n).fill('.'));
+
+    function isValid(row, col) {
+        // Check column
+        for (let i = 0; i < row; i++) {
+            if (board[i][col] === 'Q') return false;
+        }
+
+        // Check diagonal
+        for (let i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--) {
+            if (board[i][j] === 'Q') return false;
+        }
+
+        // Check anti-diagonal
+        for (let i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++) {
+            if (board[i][j] === 'Q') return false;
+        }
+
+        return true;
+    }
+
+    function backtrack(row) {
+        if (row === n) {
+            solutions.push(board.map(row => row.join('')));
+            return;
+        }
+
+        for (let col = 0; col < n; col++) {
+            if (isValid(row, col)) {
+                board[row][col] = 'Q';
+                backtrack(row + 1); // Recursive call
+                board[row][col] = '.'; // Backtrack
+            }
+        }
+    }
+
+    backtrack(0);
+    return solutions;
+}
+```
+
+### 4. Data Structure Implementation
+
+```javascript
+// Recursive Binary Search Tree
+class BinarySearchTree {
+    constructor() {
+        this.root = null;
+    }
+
+    insert(value) {
+        this.root = this.insertRec(this.root, value);
+    }
+
+    insertRec(node, value) {
+        if (!node) return { value, left: null, right: null };
+
+        if (value < node.value) {
+            node.left = this.insertRec(node.left, value);
+        } else if (value > node.value) {
+            node.right = this.insertRec(node.right, value);
+        }
+
+        return node;
+    }
+
+    search(value) {
+        return this.searchRec(this.root, value);
+    }
+
+    searchRec(node, value) {
+        if (!node || node.value === value) return node;
+
+        if (value < node.value) {
+            return this.searchRec(node.left, value);
+        } else {
+            return this.searchRec(node.right, value);
+        }
+    }
+
+    delete(value) {
+        this.root = this.deleteRec(this.root, value);
+    }
+
+    deleteRec(node, value) {
+        if (!node) return null;
+
+        if (value < node.value) {
+            node.left = this.deleteRec(node.left, value);
+        } else if (value > node.value) {
+            node.right = this.deleteRec(node.right, value);
+        } else {
+            // Node to delete found
+            if (!node.left) return node.right;
+            if (!node.right) return node.left;
+
+            // Node has two children
+            const minRight = this.findMin(node.right);
+            node.value = minRight.value;
+            node.right = this.deleteRec(node.right, minRight.value);
+        }
+
+        return node;
+    }
+
+    findMin(node) {
+        while (node.left) {
+            node = node.left;
+        }
+        return node;
+    }
+
+    inorderTraversal() {
+        const result = [];
+        this.inorderRec(this.root, result);
+        return result;
+    }
+
+    inorderRec(node, result) {
+        if (node) {
+            this.inorderRec(node.left, result);
+            result.push(node.value);
+            this.inorderRec(node.right, result);
+        }
+    }
+}
+```
+
+---
+
+## Conclusion
+
+Recursion is a powerful problem-solving technique that provides elegant solutions to complex problems. Key takeaways:
+
+### Best Practices:
+1. **Always define clear base cases** to prevent infinite recursion
+2. **Ensure progress toward base case** with each recursive call
+3. **Consider space complexity** - deep recursion can cause stack overflow
+4. **Use memoization** for overlapping subproblems
+5. **Convert to iteration** when stack space is a concern
+6. **Debug systematically** with proper tracing and validation
+
+### When to Use Recursion:
+- **Tree and graph algorithms**
+- **Divide and conquer problems**
+- **Mathematical computations with recursive definitions**
+- **Backtracking algorithms**
+- **Parsing and language processing**
+- **Dynamic programming problems**
+
+### Alternatives to Consider:
+- **Iteration with explicit stack** for space optimization
+- **Dynamic programming** for optimization problems
+- **Memoization** for expensive computations
+- **Tail recursion optimization** where supported
+
+Recursion is an essential tool in every programmer's toolkit. Master these patterns, understand the trade-offs, and apply them judiciously to write elegant and efficient code.
+
+---
+
+*This comprehensive guide covers the fundamental patterns and techniques of recursion. Practice implementing these examples and experiment with variations to deepen your understanding of recursive problem-solving.*# Complete Recursion Patterns & Techniques
+
+A comprehensive guide to recursion algorithms, patterns, and all types of recursive techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Core Recursion Concepts](#core-recursion-concepts)
+2. [Types of Recursion](#types-of-recursion)
+3. [The Recursion Template](#the-recursion-template)
+4. [Linear Recursion Patterns](#linear-recursion-patterns)
+5. [Binary Recursion Patterns](#binary-recursion-patterns)
+6. [Multiple Recursion Patterns](#multiple-recursion-patterns)
+7. [Tail Recursion Optimization](#tail-recursion-optimization)
+8. [Mutual Recursion Patterns](#mutual-recursion-patterns)
+9. [Indirect Recursion](#indirect-recursion)
+10. [Nested Recursion](#nested-recursion)
+11. [Tree Recursion Patterns](#tree-recursion-patterns)
+12. [Mathematical Recursion](#mathematical-recursion)
+13. [String Recursion Patterns](#string-recursion-patterns)
+14. [Array & List Recursion](#array--list-recursion)
+15. [Divide and Conquer](#divide-and-conquer)
+16. [Dynamic Programming with Recursion](#dynamic-programming-with-recursion)
+17. [Recursion Optimization Techniques](#recursion-optimization-techniques)
+18. [Converting Recursion to Iteration](#converting-recursion-to-iteration)
+19. [Common Pitfalls & Debugging](#common-pitfalls--debugging)
+20. [Real-World Applications](#real-world-applications)
+
+---
+
+## Core Recursion Concepts
+
+**Recursion** is a problem-solving technique where a function calls itself to solve smaller instances of the same problem.
+
+### Essential Components:
+1. **Base Case**: Condition to stop recursion
+2. **Recursive Case**: Function calls itself with modified parameters
+3. **Progress**: Each call moves toward base case
+4. **Return**: Combines results from recursive calls
+
+### When to Use Recursion:
+- Problem can be broken into similar smaller subproblems
+- Natural recursive structure (trees, fractals)
+- Mathematical sequences and formulas
+- Divide and conquer algorithms
+- Exploring all possibilities (backtracking)
+
+---
+
+## Types of Recursion
+
+### 1. **Linear Recursion**
+- Function makes **one recursive call** per execution
+- Forms a linear chain of calls
+
+### 2. **Binary Recursion**
+- Function makes **two recursive calls** per execution
+- Common in binary trees and divide-and-conquer
+
+### 3. **Multiple Recursion**
+- Function makes **multiple recursive calls** (more than 2)
+- Seen in tree traversals with multiple children
+
+### 4. **Tail Recursion**
+- Recursive call is the **last operation** in function
+- Can be optimized to iteration by compilers
+
+### 5. **Head Recursion**
+- Recursive call is **before** other operations
+- Processing happens on the way back
+
+### 6. **Mutual Recursion**
+- **Two or more functions** call each other recursively
+- Creates interdependent recursive relationships
+
+### 7. **Indirect Recursion**
+- Function A calls function B, which eventually calls A
+- More complex call chain than direct recursion
+
+### 8. **Nested Recursion**
+- Recursive call uses **another recursive call as parameter**
+- Very complex, like Ackermann function
+
+---
+
+## The Recursion Template
+
+### Basic Recursion Template
+
+```javascript
+function recursiveFunction(parameters) {
+    // Base case(s) - Stop condition
+    if (baseCondition(parameters)) {
+        return baseValue;
+    }
+
+    // Recursive case - Self-call with modified parameters
+    return combineResults(
+        recursiveFunction(modifyParameters(parameters)),
+        // possibly more recursive calls
+        otherProcessing(parameters)
+    );
+}
+```
+
+### Generic Recursion Framework
+
+```javascript
+class RecursionSolver {
+    constructor() {
+        this.memo = new Map(); // For memoization
+        this.callStack = [];   // For debugging
+    }
+
+    solve(problem, enableMemo = false) {
+        if (enableMemo) {
+            return this.solveWithMemo(problem);
+        }
+        return this.recursiveSolve(problem);
+    }
+
+    recursiveSolve(problem) {
+        // Add to call stack for debugging
+        this.callStack.push(problem);
+
+        // Base case check
+        if (this.isBaseCase(problem)) {
+            this.callStack.pop();
+            return this.getBaseValue(problem);
+        }
+
+        // Break into subproblems
+        const subproblems = this.decompose(problem);
+        const results = [];
+
+        // Solve each subproblem
+        for (let subproblem of subproblems) {
+            results.push(this.recursiveSolve(subproblem));
+        }
+
+        // Combine results
+        const finalResult = this.combine(results, problem);
+
+        this.callStack.pop();
+        return finalResult;
+    }
+
+    solveWithMemo(problem) {
+        const key = this.getKey(problem);
+        if (this.memo.has(key)) {
+            return this.memo.get(key);
+        }
+
+        const result = this.recursiveSolve(problem);
+        this.memo.set(key, result);
+        return result;
+    }
+
+    // Abstract methods to override
+    isBaseCase(problem) { throw new Error("Override this method"); }
+    getBaseValue(problem) { throw new Error("Override this method"); }
+    decompose(problem) { throw new Error("Override this method"); }
+    combine(results, problem) { throw new Error("Override this method"); }
+    getKey(problem) { return JSON.stringify(problem); }
+}
+```
+
+---
+
+## Linear Recursion Patterns
+
+Linear recursion makes exactly **one recursive call** per execution.
+
+### 1. Simple Linear Recursion - Factorial
+
+```javascript
+function factorial(n) {
+    // Base case
+    if (n <= 1) return 1;
+
+    // Recursive case: one recursive call
+    return n * factorial(n - 1);
+}
+
+// Call trace for factorial(4):
+// factorial(4) = 4 * factorial(3)
+// factorial(3) = 3 * factorial(2)
+// factorial(2) = 2 * factorial(1)
+// factorial(1) = 1
+// Result: 4 * 3 * 2 * 1 = 24
+```
+
+### 2. Linear Search in Array
+
+```javascript
+function linearSearchRecursive(arr, target, index = 0) {
+    // Base case: not found
+    if (index >= arr.length) return -1;
+
+    // Base case: found
+    if (arr[index] === target) return index;
+
+    // Recursive case: search in rest of array
+    return linearSearchRecursive(arr, target, index + 1);
+}
+```
+
+### 3. Sum of Array Elements
+
+```javascript
+function arraySum(arr, index = 0) {
+    // Base case
+    if (index >= arr.length) return 0;
+
+    // Recursive case
+    return arr[index] + arraySum(arr, index + 1);
+}
+```
+
+### 4. Linked List Operations
+
+```javascript
+class ListNode {
+    constructor(val, next = null) {
+        this.val = val;
+        this.next = next;
+    }
+}
+
+function linkedListLength(head) {
+    // Base case
+    if (!head) return 0;
+
+    // Recursive case
+    return 1 + linkedListLength(head.next);
+}
+
+function linkedListSearch(head, target) {
+    // Base case: not found
+    if (!head) return null;
+
+    // Base case: found
+    if (head.val === target) return head;
+
+    // Recursive case
+    return linkedListSearch(head.next, target);
+}
+
+function reverseLinkedList(head) {
+    // Base case
+    if (!head || !head.next) return head;
+
+    // Recursive case
+    const newHead = reverseLinkedList(head.next);
+    head.next.next = head;
+    head.next = null;
+
+    return newHead;
+}
+```
+
+### 5. String Processing
+
+```javascript
+function isPalindrome(str, left = 0, right = str.length - 1) {
+    // Base case
+    if (left >= right) return true;
+
+    // Check current characters and recurse
+    if (str[left] !== str[right]) return false;
+    return isPalindrome(str, left + 1, right - 1);
+}
+
+function reverseString(str) {
+    // Base case
+    if (str.length <= 1) return str;
+
+    // Recursive case
+    return str[str.length - 1] + reverseString(str.slice(0, -1));
+}
+```
+
+---
+
+## Binary Recursion Patterns
+
+Binary recursion makes exactly **two recursive calls** per execution.
+
+### 1. Classic Binary Recursion - Fibonacci
+
+```javascript
+function fibonacci(n) {
+    // Base cases
+    if (n <= 1) return n;
+
+    // Binary recursive case
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+// Optimized with memoization
+function fibonacciMemo(n, memo = {}) {
+    if (n in memo) return memo[n];
+    if (n <= 1) return n;
+
+    memo[n] = fibonacciMemo(n - 1, memo) + fibonacciMemo(n - 2, memo);
+    return memo[n];
+}
+```
+
+### 2. Binary Tree Operations
+
+```javascript
+class TreeNode {
+    constructor(val, left = null, right = null) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// Tree height/depth
+function maxDepth(root) {
+    // Base case
+    if (!root) return 0;
+
+    // Binary recursive case
+    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+}
+
+// Count total nodes
+function countNodes(root) {
+    if (!root) return 0;
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+
+// Check if tree is balanced
+function isBalanced(root) {
+    function checkHeight(node) {
+        if (!node) return 0;
+
+        const leftHeight = checkHeight(node.left);
+        if (leftHeight === -1) return -1;
+
+        const rightHeight = checkHeight(node.right);
+        if (rightHeight === -1) return -1;
+
+        if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+
+        return 1 + Math.max(leftHeight, rightHeight);
+    }
+
+    return checkHeight(root) !== -1;
+}
+
+// Binary tree paths
+function binaryTreePaths(root, currentPath = "", paths = []) {
+    if (!root) return paths;
+
+    currentPath += root.val;
+
+    // Leaf node
+    if (!root.left && !root.right) {
+        paths.push(currentPath);
+    } else {
+        // Binary recursion
+        if (root.left) binaryTreePaths(root.left, currentPath + "->", paths);
+        if (root.right) binaryTreePaths(root.right, currentPath + "->", paths);
+    }
+
+    return paths;
+}
+```
+
+### 3. Binary Search
+
+```javascript
+function binarySearch(arr, target, left = 0, right = arr.length - 1) {
+    // Base case: not found
+    if (left > right) return -1;
+
+    const mid = Math.floor((left + right) / 2);
+
+    // Base case: found
+    if (arr[mid] === target) return mid;
+
+    // Binary recursive cases
+    if (target < arr[mid]) {
+        return binarySearch(arr, target, left, mid - 1);
+    } else {
+        return binarySearch(arr, target, mid + 1, right);
+    }
+}
+```
+
+### 4. Merge Sort (Divide and Conquer)
+
+```javascript
+function mergeSort(arr) {
+    // Base case
+    if (arr.length <= 1) return arr;
+
+    // Divide
+    const mid = Math.floor(arr.length / 2);
+    const left = arr.slice(0, mid);
+    const right = arr.slice(mid);
+
+    // Binary recursive calls
+    const sortedLeft = mergeSort(left);
+    const sortedRight = mergeSort(right);
+
+    // Conquer
+    return merge(sortedLeft, sortedRight);
+}
+
+function merge(left, right) {
+    const result = [];
+    let i = 0, j = 0;
+
+    while (i < left.length && j < right.length) {
+        if (left[i] <= right[j]) {
+            result.push(left[i++]);
+        } else {
+            result.push(right[j++]);
+        }
+    }
+
+    return result.concat(left.slice(i)).concat(right.slice(j));
+}
+```
+
+---
+
+## Multiple Recursion Patterns
+
+Multiple recursion makes **more than two recursive calls** per execution.
+
+### 1. Tree with Multiple Children
+
+```javascript
+class TreeNode {
+    constructor(val, children = []) {
+        this.val = val;
+        this.children = children;
+    }
+}
+
+function maxDepthNary(root) {
+    if (!root) return 0;
+
+    let maxChildDepth = 0;
+    // Multiple recursive calls for each child
+    for (let child of root.children) {
+        maxChildDepth = Math.max(maxChildDepth, maxDepthNary(child));
+    }
+
+    return 1 + maxChildDepth;
+}
+
+function naryTreePaths(root, currentPath = [], allPaths = []) {
+    if (!root) return allPaths;
+
+    currentPath.push(root.val);
+
+    if (root.children.length === 0) {
+        // Leaf node
+        allPaths.push([...currentPath]);
+    } else {
+        // Multiple recursive calls
+        for (let child of root.children) {
+            naryTreePaths(child, currentPath, allPaths);
+        }
+    }
+
+    currentPath.pop(); // Backtrack
+    return allPaths;
+}
+```
+
+### 2. Maze Solving (4 Directions)
+
+```javascript
+function solveMaze(maze, x = 0, y = 0, solution = null) {
+    const n = maze.length;
+    if (!solution) {
+        solution = Array(n).fill().map(() => Array(n).fill(0));
+    }
+
+    // Base case: reached destination
+    if (x === n - 1 && y === n - 1) {
+        solution[x][y] = 1;
+        return true;
+    }
+
+    // Check if current position is valid
+    if (x >= 0 && x < n && y >= 0 && y < n && maze[x][y] === 1) {
+        solution[x][y] = 1;
+
+        // Multiple recursive calls for 4 directions
+        if (solveMaze(maze, x + 1, y, solution) ||  // Down
+            solveMaze(maze, x, y + 1, solution) ||  // Right
+            solveMaze(maze, x - 1, y, solution) ||  // Up
+            solveMaze(maze, x, y - 1, solution)) {  // Left
+            return true;
+        }
+
+        // Backtrack
+        solution[x][y] = 0;
+    }
+
+    return false;
+}
+```
+
+### 3. Generate All Subsets
+
+```javascript
+function generateSubsets(nums, index = 0, current = [], result = []) {
+    // Base case
+    if (index === nums.length) {
+        result.push([...current]);
+        return result;
+    }
+
+    // Two recursive calls: include or exclude current element
+    // Include current element
+    current.push(nums[index]);
+    generateSubsets(nums, index + 1, current, result);
+
+    // Exclude current element (backtrack)
+    current.pop();
+    generateSubsets(nums, index + 1, current, result);
+
+    return result;
+}
+```
+
+### 4. Tower of Hanoi
+
+```javascript
+function towerOfHanoi(n, source, destination, auxiliary, moves = []) {
+    // Base case
+    if (n === 1) {
+        moves.push(`Move disk 1 from ${source} to ${destination}`);
+        return moves;
+    }
+
+    // Three recursive calls
+    // Move n-1 disks to auxiliary peg
+    towerOfHanoi(n - 1, source, auxiliary, destination, moves);
+
+    // Move the bottom disk to destination
+    moves.push(`Move disk ${n} from ${source} to ${destination}`);
+
+    // Move n-1 disks from auxiliary to destination
+    towerOfHanoi(n - 1, auxiliary, destination, source, moves);
+
+    return moves;
+}
+```
+
+---
+
+## Tail Recursion Optimization
+
+**Tail recursion** occurs when the recursive call is the **last operation** in the function.
+
+### 1. Tail Recursive Factorial
+
+```javascript
+// Non-tail recursive (traditional)
+function factorial(n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1); // Multiplication after recursive call
+}
+
+// Tail recursive version
+function factorialTail(n, accumulator = 1) {
+    if (n <= 1) return accumulator;
+    return factorialTail(n - 1, n * accumulator); // Recursive call is last
+}
+```
+
+### 2. Tail Recursive Sum
+
+```javascript
+// Non-tail recursive
+function sum(n) {
+    if (n <= 0) return 0;
+    return n + sum(n - 1); // Addition after recursive call
+}
+
+// Tail recursive version
+function sumTail(n, accumulator = 0) {
+    if (n <= 0) return accumulator;
+    return sumTail(n - 1, accumulator + n); // Recursive call is last
+}
+```
+
+### 3. Tail Recursive Fibonacci
+
+```javascript
+function fibonacciTail(n, a = 0, b = 1) {
+    if (n === 0) return a;
+    if (n === 1) return b;
+    return fibonacciTail(n - 1, b, a + b); // Tail recursive
+}
+```
+
+### 4. Converting to Iterative
+
+```javascript
+// Tail recursion can be easily converted to iteration
+function factorialIterative(n) {
+    let accumulator = 1;
+    while (n > 1) {
+        accumulator *= n;
+        n--;
+    }
+    return accumulator;
+}
+
+// Generic tail recursion to iteration converter
+function tailRecursionToIteration(initialValue, condition, update, extract) {
+    let current = initialValue;
+
+    while (!condition(current)) {
+        current = update(current);
+    }
+
+    return extract(current);
+}
+
+// Usage example
+const factorial_n = tailRecursionToIteration(
+    { n: 5, acc: 1 },
+    state => state.n <= 1,
+    state => ({ n: state.n - 1, acc: state.acc * state.n }),
+    state => state.acc
+);
+```
+
+---
+
+## Mutual Recursion Patterns
+
+**Mutual recursion** occurs when two or more functions call each other recursively.
+
+### 1. Even/Odd Check
+
+```javascript
+function isEven(n) {
+    if (n === 0) return true;
+    return isOdd(n - 1);
+}
+
+function isOdd(n) {
+    if (n === 0) return false;
+    return isEven(n - 1);
+}
+
+// Usage
+console.log(isEven(4)); // true
+console.log(isOdd(5));  // true
+```
+
+### 2. Expression Parsing
+
+```javascript
+function parseExpression(tokens, index) {
+    let result = parseTerm(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '+' || tokens[index.value] === '-')) {
+        const operator = tokens[index.value++];
+        const term = parseTerm(tokens, index);
+        result = operator === '+' ? result + term : result - term;
+    }
+
+    return result;
+}
+
+function parseTerm(tokens, index) {
+    let result = parseFactor(tokens, index);
+
+    while (index.value < tokens.length &&
+           (tokens[index.value] === '*' || tokens[index.value] === '/')) {
+        const operator = tokens[index.value++];
+        const factor = parseFactor(tokens, index);
+        result = operator === '*' ? result * factor : result / factor;
+    }
+
+    return result;
+}
+
+function parseFactor(tokens, index) {
+    if (tokens[index.value] === '(') {
+        index.value++; // Skip '('
+        const result = parseExpression(tokens, index); // Mutual recursion
+        index.value++; // Skip ')'
+        return result;
+    }
+
+    return parseInt(tokens[index.value++]);
+}
+```
+
+### 3. Grammar Parsing
+
+```javascript
+function parseStatement(code, pos) {
+    if (code[pos.index] === 'if') {
+        return parseIfStatement(code, pos);
+    } else if (code[pos.index] === 'while') {
+        return parseWhileStatement(code, pos);
+    } else {
+        return parseAssignment(code, pos);
+    }
+}
+
+function parseIfStatement(code, pos) {
+    pos.index++; // Skip 'if'
+    const condition = parseExpression(code, pos);
+    const thenStmt = parseStatement(code, pos); // Mutual recursion
+
+    let elseStmt = null;
+    if (pos.index < code.length && code[pos.index] === 'else') {
+        pos.index++; // Skip 'else'
+        elseStmt = parseStatement(code, pos); // Mutual recursion
+    }
+
+    return { type: 'if', condition, then: thenStmt, else: elseStmt };
+}
+
+function parseWhileStatement(code, pos) {
+    pos.index++; // Skip 'while'
+    const condition = parseExpression(code, pos);
+    const body = parseStatement(code, pos); // Mutual recursion
+
+    return { type: 'while', condition, body };
+}
+```
+
+### 4. State Machine
+
+```javascript
+function stateA(input, index) {
+    if (index >= input.length) return true;
+
+    if (input[index] === '0') {
+        return stateB(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateA(input, index + 1);
+    }
+
+    return false;
+}
+
+function stateB(input, index) {
+    if (index >= input.length) return false;
+
+    if (input[index] === '0') {
+        return stateA(input, index + 1); // Mutual recursion
+    } else if (input[index] === '1') {
+        return stateB(input, index + 1);
+    }
+
+    return false;
+}
+
+// Check if string is accepted by the state machine
+function isAccepted(input) {
+    return stateA(input, 0);
+}
+```
+
+---
+
+## Indirect Recursion
+
+**Indirect recursion** involves a chain of function calls that eventually leads back to the original function.
+
+### 1. Three-Function Chain
+
+```javascript
+function functionA(n) {
+    console.log(`A: ${n}`);
+    if (n > 0) {
+        return functionB(n - 1);
+    }
+    return 0;
+}
+
+function functionB(n) {
+    console.log(`B: ${n}`);
+    if (n > 0) {
+        return functionC(n - 1);
+    }
+    return 1;
+}
+
+function functionC(n) {
+    console.log(`C: ${n}`);
+    if (n > 0) {
+        return functionA(n - 1); // Back to A
+    }
+    return 2;
+}
+
+// Call chain: A -> B -> C -> A -> B -> C -> ...
+functionA(5);
+```
+
+### 2. Complex Number Calculation
+
+```javascript
+function calculateReal(complex, depth) {
+    if (depth === 0) return complex.real;
+
+    const imagResult = calculateImaginary(
+        { real: complex.real * 0.5, imaginary: complex.imaginary * 0.5 },
+        depth - 1
+    );
+
+    return complex.real + imagResult;
+}
+
+function calculateImaginary(complex, depth) {
+    if (depth === 0) return complex.imaginary;
+
+    const realResult = calculateReal(
+        { real: complex.imaginary * 0.3, imaginary: complex.real * 0.7 },
+        depth - 1
+    );
+
+    return complex.imaginary + realResult;
+}
+
+function processComplex(complex, depth) {
+    const realPart = calculateReal(complex, depth);
+    const imagPart = calculateImaginary(complex, depth);
+
+    if (depth > 1) {
+        return processComplex(
+            { real: realPart, imaginary: imagPart },
+            depth - 1
+        );
+    }
+
+    return { real: realPart, imaginary: imagPart };
+}
+```
+
+### 3. Document Processing Chain
+
+```javascript
+function processDocument(doc, stage) {
+    switch (stage) {
+        case 'parse':
+            return parseDocument(doc, 'validate');
+        case 'validate':
+            return validateDocument(doc, 'transform');
+        case 'transform':
+            return transformDocument(doc, 'output');
+        case 'output':
+            return doc;
+        default:
+            return null;
+    }
+}
+
+function parseDocument(doc, nextStage) {
+    const parsed = { ...doc, parsed: true };
+    if (parsed.needsValidation) {
+        return processDocument(parsed, nextStage);
+    }
+    return parsed;
+}
+
+function validateDocument(doc, nextStage) {
+    const validated = { ...doc, valid: doc.parsed };
+    if (validated.needsTransformation) {
+        return processDocument(validated, nextStage);
+    }
+    return validated;
+}
+
+function transformDocument(doc, nextStage) {
+    const transformed = { ...doc, transformed: doc.valid };
+    return processDocument(transformed, nextStage);
+}
+```
+
+---
+
+## Nested Recursion
+
+**Nested recursion** occurs when a recursive call uses another recursive call as its parameter.
+
+### 1. Ackermann Function
+
+```javascript
+function ackermann(m, n) {
+    if (m === 0) {
+        return n + 1;
+    } else if (m > 0 && n === 0) {
+        return ackermann(m - 1, 1);
+    } else if (m > 0 && n > 0) {
+        // Nested recursion: recursive call as parameter
+        return ackermann(m - 1, ackermann(m, n - 1));
+    }
+}
+
+// Extremely fast-growing function
+console.log(ackermann(3, 2)); // 29
+```
+
+### 2. McCarthy's 91 Function
+
+```javascript
+function mcCarthy91(n) {
+    if (n > 100) {
+        return n - 10;
+    } else {
+        // Nested recursion
+        return mcCarthy91(mcCarthy91(n + 11));
+    }
+}
+
+// Always returns 91 for n <= 100
+console.log(mcCarthy91(50)); // 91
+console.log(mcCarthy91(99)); // 91
+```
+
+### 3. Nested Tree Processing
+
+```javascript
+function processNestedTree(node) {
+    if (!node) return null;
+
+    if (node.type === 'leaf') {
+        return node.value;
+    }
+
+    if (node.type === 'transform') {
+        // Nested recursion: recursive call as parameter to another recursive call
+        return applyTransform(
+            processNestedTree(node.input),
+            processNestedTree(node.transform)
+        );
+    }
+
+    return processChildren(node.children);
+}
+
+function applyTransform(data, transform) {
+    if (!transform) return data;
+
+    if (transform.type === 'nested') {
+        // Another level of nesting
+        return applyTransform(
+            data,
+            processNestedTree(transform.nestedTransform)
+        );
+    }
+
+    return transform.fn(data);
+}
+
+function processChildren(children) {
+    if (!children || children.length === 0) return [];
+
+    return children.map(child => processNestedTree(child));
+}
+```
+
+### 4. Complex Mathematical Functions
+
+```javascript
+function nestedMath(x, depth) {
+    if (depth === 0) return x;
+
+    if (x < 0) {
+        return -nestedMath(-x, depth - 1);
+    }
+
+    // Nested recursion with complex parameter
+    return Math.sqrt(
+        nestedMath(
+            x * nestedMath(x / 2, depth - 1),
+            depth - 1
+        )
+    );
+}
+```
+
+---
+
+## Tree Recursion Patterns
+
+Tree recursion involves recursive calls that form a tree-like structure of execution.
+
+### 1. Binary Tree Traversals
+
+```javascript
+// Preorder: Root -> Left -> Right
+function preorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    result.push(root.val);              // Process root
+    preorderTraversal(root.left, result);   // Recurse left
+    preorderTraversal(root.right, result);  // Recurse right
+
+    return result;
+}
+
+// Inorder: Left -> Root -> Right
+function inorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    inorderTraversal(root.left, result);    // Recurse left
+    result.push(root.val);              // Process root
+    inorderTraversal(root.right, result);   // Recurse right
+
+    return result;
+}
+
+// Postorder: Left -> Right -> Root
+function postorderTraversal(root, result = []) {
+    if (!root) return result;
+
+    postorderTraversal(root.left, result);  // Recurse left
+    postorderTraversal(root.right, result); // Recurse right
+    result.push(root.val);              // Process root
+
+    return result;
+}
+```
+
+### 2. Tree Validation
+
+```javascript
+function isValidBST(root, min = -Infinity, max = Infinity) {
+    if (!root) return true;
+
+    if (root.val <= min || root.val >= max) return false;
+
+    // Tree recursion with different constraints
+    return isValidBST(root.left, min, root.val) &&
+           isValidBST(root.right, root.val, max);
+}
+
+function isSameTree(p, q) {
+    // Both null
+    if (!p && !q) return true;
+
+    // One null, one not
+    if (!p || !q) return false;
+
+    // Different values
+    if (p.val !== q.val) return false;
+
+    // Tree recursion
+    return isSameTree(p.left, q.left) && isSameTree(p.right, q.right);
+}
+
+function isSymmetric(root) {
+    if (!root) return true;
+
+    function isMirror(left, right) {
+        if (!left && !right) return true;
+        if (!left || !right) return false;
+
+        return left.val === right.val &&
+               isMirror(left.left, right.right) &&
+               isMirror(left.right, right.left);
+    }
+
+    return isMirror(root.left, root.right);
+}
+```
+
+### 3. Path Finding in Trees
+
+```javascript
+function hasPathSum(root, targetSum) {
+    if (!root) return false;
+
+    // Leaf node
+    if (!root.left && !root.right) {
+        return root.val === targetSum;
+    }
+
+    // Tree recursion
+    return hasPathSum(root.left, targetSum - root.val) ||
+           hasPathSum(root.right, targetSum - root.val);
+}
+
+function pathSum(root, targetSum, currentPath = [], allPaths = []) {
+    if (!root) return allPaths;
+
+    currentPath.push(root.val);
+
+    // Leaf node with target sum
+    if (!root.left && !root.right &&
+        currentPath.reduce((sum, val) => sum + val, 0) === targetSum) {
+        allPaths.push([...currentPath]);
+    }
+
+    // Tree recursion
+    pathSum(root.left, targetSum, currentPath, allPaths);
+    pathSum(root.right, targetSum, currentPath, allPaths);
+
+    currentPath.pop(); // Backtrack
+    return allPaths;
+}
+```
+
+### 4. Tree Construction
+
+```javascript
+function buildTreeFromPreorderInorder(preorder, inorder) {
+    if (preorder.length === 0) return null;
+
+    const rootVal = preorder[0];
+    const root = new TreeNode(rootVal);
+
+    const rootIndex = inorder.indexOf(rootVal);
+
+    // Tree recursion to build left and right subtrees
+    root.left = buildTreeFromPreorderInorder(
+        preorder.slice(1, rootIndex + 1),
+        inorder.slice(0, rootIndex)
+    );
+
+    root.right = buildTreeFromPreorderInorder(
+        preorder.slice(rootIndex + 1),
+        inorder.slice(rootIndex + 1)
+    );
+
+    return root;
+}
+```
+
+---
+
+## Mathematical Recursion
+
+Mathematical recursion deals with recursive mathematical formulas and sequences.
+
+### 1. Greatest Common Divisor (GCD)
+
+```javascript
+function gcd(a, b) {
+    // Base case
+    if (b === 0) return a;
+
+    // Recursive case: Euclidean algorithm
+    return gcd(b, a % b);
+}
+
+// Extended Euclidean Algorithm
+function extendedGCD(a, b) {
+    if (b === 0) {
+        return { gcd: a, x: 1, y: 0 };
+    }
+
+    const result = extendedGCD(b, a % b);
+    const x = result.y;
+    const y = result.x - Math.floor(a / b) * result.y;
+
+    return { gcd: result.gcd, x, y };
+}
+```
+
+### 2. Power Function
+
+```javascript
+// Naive recursive power
+function power(base, exponent) {
+    if (exponent === 0) return 1;
+    if (exponent === 1) return base;
+
+    return base * power(base, exponent - 1);
+}
+
+// Optimized power (fast exponentiation)
+function fastPower(base, exponent) {
+    if (exponent === 0) return 1;
+
+    if (exponent % 2 === 0) {
+        const halfPower = fastPower(base, exponent / 2);
+        return halfPower * halfPower;
+    } else {
+        return base * fastPower(base, exponent - 1);
+    }
+}
+
+// Power with modulo
+function powerMod(base, exponent, mod) {
+    if (exponent === 0) return 1;
+
+    if (exponent % 2 === 0) {
+        const halfPower = powerMod(base, exponent / 2, mod);
+        return (halfPower * halfPower) % mod;
+    } else {
+        return (base * powerMod(base, exponent - 1, mod)) % mod;
+    }
+}
+```
+
+### 3. Combinatorics
+
+```javascript
+// Combinations C(n, k)
+function combinations(n, k) {
+    // Base cases
+    if (k === 0 || k === n) return 1;
+    if (k > n) return 0;
+
+    // Recursive case: Pascal's triangle
+    return combinations(n - 1, k - 1) + combinations(n - 1, k);
+}
+
+// Permutations P(n, k)
+function permutations(n, k) {
+    if (k === 0) return 1;
+    if (k > n) return 0;
+
+    return n * permutations(n - 1, k - 1);
+}
+
+// Catalan Numbers
+function catalan(n) {
+    if (n <= 1) return 1;
+
+    let result = 0;
+    for (let i = 0; i < n; i++) {
+        result += catalan(i) * catalan(n - 1 - i);
+    }
+
+    return result;
+}
+```
+
+### 4. Number Theory
+
+```javascript
+// Prime factorization
+function primeFactors(n, factor = 2, factors = []) {
+    if (n === 1) return factors;
+
+    if (n % factor === 0) {
+        factors.push(factor);
+        return primeFactors(n / factor, factor, factors);
+    }
+
+    return primeFactors(n, factor + 1, factors);
+}
+
+// Sum of digits
+function sumOfDigits(n) {
+    if (n === 0) return 0;
+    return (n % 10) + sumOfDigits(Math.floor(n / 10));
+}
+
+// Reverse number
+function reverseNumber(n, reversed = 0) {
+    if (n === 0) return reversed;
+    return reverseNumber(Math.floor(n / 10), reversed * 10 + (n % 10));
+}
+
+// Check if palindrome number
+function isPalindromeNumber(n) {
+    return n === reverseNumber(n);
+}
+```
+
+---
+
+## String Recursion Patterns
+
+String recursion involves processing strings through recursive decomposition.
+
+### 1. String Manipulation
+
+```javascript
+// Remove character from string
+function removeChar(str, char) {
+    if (str.length === 0) return "";
+
+    if (str[0] === char) {
+        return removeChar(str.slice(1), char);
+    } else {
+        return str[0] + removeChar(str.slice(1), char);
+    }
+}
+
+// Replace character in string
+function replaceChar(str, oldChar, newChar) {
+    if (str.length === 0) return "";
+
+    const firstChar = str[0] === oldChar ? newChar : str[0];
+    return firstChar + replaceChar(str.slice(1), oldChar, newChar);
+}
+
+// Count occurrences
+function countChar(str, char) {
+    if (str.length === 0) return 0;
+
+    const count = str[0] === char ? 1 : 0;
+    return count + countChar(str.slice(1), char);
+}
+```
+
+### 2. String Validation
+
+```javascript
+// Check if string contains only digits
+function isDigitsOnly(str) {
+    if (str.length === 0) return true;
+
+    if (str[0] < '0' || str[0] > '9') return false;
+
+    return isDigitsOnly(str.slice(1));
+}
+
+// Check balanced parentheses
+function isBalanced(str, index = 0, count = 0) {
+    if (index === str.length) return count === 0;
+
+    if (str[index] === '(') {
+        return isBalanced(str, index + 1, count + 1);
+    } else if (str[index] === ')') {
+        if (count === 0) return false;
+        return isBalanced(str, index + 1, count - 1);
+    } else {
+        return isBalanced(str, index + 1, count);
+    }
+}
+
+// Check if anagram
+function isAnagram(str1, str2) {
+    if (str1.length !== str2.length) return false;
+    if (str1.length === 0) return true;
+
+    const char = str1[0];
+    const index = str2.indexOf(char);
+
+    if (index === -1) return false;
+
+    return isAnagram(
+        str1.slice(1),
+        str2.slice(0, index) + str2.slice(index + 1)
+    );
+}
+```
+
+### 3. Pattern Matching
+
+```javascript
+// Simple pattern matching with wildcards
+function patternMatch(str, pattern, sIndex = 0, pIndex = 0) {
+    // Base cases
+    if (pIndex === pattern.length) return sIndex === str.length;
+    if (sIndex === str.length) return pattern.slice(pIndex).split('').every(c => c === '*');
+
+    if (pattern[pIndex] === '*') {
+        // Try matching zero characters or one character
+        return patternMatch(str, pattern, sIndex, pIndex + 1) ||
+               patternMatch(str, pattern, sIndex + 1, pIndex);
+    } else if (pattern[pIndex] === '?' || pattern[pIndex] === str[sIndex]) {
+        return patternMatch(str, pattern, sIndex + 1, pIndex + 1);
+    }
+
+    return false;
+}
+
+// Longest common subsequence
+function longestCommonSubsequence(str1, str2, i = 0, j = 0) {
+    if (i === str1.length || j === str2.length) return 0;
+
+    if (str1[i] === str2[j]) {
+        return 1 + longestCommonSubsequence(str1, str2, i + 1, j + 1);
+    } else {
+        return Math.max(
+            longestCommonSubsequence(str1, str2, i + 1, j),
+            longestCommonSubsequence(str1, str2, i, j + 1)
+        );
+    }
+}
+```
+
+### 4. String Generation
+
+```javascript
+// Generate all permutations
+function stringPermutations(str, current = "", used = new Set(), result = []) {
+    if (current.length === str.length) {
+        result.push(current);
+        return result;
+    }
+
+    for (let i = 0; i < str.length; i++) {
+        if (!used.has(i)) {
+            used.add(i);
+            stringPermutations(str, current + str[i], used, result);
+            used.delete(i);
+        }
+    }
+
+    return result;
+}
+
+// Generate all subsequences
+function generateSubsequences(str, index = 0, current = "", result = []) {
+    if (index === str.length) {
+        result.push(current);
+        return result;
+    }
+
+    // Include current character
+    generateSubsequences(str, index + 1, current + str[index], result);
+
+    // Exclude current character
+    generateSubsequences(str, index + 1, current, result);
+
+    return result;
+}
+```
+
+---
+
+## Array & List Recursion
+
+Array and list recursion patterns for processing sequential data structures.
+
+### 1. Array Processing
+
+```javascript
+// Find maximum element
+function findMax(arr, index = 0) {
+    if (index === arr.length - 1) return arr[index];
+
+    const maxOfRest = findMax(arr, index + 1);
+    return Math.max(arr[index], maxOfRest);
+}
+
+// Find minimum element
+function findMin(arr, index = 0) {
+    if (index === arr.length - 1) return arr[index];
+
+    const minOfRest = findMin(arr, index + 1);
+    return Math.min(arr[index], minOfRest);
+}
+
+// Array sum
+function arraySum(arr, index = 0) {
+    if (index >= arr.length) return 0;
+    return arr[index] + arraySum(arr, index + 1);
+}
+
+// Array product
+function arrayProduct(arr, index = 0) {
+    if (index >= arr.length) return 1;
+    return arr[index] * arrayProduct(arr, index + 1);
+}
+```
+
+### 2. Array Searching
+
+```javascript
+// Binary search
+function binarySearchRecursive(arr, target, left = 0, right = arr.length - 1) {
+    if (left > right) return -1;
+
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) return mid;
+
+    if (target < arr[mid]) {
+        return binarySearchRecursive(arr, target, left, mid - 1);
+    } else {
+        return binarySearchRecursive(arr, target, mid + 1, right);
+    }
+}
+
+// Find all occurrences
+function findAllOccurrences(arr, target, index = 0, occurrences = []) {
+    if (index >= arr.length) return occurrences;
+
+    if (arr[index] === target) {
+        occurrences.push(index);
+    }
+
+    return findAllOccurrences(arr, target, index + 1, occurrences);
+}
+
+// Check if array is sorted
+function isSorted(arr, index = 0) {
+    if (index >= arr.length - 1) return true;
+
+    if (arr[index] > arr[index + 1]) return false;
+
+    return isSorted(arr, index + 1);
+}
+```
+
+### 3. Array Transformation
+
+```javascript
+// Reverse array
+function reverseArray(arr, start = 0, end = arr.length - 1) {
+    if (start >= end) return arr;
+
+    // Swap elements
+    [arr[start], arr[end]] = [arr[end], arr[start]];
+
+    return reverseArray(arr, start + 1, end - 1);
+}
+
+// Filter array
+function filterArray(arr, predicate, index = 0, result = []) {
+    if (index >= arr.length) return result;
+
+    if (predicate(arr[index])) {
+        result.push(arr[index]);
+    }
+
+    return filterArray(arr, predicate, index + 1, result);
+}
+
+// Map array
+function mapArray(arr, transform, index = 0, result = []) {
+    if (index >= arr.length) return result;
+
+    result.push(transform(arr[index]));
+
+    return mapArray(arr, transform, index + 1, result);
+}
+```
+
+### 4. Advanced Array Operations
+
+```javascript
+// Merge two sorted arrays
+function mergeSortedArrays(arr1, arr2, i = 0, j = 0, result = []) {
+    if (i >= arr1.length && j >= arr2.length) return result;
+
+    if (i >= arr1.length) {
+        result.push(arr2[j]);
+        return mergeSortedArrays(arr1, arr2, i, j + 1, result);
+    }
+
+    if (j >= arr2.length) {
+        result.push(arr1[i]);
+        return mergeSortedArrays(arr1, arr2, i + 1, j, result);
+    }
+
+    if (arr1[i] <= arr2[j]) {
+        result.push(arr1[i]);
+        return mergeSortedArrays(arr1, arr2, i + 1, j, result);
+    } else {
+        result.push(arr2[j]);
+        return mergeSortedArrays(arr1, arr2, i, j + 1, result);
+    }
+}
+
+// Quick select (find kth smallest)
+function quickSelect(arr, k, left = 0, right = arr.length - 1) {
+    if (left === right) return arr[left];
+
+    const pivotIndex = partition(arr, left, right);
+
+    if (k === pivotIndex) {
+        return arr[k];
+    } else if (k < pivotIndex) {
+        return quickSelect(arr, k, left, pivotIndex - 1);
+    } else {
+        return quickSelect(arr, k, pivotIndex + 1, right);
+    }
+}
+
+function partition(arr, left, right) {
+    const pivot = arr[right];
+    let i = left;
+
+    for (let j = left; j < right; j++) {
+        if (arr[j] <= pivot) {
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            i++;
+        }
+    }
+
+    [arr[i], arr[right]] = [arr[right], arr[i]];
+    return i;
+}
+```
+
+---
+
+## Divide and Conquer
+
+Divide and conquer is a recursive algorithm design paradigm.
+
+### 1. Classic Sorting Algorithms
+
+```javascript
+// Quick Sort
+function quickSort(arr, left = 0, right = arr.length - 1) {
+    if (left < right) {
+        const pivotIndex = partition(arr, left, right);
+
+        // Divide and conquer
+        quickSort(arr, left, pivotIndex - 1);
+        quickSort(arr, pivotIndex + 1, right);
+    }
+
+    return arr;
+}
+
+// Merge Sort (already shown earlier)
+function mergeSort(arr) {
+    if (arr.length <= 1) return arr;
+
+    const mid = Math.floor(arr.length / 2);
+    const left = mergeSort(arr.slice(0, mid));
+    const right = mergeSort(arr.slice(mid));
+
+    return merge(left, right);
+}
+```
+
+### 2. Maximum Subarray (Kadane's Algorithm - Divide & Conquer)
+
+```javascript
+function maxSubarrayDivideConquer(arr, left = 0, right = arr.length - 1) {
+    if (left === right) return arr[left];
+
+    const mid = Math.floor((left + right) / 2);
+
+    // Divide
+    const leftMax = maxSubarrayDivideConquer(arr, left, mid);
+    const rightMax = maxSubarrayDivideConquer(arr, mid + 1, right);
+
+    // Conquer - find max crossing subarray
+    let leftSum = -Infinity;
+    let sum = 0;
+    for (let i = mid; i >= left; i--) {
+        sum += arr[i];
+        leftSum = Math.max(leftSum, sum);
+    }
+
+    let rightSum = -Infinity;
+    sum = 0;
+    for (let i = mid + 1; i <= right; i++) {
+        sum += arr[i];
+        rightSum = Math.max(rightSum, sum);
+    }
+
+    const crossSum = leftSum + rightSum;
+
+    // Return maximum of three
+    return Math.max(leftMax, rightMax, crossSum);
+}
+```
+
+### 3. Closest Pair of Points
+
+```javascript
+function closestPairDivideConquer(points) {
+    points.sort((a, b) => a.x - b.x);
+    return closestPairRec(points);
+}
+
+function closestPairRec(points) {
+    const n = points.length;
+
+    if (n <= 3) return bruteForceClosest(points);
+
+    const mid = Math.floor(n / 2);
+    const midPoint = points[mid];
+
+    const leftPoints = points.slice(0, mid);
+    const rightPoints = points.slice(mid);
+
+    // Divide
+    const leftMin = closestPairRec(leftPoints);
+    const rightMin = closestPairRec(rightPoints);
+
+    // Find minimum of two halves
+    const minDist = Math.min(leftMin, rightMin);
+
+    // Conquer - check points near dividing line
+    const strip = points.filter(point =>
+        Math.abs(point.x - midPoint.x) < minDist
+    );
+
+    return Math.min(minDist, stripClosest(strip, minDist));
+}
+
+function distance(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+}
+
+function bruteForceClosest(points) {
+    let minDist = Infinity;
+    for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+            minDist = Math.min(minDist, distance(points[i], points[j]));
+        }
+    }
+    return minDist;
+}
+
+function stripClosest(strip, d) {
+    let minDist = d;
+    strip.sort((a, b) => a.y - b.y);
+
+    for (let i = 0; i < strip.length; i++) {
+        for (let j = i + 1; j < strip.length && (strip[j].y - strip[i].y) < minDist; j++) {
+            minDist = Math.min(minDist, distance(strip[i], strip[j]));
+        }
+    }
+
+    return minDist;
+}
+```
+
+### 4. Matrix Multiplication (Strassen's Algorithm)
+
+```javascript
+function strassenMultiply(A, B) {
+    const n = A.length;
+
+    if (n === 1) {
+        return [[A[0][0] * B[0][0]]];
+    }
+
+    // Divide matrices into quadrants
+    const mid = Math.floor(n / 2);
+    const A11 = getSubMatrix(A, 0, 0, mid);
+    const A12 = getSubMatrix(A, 0, mid, mid);
+    const A21 = getSubMatrix(A, mid, 0, mid);
+    const A22 = getSubMatrix(A, mid, mid, mid);
+
+    const B11 = getSubMatrix(B, 0, 0, mid);
+    const B12 = getSubMatrix(B, 0, mid, mid);
+    const B21 = getSubMatrix(B, mid, 0, mid);
+    const B22 = getSubMatrix(B, mid, mid, mid);
+
+    // Strassen's 7 products
+    const M1 = strassenMultiply(addMatrices(A11, A22), addMatrices(B11, B22));
+    const M2 = strassenMultiply(addMatrices(A21, A22), B11);
+    const M3 = strassenMultiply(A11, subtractMatrices(B12, B22));
+    const M4 = strassenMultiply(A22, subtractMatrices(B21, B11));
+    const M5 = strassenMultiply(addMatrices(A11, A12), B22);
+    const M6 = strassenMultiply(subtractMatrices(A21, A11), addMatrices(B11, B12));
+    const M7 = strassenMultiply(subtractMatrices(A12, A22), addMatrices(B21, B22));
+
+    // Compute result quadrants
+    const C11 = addMatrices(subtractMatrices(addMatrices(M1, M4), M5), M7);
+    const C12 = addMatrices(M3, M5);
+    const C21 = addMatrices(M2, M4);
+    const C22 = addMatrices(subtractMatrices(addMatrices(M1, M3), M2), M6);
+
+    // Combine quadrants
+    return combineMatrices(C11, C12, C21, C22);
+}
+
+function getSubMatrix(matrix, startRow, startCol, size) {
+    const result = [];
+    for (let i = 0; i < size; i++) {
+        result[i] = [];
+        for (let j = 0; j < size; j++) {
+            result[i][j] = matrix[startRow + i][startCol + j];
+        }
+    }
+    return result;
+}
+
+function addMatrices(A, B) {
+    const n = A.length;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        result[i] = [];
+        for (let j = 0; j < n; j++) {
+            result[i][j] = A[i][j] + B[i][j];
+        }
+    }
+    return result;
+}
+
+function subtractMatrices(A, B) {
+    const n = A.length;
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        result[i] = [];
+        for (let j = 0; j < n; j++) {
+            result[i][j] = A[i][j] - B[i][j];
+        }
+    }
+    return result;
+}
+
+function combineMatrices(C11, C12, C21, C22) {
+    const n = C11.length;
+    const result = Array(2 * n).fill().map(() => Array(2 * n).fill(0));
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            result[i][j] = C11[i][j];
+            result[i][j + n] = C12[i][j];
+            result[i + n][j] = C21[i][j];
+            result[i + n][j + n] = C22[i][j];
+        }
+    }
+
+    return result;
+}
+```
