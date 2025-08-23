@@ -1,0 +1,1238 @@
+# Knapsack Problems
+
+A comprehensive guide to knapsack problem variations and dynamic programming techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Introduction and Problem Types](#introduction-and-problem-types)
+2. [0/1 Knapsack Problem](#01-knapsack-problem)
+3. [Unbounded Knapsack Problem](#unbounded-knapsack-problem)
+4. [Bounded Knapsack Problem](#bounded-knapsack-problem)
+5. [Multiple Knapsacks Problem](#multiple-knapsacks-problem)
+6. [Fractional Knapsack Problem](#fractional-knapsack-problem)
+7. [Subset Sum Variations](#subset-sum-variations)
+8. [Coin Change Problems](#coin-change-problems)
+9. [Advanced Knapsack Variations](#advanced-knapsack-variations)
+10. [Optimization Techniques](#optimization-techniques)
+11. [Usage Examples](#usage-examples)
+
+---
+
+## Introduction and Problem Types
+
+The knapsack problem is a fundamental optimization problem where we aim to maximize value while staying within weight constraints.
+
+### Problem Classification
+
+```javascript
+// Basic knapsack structure
+class Item {
+    constructor(weight, value, name = '') {
+        this.weight = weight;
+        this.value = value;
+        this.name = name;
+        this.ratio = value / weight; // Value-to-weight ratio
+    }
+}
+
+// Common knapsack types
+const KNAPSACK_TYPES = {
+    ZERO_ONE: '0/1 Knapsack',        // Each item can be taken 0 or 1 time
+    UNBOUNDED: 'Unbounded',          // Each item can be taken multiple times
+    BOUNDED: 'Bounded',              // Each item has limited quantity
+    MULTIPLE: 'Multiple Knapsacks',   // Multiple knapsacks available
+    FRACTIONAL: 'Fractional'         // Items can be taken partially
+};
+```
+
+### Helper Functions
+
+```javascript
+// Create sample items for testing
+function createItems(data) {
+    return data.map(([weight, value, name]) => new Item(weight, value, name));
+}
+
+// Print solution details
+function printSolution(items, solution, capacity, maxValue) {
+    console.log(`\nKnapsack Solution (Capacity: ${capacity})`);
+    console.log(`Maximum Value: ${maxValue}`);
+    console.log('Selected Items:');
+
+    let totalWeight = 0;
+    let totalValue = 0;
+
+    solution.forEach((item, index) => {
+        if (item.taken > 0) {
+            console.log(`  ${item.name}: weight=${item.weight}, value=${item.value}, quantity=${item.taken}`);
+            totalWeight += item.weight * item.taken;
+            totalValue += item.value * item.taken;
+        }
+    });
+
+    console.log(`Total Weight: ${totalWeight}/${capacity}`);
+    console.log(`Total Value: ${totalValue}`);
+}
+
+// Validate knapsack solution
+function isValidSolution(items, solution, capacity) {
+    let totalWeight = 0;
+
+    for (let i = 0; i < solution.length; i++) {
+        totalWeight += items[i].weight * solution[i];
+    }
+
+    return totalWeight <= capacity;
+}
+```
+
+---
+
+## 0/1 Knapsack Problem
+
+The classic knapsack where each item can be taken at most once.
+
+### 1. Basic 0/1 Knapsack (2D DP)
+
+```javascript
+function knapsack01_2D(items, capacity) {
+    const n = items.length;
+    const dp = Array.from({ length: n + 1 },
+        () => new Array(capacity + 1).fill(0));
+
+    // Fill the DP table
+    for (let i = 1; i <= n; i++) {
+        for (let w = 0; w <= capacity; w++) {
+            const currentItem = items[i - 1];
+
+            if (currentItem.weight <= w) {
+                // Max of taking or not taking current item
+                dp[i][w] = Math.max(
+                    dp[i - 1][w], // Don't take
+                    dp[i - 1][w - currentItem.weight] + currentItem.value // Take
+                );
+            } else {
+                dp[i][w] = dp[i - 1][w]; // Can't take (too heavy)
+            }
+        }
+    }
+
+    return dp[n][capacity];
+}
+```
+
+**Time Complexity:** O(n × W) | **Space Complexity:** O(n × W)
+
+### 2. Space-Optimized 0/1 Knapsack (1D DP)
+
+```javascript
+function knapsack01_1D(items, capacity) {
+    const dp = new Array(capacity + 1).fill(0);
+
+    for (const item of items) {
+        // Traverse backwards to avoid using updated values
+        for (let w = capacity; w >= item.weight; w--) {
+            dp[w] = Math.max(dp[w], dp[w - item.weight] + item.value);
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+**Time Complexity:** O(n × W) | **Space Complexity:** O(W)
+
+### 3. 0/1 Knapsack with Item Tracking
+
+```javascript
+function knapsack01WithItems(items, capacity) {
+    const n = items.length;
+    const dp = Array.from({ length: n + 1 },
+        () => new Array(capacity + 1).fill(0));
+
+    // Fill DP table
+    for (let i = 1; i <= n; i++) {
+        for (let w = 0; w <= capacity; w++) {
+            const currentItem = items[i - 1];
+
+            if (currentItem.weight <= w) {
+                dp[i][w] = Math.max(
+                    dp[i - 1][w],
+                    dp[i - 1][w - currentItem.weight] + currentItem.value
+                );
+            } else {
+                dp[i][w] = dp[i - 1][w];
+            }
+        }
+    }
+
+    // Backtrack to find selected items
+    const selectedItems = [];
+    let w = capacity;
+
+    for (let i = n; i > 0; i--) {
+        if (dp[i][w] !== dp[i - 1][w]) {
+            selectedItems.push({
+                ...items[i - 1],
+                taken: 1
+            });
+            w -= items[i - 1].weight;
+        } else {
+            selectedItems.push({
+                ...items[i - 1],
+                taken: 0
+            });
+        }
+    }
+
+    return {
+        maxValue: dp[n][capacity],
+        items: selectedItems.reverse()
+    };
+}
+```
+
+### 4. Recursive 0/1 Knapsack with Memoization
+
+```javascript
+function knapsack01Recursive(items, capacity) {
+    const memo = new Map();
+
+    function solve(index, remainingCapacity) {
+        // Base case
+        if (index === items.length || remainingCapacity === 0) {
+            return 0;
+        }
+
+        const key = `${index}-${remainingCapacity}`;
+        if (memo.has(key)) {
+            return memo.get(key);
+        }
+
+        const currentItem = items[index];
+        let result;
+
+        if (currentItem.weight > remainingCapacity) {
+            // Can't take current item
+            result = solve(index + 1, remainingCapacity);
+        } else {
+            // Max of taking or not taking current item
+            const take = currentItem.value + solve(index + 1, remainingCapacity - currentItem.weight);
+            const skip = solve(index + 1, remainingCapacity);
+            result = Math.max(take, skip);
+        }
+
+        memo.set(key, result);
+        return result;
+    }
+
+    return solve(0, capacity);
+}
+```
+
+---
+
+## Unbounded Knapsack Problem
+
+Each item can be taken unlimited times.
+
+### 1. Basic Unbounded Knapsack
+
+```javascript
+function unboundedKnapsack(items, capacity) {
+    const dp = new Array(capacity + 1).fill(0);
+
+    for (let w = 1; w <= capacity; w++) {
+        for (const item of items) {
+            if (item.weight <= w) {
+                dp[w] = Math.max(dp[w], dp[w - item.weight] + item.value);
+            }
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+**Time Complexity:** O(n × W) | **Space Complexity:** O(W)
+
+### 2. Unbounded Knapsack with Item Count
+
+```javascript
+function unboundedKnapsackWithCount(items, capacity) {
+    const dp = new Array(capacity + 1).fill(0);
+    const count = new Array(capacity + 1).fill().map(() => ({}));
+
+    for (let w = 1; w <= capacity; w++) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+
+            if (item.weight <= w) {
+                const newValue = dp[w - item.weight] + item.value;
+
+                if (newValue > dp[w]) {
+                    dp[w] = newValue;
+                    count[w] = { ...count[w - item.weight] };
+                    count[w][i] = (count[w][i] || 0) + 1;
+                }
+            }
+        }
+    }
+
+    return {
+        maxValue: dp[capacity],
+        itemCount: count[capacity] || {}
+    };
+}
+```
+
+### 3. Rod Cutting Problem (Unbounded Knapsack Variant)
+
+```javascript
+function rodCutting(prices, length) {
+    const dp = new Array(length + 1).fill(0);
+    const cuts = new Array(length + 1).fill(0);
+
+    for (let i = 1; i <= length; i++) {
+        for (let j = 1; j <= Math.min(i, prices.length); j++) {
+            if (dp[i - j] + prices[j - 1] > dp[i]) {
+                dp[i] = dp[i - j] + prices[j - 1];
+                cuts[i] = j;
+            }
+        }
+    }
+
+    // Reconstruct solution
+    const solution = [];
+    let remaining = length;
+
+    while (remaining > 0) {
+        solution.push(cuts[remaining]);
+        remaining -= cuts[remaining];
+    }
+
+    return {
+        maxValue: dp[length],
+        cuts: solution
+    };
+}
+```
+
+> **💡 Application:** Rod cutting is a classic application of unbounded knapsack!
+
+---
+
+## Bounded Knapsack Problem
+
+Each item has a limited quantity available.
+
+### 1. Bounded Knapsack (Multiple Items)
+
+```javascript
+function boundedKnapsack(items, quantities, capacity) {
+    const dp = new Array(capacity + 1).fill(0);
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const maxCount = quantities[i];
+
+        // Process each item with its quantity limit
+        for (let w = capacity; w >= item.weight; w--) {
+            for (let count = 1; count <= maxCount && count * item.weight <= w; count++) {
+                dp[w] = Math.max(
+                    dp[w],
+                    dp[w - count * item.weight] + count * item.value
+                );
+            }
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+### 2. Bounded Knapsack with Binary Lifting
+
+```javascript
+function boundedKnapsackOptimized(items, quantities, capacity) {
+    const newItems = [];
+
+    // Convert to 0/1 knapsack using binary representation
+    for (let i = 0; i < items.length; i++) {
+        let remaining = quantities[i];
+        let multiplier = 1;
+
+        while (remaining > 0) {
+            const takeCount = Math.min(multiplier, remaining);
+            newItems.push({
+                weight: items[i].weight * takeCount,
+                value: items[i].value * takeCount,
+                name: `${items[i].name}_x${takeCount}`
+            });
+
+            remaining -= takeCount;
+            multiplier *= 2;
+        }
+    }
+
+    // Solve as 0/1 knapsack
+    return knapsack01_1D(newItems, capacity);
+}
+```
+
+### 3. Bounded Knapsack with Item Tracking
+
+```javascript
+function boundedKnapsackWithTracking(items, quantities, capacity) {
+    const dp = Array.from({ length: items.length + 1 },
+        () => new Array(capacity + 1).fill(0));
+
+    // Track the count of each item used
+    const usage = Array.from({ length: items.length + 1 },
+        () => Array.from({ length: capacity + 1 }, () => new Array(items.length).fill(0)));
+
+    for (let i = 1; i <= items.length; i++) {
+        const item = items[i - 1];
+        const maxCount = quantities[i - 1];
+
+        for (let w = 0; w <= capacity; w++) {
+            dp[i][w] = dp[i - 1][w]; // Don't take any
+            usage[i][w] = [...usage[i - 1][w]];
+
+            // Try taking different quantities
+            for (let count = 1; count <= maxCount && count * item.weight <= w; count++) {
+                const value = dp[i - 1][w - count * item.weight] + count * item.value;
+
+                if (value > dp[i][w]) {
+                    dp[i][w] = value;
+                    usage[i][w] = [...usage[i - 1][w - count * item.weight]];
+                    usage[i][w][i - 1] = count;
+                }
+            }
+        }
+    }
+
+    return {
+        maxValue: dp[items.length][capacity],
+        usage: usage[items.length][capacity]
+    };
+}
+```
+
+---
+
+## Multiple Knapsacks Problem
+
+Multiple knapsacks with different capacities.
+
+### 1. Multiple Knapsacks (Greedy Approach)
+
+```javascript
+function multipleKnapsacksGreedy(items, knapsacks) {
+    // Sort items by value-to-weight ratio (descending)
+    const sortedItems = items
+        .map((item, index) => ({ ...item, originalIndex: index }))
+        .sort((a, b) => b.ratio - a.ratio);
+
+    // Sort knapsacks by capacity (descending)
+    const sortedKnapsacks = knapsacks
+        .map((capacity, index) => ({ capacity, index, items: [], value: 0, weight: 0 }))
+        .sort((a, b) => b.capacity - a.capacity);
+
+    // Assign items to knapsacks
+    for (const item of sortedItems) {
+        for (const knapsack of sortedKnapsacks) {
+            if (knapsack.weight + item.weight <= knapsack.capacity) {
+                knapsack.items.push(item);
+                knapsack.weight += item.weight;
+                knapsack.value += item.value;
+                break;
+            }
+        }
+    }
+
+    return sortedKnapsacks.sort((a, b) => a.index - b.index);
+}
+```
+
+### 2. Multiple Knapsacks (DP Approach)
+
+```javascript
+function multipleKnapsacksDP(items, knapsacks) {
+    const totalCapacity = knapsacks.reduce((sum, cap) => sum + cap, 0);
+    const k = knapsacks.length;
+
+    // dp[i][w1][w2]...[wk] = maximum value using first i items
+    // with weights w1, w2, ..., wk in knapsacks 1, 2, ..., k
+    const memo = new Map();
+
+    function solve(itemIndex, remainingCapacities) {
+        if (itemIndex === items.length) return 0;
+
+        const key = `${itemIndex}-${remainingCapacities.join(',')}`;
+        if (memo.has(key)) return memo.get(key);
+
+        let maxValue = solve(itemIndex + 1, remainingCapacities); // Skip item
+
+        // Try putting item in each knapsack
+        for (let knapsackIndex = 0; knapsackIndex < k; knapsackIndex++) {
+            const item = items[itemIndex];
+            if (remainingCapacities[knapsackIndex] >= item.weight) {
+                const newCapacities = [...remainingCapacities];
+                newCapacities[knapsackIndex] -= item.weight;
+
+                const value = item.value + solve(itemIndex + 1, newCapacities);
+                maxValue = Math.max(maxValue, value);
+            }
+        }
+
+        memo.set(key, maxValue);
+        return maxValue;
+    }
+
+    return solve(0, [...knapsacks]);
+}
+```
+
+---
+
+## Fractional Knapsack Problem
+
+Items can be taken partially (greedy solution optimal).
+
+### 1. Fractional Knapsack (Greedy)
+
+```javascript
+function fractionalKnapsack(items, capacity) {
+    // Sort by value-to-weight ratio (descending)
+    const sortedItems = items
+        .map((item, index) => ({ ...item, index }))
+        .sort((a, b) => b.ratio - a.ratio);
+
+    let remainingCapacity = capacity;
+    let totalValue = 0;
+    const solution = [];
+
+    for (const item of sortedItems) {
+        if (remainingCapacity >= item.weight) {
+            // Take entire item
+            solution.push({
+                ...item,
+                fraction: 1.0,
+                weightTaken: item.weight,
+                valueTaken: item.value
+            });
+
+            remainingCapacity -= item.weight;
+            totalValue += item.value;
+        } else if (remainingCapacity > 0) {
+            // Take partial item
+            const fraction = remainingCapacity / item.weight;
+
+            solution.push({
+                ...item,
+                fraction,
+                weightTaken: remainingCapacity,
+                valueTaken: item.value * fraction
+            });
+
+            totalValue += item.value * fraction;
+            remainingCapacity = 0;
+            break;
+        }
+    }
+
+    return {
+        maxValue: totalValue,
+        items: solution
+    };
+}
+```
+
+**Time Complexity:** O(n log n) | **Space Complexity:** O(n)
+
+### 2. Fractional vs 0/1 Comparison
+
+```javascript
+function compareKnapsackTypes(items, capacity) {
+    const fractional = fractionalKnapsack(items, capacity);
+    const zeroOne = knapsack01WithItems(items, capacity);
+
+    console.log('Fractional Knapsack Result:', fractional.maxValue);
+    console.log('0/1 Knapsack Result:', zeroOne.maxValue);
+    console.log('Difference:', fractional.maxValue - zeroOne.maxValue);
+
+    return {
+        fractional: fractional.maxValue,
+        zeroOne: zeroOne.maxValue,
+        fractionalOptimal: fractional.maxValue >= zeroOne.maxValue
+    };
+}
+```
+
+---
+
+## Subset Sum Variations
+
+### 1. Subset Sum Problem
+
+```javascript
+function subsetSum(nums, target) {
+    const dp = new Array(target + 1).fill(false);
+    dp[0] = true; // Empty subset sums to 0
+
+    for (const num of nums) {
+        for (let sum = target; sum >= num; sum--) {
+            dp[sum] = dp[sum] || dp[sum - num];
+        }
+    }
+
+    return dp[target];
+}
+```
+
+### 2. Subset Sum with Count
+
+```javascript
+function subsetSumCount(nums, target) {
+    const dp = new Array(target + 1).fill(0);
+    dp[0] = 1; // One way to make sum 0 (empty subset)
+
+    for (const num of nums) {
+        for (let sum = target; sum >= num; sum--) {
+            dp[sum] += dp[sum - num];
+        }
+    }
+
+    return dp[target];
+}
+```
+
+### 3. Partition Problem
+
+```javascript
+function canPartition(nums) {
+    const totalSum = nums.reduce((sum, num) => sum + num, 0);
+
+    // Can't partition if total sum is odd
+    if (totalSum % 2 !== 0) return false;
+
+    const target = totalSum / 2;
+    return subsetSum(nums, target);
+}
+```
+
+### 4. Minimum Subset Sum Difference
+
+```javascript
+function minimumSubsetSumDifference(nums) {
+    const totalSum = nums.reduce((sum, num) => sum + num, 0);
+    const target = Math.floor(totalSum / 2);
+
+    const dp = new Array(target + 1).fill(false);
+    dp[0] = true;
+
+    for (const num of nums) {
+        for (let sum = target; sum >= num; sum--) {
+            dp[sum] = dp[sum] || dp[sum - num];
+        }
+    }
+
+    // Find the largest sum ≤ target that's achievable
+    let maxAchievableSum = 0;
+    for (let i = target; i >= 0; i--) {
+        if (dp[i]) {
+            maxAchievableSum = i;
+            break;
+        }
+    }
+
+    return totalSum - 2 * maxAchievableSum;
+}
+```
+
+---
+
+## Coin Change Problems
+
+### 1. Coin Change (Minimum Coins)
+
+```javascript
+function coinChange(coins, amount) {
+    const dp = new Array(amount + 1).fill(Infinity);
+    dp[0] = 0;
+
+    for (let i = 1; i <= amount; i++) {
+        for (const coin of coins) {
+            if (coin <= i) {
+                dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+            }
+        }
+    }
+
+    return dp[amount] === Infinity ? -1 : dp[amount];
+}
+```
+
+### 2. Coin Change (Number of Ways)
+
+```javascript
+function coinChangeWays(coins, amount) {
+    const dp = new Array(amount + 1).fill(0);
+    dp[0] = 1; // One way to make amount 0
+
+    for (const coin of coins) {
+        for (let i = coin; i <= amount; i++) {
+            dp[i] += dp[i - coin];
+        }
+    }
+
+    return dp[amount];
+}
+```
+
+### 3. Coin Change with Limited Coins
+
+```javascript
+function coinChangeLimited(coins, quantities, amount) {
+    const dp = new Array(amount + 1).fill(Infinity);
+    dp[0] = 0;
+
+    for (let i = 0; i < coins.length; i++) {
+        const coin = coins[i];
+        const maxCount = quantities[i];
+
+        for (let amt = amount; amt >= coin; amt--) {
+            for (let count = 1; count <= maxCount && count * coin <= amt; count++) {
+                if (dp[amt - count * coin] !== Infinity) {
+                    dp[amt] = Math.min(dp[amt], dp[amt - count * coin] + count);
+                }
+            }
+        }
+    }
+
+    return dp[amount] === Infinity ? -1 : dp[amount];
+}
+```
+
+---
+
+## Advanced Knapsack Variations
+
+### 1. Two-Dimensional Knapsack
+
+```javascript
+function twoDimensionalKnapsack(items, weightCapacity, volumeCapacity) {
+    const dp = Array.from({ length: weightCapacity + 1 },
+        () => new Array(volumeCapacity + 1).fill(0));
+
+    for (const item of items) {
+        for (let w = weightCapacity; w >= item.weight; w--) {
+            for (let v = volumeCapacity; v >= item.volume; v--) {
+                dp[w][v] = Math.max(
+                    dp[w][v],
+                    dp[w - item.weight][v - item.volume] + item.value
+                );
+            }
+        }
+    }
+
+    return dp[weightCapacity][volumeCapacity];
+}
+```
+
+### 2. Knapsack with Dependencies
+
+```javascript
+function knapsackWithDependencies(items, dependencies, capacity) {
+    const n = items.length;
+    const memo = new Map();
+
+    function canTake(itemIndex, taken) {
+        const deps = dependencies[itemIndex] || [];
+        return deps.every(dep => taken.has(dep));
+    }
+
+    function solve(index, remainingCapacity, taken) {
+        if (index === n) return 0;
+
+        const key = `${index}-${remainingCapacity}-${Array.from(taken).sort().join(',')}`;
+        if (memo.has(key)) return memo.get(key);
+
+        // Option 1: Skip current item
+        let maxValue = solve(index + 1, remainingCapacity, taken);
+
+        // Option 2: Take current item (if possible)
+        const item = items[index];
+        if (item.weight <= remainingCapacity && canTake(index, taken)) {
+            const newTaken = new Set([...taken, index]);
+            const value = item.value + solve(index + 1, remainingCapacity - item.weight, newTaken);
+            maxValue = Math.max(maxValue, value);
+        }
+
+        memo.set(key, maxValue);
+        return maxValue;
+    }
+
+    return solve(0, capacity, new Set());
+}
+```
+
+### 3. Group Knapsack
+
+```javascript
+function groupKnapsack(groups, capacity) {
+    const dp = new Array(capacity + 1).fill(0);
+
+    for (const group of groups) {
+        const newDp = [...dp];
+
+        for (const item of group.items) {
+            for (let w = capacity; w >= item.weight; w--) {
+                newDp[w] = Math.max(newDp[w], dp[w - item.weight] + item.value);
+            }
+        }
+
+        // Update dp with the best choice from this group
+        for (let w = 0; w <= capacity; w++) {
+            dp[w] = newDp[w];
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+### 4. Knapsack with Conflicts
+
+```javascript
+function knapsackWithConflicts(items, conflicts, capacity) {
+    const n = items.length;
+    const conflictSet = new Set(conflicts.map(([a, b]) => `${a}-${b}`));
+
+    function hasConflict(taken) {
+        const takenItems = Array.from(taken);
+        for (let i = 0; i < takenItems.length; i++) {
+            for (let j = i + 1; j < takenItems.length; j++) {
+                const pair1 = `${takenItems[i]}-${takenItems[j]}`;
+                const pair2 = `${takenItems[j]}-${takenItems[i]}`;
+                if (conflictSet.has(pair1) || conflictSet.has(pair2)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    let maxValue = 0;
+
+    // Generate all possible subsets
+    for (let mask = 0; mask < (1 << n); mask++) {
+        const taken = new Set();
+        let totalWeight = 0;
+        let totalValue = 0;
+
+        for (let i = 0; i < n; i++) {
+            if (mask & (1 << i)) {
+                taken.add(i);
+                totalWeight += items[i].weight;
+                totalValue += items[i].value;
+            }
+        }
+
+        if (totalWeight <= capacity && !hasConflict(taken)) {
+            maxValue = Math.max(maxValue, totalValue);
+        }
+    }
+
+    return maxValue;
+}
+```
+
+---
+
+## Optimization Techniques
+
+### 1. Meet-in-the-Middle
+
+```javascript
+function knapsackMeetInTheMiddle(items, capacity) {
+    const n = items.length;
+    const mid = Math.floor(n / 2);
+
+    const firstHalf = items.slice(0, mid);
+    const secondHalf = items.slice(mid);
+
+    // Generate all possible (weight, value) pairs for first half
+    function generateStates(itemList) {
+        const states = [];
+        const numItems = itemList.length;
+
+        for (let mask = 0; mask < (1 << numItems); mask++) {
+            let weight = 0;
+            let value = 0;
+
+            for (let i = 0; i < numItems; i++) {
+                if (mask & (1 << i)) {
+                    weight += itemList[i].weight;
+                    value += itemList[i].value;
+                }
+            }
+
+            if (weight <= capacity) {
+                states.push({ weight, value });
+            }
+        }
+
+        return states;
+    }
+
+    const firstStates = generateStates(firstHalf);
+    const secondStates = generateStates(secondHalf);
+
+    // Sort second states by weight for binary search
+    secondStates.sort((a, b) => a.weight - b.weight);
+
+    // For each weight, keep only the maximum value
+    const maxValueByWeight = new Map();
+    for (const state of secondStates) {
+        if (!maxValueByWeight.has(state.weight) ||
+            maxValueByWeight.get(state.weight) < state.value) {
+            maxValueByWeight.set(state.weight, state.value);
+        }
+    }
+
+    let maxValue = 0;
+
+    for (const firstState of firstStates) {
+        const remainingCapacity = capacity - firstState.weight;
+
+        // Find best matching second state
+        for (const [weight, value] of maxValueByWeight) {
+            if (weight <= remainingCapacity) {
+                maxValue = Math.max(maxValue, firstState.value + value);
+            }
+        }
+    }
+
+    return maxValue;
+}
+```
+
+### 2. Branch and Bound
+
+```javascript
+function knapsackBranchAndBound(items, capacity) {
+    // Sort items by value-to-weight ratio
+    const sortedItems = items
+        .map((item, index) => ({ ...item, index }))
+        .sort((a, b) => b.ratio - a.ratio);
+
+    let bestValue = 0;
+    let bestSolution = [];
+
+    function upperBound(nodeLevel, currentWeight, currentValue) {
+        let bound = currentValue;
+        let weight = currentWeight;
+        let level = nodeLevel;
+
+        // Add items greedily (fractional allowed for bound)
+        while (level < sortedItems.length && weight + sortedItems[level].weight <= capacity) {
+            weight += sortedItems[level].weight;
+            bound += sortedItems[level].value;
+            level++;
+        }
+
+        // Add fractional part of next item if possible
+        if (level < sortedItems.length) {
+            const remainingCapacity = capacity - weight;
+            bound += (remainingCapacity / sortedItems[level].weight) * sortedItems[level].value;
+        }
+
+        return bound;
+    }
+
+    function branchAndBound(level, currentWeight, currentValue, currentSolution) {
+        if (level === sortedItems.length) {
+            if (currentValue > bestValue) {
+                bestValue = currentValue;
+                bestSolution = [...currentSolution];
+            }
+            return;
+        }
+
+        const item = sortedItems[level];
+        const bound = upperBound(level, currentWeight, currentValue);
+
+        // Pruning: if bound is not better than current best, skip this branch
+        if (bound <= bestValue) {
+            return;
+        }
+
+        // Branch 1: Include current item (if fits)
+        if (currentWeight + item.weight <= capacity) {
+            currentSolution[item.index] = 1;
+            branchAndBound(
+                level + 1,
+                currentWeight + item.weight,
+                currentValue + item.value,
+                currentSolution
+            );
+            currentSolution[item.index] = 0;
+        }
+
+        // Branch 2: Exclude current item
+        branchAndBound(level + 1, currentWeight, currentValue, currentSolution);
+    }
+
+    const solution = new Array(items.length).fill(0);
+    branchAndBound(0, 0, 0, solution);
+
+    return {
+        maxValue: bestValue,
+        solution: bestSolution
+    };
+}
+```
+
+### 3. Approximation Algorithms
+
+```javascript
+function knapsackFPTAS(items, capacity, epsilon) {
+    const n = items.length;
+    const maxValue = Math.max(...items.map(item => item.value));
+
+    // Scale factor for approximation
+    const K = (epsilon * maxValue) / n;
+
+    // Scale and round values
+    const scaledItems = items.map(item => ({
+        ...item,
+        scaledValue: Math.floor(item.value / K)
+    }));
+
+    const maxScaledValue = Math.max(...scaledItems.map(item => item.scaledValue));
+    const totalScaledValue = n * maxScaledValue;
+
+    // DP on scaled values
+    const dp = Array.from({ length: n + 1 },
+        () => new Array(totalScaledValue + 1).fill(Infinity));
+    dp[0][0] = 0;
+
+    for (let i = 1; i <= n; i++) {
+        const item = scaledItems[i - 1];
+
+        for (let v = 0; v <= totalScaledValue; v++) {
+            // Don't take item
+            dp[i][v] = dp[i - 1][v];
+
+            // Take item
+            if (v >= item.scaledValue && dp[i - 1][v - item.scaledValue] !== Infinity) {
+                dp[i][v] = Math.min(
+                    dp[i][v],
+                    dp[i - 1][v - item.scaledValue] + item.weight
+                );
+            }
+        }
+    }
+
+    // Find maximum value with weight <= capacity
+    let maxApproxValue = 0;
+    for (let v = 0; v <= totalScaledValue; v++) {
+        if (dp[n][v] <= capacity) {
+            maxApproxValue = Math.max(maxApproxValue, v * K);
+        }
+    }
+
+    return maxApproxValue;
+}
+```
+
+---
+
+## Usage Examples
+
+Here's how to use these knapsack variations:
+
+```javascript
+console.log("=== Knapsack Problems Demo ===");
+
+// Sample items for testing
+const items = [
+    new Item(10, 60, "Item 1"),
+    new Item(20, 100, "Item 2"),
+    new Item(30, 120, "Item 3")
+];
+
+const capacity = 50;
+
+console.log("\n1. 0/1 Knapsack Problem");
+const result01 = knapsack01WithItems(items, capacity);
+console.log("Max Value:", result01.maxValue);
+printSolution(items, result01.items, capacity, result01.maxValue);
+
+console.log("\n2. Unbounded Knapsack Problem");
+const unboundedResult = unboundedKnapsackWithCount(items, capacity);
+console.log("Max Value:", unboundedResult.maxValue);
+console.log("Item counts:", unboundedResult.itemCount);
+
+console.log("\n3. Fractional Knapsack Problem");
+const fractionalResult = fractionalKnapsack(items, capacity);
+console.log("Max Value:", fractionalResult.maxValue.toFixed(2));
+fractionalResult.items.forEach(item => {
+    console.log(`  ${item.name}: fraction=${item.fraction.toFixed(2)}, value=${item.valueTaken.toFixed(2)}`);
+});
+
+console.log("\n4. Multiple Knapsacks Problem");
+const knapsacks = [30, 20, 25];
+const multipleResult = multipleKnapsacksGreedy(items, knapsacks);
+multipleResult.forEach((knapsack, index) => {
+    console.log(`Knapsack ${index + 1} (capacity ${knapsack.capacity}): value=${knapsack.value}`);
+});
+
+console.log("\n5. Subset Sum Problem");
+const nums = [3, 34, 4, 12, 5, 2];
+const target = 9;
+console.log(`Can make sum ${target}:`, subsetSum(nums, target));
+console.log(`Number of ways to make ${target}:`, subsetSumCount(nums, target));
+
+console.log("\n6. Coin Change Problem");
+const coins = [1, 3, 4];
+const amount = 6;
+console.log(`Min coins for amount ${amount}:`, coinChange(coins, amount));
+console.log(`Ways to make amount ${amount}:`, coinChangeWays(coins, amount));
+
+console.log("\n7. Rod Cutting Problem");
+const prices = [1, 5, 8, 9, 10, 17, 17, 20];
+const rodLength = 4;
+const rodResult = rodCutting(prices, rodLength);
+console.log(`Max value for rod length ${rodLength}:`, rodResult.maxValue);
+console.log("Cuts:", rodResult.cuts);
+
+console.log("\n8. Partition Problem");
+const partitionNums = [1, 5, 11, 5];
+console.log("Can partition into equal sum subsets:", canPartition(partitionNums));
+
+console.log("\n9. Minimum Subset Sum Difference");
+const diffNums = [1, 6, 11, 5];
+console.log("Minimum difference:", minimumSubsetSumDifference(diffNums));
+
+// Advanced examples
+console.log("\n10. Two-Dimensional Knapsack");
+const items2D = [
+    { weight: 10, volume: 20, value: 100, name: "2D Item 1" },
+    { weight: 20, volume: 30, value: 300, name: "2D Item 2" },
+    { weight: 30, volume: 40, value: 400, name: "2D Item 3" }
+];
+const result2D = twoDimensionalKnapsack(items2D, 50, 60);
+console.log("2D Knapsack max value:", result2D);
+
+console.log("\n11. Bounded Knapsack");
+const quantities = [2, 3, 1];
+const boundedResult = boundedKnapsackWithTracking(items, quantities, capacity);
+console.log("Bounded knapsack max value:", boundedResult.maxValue);
+console.log("Item usage:", boundedResult.usage);
+```
+
+---
+
+## Time Complexity Summary
+
+| Problem Type | Time Complexity | Space Complexity | Notes |
+|--------------|----------------|------------------|-------|
+| 0/1 Knapsack (2D) | O(nW) | O(nW) | W = capacity |
+| 0/1 Knapsack (1D) | O(nW) | O(W) | Space optimized |
+| Unbounded Knapsack | O(nW) | O(W) | Items reusable |
+| Bounded Knapsack | O(nWQ) | O(W) | Q = max quantity |
+| Multiple Knapsacks | O(n × 2^n) | O(2^n) | Exponential |
+| Fractional Knapsack | O(n log n) | O(n) | Greedy optimal |
+| Subset Sum | O(nS) | O(S) | S = target sum |
+| Coin Change (Min) | O(nA) | O(A) | A = amount |
+| Coin Change (Ways) | O(nA) | O(A) | Order matters |
+| Meet-in-Middle | O(n × 2^(n/2)) | O(2^(n/2)) | Space-time tradeoff |
+| Branch & Bound | O(2^n) | O(n) | Best case pruning |
+| FPTAS | O(n³/ε) | O(n²/ε) | ε = approximation |
+
+---
+
+## Key Patterns to Remember
+
+### 1. **DP State Transitions**
+```javascript
+// 0/1 Knapsack transition
+dp[i][w] = Math.max(
+    dp[i-1][w],                              // Don't take item
+    dp[i-1][w-weight[i]] + value[i]         // Take item
+);
+
+// Unbounded Knapsack transition
+dp[w] = Math.max(dp[w], dp[w-weight[i]] + value[i]);
+```
+
+### 2. **Space Optimization**
+```javascript
+// Process weights in reverse for 0/1 knapsack
+for (let w = capacity; w >= item.weight; w--) {
+    dp[w] = Math.max(dp[w], dp[w - item.weight] + item.value);
+}
+```
+
+### 3. **Greedy vs DP**
+- **Fractional**: Greedy by value/weight ratio is optimal
+- **0/1**: DP required, greedy is not optimal
+- **Unbounded**: DP required, but greedy gives approximation
+
+### 4. **Backtracking Pattern**
+```javascript
+// Reconstruct solution from DP table
+let w = capacity;
+for (let i = n; i > 0 && w > 0; i--) {
+    if (dp[i][w] !== dp[i-1][w]) {
+        // Item i-1 was taken
+        selectedItems.push(i-1);
+        w -= items[i-1].weight;
+    }
+}
+```
+
+### 5. **Optimization Techniques**
+- **Meet-in-Middle**: Split items, generate all combinations
+- **Branch & Bound**: Use upper bounds for pruning
+- **FPTAS**: Scale values for polynomial approximation
+
+---
+
+## Common Interview Patterns
+
+### 1. **Subset-Based Problems**
+- Equal Sum Partition
+- Target Sum (assign +/- signs)
+- Subset Sum with specific count
+
+### 2. **Coin/Change Problems**
+- Minimum coins needed
+- Number of ways to make change
+- Change with limited coin types
+
+### 3. **Optimization Variants**
+- Multiple constraints (weight + volume)
+- Item dependencies
+- Group selections (choose one from each group)
+
+### 4. **Real-World Applications**
+- Resource allocation
+- Portfolio optimization
+- Cutting stock problems
+- Task scheduling with rewards
+
+---
+
+## Interview Tips
+
+1. **Identify the variant**: 0/1, unbounded, or bounded?
+2. **Check constraints**: Can you use space optimization?
+3. **Consider approximation**: For large inputs, FPTAS might be needed
+4. **Greedy first**: For fractional knapsack, greedy is optimal
+5. **DP table design**: Think about state representation
+6. **Edge cases**: Zero capacity, no items, negative values
+7. **Optimization**: Meet-in-middle for n ≤ 40, branch-and-bound for exact solutions

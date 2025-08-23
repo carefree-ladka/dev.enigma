@@ -1,0 +1,1145 @@
+# Prefix Sum
+
+A comprehensive guide to prefix sum algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Introduction to Prefix Sum](#introduction-to-prefix-sum)
+2. [Basic Prefix Sum](#basic-prefix-sum)
+3. [Prefix Sum with HashMap](#prefix-sum-with-hashmap)
+4. [2D Prefix Sum](#2d-prefix-sum)
+5. [Prefix XOR](#prefix-xor)
+6. [Running Sum Variations](#running-sum-variations)
+7. [Advanced Prefix Sum](#advanced-prefix-sum)
+8. [Prefix Sum vs Other Patterns](#prefix-sum-vs-other-patterns)
+9. [Usage Examples](#usage-examples)
+
+---
+
+## Introduction to Prefix Sum
+
+Prefix sum (also called cumulative sum) is a preprocessing technique that allows us to answer range sum queries in O(1) time after O(n) preprocessing. It's particularly powerful when combined with hash maps for solving subarray problems.
+
+### Core Concept
+
+```javascript
+// Basic prefix sum concept
+const arr = [1, 2, 3, 4, 5];
+const prefixSum = [0, 1, 3, 6, 10, 15];
+//                 ^  ^  ^  ^   ^   ^
+//                 0  1  1+2 1+2+3 ... sum(0 to 4)
+
+// Range sum from index i to j: prefixSum[j+1] - prefixSum[i]
+// Sum from index 1 to 3: prefixSum[4] - prefixSum[1] = 10 - 1 = 9
+```
+
+### When to Use Prefix Sum
+
+- **Range sum queries** in arrays
+- **Subarray sum problems** (equal to target, maximum, etc.)
+- **Cumulative frequency** problems
+- **2D matrix** range sum queries
+- **XOR/AND/OR** operations on ranges
+- **Problems involving difference** between indices
+
+### Basic Template
+
+```javascript
+function buildPrefixSum(arr) {
+    const prefixSum = new Array(arr.length + 1).fill(0);
+
+    for (let i = 0; i < arr.length; i++) {
+        prefixSum[i + 1] = prefixSum[i] + arr[i];
+    }
+
+    return prefixSum;
+}
+
+function rangeSum(prefixSum, left, right) {
+    return prefixSum[right + 1] - prefixSum[left];
+}
+```
+
+---
+
+## Basic Prefix Sum
+
+### 1. Range Sum Query - Immutable
+
+```javascript
+class NumArray {
+    constructor(nums) {
+        this.prefixSum = new Array(nums.length + 1).fill(0);
+
+        for (let i = 0; i < nums.length; i++) {
+            this.prefixSum[i + 1] = this.prefixSum[i] + nums[i];
+        }
+    }
+
+    sumRange(left, right) {
+        return this.prefixSum[right + 1] - this.prefixSum[left];
+    }
+}
+
+// Usage
+const numArray = new NumArray([-2, 0, 3, -5, 2, -1]);
+console.log(numArray.sumRange(0, 2)); // 1
+console.log(numArray.sumRange(2, 5)); // -1
+```
+
+**Time Complexity:**
+- Constructor: O(n)
+- Query: O(1)
+
+**Space Complexity:** O(n)
+
+### 2. Running Sum of Array
+
+```javascript
+function runningSum(nums) {
+    const result = new Array(nums.length);
+    result[0] = nums[0];
+
+    for (let i = 1; i < nums.length; i++) {
+        result[i] = result[i - 1] + nums[i];
+    }
+
+    return result;
+}
+
+// In-place version
+function runningSumInPlace(nums) {
+    for (let i = 1; i < nums.length; i++) {
+        nums[i] += nums[i - 1];
+    }
+    return nums;
+}
+```
+
+### 3. Find Pivot Index
+
+```javascript
+function pivotIndex(nums) {
+    const totalSum = nums.reduce((sum, num) => sum + num, 0);
+    let leftSum = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        const rightSum = totalSum - leftSum - nums[i];
+
+        if (leftSum === rightSum) {
+            return i;
+        }
+
+        leftSum += nums[i];
+    }
+
+    return -1;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+### 4. Subarray Sum Equals K (Basic Approach)
+
+```javascript
+function subarraySum(nums, k) {
+    let count = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        let sum = 0;
+        for (let j = i; j < nums.length; j++) {
+            sum += nums[j];
+            if (sum === k) count++;
+        }
+    }
+
+    return count;
+}
+```
+
+**Time Complexity:** O(n²) | **Space Complexity:** O(1)
+
+> **💡 Note:** This can be optimized to O(n) using prefix sum with HashMap!
+
+---
+
+## Prefix Sum with HashMap
+
+The combination of prefix sum with hash map is incredibly powerful for subarray problems.
+
+### Core Principle
+
+```javascript
+// If prefixSum[j] - prefixSum[i] = k
+// Then prefixSum[i] = prefixSum[j] - k
+// We can store prefix sums in a hash map and look for prefixSum[j] - k
+```
+
+### 1. Subarray Sum Equals K (Optimized)
+
+```javascript
+function subarraySum(nums, k) {
+    const prefixSumCount = new Map();
+    prefixSumCount.set(0, 1); // Important: empty subarray has sum 0
+
+    let prefixSum = 0;
+    let count = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        prefixSum += nums[i];
+
+        // Check if there's a prefix sum such that current - previous = k
+        if (prefixSumCount.has(prefixSum - k)) {
+            count += prefixSumCount.get(prefixSum - k);
+        }
+
+        // Add current prefix sum to map
+        prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+    }
+
+    return count;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(n)
+
+### 2. Maximum Size Subarray Sum Equals K
+
+```javascript
+function maxSubArrayLen(nums, k) {
+    const prefixSumIndex = new Map();
+    prefixSumIndex.set(0, -1); // Empty subarray at index -1
+
+    let prefixSum = 0;
+    let maxLength = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        prefixSum += nums[i];
+
+        // Check if there's a prefix sum such that current - previous = k
+        if (prefixSumIndex.has(prefixSum - k)) {
+            maxLength = Math.max(maxLength, i - prefixSumIndex.get(prefixSum - k));
+        }
+
+        // Only store first occurrence of prefix sum for maximum length
+        if (!prefixSumIndex.has(prefixSum)) {
+            prefixSumIndex.set(prefixSum, i);
+        }
+    }
+
+    return maxLength;
+}
+```
+
+### 3. Binary Subarrays with Sum
+
+```javascript
+function numSubarraysWithSum(nums, goal) {
+    const prefixSumCount = new Map();
+    prefixSumCount.set(0, 1);
+
+    let prefixSum = 0;
+    let count = 0;
+
+    for (const num of nums) {
+        prefixSum += num;
+
+        if (prefixSumCount.has(prefixSum - goal)) {
+            count += prefixSumCount.get(prefixSum - goal);
+        }
+
+        prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+    }
+
+    return count;
+}
+```
+
+### 4. Contiguous Array (0s and 1s Equal Count)
+
+```javascript
+function findMaxLength(nums) {
+    const prefixSumIndex = new Map();
+    prefixSumIndex.set(0, -1); // Initial balance at index -1
+
+    let balance = 0; // +1 for 1, -1 for 0
+    let maxLength = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        balance += nums[i] === 1 ? 1 : -1;
+
+        if (prefixSumIndex.has(balance)) {
+            maxLength = Math.max(maxLength, i - prefixSumIndex.get(balance));
+        } else {
+            prefixSumIndex.set(balance, i);
+        }
+    }
+
+    return maxLength;
+}
+```
+
+> **🔧 Technique:** Transform the problem - treat 0 as -1 to use prefix sum!
+
+### 5. Subarray Sums Divisible by K
+
+```javascript
+function subarraysDivByK(nums, k) {
+    const remainderCount = new Map();
+    remainderCount.set(0, 1); // Empty subarray
+
+    let prefixSum = 0;
+    let count = 0;
+
+    for (const num of nums) {
+        prefixSum += num;
+
+        // Handle negative remainders in JavaScript
+        let remainder = prefixSum % k;
+        if (remainder < 0) remainder += k;
+
+        if (remainderCount.has(remainder)) {
+            count += remainderCount.get(remainder);
+        }
+
+        remainderCount.set(remainder, (remainderCount.get(remainder) || 0) + 1);
+    }
+
+    return count;
+}
+```
+
+### 6. Continuous Subarray Sum (Multiple of K)
+
+```javascript
+function checkSubarraySum(nums, k) {
+    const remainderIndex = new Map();
+    remainderIndex.set(0, -1); // Handle edge case
+
+    let prefixSum = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        prefixSum += nums[i];
+
+        const remainder = prefixSum % k;
+
+        if (remainderIndex.has(remainder)) {
+            // Check if subarray length is at least 2
+            if (i - remainderIndex.get(remainder) > 1) {
+                return true;
+            }
+        } else {
+            remainderIndex.set(remainder, i);
+        }
+    }
+
+    return false;
+}
+```
+
+---
+
+## 2D Prefix Sum
+
+For 2D matrix range sum queries and submatrix problems.
+
+### 1. Range Sum Query 2D - Immutable
+
+```javascript
+class NumMatrix {
+    constructor(matrix) {
+        if (!matrix || matrix.length === 0 || matrix[0].length === 0) {
+            return;
+        }
+
+        const rows = matrix.length;
+        const cols = matrix[0].length;
+
+        // prefixSum[i][j] = sum of rectangle from (0,0) to (i-1,j-1)
+        this.prefixSum = Array(rows + 1).fill(null)
+            .map(() => Array(cols + 1).fill(0));
+
+        for (let i = 1; i <= rows; i++) {
+            for (let j = 1; j <= cols; j++) {
+                this.prefixSum[i][j] = matrix[i - 1][j - 1]
+                    + this.prefixSum[i - 1][j]
+                    + this.prefixSum[i][j - 1]
+                    - this.prefixSum[i - 1][j - 1];
+            }
+        }
+    }
+
+    sumRegion(row1, col1, row2, col2) {
+        return this.prefixSum[row2 + 1][col2 + 1]
+            - this.prefixSum[row1][col2 + 1]
+            - this.prefixSum[row2 + 1][col1]
+            + this.prefixSum[row1][col1];
+    }
+}
+```
+
+**Time Complexity:**
+- Constructor: O(m × n)
+- Query: O(1)
+
+**Space Complexity:** O(m × n)
+
+### 2. Number of Submatrices That Sum to Target
+
+```javascript
+function numSubmatrixSumTarget(matrix, target) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+
+    // Build prefix sum for each row
+    for (let i = 0; i < rows; i++) {
+        for (let j = 1; j < cols; j++) {
+            matrix[i][j] += matrix[i][j - 1];
+        }
+    }
+
+    let count = 0;
+
+    // For each pair of columns
+    for (let col1 = 0; col1 < cols; col1++) {
+        for (let col2 = col1; col2 < cols; col2++) {
+            const prefixSumCount = new Map();
+            prefixSumCount.set(0, 1);
+            let prefixSum = 0;
+
+            // For each row, calculate sum between col1 and col2
+            for (let row = 0; row < rows; row++) {
+                const rowSum = matrix[row][col2] - (col1 > 0 ? matrix[row][col1 - 1] : 0);
+                prefixSum += rowSum;
+
+                if (prefixSumCount.has(prefixSum - target)) {
+                    count += prefixSumCount.get(prefixSum - target);
+                }
+
+                prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+**Time Complexity:** O(m × n²) | **Space Complexity:** O(m)
+
+### 3. Maximum Sum Rectangle in 2D Array
+
+```javascript
+function maxSumRectangle(matrix) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    let maxSum = -Infinity;
+
+    for (let top = 0; top < rows; top++) {
+        const temp = new Array(cols).fill(0);
+
+        for (let bottom = top; bottom < rows; bottom++) {
+            // Add current row to temp array
+            for (let i = 0; i < cols; i++) {
+                temp[i] += matrix[bottom][i];
+            }
+
+            // Find maximum subarray sum in temp (Kadane's algorithm)
+            let currentSum = 0;
+            let maxEndingHere = -Infinity;
+
+            for (let i = 0; i < cols; i++) {
+                currentSum = Math.max(temp[i], currentSum + temp[i]);
+                maxEndingHere = Math.max(maxEndingHere, currentSum);
+            }
+
+            maxSum = Math.max(maxSum, maxEndingHere);
+        }
+    }
+
+    return maxSum;
+}
+```
+
+---
+
+## Prefix XOR
+
+XOR prefix sums for bitwise problems.
+
+### 1. XOR Queries of a Subarray
+
+```javascript
+function xorQueries(arr, queries) {
+    const prefixXOR = new Array(arr.length + 1).fill(0);
+
+    // Build prefix XOR array
+    for (let i = 0; i < arr.length; i++) {
+        prefixXOR[i + 1] = prefixXOR[i] ^ arr[i];
+    }
+
+    const result = [];
+    for (const [left, right] of queries) {
+        result.push(prefixXOR[right + 1] ^ prefixXOR[left]);
+    }
+
+    return result;
+}
+```
+
+### 2. Maximum XOR of Two Numbers in Array
+
+```javascript
+function findMaximumXOR(nums) {
+    let maxXOR = 0;
+    let mask = 0;
+
+    // Check each bit position from left to right
+    for (let i = 30; i >= 0; i--) {
+        mask |= (1 << i);
+        const prefixes = new Set();
+
+        // Get all prefixes of length (31 - i)
+        for (const num of nums) {
+            prefixes.add(num & mask);
+        }
+
+        const candidate = maxXOR | (1 << i);
+
+        // Check if we can achieve this candidate
+        for (const prefix of prefixes) {
+            if (prefixes.has(candidate ^ prefix)) {
+                maxXOR = candidate;
+                break;
+            }
+        }
+    }
+
+    return maxXOR;
+}
+```
+
+### 3. Count Triplets with XOR Equal to Zero
+
+```javascript
+function countTriplets(arr) {
+    let count = 0;
+
+    for (let i = 0; i < arr.length; i++) {
+        let prefixXOR = 0;
+
+        for (let k = i + 1; k < arr.length; k++) {
+            prefixXOR ^= arr[k - 1];
+
+            // If prefix XOR from i to k-1 equals suffix XOR from k to k
+            // Then the entire range from i to k has XOR = 0
+            if (prefixXOR === 0) {
+                count += k - i;
+            }
+        }
+    }
+
+    return count;
+}
+
+// Optimized version using prefix XOR
+function countTripletsOptimized(arr) {
+    const n = arr.length;
+    let count = 0;
+
+    // prefix[i] = XOR of elements from 0 to i-1
+    const prefix = new Array(n + 1).fill(0);
+    for (let i = 0; i < n; i++) {
+        prefix[i + 1] = prefix[i] ^ arr[i];
+    }
+
+    for (let i = 0; i < n; i++) {
+        for (let k = i + 1; k < n; k++) {
+            // XOR from i to k should be 0
+            if (prefix[k + 1] === prefix[i]) {
+                count += k - i;
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+---
+
+## Running Sum Variations
+
+### 1. Product of Array Except Self (Using Division)
+
+```javascript
+function productExceptSelf(nums) {
+    const n = nums.length;
+    const result = new Array(n);
+
+    // Left products
+    result[0] = 1;
+    for (let i = 1; i < n; i++) {
+        result[i] = result[i - 1] * nums[i - 1];
+    }
+
+    // Right products
+    let rightProduct = 1;
+    for (let i = n - 1; i >= 0; i--) {
+        result[i] *= rightProduct;
+        rightProduct *= nums[i];
+    }
+
+    return result;
+}
+```
+
+### 2. Maximum Product Subarray
+
+```javascript
+function maxProduct(nums) {
+    let maxSoFar = nums[0];
+    let maxEndingHere = nums[0];
+    let minEndingHere = nums[0];
+
+    for (let i = 1; i < nums.length; i++) {
+        const temp = maxEndingHere;
+
+        maxEndingHere = Math.max(nums[i],
+            Math.max(maxEndingHere * nums[i], minEndingHere * nums[i]));
+        minEndingHere = Math.min(nums[i],
+            Math.min(temp * nums[i], minEndingHere * nums[i]));
+
+        maxSoFar = Math.max(maxSoFar, maxEndingHere);
+    }
+
+    return maxSoFar;
+}
+```
+
+### 3. Minimum Operations to Make Array Equal
+
+```javascript
+function minOperations(n) {
+    // For array [1, 3, 5, ..., 2n-1], target is average = n
+    // We need to make operations on first half to reach target
+    let operations = 0;
+
+    for (let i = 0; i < n / 2; i++) {
+        const currentValue = 2 * i + 1;
+        operations += n - currentValue;
+    }
+
+    return operations;
+}
+
+// Alternative using mathematical formula
+function minOperationsFormula(n) {
+    return n * n / 4; // Integer division
+}
+```
+
+---
+
+## Advanced Prefix Sum
+
+### 1. Range Addition
+
+```javascript
+function getModifiedArray(length, updates) {
+    const result = new Array(length).fill(0);
+
+    // Apply difference array technique
+    for (const [start, end, inc] of updates) {
+        result[start] += inc;
+        if (end + 1 < length) {
+            result[end + 1] -= inc;
+        }
+    }
+
+    // Convert difference array to actual values using prefix sum
+    for (let i = 1; i < length; i++) {
+        result[i] += result[i - 1];
+    }
+
+    return result;
+}
+```
+
+### 2. Corporate Flight Bookings
+
+```javascript
+function corpFlightBookings(bookings, n) {
+    const result = new Array(n + 1).fill(0);
+
+    // Use difference array
+    for (const [first, last, seats] of bookings) {
+        result[first - 1] += seats; // Convert to 0-indexed
+        result[last] -= seats;
+    }
+
+    // Apply prefix sum to get final answer
+    for (let i = 1; i < n; i++) {
+        result[i] += result[i - 1];
+    }
+
+    return result.slice(0, n); // Remove extra element
+}
+```
+
+### 3. Car Pooling
+
+```javascript
+function carPooling(trips, capacity) {
+    // Find maximum location
+    let maxLocation = 0;
+    for (const [passengers, from, to] of trips) {
+        maxLocation = Math.max(maxLocation, to);
+    }
+
+    const timeline = new Array(maxLocation + 1).fill(0);
+
+    // Apply difference array technique
+    for (const [passengers, from, to] of trips) {
+        timeline[from] += passengers;
+        timeline[to] -= passengers;
+    }
+
+    // Check capacity using prefix sum
+    let currentPassengers = 0;
+    for (let i = 0; i <= maxLocation; i++) {
+        currentPassengers += timeline[i];
+        if (currentPassengers > capacity) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+### 4. Sum of All Odd Length Subarrays
+
+```javascript
+function sumOddLengthSubarrays(arr) {
+    let totalSum = 0;
+    const n = arr.length;
+
+    for (let i = 0; i < n; i++) {
+        // Calculate how many odd-length subarrays include arr[i]
+        const leftCount = i + 1;
+        const rightCount = n - i;
+        const totalSubarrays = leftCount * rightCount;
+
+        // Odd-length subarrays = (total + 1) / 2
+        const oddSubarrays = Math.ceil(totalSubarrays / 2);
+
+        totalSum += arr[i] * oddSubarrays;
+    }
+
+    return totalSum;
+}
+
+// Alternative approach using prefix sum
+function sumOddLengthSubarraysPrefix(arr) {
+    const prefixSum = [0];
+    for (const num of arr) {
+        prefixSum.push(prefixSum[prefixSum.length - 1] + num);
+    }
+
+    let totalSum = 0;
+
+    // Check all odd-length subarrays
+    for (let length = 1; length <= arr.length; length += 2) {
+        for (let i = 0; i <= arr.length - length; i++) {
+            totalSum += prefixSum[i + length] - prefixSum[i];
+        }
+    }
+
+    return totalSum;
+}
+```
+
+---
+
+## Prefix Sum vs Other Patterns
+
+### When to Use Each Pattern
+
+| Pattern | Use Case | Example Problems |
+|---------|----------|------------------|
+| **Prefix Sum** | Range sum queries, subarray sum problems | Subarray Sum Equals K, Range Sum Query |
+| **Sliding Window** | Contiguous subarray with constraints | Longest Substring Without Repeating |
+| **Two Pointers** | Sorted array problems, palindromes | Two Sum II, Valid Palindrome |
+| **Hash Map** | Frequency counting, complement finding | Two Sum, Group Anagrams |
+
+### Comparison Example
+
+```javascript
+// Problem: Find subarray with sum equals K
+
+// Approach 1: Brute Force - O(n²)
+function subarraySum1(nums, k) {
+    let count = 0;
+    for (let i = 0; i < nums.length; i++) {
+        let sum = 0;
+        for (let j = i; j < nums.length; j++) {
+            sum += nums[j];
+            if (sum === k) count++;
+        }
+    }
+    return count;
+}
+
+// Approach 2: Prefix Sum + HashMap - O(n)
+function subarraySum2(nums, k) {
+    const prefixSumCount = new Map();
+    prefixSumCount.set(0, 1);
+    let prefixSum = 0;
+    let count = 0;
+
+    for (const num of nums) {
+        prefixSum += num;
+        if (prefixSumCount.has(prefixSum - k)) {
+            count += prefixSumCount.get(prefixSum - k);
+        }
+        prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+    }
+
+    return count;
+}
+
+// Sliding window won't work here because we need exact sum,
+// not a range of sums, and array can have negatives
+```
+
+---
+
+## Usage Examples
+
+```javascript
+console.log("=== Prefix Sum Techniques Demo ===");
+
+// Basic prefix sum
+const arr1 = [1, 2, 3, 4, 5];
+const numArray = new NumArray(arr1);
+console.log("Range sum (1, 3):", numArray.sumRange(1, 3)); // 9
+
+// Subarray sum equals k
+const arr2 = [1, 1, 1];
+console.log("Subarrays with sum 2:", subarraySum(arr2, 2)); // 2
+
+// Contiguous array (0s and 1s)
+const arr3 = [0, 1, 0, 0, 1, 1, 0];
+console.log("Max length equal 0s and 1s:", findMaxLength(arr3)); // 6
+
+// 2D prefix sum
+const matrix = [[3, 0, 1, 4, 2], [5, 6, 3, 2, 1], [1, 2, 0, 1, 5]];
+const numMatrix = new NumMatrix(matrix);
+console.log("2D range sum (1,1) to (2,2):", numMatrix.sumRegion(1, 1, 2, 2)); // 11
+
+// XOR queries
+const arr4 = [1, 3, 4, 8];
+const queries = [[0, 1], [1, 2], [0, 3], [3, 3]];
+console.log("XOR queries:", xorQueries(arr4, queries)); // [2, 7, 14, 8]
+
+// Product except self
+const arr5 = [1, 2, 3, 4];
+console.log("Product except self:", productExceptSelf(arr5)); // [24, 12, 8, 6]
+
+// Pivot index
+const arr6 = [1, 7, 3, 6, 5, 6];
+console.log("Pivot index:", pivotIndex(arr6)); // 3
+
+// Difference array (range updates)
+const updates = [[1, 3, 2], [2, 4, 3], [0, 2, -2]];
+console.log("Range addition:", getModifiedArray(5, updates)); // [-2, 0, 3, 5, 3]
+```
+
+---
+
+## Time Complexity Summary
+
+| Problem Type | Time Complexity | Space Complexity |
+|--------------|----------------|------------------|
+| Basic Range Sum | O(n) build, O(1) query | O(n) |
+| Subarray Sum with HashMap | O(n) | O(n) |
+| 2D Range Sum | O(mn) build, O(1) query | O(mn) |
+| XOR Queries | O(n) build, O(1) query | O(n) |
+| Difference Array | O(n + k) for k updates | O(n) |
+| Matrix Subarray Sum | O(m × n²) | O(n) |
+
+---
+
+## Common Patterns to Remember
+
+### 1. **Basic Prefix Sum Template**
+```javascript
+const prefixSum = [0];
+for (const num of arr) {
+    prefixSum.push(prefixSum[prefixSum.length - 1] + num);
+}
+// Range sum from i to j: prefixSum[j + 1] - prefixSum[i]
+```
+
+### 2. **Prefix Sum + HashMap Template**
+```javascript
+const prefixSumCount = new Map();
+prefixSumCount.set(0, 1); // Important for empty subarray
+let prefixSum = 0, count = 0;
+
+for (const num of nums) {
+    prefixSum += num;
+    if (prefixSumCount.has(prefixSum - target)) {
+        count += prefixSumCount.get(prefixSum - target);
+    }
+    prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+}
+```
+
+### 3. **2D Prefix Sum Template**
+```javascript
+const prefixSum = Array(rows + 1).fill(null)
+    .map(() => Array(cols + 1).fill(0));
+
+for (let i = 1; i <= rows; i++) {
+    for (let j = 1; j <= cols; j++) {
+        prefixSum[i][j] = matrix[i-1][j-1]
+            + prefixSum[i-1][j]
+            + prefixSum[i][j-1]
+            - prefixSum[i-1][j-1];
+    }
+}
+```
+
+### 4. **Difference Array Template**
+```javascript
+const diff = new Array(n).fill(0);
+
+// Apply updates
+for (const [start, end, val] of updates) {
+    diff[start] += val;
+    if (end + 1 < n) diff[end + 1] -= val;
+}
+
+// Convert to final array using prefix sum
+for (let i = 1; i < n; i++) {
+    diff[i] += diff[i - 1];
+}
+```
+
+### 5. **Remainder/Modulo Pattern**
+```javascript
+const remainderCount = new Map();
+remainderCount.set(0, 1); // Empty subarray
+let prefixSum = 0;
+
+for (const num of nums) {
+    prefixSum += num;
+    let remainder = prefixSum % k;
+    if (remainder < 0) remainder += k; // Handle negative remainders
+
+    if (remainderCount.has(remainder)) {
+        count += remainderCount.get(remainder);
+    }
+    remainderCount.set(remainder, (remainderCount.get(remainder) || 0) + 1);
+}
+```
+
+### 6. **Transform and Conquer Pattern**
+```javascript
+// Transform problem to use prefix sum
+// Example: Equal 0s and 1s → treat 0 as -1, find sum = 0
+// Example: Equal frequency → difference of counts
+
+for (let i = 0; i < arr.length; i++) {
+    // Transform based on problem requirement
+    balance += (arr[i] === target) ? 1 : -1;
+    // Rest follows prefix sum + hashmap pattern
+}
+```
+
+---
+
+## Key Interview Tips
+
+### Problem Recognition Checklist
+
+**Use Prefix Sum when you see:**
+- ✅ "Subarray" with sum/XOR conditions
+- ✅ "Range sum/product queries"
+- ✅ "Cumulative" or "running total"
+- ✅ "Count of subarrays" with constraints
+- ✅ "Equal frequency" or "balanced" problems
+- ✅ Matrix "rectangle sum" queries
+
+**Combine with HashMap when:**
+- ✅ Need to find specific target sum
+- ✅ Count occurrences of prefix sums
+- ✅ Find maximum/minimum length subarrays
+- ✅ Problems with "equals", "divisible by", etc.
+
+### Common Mistakes to Avoid
+
+1. **Forgetting empty subarray**: Always initialize `prefixSumMap.set(0, 1)` or appropriate base case
+2. **Off-by-one errors**: Be careful with indices in range queries
+3. **Negative remainders**: In JavaScript, handle `remainder < 0` case for modulo operations
+4. **First occurrence only**: For maximum length problems, store only first occurrence of prefix sum
+5. **Transform problems**: Recognize when to convert (e.g., 0→-1) to use prefix sum
+
+### Debugging Tips
+
+```javascript
+// Add logging to debug prefix sum problems
+function debugSubarraySum(nums, k) {
+    const prefixSumCount = new Map();
+    prefixSumCount.set(0, 1);
+
+    let prefixSum = 0;
+    let count = 0;
+
+    console.log("Initial state:", { prefixSumCount: new Map(prefixSumCount), prefixSum, count });
+
+    for (let i = 0; i < nums.length; i++) {
+        prefixSum += nums[i];
+
+        console.log(`After adding nums[${i}]=${nums[i]}:`, { prefixSum });
+        console.log(`Looking for: ${prefixSum - k}`);
+
+        if (prefixSumCount.has(prefixSum - k)) {
+            const increment = prefixSumCount.get(prefixSum - k);
+            count += increment;
+            console.log(`Found ${increment} occurrences, count now: ${count}`);
+        }
+
+        prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+        console.log("Updated map:", new Map(prefixSumCount));
+        console.log("---");
+    }
+
+    return count;
+}
+```
+
+### Optimization Techniques
+
+1. **Space optimization**: Sometimes you can avoid storing entire prefix sum array
+2. **In-place modifications**: For some problems, modify input array directly
+3. **Early termination**: Add conditions to break early when possible
+4. **Mathematical formulas**: Some problems have closed-form solutions
+
+### Advanced Variations
+
+#### Multi-dimensional Prefix Sum
+```javascript
+// 3D prefix sum for volume queries
+function build3DPrefix(matrix3D) {
+    const [x, y, z] = [matrix3D.length, matrix3D[0].length, matrix3D[0][0].length];
+    const prefix = Array(x + 1).fill(null)
+        .map(() => Array(y + 1).fill(null)
+            .map(() => Array(z + 1).fill(0)));
+
+    for (let i = 1; i <= x; i++) {
+        for (let j = 1; j <= y; j++) {
+            for (let k = 1; k <= z; k++) {
+                prefix[i][j][k] = matrix3D[i-1][j-1][k-1]
+                    + prefix[i-1][j][k] + prefix[i][j-1][k] + prefix[i][j][k-1]
+                    - prefix[i-1][j-1][k] - prefix[i-1][j][k-1] - prefix[i][j-1][k-1]
+                    + prefix[i-1][j-1][k-1];
+            }
+        }
+    }
+
+    return prefix;
+}
+```
+
+#### Lazy Propagation with Prefix Sum
+```javascript
+class LazyPrefixSum {
+    constructor(n) {
+        this.n = n;
+        this.lazy = new Array(n + 1).fill(0);
+        this.computed = false;
+        this.arr = new Array(n).fill(0);
+    }
+
+    rangeUpdate(left, right, val) {
+        this.lazy[left] += val;
+        this.lazy[right + 1] -= val;
+        this.computed = false;
+    }
+
+    query(index) {
+        if (!this.computed) {
+            this.computeArray();
+        }
+        return this.arr[index];
+    }
+
+    computeArray() {
+        let sum = 0;
+        for (let i = 0; i < this.n; i++) {
+            sum += this.lazy[i];
+            this.arr[i] = sum;
+        }
+        this.computed = true;
+    }
+}
+```
+
+### Practice Problems by Difficulty
+
+#### Beginner
+1. Running Sum of 1d Array
+2. Find Pivot Index
+3. Range Sum Query - Immutable
+4. Left and Right Sum Differences
+
+#### Intermediate
+1. Subarray Sum Equals K
+2. Continuous Subarray Sum
+3. Subarray Sums Divisible by K
+4. Contiguous Array
+5. Maximum Size Subarray Sum Equals K
+
+#### Advanced
+1. Number of Submatrices That Sum to Target
+2. Maximum XOR of Two Numbers in Array
+3. Count of Range Sum of BST
+4. Sum of All Odd Length Subarrays
+5. Minimum Operations to Make Array Equal
+
+#### Expert
+1. Count Subarrays with Fixed Bounds
+2. Number of Subsequences That Satisfy Sum Condition
+3. Minimum Number of K Consecutive Bit Flips
+4. Maximum Sum of 3 Non-Overlapping Subarrays
+
+---
+
+## Summary
+
+Prefix sum is one of the most versatile techniques in competitive programming and interviews. Key takeaways:
+
+### Core Concepts
+- **Preprocessing**: Build prefix sum in O(n) time for O(1) queries
+- **HashMap combination**: Enables O(n) solutions for subarray problems
+- **Transformation**: Convert problems to use prefix sum (e.g., 0→-1)
+- **Range operations**: Difference arrays for efficient range updates
+
+### Master These Patterns
+1. Basic range sum queries
+2. Subarray sum with target using HashMap
+3. 2D matrix rectangle sum queries
+4. XOR/bitwise operations on ranges
+5. Modulo arithmetic with remainders
+
+### Problem Solving Strategy
+1. **Identify**: Look for subarray/range sum keywords
+2. **Transform**: Convert problem if needed (balance, frequency)
+3. **Choose approach**: Basic prefix vs HashMap vs 2D vs XOR
+4. **Handle edge cases**: Empty subarrays, negative numbers, modulo
+5. **Optimize**: Consider space/time tradeoffs
+
+Master prefix sum techniques and you'll have a powerful tool for solving a wide range of array and matrix problems efficiently!

@@ -1,0 +1,2044 @@
+# Google JavaScript Style Guide
+
+A comprehensive reference to Google's JavaScript coding standards and best practices for consistent, maintainable code.
+
+## Table of Contents
+
+1. [Source File Structure](#source-file-structure)
+2. [Formatting Rules](#formatting-rules)
+3. [Language Features](#language-features)
+4. [Naming Conventions](#naming-conventions)
+5. [JSDoc Documentation](#jsdoc-documentation)
+6. [Policies and Best Practices](#policies-and-best-practices)
+7. [Modern JavaScript Features](#modern-javascript-features)
+8. [Error Handling](#error-handling)
+9. [Testing Guidelines](#testing-guidelines)
+10. [Common Patterns](#common-patterns)
+11. [Tools and Enforcement](#tools-and-enforcement)
+
+---
+
+## Source File Structure
+
+Every JavaScript source file should follow a consistent structure.
+
+### 1. File Organization
+
+```javascript
+/**
+ * @fileoverview Description of file's contents.
+ * @author Your Name (optional)
+ */
+
+// 1. License header (if applicable)
+/**
+ * Copyright 2024 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0...
+ */
+
+// 2. @fileoverview JSDoc comment
+/**
+ * @fileoverview Utilities for handling user authentication.
+ * @suppress {extraRequire}
+ */
+
+// 3. goog.module statement (for Closure)
+goog.module('myproject.auth.utils');
+
+// 4. goog.require statements (alphabetically sorted)
+const asserts = goog.require('goog.asserts');
+const dom = goog.require('goog.dom');
+const events = goog.require('goog.events');
+
+// 5. Module's implementation
+class AuthenticationManager {
+  constructor() {
+    // Implementation
+  }
+}
+
+// 6. Exports
+exports = {AuthenticationManager};
+```
+
+### 2. File Naming
+
+```javascript
+// ✅ Good: Use kebab-case for file names
+auth-manager.js
+user-profile-service.js
+email-validator-utils.js
+
+// ❌ Bad: Avoid camelCase or PascalCase in file names
+authManager.js
+UserProfileService.js
+EmailValidatorUtils.js
+
+// ✅ Good: Test files should have .test.js suffix
+auth-manager.test.js
+user-service.test.js
+
+// ✅ Good: Type definition files
+auth-types.js
+user-interfaces.js
+```
+
+### 3. Import/Export Patterns
+
+```javascript
+// ✅ Good: ES6 modules (preferred)
+import {AuthManager} from './auth-manager.js';
+import * as utils from './common-utils.js';
+import defaultExport from './default-module.js';
+
+// Export patterns
+export {AuthManager};
+export {UserService as Service};
+export default class DefaultClass {}
+
+// ✅ Good: CommonJS (when ES6 modules not available)
+const {AuthManager} = require('./auth-manager');
+const utils = require('./utils');
+
+module.exports = {AuthManager};
+module.exports = AuthManager; // Default export
+
+// ❌ Bad: Mixing import styles
+import {something} from './module.js';
+const other = require('./other-module'); // Don't mix
+```
+
+---
+
+## Formatting Rules
+
+Consistent formatting improves code readability and reduces merge conflicts.
+
+### 1. Indentation and Spacing
+
+```javascript
+// ✅ Good: 2-space indentation
+class UserManager {
+  constructor(config) {
+    this.config = config;
+    this.users = new Map();
+  }
+
+  addUser(user) {
+    if (!user.id) {
+      throw new Error('User must have an ID');
+    }
+    this.users.set(user.id, user);
+  }
+}
+
+// ❌ Bad: 4-space or tab indentation
+class UserManager {
+    constructor(config) {
+        this.config = config;
+    }
+}
+
+// ✅ Good: Spacing around operators
+const result = (a + b) * c;
+const isValid = user && user.isActive;
+const items = [1, 2, 3, 4];
+
+// ❌ Bad: No spacing
+const result=(a+b)*c;
+const items=[1,2,3,4];
+```
+
+### 2. Line Length and Wrapping
+
+```javascript
+// ✅ Good: Lines should be ≤ 80 characters when possible
+const config = {
+  apiUrl: 'https://api.example.com/v1',
+  timeout: 5000,
+  retries: 3
+};
+
+// ✅ Good: Method chaining alignment
+const result = someObject
+    .method1(param1, param2)
+    .method2(param3)
+    .method3();
+
+// ✅ Good: Function parameter wrapping
+function processUserData(
+    userId,
+    userData,
+    validationRules,
+    callback) {
+  // Implementation
+}
+
+// ✅ Good: Array/object wrapping
+const longArray = [
+  'first-item',
+  'second-item',
+  'third-item',
+  'fourth-item'
+];
+
+const complexObject = {
+  propertyOne: value1,
+  propertyTwo: value2,
+  propertyThree: {
+    nestedProperty: nestedValue,
+    anotherNested: anotherValue
+  }
+};
+```
+
+### 3. Semicolons and Braces
+
+```javascript
+// ✅ Good: Always use semicolons
+const message = 'Hello, world!';
+doSomething();
+return result;
+
+// ❌ Bad: Missing semicolons
+const message = 'Hello, world!'
+doSomething()
+
+// ✅ Good: Always use braces for control structures
+if (condition) {
+  doSomething();
+}
+
+if (condition) {
+  doSomething();
+} else {
+  doSomethingElse();
+}
+
+for (const item of items) {
+  processItem(item);
+}
+
+// ❌ Bad: Omitting braces
+if (condition) doSomething();
+
+if (condition)
+  doSomething();
+```
+
+### 4. Blank Lines and Organization
+
+```javascript
+// ✅ Good: Strategic use of blank lines
+class DataProcessor {
+  constructor(config) {
+    this.config = config;
+    this.cache = new Map();
+  }
+
+  // Blank line before method
+  process(data) {
+    const validated = this.validate(data);
+    const transformed = this.transform(validated);
+
+    return this.save(transformed);
+  }
+
+  validate(data) {
+    // Validation logic
+    if (!data) {
+      throw new Error('Data is required');
+    }
+
+    // More validation
+    return data;
+  }
+
+  transform(data) {
+    // Transformation logic
+    return {
+      ...data,
+      timestamp: Date.now()
+    };
+  }
+
+  save(data) {
+    // Save logic
+    this.cache.set(data.id, data);
+    return data;
+  }
+}
+```
+
+---
+
+## Language Features
+
+Modern JavaScript features should be used appropriately and consistently.
+
+### 1. Variable Declarations
+
+```javascript
+// ✅ Good: Prefer const, then let
+const API_URL = 'https://api.example.com';
+const users = [];
+let currentUser = null;
+
+// ✅ Good: One declaration per line
+const firstName = user.firstName;
+const lastName = user.lastName;
+const email = user.email;
+
+// ❌ Bad: Multiple declarations
+const firstName = user.firstName,
+      lastName = user.lastName,
+      email = user.email;
+
+// ❌ Bad: Never use var
+var globalVariable = 'avoid this';
+
+// ✅ Good: Destructuring
+const {name, age, email} = user;
+const [first, second, ...rest] = array;
+
+// ✅ Good: Default parameters
+function greetUser(name = 'Anonymous', greeting = 'Hello') {
+  return `${greeting}, ${name}!`;
+}
+```
+
+### 2. Functions
+
+```javascript
+// ✅ Good: Function declarations for named functions
+function calculateTotal(items) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+// ✅ Good: Arrow functions for callbacks and short functions
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+const filtered = numbers.filter(n => n > 3);
+
+// ✅ Good: Arrow function with block body
+const processUser = (user) => {
+  const validated = validateUser(user);
+  const enriched = enrichUserData(validated);
+  return saveUser(enriched);
+};
+
+// ✅ Good: Method definitions in classes
+class UserService {
+  getUser(id) {
+    return this.users.get(id);
+  }
+
+  // Arrow function for preserving 'this'
+  handleCallback = (data) => {
+    this.processData(data);
+  };
+}
+
+// ❌ Bad: Inconsistent function styles
+const badFunction1 = function(param) { return param; };
+function badFunction2(param) { return param; }; // Mixed styles
+```
+
+### 3. Classes
+
+```javascript
+// ✅ Good: Class definition with proper structure
+class UserManager {
+  /**
+   * @param {!Object} config Configuration object
+   */
+  constructor(config) {
+    /** @private {!Object} */
+    this.config_ = config;
+
+    /** @private {!Map<string, !User>} */
+    this.users_ = new Map();
+
+    // Bind methods if needed
+    this.handleUserUpdate = this.handleUserUpdate.bind(this);
+  }
+
+  /**
+   * Adds a new user to the system.
+   * @param {!User} user The user to add
+   * @return {boolean} True if user was added successfully
+   */
+  addUser(user) {
+    if (!this.validateUser_(user)) {
+      return false;
+    }
+
+    this.users_.set(user.id, user);
+    this.notifyUserAdded_(user);
+    return true;
+  }
+
+  /**
+   * @param {!User} user
+   * @return {boolean}
+   * @private
+   */
+  validateUser_(user) {
+    return user && user.id && user.email;
+  }
+
+  /**
+   * @param {!User} user
+   * @private
+   */
+  notifyUserAdded_(user) {
+    // Notification logic
+  }
+
+  // Static methods
+  /**
+   * @param {string} email
+   * @return {boolean}
+   */
+  static isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+}
+
+// ✅ Good: Inheritance
+class AdminUser extends User {
+  constructor(userData, permissions) {
+    super(userData);
+    this.permissions = permissions;
+  }
+
+  hasPermission(permission) {
+    return this.permissions.includes(permission);
+  }
+}
+```
+
+### 4. Template Literals
+
+```javascript
+// ✅ Good: Template literals for string interpolation
+const welcomeMessage = `Welcome, ${user.name}!`;
+const apiUrl = `${BASE_URL}/users/${userId}`;
+
+// ✅ Good: Multi-line strings
+const emailTemplate = `
+  <div>
+    <h1>Welcome ${user.name}</h1>
+    <p>Thank you for joining our service.</p>
+    <p>Your account ID is: ${user.id}</p>
+  </div>
+`;
+
+// ✅ Good: Tagged template literals
+const styledComponent = css`
+  .user-card {
+    background: ${theme.cardBackground};
+    border: 1px solid ${theme.borderColor};
+  }
+`;
+
+// ❌ Bad: String concatenation when template literal is clearer
+const message = 'Hello, ' + user.name + '! You have ' + count + ' messages.';
+
+// ✅ Good: Use template literal instead
+const message = `Hello, ${user.name}! You have ${count} messages.`;
+```
+
+---
+
+## Naming Conventions
+
+Consistent naming improves code readability and maintainability.
+
+### 1. Variables and Functions
+
+```javascript
+// ✅ Good: camelCase for variables and functions
+const userName = 'john_doe';
+const apiResponse = {};
+let isLoading = false;
+
+function getUserData() {}
+function calculateTotalPrice() {}
+const validateEmailAddress = (email) => {};
+
+// ✅ Good: Boolean variables with descriptive prefixes
+const isVisible = true;
+const hasPermission = false;
+const canEdit = user.role === 'admin';
+const shouldUpdate = data.timestamp > lastUpdate;
+
+// ✅ Good: Array and collection naming
+const users = [];
+const userList = [];
+const userMap = new Map();
+const userSet = new Set();
+
+// ❌ Bad: Poor naming
+const d = new Date(); // Not descriptive
+const u = user.data; // Abbreviated
+const flag = true; // Generic
+```
+
+### 2. Constants
+
+```javascript
+// ✅ Good: SCREAMING_SNAKE_CASE for module constants
+const API_BASE_URL = 'https://api.example.com';
+const MAX_RETRY_ATTEMPTS = 3;
+const DEFAULT_TIMEOUT_MS = 5000;
+
+// ✅ Good: Grouped constants in objects
+const HttpStatus = {
+  OK: 200,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500
+};
+
+const ErrorCodes = {
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
+  PERMISSION_DENIED: 'PERMISSION_DENIED'
+};
+
+// ✅ Good: Local constants can use camelCase
+function processData() {
+  const maxItems = 100;
+  const defaultConfig = {timeout: 1000};
+  // Processing logic
+}
+```
+
+### 3. Classes and Constructors
+
+```javascript
+// ✅ Good: PascalCase for classes
+class UserService {
+  constructor() {}
+}
+
+class EmailValidator {
+  validate(email) {}
+}
+
+class DatabaseConnection {
+  connect() {}
+}
+
+// ✅ Good: Interfaces (when using TypeScript-like conventions)
+/**
+ * @interface
+ */
+class UserRepository {
+  /**
+   * @param {string} id
+   * @return {Promise<!User>}
+   */
+  getUser(id) {}
+}
+
+// ✅ Good: Abstract classes
+class BaseService {
+  constructor() {
+    if (this.constructor === BaseService) {
+      throw new Error('Cannot instantiate abstract class');
+    }
+  }
+}
+```
+
+### 4. Private Members
+
+```javascript
+// ✅ Good: Trailing underscore for private members (Closure style)
+class UserManager {
+  constructor() {
+    /** @private {!Map} */
+    this.users_ = new Map();
+
+    /** @private {string} */
+    this.apiKey_ = '';
+  }
+
+  /**
+   * @param {string} id
+   * @return {?User}
+   * @private
+   */
+  getUserFromCache_(id) {
+    return this.users_.get(id);
+  }
+
+  // Public method
+  getUser(id) {
+    return this.getUserFromCache_(id) || this.fetchUser_(id);
+  }
+
+  /**
+   * @param {string} id
+   * @return {Promise<!User>}
+   * @private
+   */
+  async fetchUser_(id) {
+    // Implementation
+  }
+}
+
+// ✅ Good: Private fields (modern JavaScript)
+class ModernUserManager {
+  #users = new Map();
+  #apiKey = '';
+
+  #getUserFromCache(id) {
+    return this.#users.get(id);
+  }
+
+  getUser(id) {
+    return this.#getUserFromCache(id);
+  }
+}
+```
+
+---
+
+## JSDoc Documentation
+
+Comprehensive documentation using JSDoc comments.
+
+### 1. Basic JSDoc Structure
+
+```javascript
+/**
+ * Calculates the total price including tax.
+ * @param {number} basePrice The base price before tax
+ * @param {number} taxRate The tax rate (e.g., 0.1 for 10%)
+ * @return {number} The total price including tax
+ */
+function calculateTotalPrice(basePrice, taxRate) {
+  return basePrice * (1 + taxRate);
+}
+
+/**
+ * Validates a user object.
+ * @param {!Object} user The user object to validate
+ * @param {string} user.name The user's name
+ * @param {string} user.email The user's email
+ * @param {number=} user.age The user's age (optional)
+ * @return {boolean} True if valid, false otherwise
+ * @throws {Error} If user is null or undefined
+ */
+function validateUser(user) {
+  if (!user) {
+    throw new Error('User cannot be null');
+  }
+  return user.name && user.email;
+}
+```
+
+### 2. Class Documentation
+
+```javascript
+/**
+ * Manages user authentication and session handling.
+ * @class
+ */
+class AuthenticationManager {
+  /**
+   * @param {!AuthConfig} config Authentication configuration
+   * @param {string} config.apiUrl The API base URL
+   * @param {number} config.sessionTimeout Session timeout in milliseconds
+   */
+  constructor(config) {
+    /** @private {!AuthConfig} */
+    this.config_ = config;
+
+    /** @private {?string} Current session token */
+    this.sessionToken_ = null;
+  }
+
+  /**
+   * Authenticates a user with credentials.
+   * @param {string} username The username
+   * @param {string} password The password
+   * @return {!Promise<!AuthResult>} Authentication result
+   * @throws {AuthError} If authentication fails
+   */
+  async authenticate(username, password) {
+    // Implementation
+  }
+
+  /**
+   * Checks if current session is valid.
+   * @return {boolean} True if session is valid
+   */
+  isSessionValid() {
+    return this.sessionToken_ !== null;
+  }
+
+  /**
+   * Logs out the current user.
+   * @return {!Promise<void>}
+   */
+  async logout() {
+    this.sessionToken_ = null;
+  }
+}
+```
+
+### 3. Type Definitions
+
+```javascript
+/**
+ * @typedef {Object} User
+ * @property {string} id - Unique user identifier
+ * @property {string} name - User's display name
+ * @property {string} email - User's email address
+ * @property {number=} age - User's age (optional)
+ * @property {!Array<string>} roles - User's roles
+ * @property {UserPreferences=} preferences - User preferences (optional)
+ */
+
+/**
+ * @typedef {Object} UserPreferences
+ * @property {string} theme - UI theme preference
+ * @property {string} language - Language preference
+ * @property {boolean} notifications - Notification preference
+ */
+
+/**
+ * @typedef {Object} ApiResponse
+ * @template T
+ * @property {boolean} success - Whether request was successful
+ * @property {T=} data - Response data (optional)
+ * @property {string=} error - Error message (optional)
+ * @property {number} timestamp - Response timestamp
+ */
+
+/**
+ * Fetches user data from the API.
+ * @param {string} userId The user ID to fetch
+ * @return {!Promise<!ApiResponse<!User>>} The API response with user data
+ */
+async function fetchUser(userId) {
+  // Implementation
+}
+```
+
+### 4. Advanced JSDoc Tags
+
+```javascript
+/**
+ * Advanced example with multiple JSDoc tags.
+ * @author John Doe <john@example.com>
+ * @since 1.2.0
+ * @version 2.1.0
+ * @see {@link https://example.com/docs|Documentation}
+ * @example
+ * const manager = new UserManager();
+ * const user = await manager.createUser({
+ *   name: 'John',
+ *   email: 'john@example.com'
+ * });
+ */
+class UserManager {
+  /**
+   * Creates a new user.
+   * @param {!User} userData User data
+   * @return {!Promise<!User>} Created user
+   * @throws {ValidationError} If user data is invalid
+   * @throws {DuplicateError} If user already exists
+   * @deprecated Use createUserV2 instead
+   * @todo Add support for bulk user creation
+   */
+  async createUser(userData) {
+    // Implementation
+  }
+
+  /**
+   * @param {string} id
+   * @return {!Promise<?User>}
+   * @override
+   */
+  async getUser(id) {
+    // Implementation
+  }
+
+  /**
+   * @param {!Array<string>} ids
+   * @return {!Promise<!Array<!User>>}
+   * @suppress {checkTypes} Temporary suppression for migration
+   * @package
+   */
+  async getMultipleUsers(ids) {
+    // Implementation
+  }
+}
+```
+
+---
+
+## Policies and Best Practices
+
+### 1. Error Handling
+
+```javascript
+// ✅ Good: Specific error types
+class ValidationError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.name = 'ValidationError';
+    this.field = field;
+  }
+}
+
+class NetworkError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.name = 'NetworkError';
+    this.statusCode = statusCode;
+  }
+}
+
+// ✅ Good: Proper error handling
+async function fetchUserData(userId) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+
+    if (!response.ok) {
+      throw new NetworkError(
+        `Failed to fetch user: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const userData = await response.json();
+
+    if (!userData.id) {
+      throw new ValidationError('User data missing ID', 'id');
+    }
+
+    return userData;
+  } catch (error) {
+    if (error instanceof NetworkError) {
+      console.error('Network error:', error.message);
+      // Handle network errors
+    } else if (error instanceof ValidationError) {
+      console.error('Validation error:', error.message, error.field);
+      // Handle validation errors
+    } else {
+      console.error('Unexpected error:', error);
+      // Handle unexpected errors
+    }
+    throw error; // Re-throw if needed
+  }
+}
+
+// ✅ Good: Input validation
+function processUserAge(age) {
+  if (typeof age !== 'number') {
+    throw new TypeError('Age must be a number');
+  }
+
+  if (age < 0 || age > 150) {
+    throw new RangeError('Age must be between 0 and 150');
+  }
+
+  return Math.floor(age);
+}
+```
+
+### 2. Asynchronous Code
+
+```javascript
+// ✅ Good: Use async/await for better readability
+async function processUserRegistration(userData) {
+  try {
+    const validatedData = await validateUserData(userData);
+    const hashedPassword = await hashPassword(validatedData.password);
+    const user = await createUser({
+      ...validatedData,
+      password: hashedPassword
+    });
+    await sendWelcomeEmail(user.email);
+    return user;
+  } catch (error) {
+    console.error('Registration failed:', error);
+    throw error;
+  }
+}
+
+// ✅ Good: Promise.all for concurrent operations
+async function loadUserDashboard(userId) {
+  try {
+    const [user, posts, notifications] = await Promise.all([
+      fetchUser(userId),
+      fetchUserPosts(userId),
+      fetchUserNotifications(userId)
+    ]);
+
+    return {
+      user,
+      posts,
+      notifications
+    };
+  } catch (error) {
+    console.error('Failed to load dashboard:', error);
+    throw error;
+  }
+}
+
+// ✅ Good: Proper Promise handling
+function fetchWithRetry(url, maxRetries = 3) {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+
+    const attempt = () => {
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          resolve(response);
+        })
+        .catch(error => {
+          attempts++;
+          if (attempts < maxRetries) {
+            setTimeout(attempt, 1000 * attempts); // Exponential backoff
+          } else {
+            reject(error);
+          }
+        });
+    };
+
+    attempt();
+  });
+}
+
+// ❌ Bad: Callback hell
+function badAsyncFlow(userId, callback) {
+  fetchUser(userId, (userError, user) => {
+    if (userError) {
+      callback(userError);
+      return;
+    }
+
+    fetchUserPosts(userId, (postsError, posts) => {
+      if (postsError) {
+        callback(postsError);
+        return;
+      }
+
+      updateUserStats(user, posts, (statsError, stats) => {
+        if (statsError) {
+          callback(statsError);
+          return;
+        }
+
+        callback(null, {user, posts, stats});
+      });
+    });
+  });
+}
+```
+
+### 3. Array and Object Handling
+
+```javascript
+// ✅ Good: Use appropriate array methods
+const users = [
+  {id: 1, name: 'Alice', active: true, age: 30},
+  {id: 2, name: 'Bob', active: false, age: 25},
+  {id: 3, name: 'Charlie', active: true, age: 35}
+];
+
+// Filter active users
+const activeUsers = users.filter(user => user.active);
+
+// Get user names
+const userNames = users.map(user => user.name);
+
+// Find specific user
+const user = users.find(user => user.id === 2);
+
+// Check if any user meets condition
+const hasAdultUsers = users.some(user => user.age >= 18);
+
+// Check if all users meet condition
+const allActive = users.every(user => user.active);
+
+// Calculate total age
+const totalAge = users.reduce((sum, user) => sum + user.age, 0);
+
+// ✅ Good: Object manipulation
+const userUpdate = {
+  name: 'Alice Smith',
+  email: 'alice.smith@example.com'
+};
+
+// Immutable update
+const updatedUser = {
+  ...existingUser,
+  ...userUpdate,
+  updatedAt: Date.now()
+};
+
+// Extract specific properties
+const {name, email, ...otherProps} = user;
+
+// ✅ Good: Safe property access
+const userCity = user?.address?.city ?? 'Unknown';
+const firstPost = user?.posts?.[0]?.title ?? 'No posts';
+
+// ✅ Good: Object validation
+function isValidUser(user) {
+  const requiredFields = ['id', 'name', 'email'];
+  return requiredFields.every(field =>
+    user && typeof user[field] === 'string' && user[field].trim() !== ''
+  );
+}
+```
+
+---
+
+## Modern JavaScript Features
+
+### 1. Destructuring
+
+```javascript
+// ✅ Good: Array destructuring
+const [first, second, ...rest] = array;
+const [, , third] = array; // Skip elements
+const [a = 'default'] = array; // Default values
+
+// ✅ Good: Object destructuring
+const {name, email, age = 0} = user;
+const {address: {street, city}} = user; // Nested destructuring
+const {name: userName, email: userEmail} = user; // Rename
+
+// ✅ Good: Function parameter destructuring
+function processUser({name, email, preferences = {}}) {
+  const {theme = 'light', language = 'en'} = preferences;
+  // Process user
+}
+
+// ✅ Good: Rest parameters
+function logMessage(level, ...messages) {
+  console.log(`[${level}]`, ...messages);
+}
+
+// ✅ Good: Destructuring in loops
+const users = [{id: 1, name: 'Alice'}, {id: 2, name: 'Bob'}];
+for (const {id, name} of users) {
+  console.log(`User ${id}: ${name}`);
+}
+```
+
+### 2. Spread Operator
+
+```javascript
+// ✅ Good: Array spreading
+const arr1 = [1, 2, 3];
+const arr2 = [4, 5, 6];
+const combined = [...arr1, ...arr2];
+const withExtra = [0, ...arr1, 3.5, ...arr2, 7];
+
+// ✅ Good: Object spreading
+const baseConfig = {
+  timeout: 5000,
+  retries: 3
+};
+
+const userConfig = {
+  ...baseConfig,
+  apiUrl: 'https://api.example.com',
+  timeout: 10000 // Override base value
+};
+
+// ✅ Good: Function arguments
+function sum(...numbers) {
+  return numbers.reduce((total, num) => total + num, 0);
+}
+
+const numbers = [1, 2, 3, 4, 5];
+const result = sum(...numbers);
+
+// ✅ Good: Cloning arrays and objects
+const clonedArray = [...originalArray];
+const clonedObject = {...originalObject};
+
+// ✅ Good: Converting NodeList to Array
+const divElements = [...document.querySelectorAll('div')];
+```
+
+### 3. Optional Chaining and Nullish Coalescing
+
+```javascript
+// ✅ Good: Optional chaining
+const userCity = user?.profile?.address?.city;
+const firstPostTitle = user?.posts?.[0]?.title;
+const methodResult = api?.getData?.();
+
+// ✅ Good: Nullish coalescing
+const username = user.name ?? 'Anonymous';
+const port = process.env.PORT ?? 3000;
+const config = userConfig ?? defaultConfig;
+
+// ✅ Good: Combining both
+const displayName = user?.profile?.displayName ?? user?.name ?? 'User';
+
+// ✅ Good: Conditional method calls
+user?.save?.();
+api?.disconnect?.();
+
+// ❌ Bad: Traditional lengthy null checks
+if (user && user.profile && user.profile.address && user.profile.address.city) {
+  console.log(user.profile.address.city);
+}
+
+// ✅ Good: Simplified with optional chaining
+console.log(user?.profile?.address?.city);
+```
+
+### 4. Modules and Dynamic Imports
+
+```javascript
+// ✅ Good: Static imports (top of file)
+import React from 'react';
+import {Component} from 'react';
+import * as utils from './utils.js';
+import './styles.css';
+
+// ✅ Good: Dynamic imports
+async function loadFeature(featureName) {
+  try {
+    const module = await import(`./features/${featureName}.js`);
+    return module.default;
+  } catch (error) {
+    console.error(`Failed to load feature ${featureName}:`, error);
+    return null;
+  }
+}
+
+// ✅ Good: Conditional loading
+if (environment === 'development') {
+  import('./dev-tools.js').then(devTools => {
+    devTools.setup();
+  });
+}
+
+// ✅ Good: Lazy loading
+const LazyComponent = React.lazy(() => import('./LazyComponent.js'));
+
+// ✅ Good: Export patterns
+export const API_VERSION = '1.0.0';
+export {UserService, AuthService};
+export default class MainService {}
+
+// Named and default exports
+export {default as UserManager} from './UserManager.js';
+```
+
+---
+
+## Testing Guidelines
+
+### 1. Test Structure and Organization
+
+```javascript
+// ✅ Good: Test file structure (user-service.test.js)
+import {UserService} from './user-service.js';
+
+describe('UserService', () => {
+  let userService;
+  let mockDatabase;
+
+  beforeEach(() => {
+    mockDatabase = {
+      findUser: jest.fn(),
+      saveUser: jest.fn(),
+      deleteUser: jest.fn()
+    };
+    userService = new UserService(mockDatabase);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('getUser', () => {
+    it('should return user when found', async () => {
+      // Arrange
+      const userId = '123';
+      const expectedUser = {id: '123', name: 'John Doe'};
+      mockDatabase.findUser.mockResolvedValue(expectedUser);
+
+      // Act
+      const result = await userService.getUser(userId);
+
+      // Assert
+      expect(result).toEqual(expectedUser);
+      expect(mockDatabase.findUser).toHaveBeenCalledWith(userId);
+    });
+
+    it('should throw error when user not found', async () => {
+      // Arrange
+      const userId = '999';
+      mockDatabase.findUser.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(userService.getUser(userId)).rejects.toThrow('User not found');
+    });
+  });
+
+  describe('createUser', () => {
+    it('should create and return new user', async () => {
+      // Arrange
+      const userData = {name: 'Jane Doe', email: 'jane@example.com'};
+      const savedUser = {id: '456', ...userData};
+      mockDatabase.saveUser.mockResolvedValue(savedUser);
+
+      // Act
+      const result = await userService.createUser(userData);
+
+      // Assert
+      expect(result).toEqual(savedUser);
+      expect(mockDatabase.saveUser).toHaveBeenCalledWith(
+        expect.objectContaining(userData)
+      );
+    });
+
+    it('should validate required fields', async () => {
+      // Arrange
+      const invalidUserData = {name: 'John'};
+
+      // Act & Assert
+      await expect(userService.createUser(invalidUserData))
+        .rejects.toThrow('Email is required');
+    });
+  });
+});
+```
+
+### 2. Test Naming and Documentation
+
+```javascript
+// ✅ Good: Descriptive test names
+describe('AuthenticationService', () => {
+  describe('authenticate', () => {
+    it('should return valid token for correct credentials', () => {});
+    it('should throw AuthError for invalid password', () => {});
+    it('should throw AuthError for non-existent user', () => {});
+    it('should handle concurrent authentication requests', () => {});
+  });
+
+  describe('validateToken', () => {
+    it('should return true for valid unexpired token', () => {});
+    it('should return false for expired token', () => {});
+    it('should return false for malformed token', () => {});
+  });
+});
+
+// ✅ Good: Test documentation
+/**
+ * @fileoverview Tests for UserService class.
+ * Tests cover user creation, retrieval, updating, and deletion operations.
+ */
+
+/**
+ * Tests the user creation flow including validation and database operations.
+ */
+describe('User Creation', () => {
+  /**
+   * Verifies that valid user data creates a user successfully.
+   */
+  it('should create user with valid data', () => {
+    // Test implementation
+  });
+});
+```
+
+### 3. Mock and Stub Patterns
+
+```javascript
+// ✅ Good: Mock external dependencies
+import {ApiClient} from './api-client.js';
+import {Logger} from './logger.js';
+
+jest.mock('./api-client.js');
+jest.mock('./logger.js');
+
+describe('DataService', () => {
+  let dataService;
+  let mockApiClient;
+  let mockLogger;
+
+  beforeEach(() => {
+    mockApiClient = {
+      get: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      delete: jest.fn()
+    };
+
+    mockLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn()
+    };
+
+    ApiClient.mockImplementation(() => mockApiClient);
+    Logger.mockImplementation(() => mockLogger);
+
+    dataService = new DataService();
+  });
+
+  it('should log successful API calls', async () => {
+    // Arrange
+    const responseData = {id: 1, name: 'Test'};
+    mockApiClient.get.mockResolvedValue(responseData);
+
+    // Act
+    await dataService.getData('1');
+
+    // Assert
+    expect(mockLogger.info).toHaveBeenCalledWith('API call successful');
+  });
+});
+
+// ✅ Good: Spy on methods
+describe('EventHandler', () => {
+  it('should call callback function when event occurs', () => {
+    // Arrange
+    const mockCallback = jest.fn();
+    const handler = new EventHandler();
+    const spyOnProcess = jest.spyOn(handler, 'processEvent');
+
+    // Act
+    handler.on('test-event', mockCallback);
+    handler.emit('test-event', 'data');
+
+    // Assert
+    expect(mockCallback).toHaveBeenCalledWith('data');
+    expect(spyOnProcess).toHaveBeenCalledWith('test-event', 'data');
+  });
+});
+```
+
+### 4. Async Testing
+
+```javascript
+// ✅ Good: Testing async functions
+describe('AsyncService', () => {
+  it('should handle successful async operations', async () => {
+    // Arrange
+    const service = new AsyncService();
+    const mockData = {result: 'success'};
+    jest.spyOn(service, 'fetchData').mockResolvedValue(mockData);
+
+    // Act
+    const result = await service.processData();
+
+    // Assert
+    expect(result).toEqual(mockData);
+  });
+
+  it('should handle async errors', async () => {
+    // Arrange
+    const service = new AsyncService();
+    const error = new Error('Network error');
+    jest.spyOn(service, 'fetchData').mockRejectedValue(error);
+
+    // Act & Assert
+    await expect(service.processData()).rejects.toThrow('Network error');
+  });
+
+  it('should timeout long-running operations', async () => {
+    // Arrange
+    const service = new AsyncService();
+    jest.spyOn(service, 'longOperation').mockImplementation(
+      () => new Promise(resolve => setTimeout(resolve, 10000))
+    );
+
+    // Act & Assert
+    await expect(service.processWithTimeout()).rejects.toThrow('Timeout');
+  }, 1000); // 1 second timeout for test
+});
+
+// ✅ Good: Testing Promises
+describe('PromiseService', () => {
+  it('should resolve promise chain correctly', () => {
+    // Arrange
+    const service = new PromiseService();
+
+    // Act & Assert
+    return service.chainedOperation()
+      .then(result => {
+        expect(result.step1).toBeDefined();
+        expect(result.step2).toBeDefined();
+        expect(result.final).toBe(true);
+      });
+  });
+
+  it('should handle promise rejections', () => {
+    // Arrange
+    const service = new PromiseService();
+
+    // Act & Assert
+    return service.failingOperation()
+      .catch(error => {
+        expect(error.message).toBe('Operation failed');
+      });
+  });
+});
+```
+
+---
+
+## Common Patterns
+
+### 1. Singleton Pattern
+
+```javascript
+// ✅ Good: Module-based singleton (preferred)
+class ConfigManager {
+  constructor() {
+    if (ConfigManager.instance) {
+      return ConfigManager.instance;
+    }
+
+    this.config = {};
+    this.loaded = false;
+    ConfigManager.instance = this;
+  }
+
+  async loadConfig() {
+    if (this.loaded) return this.config;
+
+    this.config = await this.fetchConfig();
+    this.loaded = true;
+    return this.config;
+  }
+
+  async fetchConfig() {
+    // Implementation
+  }
+}
+
+// Export singleton instance
+export const configManager = new ConfigManager();
+
+// ✅ Good: Factory function singleton
+function createLogger() {
+  let instance;
+
+  return function getLogger() {
+    if (!instance) {
+      instance = {
+        log: (message) => console.log(`[LOG] ${message}`),
+        error: (message) => console.error(`[ERROR] ${message}`),
+        warn: (message) => console.warn(`[WARN] ${message}`)
+      };
+    }
+    return instance;
+  };
+}
+
+export const getLogger = createLogger();
+```
+
+### 2. Observer Pattern
+
+```javascript
+// ✅ Good: Event emitter implementation
+class EventEmitter {
+  constructor() {
+    this.events = new Map();
+  }
+
+  on(event, callback) {
+    if (!this.events.has(event)) {
+      this.events.set(event, []);
+    }
+    this.events.get(event).push(callback);
+  }
+
+  off(event, callback) {
+    if (!this.events.has(event)) return;
+
+    const callbacks = this.events.get(event);
+    const index = callbacks.indexOf(callback);
+
+    if (index > -1) {
+      callbacks.splice(index, 1);
+    }
+  }
+
+  emit(event, ...args) {
+    if (!this.events.has(event)) return;
+
+    this.events.get(event).forEach(callback => {
+      try {
+        callback(...args);
+      } catch (error) {
+        console.error(`Error in event handler for ${event}:`, error);
+      }
+    });
+  }
+
+  once(event, callback) {
+    const onceCallback = (...args) => {
+      callback(...args);
+      this.off(event, onceCallback);
+    };
+    this.on(event, onceCallback);
+  }
+}
+
+// Usage
+class UserService extends EventEmitter {
+  constructor() {
+    super();
+    this.users = [];
+  }
+
+  addUser(user) {
+    this.users.push(user);
+    this.emit('userAdded', user);
+  }
+
+  removeUser(userId) {
+    const index = this.users.findIndex(u => u.id === userId);
+    if (index > -1) {
+      const user = this.users.splice(index, 1)[0];
+      this.emit('userRemoved', user);
+    }
+  }
+}
+```
+
+### 3. Factory Pattern
+
+```javascript
+// ✅ Good: Factory for creating different types
+class NotificationFactory {
+  static createNotification(type, config) {
+    switch (type) {
+      case 'email':
+        return new EmailNotification(config);
+      case 'sms':
+        return new SMSNotification(config);
+      case 'push':
+        return new PushNotification(config);
+      default:
+        throw new Error(`Unknown notification type: ${type}`);
+    }
+  }
+}
+
+class EmailNotification {
+  constructor(config) {
+    this.config = config;
+  }
+
+  async send(message, recipient) {
+    // Email sending implementation
+    console.log(`Sending email to ${recipient}: ${message}`);
+  }
+}
+
+class SMSNotification {
+  constructor(config) {
+    this.config = config;
+  }
+
+  async send(message, recipient) {
+    // SMS sending implementation
+    console.log(`Sending SMS to ${recipient}: ${message}`);
+  }
+}
+
+// Usage
+const emailNotifier = NotificationFactory.createNotification('email', {
+  apiKey: 'email-api-key'
+});
+
+const smsNotifier = NotificationFactory.createNotification('sms', {
+  apiKey: 'sms-api-key'
+});
+```
+
+### 4. Builder Pattern
+
+```javascript
+// ✅ Good: Fluent builder pattern
+class QueryBuilder {
+  constructor() {
+    this.query = {
+      select: [],
+      from: '',
+      where: [],
+      orderBy: [],
+      limit: null
+    };
+  }
+
+  select(...fields) {
+    this.query.select.push(...fields);
+    return this;
+  }
+
+  from(table) {
+    this.query.from = table;
+    return this;
+  }
+
+  where(condition) {
+    this.query.where.push(condition);
+    return this;
+  }
+
+  orderBy(field, direction = 'ASC') {
+    this.query.orderBy.push(`${field} ${direction}`);
+    return this;
+  }
+
+  limitTo(count) {
+    this.query.limit = count;
+    return this;
+  }
+
+  build() {
+    let sql = `SELECT ${this.query.select.join(', ')} FROM ${this.query.from}`;
+
+    if (this.query.where.length > 0) {
+      sql += ` WHERE ${this.query.where.join(' AND ')}`;
+    }
+
+    if (this.query.orderBy.length > 0) {
+      sql += ` ORDER BY ${this.query.orderBy.join(', ')}`;
+    }
+
+    if (this.query.limit) {
+      sql += ` LIMIT ${this.query.limit}`;
+    }
+
+    return sql;
+  }
+}
+
+// Usage
+const query = new QueryBuilder()
+  .select('name', 'email', 'age')
+  .from('users')
+  .where('age > 18')
+  .where('active = true')
+  .orderBy('name')
+  .limitTo(10)
+  .build();
+```
+
+---
+
+## Tools and Enforcement
+
+### 1. ESLint Configuration
+
+```javascript
+// .eslintrc.js - Google style configuration
+module.exports = {
+  'extends': ['eslint:recommended', 'google'],
+  'env': {
+    'browser': true,
+    'node': true,
+    'es2022': true
+  },
+  'parserOptions': {
+    'ecmaVersion': 2022,
+    'sourceType': 'module'
+  },
+  'rules': {
+    // Enforce Google style preferences
+    'indent': ['error', 2],
+    'linebreak-style': ['error', 'unix'],
+    'quotes': ['error', 'single'],
+    'semi': ['error', 'always'],
+    'comma-dangle': ['error', 'never'],
+    'max-len': ['error', {'code': 80, 'ignoreUrls': true}],
+
+    // Additional rules
+    'no-unused-vars': ['error', {'argsIgnorePattern': '^_'}],
+    'no-console': ['warn'],
+    'prefer-const': ['error'],
+    'no-var': ['error'],
+    'object-shorthand': ['error'],
+    'prefer-arrow-callback': ['error'],
+
+    // JSDoc enforcement
+    'valid-jsdoc': ['error', {
+      'requireReturn': true,
+      'requireReturnType': true,
+      'requireParamDescription': true,
+      'requireReturnDescription': true
+    }],
+    'require-jsdoc': ['error', {
+      'require': {
+        'FunctionDeclaration': true,
+        'MethodDefinition': true,
+        'ClassDeclaration': true
+      }
+    }]
+  },
+  'overrides': [
+    {
+      'files': ['*.test.js', '*.spec.js'],
+      'env': {
+        'jest': true
+      },
+      'rules': {
+        'no-console': 'off',
+        'max-len': 'off'
+      }
+    }
+  ]
+};
+```
+
+### 2. Prettier Configuration
+
+```javascript
+// .prettierrc.js
+module.exports = {
+  // Align with Google style
+  'singleQuote': true,
+  'semi': true,
+  'tabWidth': 2,
+  'useTabs': false,
+  'printWidth': 80,
+  'trailingComma': 'es5',
+  'bracketSpacing': false,
+  'arrowParens': 'avoid',
+  'endOfLine': 'lf',
+
+  // Override for specific file types
+  'overrides': [
+    {
+      'files': '*.json',
+      'options': {
+        'printWidth': 120
+      }
+    }
+  ]
+};
+```
+
+### 3. Package.json Scripts
+
+```json
+{
+  "scripts": {
+    "lint": "eslint src/ --ext .js",
+    "lint:fix": "eslint src/ --ext .js --fix",
+    "format": "prettier --write src/**/*.js",
+    "format:check": "prettier --check src/**/*.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "validate": "npm run lint && npm run format:check && npm run test"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write",
+      "git add"
+    ]
+  }
+}
+```
+
+### 4. VSCode Configuration
+
+```json
+// .vscode/settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.validate": ["javascript"],
+  "prettier.requireConfig": true,
+  "javascript.preferences.quoteStyle": "single",
+  "typescript.preferences.quoteStyle": "single",
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}
+```
+
+---
+
+## Usage Examples
+
+Here's how to apply Google JavaScript style in practice:
+
+```javascript
+console.log('=== Google JavaScript Style Guide Examples ===');
+
+// ✅ Good: Complete class example following Google style
+/**
+ * Manages user data and operations.
+ * @class
+ */
+class UserManager {
+  /**
+   * @param {!Object} config Configuration object
+   * @param {string} config.apiUrl API base URL
+   * @param {number} config.timeout Request timeout in milliseconds
+   */
+  constructor(config) {
+    /** @private {!Object} */
+    this.config_ = config;
+
+    /** @private {!Map<string, !User>} */
+    this.users_ = new Map();
+
+    /** @private {!EventEmitter} */
+    this.eventEmitter_ = new EventEmitter();
+  }
+
+  /**
+   * Retrieves a user by ID.
+   * @param {string} userId The user ID
+   * @return {!Promise<?User>} The user or null if not found
+   * @throws {Error} If userId is invalid
+   */
+  async getUser(userId) {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('Invalid user ID provided');
+    }
+
+    let user = this.users_.get(userId);
+
+    if (!user) {
+      try {
+        user = await this.fetchUserFromApi_(userId);
+        if (user) {
+          this.users_.set(userId, user);
+        }
+      } catch (error) {
+        console.error(`Failed to fetch user ${userId}:`, error);
+        return null;
+      }
+    }
+
+    return user;
+  }
+
+  /**
+   * Creates a new user.
+   * @param {!UserData} userData User data
+   * @return {!Promise<!User>} The created user
+   * @throws {ValidationError} If user data is invalid
+   */
+  async createUser(userData) {
+    const validatedData = this.validateUserData_(userData);
+
+    const user = {
+      id: this.generateUserId_(),
+      ...validatedData,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    try {
+      await this.saveUserToApi_(user);
+      this.users_.set(user.id, user);
+      this.eventEmitter_.emit('userCreated', user);
+
+      return user;
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * @param {string} userId
+   * @return {!Promise<?User>}
+   * @private
+   */
+  async fetchUserFromApi_(userId) {
+    const url = `${this.config_.apiUrl}/users/${userId}`;
+
+    try {
+      const response = await fetch(url, {
+        timeout: this.config_.timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API request failed for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * @param {!UserData} userData
+   * @return {!UserData}
+   * @throws {ValidationError}
+   * @private
+   */
+  validateUserData_(userData) {
+    const requiredFields = ['name', 'email'];
+    const missingFields = requiredFields.filter(field => !userData[field]);
+
+    if (missingFields.length > 0) {
+      throw new ValidationError(
+        `Missing required fields: ${missingFields.join(', ')}`
+      );
+    }
+
+    if (!this.isValidEmail_(userData.email)) {
+      throw new ValidationError('Invalid email format');
+    }
+
+    return {
+      name: userData.name.trim(),
+      email: userData.email.toLowerCase().trim(),
+      age: userData.age || null
+    };
+  }
+
+  /**
+   * @param {string} email
+   * @return {boolean}
+   * @private
+   */
+  isValidEmail_(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  /**
+   * @return {string}
+   * @private
+   */
+  generateUserId_() {
+    return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * @param {!User} user
+   * @return {!Promise<void>}
+   * @private
+   */
+  async saveUserToApi_(user) {
+    const url = `${this.config_.apiUrl}/users`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(user),
+      timeout: this.config_.timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to save user: ${response.statusText}`);
+    }
+  }
+}
+
+// Usage example
+const config = {
+  apiUrl: 'https://api.example.com/v1',
+  timeout: 5000
+};
+
+const userManager = new UserManager(config);
+
+// Create and retrieve users
+async function exampleUsage() {
+  try {
+    const newUser = await userManager.createUser({
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      age: 30
+    });
+
+    console.log('Created user:', newUser);
+
+    const retrievedUser = await userManager.getUser(newUser.id);
+    console.log('Retrieved user:', retrievedUser);
+  } catch (error) {
+    console.error('Error in example usage:', error);
+  }
+}
+
+exampleUsage();
+```
+
+---
+
+## Summary Checklist
+
+Use this checklist to ensure your code follows Google JavaScript style:
+
+### **File Structure**
+- [ ] File has proper JSDoc `@fileoverview` comment
+- [ ] Imports are organized and sorted alphabetically
+- [ ] Exports are at the bottom of the file
+- [ ] File name uses kebab-case
+
+### **Formatting**
+- [ ] 2-space indentation consistently applied
+- [ ] Lines ≤ 80 characters when practical
+- [ ] Semicolons used everywhere required
+- [ ] Braces used for all control structures
+- [ ] Consistent spacing around operators
+
+### **Naming**
+- [ ] camelCase for variables and functions
+- [ ] PascalCase for classes and constructors
+- [ ] SCREAMING_SNAKE_CASE for constants
+- [ ] Trailing underscore for private members
+- [ ] Descriptive names for all identifiers
+
+### **Language Features**
+- [ ] `const` and `let` instead of `var`
+- [ ] Arrow functions for callbacks
+- [ ] Template literals for string interpolation
+- [ ] Destructuring where appropriate
+- [ ] Modern array methods (`map`, `filter`, `reduce`)
+
+### **Documentation**
+- [ ] All public methods have JSDoc comments
+- [ ] Parameter and return types documented
+- [ ] Complex logic has explanatory comments
+- [ ] Examples provided for non-obvious usage
+
+### **Best Practices**
+- [ ] Proper error handling with specific error types
+- [ ] Input validation for public methods
+- [ ] Consistent async/await usage
+- [ ] No console.log in production code
+- [ ] Tests follow naming conventions

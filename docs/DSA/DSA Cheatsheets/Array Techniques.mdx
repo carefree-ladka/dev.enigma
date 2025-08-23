@@ -1,0 +1,1553 @@
+# Array
+
+A comprehensive guide to mastering array patterns and techniques for Data Structures and Algorithms interviews and competitive programming.
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Basic Array Operations](#basic-array-operations)
+3. [Two Pointer Techniques](#two-pointer-techniques)
+4. [Sliding Window Patterns](#sliding-window-patterns)
+5. [Prefix Sum Techniques](#prefix-sum-techniques)
+6. [Sorting and Searching](#sorting-and-searching)
+7. [Subarray Patterns](#subarray-patterns)
+8. [Matrix Techniques](#matrix-techniques)
+9. [Dynamic Programming on Arrays](#dynamic-programming-on-arrays)
+10. [Advanced Patterns](#advanced-patterns)
+11. [Problem-Solving Framework](#problem-solving-framework)
+12. [Practice Problems](#practice-problems)
+
+---
+
+## Introduction
+
+**Arrays** are the fundamental data structure in programming, forming the backbone of most algorithms. They're essential for:
+
+- **Sequential data processing** and iteration
+- **Index-based access** and manipulation
+- **Sorting and searching** algorithms
+- **Dynamic programming** solutions
+- **Matrix operations** and 2D problems
+- **Sliding window** and subarray techniques
+
+### When to Use Arrays
+
+✅ **Use when you need:**
+- Fast random access by index O(1)
+- Cache-friendly sequential processing
+- Fixed-size collections with known bounds
+- Mathematical operations on sequences
+- Sorting and searching operations
+
+❌ **Consider alternatives when:**
+- Frequent insertions/deletions in middle
+- Unknown or highly variable size
+- Need key-value associations (use objects/maps)
+- Require constant-time insertion/deletion
+
+---
+
+## Basic Array Operations
+
+### Core Array Methods
+
+```javascript
+// Creation and initialization
+const arr = new Array(5).fill(0);           // [0, 0, 0, 0, 0]
+const arr2 = Array.from({length: 5}, (_, i) => i); // [0, 1, 2, 3, 4]
+const arr3 = [...Array(5).keys()];          // [0, 1, 2, 3, 4]
+
+// Access and modification
+arr[0] = 10;              // O(1) access
+const first = arr[0];     // O(1) retrieval
+arr.length;               // Get size
+
+// Adding elements
+arr.push(6);              // Add to end - O(1) amortized
+arr.unshift(0);           // Add to beginning - O(n)
+arr.splice(2, 0, 'new');  // Insert at index 2 - O(n)
+
+// Removing elements
+arr.pop();                // Remove from end - O(1)
+arr.shift();              // Remove from beginning - O(n)
+arr.splice(2, 1);         // Remove at index 2 - O(n)
+
+// Searching
+arr.indexOf(value);       // Find first index - O(n)
+arr.lastIndexOf(value);   // Find last index - O(n)
+arr.includes(value);      // Check if exists - O(n)
+arr.find(x => x > 5);     // Find first match - O(n)
+arr.findIndex(x => x > 5);// Find index of first match - O(n)
+```
+
+### Array Iteration Patterns
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+
+// Basic iteration
+for (let i = 0; i < numbers.length; i++) {
+    console.log(numbers[i]);
+}
+
+// Functional iteration
+numbers.forEach((num, index) => console.log(num, index));
+numbers.map(x => x * 2);          // Transform: [2, 4, 6, 8, 10]
+numbers.filter(x => x % 2 === 0); // Filter: [2, 4]
+numbers.reduce((sum, x) => sum + x, 0); // Reduce: 15
+
+// Advanced iteration
+for (const num of numbers) console.log(num);        // Values
+for (const index in numbers) console.log(index);    // Indices
+for (const [i, num] of numbers.entries()) {         // Index + value
+    console.log(i, num);
+}
+```
+
+**Time Complexity Summary:**
+- Access: O(1)
+- Search: O(n)
+- Insertion: O(1) at end, O(n) elsewhere
+- Deletion: O(1) at end, O(n) elsewhere
+
+---
+
+## Two Pointer Techniques
+
+### 1. Opposite Direction Pointers
+
+**Problem:** Two Sum in sorted array.
+
+```javascript
+function twoSum(numbers, target) {
+    let left = 0;
+    let right = numbers.length - 1;
+
+    while (left < right) {
+        const sum = numbers[left] + numbers[right];
+
+        if (sum === target) {
+            return [left, right];
+        } else if (sum < target) {
+            left++;
+        } else {
+            right--;
+        }
+    }
+
+    return [];
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+### 2. Same Direction Pointers (Fast/Slow)
+
+**Problem:** Remove duplicates from sorted array in-place.
+
+```javascript
+function removeDuplicates(nums) {
+    if (nums.length <= 1) return nums.length;
+
+    let slow = 0; // Points to last unique element
+
+    for (let fast = 1; fast < nums.length; fast++) {
+        if (nums[fast] !== nums[slow]) {
+            slow++;
+            nums[slow] = nums[fast];
+        }
+    }
+
+    return slow + 1; // New length
+}
+```
+
+### 3. Three Sum Pattern
+
+**Problem:** Find all unique triplets that sum to zero.
+
+```javascript
+function threeSum(nums) {
+    nums.sort((a, b) => a - b);
+    const result = [];
+
+    for (let i = 0; i < nums.length - 2; i++) {
+        // Skip duplicates for first number
+        if (i > 0 && nums[i] === nums[i - 1]) continue;
+
+        let left = i + 1;
+        let right = nums.length - 1;
+        const target = -nums[i];
+
+        while (left < right) {
+            const sum = nums[left] + nums[right];
+
+            if (sum === target) {
+                result.push([nums[i], nums[left], nums[right]]);
+
+                // Skip duplicates
+                while (left < right && nums[left] === nums[left + 1]) left++;
+                while (left < right && nums[right] === nums[right - 1]) right--;
+
+                left++;
+                right--;
+            } else if (sum < target) {
+                left++;
+            } else {
+                right--;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+### 4. Container With Most Water
+
+**Problem:** Find maximum area between two lines.
+
+```javascript
+function maxArea(height) {
+    let left = 0;
+    let right = height.length - 1;
+    let maxWater = 0;
+
+    while (left < right) {
+        const width = right - left;
+        const minHeight = Math.min(height[left], height[right]);
+        const water = width * minHeight;
+
+        maxWater = Math.max(maxWater, water);
+
+        // Move pointer with smaller height
+        if (height[left] < height[right]) {
+            left++;
+        } else {
+            right--;
+        }
+    }
+
+    return maxWater;
+}
+```
+
+**Key Insight:** Always move the pointer with smaller height to potentially find larger area.
+
+---
+
+## Sliding Window Patterns
+
+### 1. Fixed Size Window
+
+**Problem:** Maximum sum of k consecutive elements.
+
+```javascript
+function maxSumSubarray(arr, k) {
+    if (arr.length < k) return 0;
+
+    // Calculate sum of first window
+    let windowSum = 0;
+    for (let i = 0; i < k; i++) {
+        windowSum += arr[i];
+    }
+
+    let maxSum = windowSum;
+
+    // Slide the window
+    for (let i = k; i < arr.length; i++) {
+        windowSum += arr[i] - arr[i - k];
+        maxSum = Math.max(maxSum, windowSum);
+    }
+
+    return maxSum;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+### 2. Variable Size Window
+
+**Problem:** Smallest subarray with sum ≥ target.
+
+```javascript
+function minSubArrayLen(target, nums) {
+    let left = 0;
+    let sum = 0;
+    let minLen = Infinity;
+
+    for (let right = 0; right < nums.length; right++) {
+        sum += nums[right];
+
+        // Shrink window while sum >= target
+        while (sum >= target) {
+            minLen = Math.min(minLen, right - left + 1);
+            sum -= nums[left];
+            left++;
+        }
+    }
+
+    return minLen === Infinity ? 0 : minLen;
+}
+```
+
+### 3. Longest Substring Without Repeating Characters
+
+**Problem:** Find length of longest substring with unique characters.
+
+```javascript
+function lengthOfLongestSubstring(s) {
+    const charSet = new Set();
+    let left = 0;
+    let maxLen = 0;
+
+    for (let right = 0; right < s.length; right++) {
+        // Shrink window until no duplicates
+        while (charSet.has(s[right])) {
+            charSet.delete(s[left]);
+            left++;
+        }
+
+        charSet.add(s[right]);
+        maxLen = Math.max(maxLen, right - left + 1);
+    }
+
+    return maxLen;
+}
+```
+
+### 4. Sliding Window Maximum
+
+**Problem:** Maximum in each sliding window of size k.
+
+```javascript
+function maxSlidingWindow(nums, k) {
+    const result = [];
+    const deque = []; // Stores indices in decreasing order of values
+
+    for (let i = 0; i < nums.length; i++) {
+        // Remove indices outside current window
+        while (deque.length > 0 && deque[0] <= i - k) {
+            deque.shift();
+        }
+
+        // Remove indices with smaller values
+        while (deque.length > 0 && nums[deque[deque.length - 1]] <= nums[i]) {
+            deque.pop();
+        }
+
+        deque.push(i);
+
+        // Add maximum to result when window is complete
+        if (i >= k - 1) {
+            result.push(nums[deque[0]]);
+        }
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(k)
+
+---
+
+## Prefix Sum Techniques
+
+### 1. Basic Prefix Sum
+
+**Problem:** Range sum queries in O(1) time.
+
+```javascript
+class PrefixSum {
+    constructor(nums) {
+        this.prefixSum = new Array(nums.length + 1).fill(0);
+
+        // Build prefix sum array
+        for (let i = 0; i < nums.length; i++) {
+            this.prefixSum[i + 1] = this.prefixSum[i] + nums[i];
+        }
+    }
+
+    // Sum of elements from index left to right (inclusive)
+    rangeSum(left, right) {
+        return this.prefixSum[right + 1] - this.prefixSum[left];
+    }
+}
+```
+
+**Usage:**
+```javascript
+const ps = new PrefixSum([1, 2, 3, 4, 5]);
+console.log(ps.rangeSum(1, 3)); // Sum of [2, 3, 4] = 9
+```
+
+### 2. Subarray Sum Equals K
+
+**Problem:** Count subarrays with sum equal to k.
+
+```javascript
+function subarraySum(nums, k) {
+    const prefixSumCount = new Map();
+    prefixSumCount.set(0, 1); // Handle subarrays starting from index 0
+
+    let count = 0;
+    let prefixSum = 0;
+
+    for (const num of nums) {
+        prefixSum += num;
+
+        // Check if (prefixSum - k) exists
+        if (prefixSumCount.has(prefixSum - k)) {
+            count += prefixSumCount.get(prefixSum - k);
+        }
+
+        // Update prefix sum count
+        prefixSumCount.set(prefixSum, (prefixSumCount.get(prefixSum) || 0) + 1);
+    }
+
+    return count;
+}
+```
+
+**Key Insight:** If prefixSum[j] - prefixSum[i] = k, then subarray from i+1 to j has sum k.
+
+### 3. Maximum Subarray Sum (Kadane's Algorithm)
+
+**Problem:** Find contiguous subarray with maximum sum.
+
+```javascript
+function maxSubArray(nums) {
+    let maxSoFar = nums[0];
+    let maxEndingHere = nums[0];
+
+    for (let i = 1; i < nums.length; i++) {
+        // Either start new subarray or extend current one
+        maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
+        maxSoFar = Math.max(maxSoFar, maxEndingHere);
+    }
+
+    return maxSoFar;
+}
+
+// Variant: Return the actual subarray
+function maxSubArrayWithIndices(nums) {
+    let maxSum = nums[0];
+    let currentSum = nums[0];
+    let start = 0, end = 0, tempStart = 0;
+
+    for (let i = 1; i < nums.length; i++) {
+        if (currentSum < 0) {
+            currentSum = nums[i];
+            tempStart = i;
+        } else {
+            currentSum += nums[i];
+        }
+
+        if (currentSum > maxSum) {
+            maxSum = currentSum;
+            start = tempStart;
+            end = i;
+        }
+    }
+
+    return {
+        maxSum,
+        subarray: nums.slice(start, end + 1),
+        indices: [start, end]
+    };
+}
+```
+
+### 4. Product of Array Except Self
+
+**Problem:** Return array where each element is product of all other elements.
+
+```javascript
+function productExceptSelf(nums) {
+    const result = new Array(nums.length);
+
+    // Left pass: product of all elements to the left
+    result[0] = 1;
+    for (let i = 1; i < nums.length; i++) {
+        result[i] = result[i - 1] * nums[i - 1];
+    }
+
+    // Right pass: multiply by product of all elements to the right
+    let rightProduct = 1;
+    for (let i = nums.length - 1; i >= 0; i--) {
+        result[i] *= rightProduct;
+        rightProduct *= nums[i];
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1) excluding output array
+
+---
+
+## Sorting and Searching
+
+### 1. Binary Search Variations
+
+#### Basic Binary Search
+
+```javascript
+function binarySearch(nums, target) {
+    let left = 0;
+    let right = nums.length - 1;
+
+    while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+
+        if (nums[mid] === target) {
+            return mid;
+        } else if (nums[mid] < target) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    return -1; // Not found
+}
+```
+
+#### Find First/Last Occurrence
+
+```javascript
+function searchRange(nums, target) {
+    const findFirst = (nums, target) => {
+        let left = 0, right = nums.length - 1;
+        let result = -1;
+
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+
+            if (nums[mid] === target) {
+                result = mid;
+                right = mid - 1; // Continue searching left
+            } else if (nums[mid] < target) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        return result;
+    };
+
+    const findLast = (nums, target) => {
+        let left = 0, right = nums.length - 1;
+        let result = -1;
+
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+
+            if (nums[mid] === target) {
+                result = mid;
+                left = mid + 1; // Continue searching right
+            } else if (nums[mid] < target) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        return result;
+    };
+
+    return [findFirst(nums, target), findLast(nums, target)];
+}
+```
+
+#### Search in Rotated Sorted Array
+
+```javascript
+function searchRotated(nums, target) {
+    let left = 0;
+    let right = nums.length - 1;
+
+    while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+
+        if (nums[mid] === target) {
+            return mid;
+        }
+
+        // Determine which half is sorted
+        if (nums[left] <= nums[mid]) {
+            // Left half is sorted
+            if (nums[left] <= target && target < nums[mid]) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        } else {
+            // Right half is sorted
+            if (nums[mid] < target && target <= nums[right]) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+    }
+
+    return -1;
+}
+```
+
+### 2. QuickSelect (Kth Largest Element)
+
+```javascript
+function findKthLargest(nums, k) {
+    const quickSelect = (left, right, kSmallest) => {
+        if (left === right) return nums[left];
+
+        const pivotIndex = partition(left, right);
+
+        if (pivotIndex === kSmallest) {
+            return nums[pivotIndex];
+        } else if (pivotIndex < kSmallest) {
+            return quickSelect(pivotIndex + 1, right, kSmallest);
+        } else {
+            return quickSelect(left, pivotIndex - 1, kSmallest);
+        }
+    };
+
+    const partition = (left, right) => {
+        const pivot = nums[right];
+        let i = left;
+
+        for (let j = left; j < right; j++) {
+            if (nums[j] <= pivot) {
+                [nums[i], nums[j]] = [nums[j], nums[i]];
+                i++;
+            }
+        }
+
+        [nums[i], nums[right]] = [nums[right], nums[i]];
+        return i;
+    };
+
+    return quickSelect(0, nums.length - 1, nums.length - k);
+}
+```
+
+**Average Time Complexity:** O(n) | **Worst Case:** O(n²)
+
+### 3. Merge Intervals
+
+```javascript
+function merge(intervals) {
+    if (intervals.length <= 1) return intervals;
+
+    // Sort by start time
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    const result = [intervals[0]];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const lastMerged = result[result.length - 1];
+
+        if (current[0] <= lastMerged[1]) {
+            // Overlapping intervals - merge them
+            lastMerged[1] = Math.max(lastMerged[1], current[1]);
+        } else {
+            // Non-overlapping - add to result
+            result.push(current);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Subarray Patterns
+
+### 1. Maximum Product Subarray
+
+**Problem:** Find contiguous subarray with maximum product.
+
+```javascript
+function maxProduct(nums) {
+    let maxSoFar = nums[0];
+    let minSoFar = nums[0]; // Track minimum for negative numbers
+    let result = nums[0];
+
+    for (let i = 1; i < nums.length; i++) {
+        const num = nums[i];
+
+        if (num < 0) {
+            // Swap max and min when multiplying by negative
+            [maxSoFar, minSoFar] = [minSoFar, maxSoFar];
+        }
+
+        maxSoFar = Math.max(num, maxSoFar * num);
+        minSoFar = Math.min(num, minSoFar * num);
+
+        result = Math.max(result, maxSoFar);
+    }
+
+    return result;
+}
+```
+
+### 2. Longest Increasing Subsequence (LIS)
+
+**Problem:** Find length of longest increasing subsequence.
+
+```javascript
+// O(n²) DP solution
+function lengthOfLIS(nums) {
+    if (nums.length === 0) return 0;
+
+    const dp = new Array(nums.length).fill(1);
+    let maxLength = 1;
+
+    for (let i = 1; i < nums.length; i++) {
+        for (let j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                dp[i] = Math.max(dp[i], dp[j] + 1);
+            }
+        }
+        maxLength = Math.max(maxLength, dp[i]);
+    }
+
+    return maxLength;
+}
+
+// O(n log n) Binary Search solution
+function lengthOfLISOptimal(nums) {
+    if (nums.length === 0) return 0;
+
+    const tails = []; // tails[i] = smallest ending element of increasing subsequence of length i+1
+
+    for (const num of nums) {
+        let left = 0;
+        let right = tails.length;
+
+        // Binary search for insertion position
+        while (left < right) {
+            const mid = Math.floor((left + right) / 2);
+            if (tails[mid] < num) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+
+        // Update or append
+        if (left === tails.length) {
+            tails.push(num);
+        } else {
+            tails[left] = num;
+        }
+    }
+
+    return tails.length;
+}
+```
+
+### 3. Minimum Size Subarray Sum
+
+**Problem:** Find minimum length subarray with sum ≥ target.
+
+```javascript
+function minSubArrayLen(target, nums) {
+    let left = 0;
+    let sum = 0;
+    let minLen = Infinity;
+
+    for (let right = 0; right < nums.length; right++) {
+        sum += nums[right];
+
+        while (sum >= target) {
+            minLen = Math.min(minLen, right - left + 1);
+            sum -= nums[left];
+            left++;
+        }
+    }
+
+    return minLen === Infinity ? 0 : minLen;
+}
+```
+
+---
+
+## Matrix Techniques
+
+### 1. Spiral Matrix Traversal
+
+**Problem:** Return matrix elements in spiral order.
+
+```javascript
+function spiralOrder(matrix) {
+    if (matrix.length === 0) return [];
+
+    const result = [];
+    let top = 0, bottom = matrix.length - 1;
+    let left = 0, right = matrix[0].length - 1;
+
+    while (top <= bottom && left <= right) {
+        // Traverse right
+        for (let j = left; j <= right; j++) {
+            result.push(matrix[top][j]);
+        }
+        top++;
+
+        // Traverse down
+        for (let i = top; i <= bottom; i++) {
+            result.push(matrix[i][right]);
+        }
+        right--;
+
+        // Traverse left (if we still have rows)
+        if (top <= bottom) {
+            for (let j = right; j >= left; j--) {
+                result.push(matrix[bottom][j]);
+            }
+            bottom--;
+        }
+
+        // Traverse up (if we still have columns)
+        if (left <= right) {
+            for (let i = bottom; i >= top; i--) {
+                result.push(matrix[i][left]);
+            }
+            left++;
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. Rotate Matrix 90 Degrees
+
+**Problem:** Rotate n×n matrix 90 degrees clockwise in-place.
+
+```javascript
+function rotate(matrix) {
+    const n = matrix.length;
+
+    // Transpose the matrix
+    for (let i = 0; i < n; i++) {
+        for (let j = i; j < n; j++) {
+            [matrix[i][j], matrix[j][i]] = [matrix[j][i], matrix[i][j]];
+        }
+    }
+
+    // Reverse each row
+    for (let i = 0; i < n; i++) {
+        matrix[i].reverse();
+    }
+}
+```
+
+### 3. Set Matrix Zeroes
+
+**Problem:** Set entire row and column to 0 if element is 0.
+
+```javascript
+function setZeroes(matrix) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    let firstRowZero = false;
+    let firstColZero = false;
+
+    // Check if first row has zero
+    for (let j = 0; j < cols; j++) {
+        if (matrix[0][j] === 0) {
+            firstRowZero = true;
+            break;
+        }
+    }
+
+    // Check if first column has zero
+    for (let i = 0; i < rows; i++) {
+        if (matrix[i][0] === 0) {
+            firstColZero = true;
+            break;
+        }
+    }
+
+    // Use first row and column as markers
+    for (let i = 1; i < rows; i++) {
+        for (let j = 1; j < cols; j++) {
+            if (matrix[i][j] === 0) {
+                matrix[i][0] = 0; // Mark row
+                matrix[0][j] = 0; // Mark column
+            }
+        }
+    }
+
+    // Set zeros based on markers
+    for (let i = 1; i < rows; i++) {
+        for (let j = 1; j < cols; j++) {
+            if (matrix[i][0] === 0 || matrix[0][j] === 0) {
+                matrix[i][j] = 0;
+            }
+        }
+    }
+
+    // Handle first row and column
+    if (firstRowZero) {
+        for (let j = 0; j < cols; j++) {
+            matrix[0][j] = 0;
+        }
+    }
+
+    if (firstColZero) {
+        for (let i = 0; i < rows; i++) {
+            matrix[i][0] = 0;
+        }
+    }
+}
+```
+
+**Space Complexity:** O(1) by using matrix itself as storage
+
+### 4. Search 2D Matrix
+
+**Problem:** Search target in sorted 2D matrix.
+
+```javascript
+// Approach 1: Treat as 1D sorted array
+function searchMatrix(matrix, target) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+
+    let left = 0;
+    let right = rows * cols - 1;
+
+    while (left <= right) {
+        const mid = Math.floor((left + right) / 2);
+        const midValue = matrix[Math.floor(mid / cols)][mid % cols];
+
+        if (midValue === target) {
+            return true;
+        } else if (midValue < target) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    return false;
+}
+
+// Approach 2: Start from top-right corner
+function searchMatrixII(matrix, target) {
+    let row = 0;
+    let col = matrix[0].length - 1;
+
+    while (row < matrix.length && col >= 0) {
+        if (matrix[row][col] === target) {
+            return true;
+        } else if (matrix[row][col] > target) {
+            col--;
+        } else {
+            row++;
+        }
+    }
+
+    return false;
+}
+```
+
+---
+
+## Dynamic Programming on Arrays
+
+### 1. House Robber
+
+**Problem:** Rob houses without alerting police (no adjacent houses).
+
+```javascript
+function rob(nums) {
+    if (nums.length === 0) return 0;
+    if (nums.length === 1) return nums[0];
+
+    let prev2 = nums[0];           // dp[i-2]
+    let prev1 = Math.max(nums[0], nums[1]); // dp[i-1]
+
+    for (let i = 2; i < nums.length; i++) {
+        const current = Math.max(prev1, prev2 + nums[i]);
+        prev2 = prev1;
+        prev1 = current;
+    }
+
+    return prev1;
+}
+```
+
+### 2. Climbing Stairs
+
+**Problem:** Number of ways to reach top (1 or 2 steps at a time).
+
+```javascript
+function climbStairs(n) {
+    if (n <= 2) return n;
+
+    let prev2 = 1; // Ways to reach step 1
+    let prev1 = 2; // Ways to reach step 2
+
+    for (let i = 3; i <= n; i++) {
+        const current = prev1 + prev2;
+        prev2 = prev1;
+        prev1 = current;
+    }
+
+    return prev1;
+}
+```
+
+### 3. Buy and Sell Stock
+
+**Problem:** Maximum profit from one transaction.
+
+```javascript
+function maxProfit(prices) {
+    let minPrice = prices[0];
+    let maxProfit = 0;
+
+    for (let i = 1; i < prices.length; i++) {
+        minPrice = Math.min(minPrice, prices[i]);
+        maxProfit = Math.max(maxProfit, prices[i] - minPrice);
+    }
+
+    return maxProfit;
+}
+
+// Multiple transactions allowed
+function maxProfitMultiple(prices) {
+    let profit = 0;
+
+    for (let i = 1; i < prices.length; i++) {
+        if (prices[i] > prices[i - 1]) {
+            profit += prices[i] - prices[i - 1];
+        }
+    }
+
+    return profit;
+}
+```
+
+---
+
+## Advanced Patterns
+
+### 1. Trapping Rain Water
+
+**Problem:** Calculate trapped rainwater between bars.
+
+```javascript
+function trap(height) {
+    if (height.length < 3) return 0;
+
+    let left = 0;
+    let right = height.length - 1;
+    let leftMax = 0;
+    let rightMax = 0;
+    let water = 0;
+
+    while (left < right) {
+        if (height[left] < height[right]) {
+            if (height[left] >= leftMax) {
+                leftMax = height[left];
+            } else {
+                water += leftMax - height[left];
+            }
+            left++;
+        } else {
+            if (height[right] >= rightMax) {
+                rightMax = height[right];
+            } else {
+                water += rightMax - height[right];
+            }
+            right--;
+        }
+    }
+
+    return water;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+### 2. Next Greater Element
+
+**Problem:** Find next greater element for each array element.
+
+```javascript
+function nextGreaterElement(nums) {
+    const result = new Array(nums.length).fill(-1);
+    const stack = []; // Monotonic decreasing stack
+
+    for (let i = 0; i < nums.length; i++) {
+        // Pop elements smaller than current
+        while (stack.length > 0 && nums[stack[stack.length - 1]] < nums[i]) {
+            const index = stack.pop();
+            result[index] = nums[i];
+        }
+
+        stack.push(i);
+    }
+
+    return result;
+}
+
+// Circular array variant
+function nextGreaterElementsCircular(nums) {
+    const n = nums.length;
+    const result = new Array(n).fill(-1);
+    const stack = [];
+
+    // Process array twice to handle circular nature
+    for (let i = 0; i < 2 * n; i++) {
+        const num = nums[i % n];
+
+        while (stack.length > 0 && nums[stack[stack.length - 1]] < num) {
+            result[stack.pop()] = num;
+        }
+
+        if (i < n) {
+            stack.push(i);
+        }
+    }
+
+    return result;
+}
+```
+
+### 3. Largest Rectangle in Histogram
+
+**Problem:** Find area of largest rectangle in histogram.
+
+```javascript
+function largestRectangleArea(heights) {
+    const stack = []; // Monotonic increasing stack
+    let maxArea = 0;
+
+    for (let i = 0; i <= heights.length; i++) {
+        const currentHeight = i === heights.length ? 0 : heights[i];
+
+        while (stack.length > 0 && heights[stack[stack.length - 1]] > currentHeight) {
+            const height = heights[stack.pop()];
+            const width = stack.length === 0 ? i : i - stack[stack.length - 1] - 1;
+            maxArea = Math.max(maxArea, height * width);
+        }
+
+        stack.push(i);
+    }
+
+    return maxArea;
+}
+```
+
+### 4. Daily Temperatures
+
+**Problem:** Find days until warmer temperature.
+
+```javascript
+function dailyTemperatures(temperatures) {
+    const result = new Array(temperatures.length).fill(0);
+    const stack = []; // Store indices
+
+    for (let i = 0; i < temperatures.length; i++) {
+        while (stack.length > 0 &&
+               temperatures[stack[stack.length - 1]] < temperatures[i]) {
+            const prevIndex = stack.pop();
+            result[prevIndex] = i - prevIndex;
+        }
+
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+### 5. Jump Game
+
+**Problem:** Determine if you can reach the last index.
+
+```javascript
+function canJump(nums) {
+    let maxReach = 0;
+
+    for (let i = 0; i < nums.length; i++) {
+        if (i > maxReach) {
+            return false; // Can't reach this position
+        }
+
+        maxReach = Math.max(maxReach, i + nums[i]);
+
+        if (maxReach >= nums.length - 1) {
+            return true; // Can reach the end
+        }
+    }
+
+    return false;
+}
+
+// Minimum jumps to reach end
+function jumpMinimum(nums) {
+    let jumps = 0;
+    let currentEnd = 0;
+    let farthest = 0;
+
+    for (let i = 0; i < nums.length - 1; i++) {
+        farthest = Math.max(farthest, i + nums[i]);
+
+        if (i === currentEnd) {
+            jumps++;
+            currentEnd = farthest;
+        }
+    }
+
+    return jumps;
+}
+```
+
+### 6. Gas Station
+
+**Problem:** Find starting gas station to complete circular tour.
+
+```javascript
+function canCompleteCircuit(gas, cost) {
+    let totalTank = 0;
+    let currentTank = 0;
+    let startingStation = 0;
+
+    for (let i = 0; i < gas.length; i++) {
+        totalTank += gas[i] - cost[i];
+        currentTank += gas[i] - cost[i];
+
+        // If current tank goes negative, try starting from next station
+        if (currentTank < 0) {
+            startingStation = i + 1;
+            currentTank = 0;
+        }
+    }
+
+    return totalTank >= 0 ? startingStation : -1;
+}
+```
+
+**Key Insight:** If total gas ≥ total cost, there must be a solution.
+
+---
+
+## Problem-Solving Framework
+
+### Array Pattern Recognition
+
+1. **Two Pointers** → Sorted array, palindrome, two sum
+2. **Sliding Window** → Subarray/substring problems
+3. **Prefix Sum** → Range queries, subarray sum
+4. **Binary Search** → Sorted array, search space
+5. **Stack/Monotonic** → Next greater/smaller element
+6. **DP** → Optimization problems, overlapping subproblems
+
+### Step-by-Step Approach
+
+```javascript
+function arrayProblemTemplate(arr, target) {
+    // 1. Understand the problem constraints
+    // - Array size, element range
+    // - Time/space complexity requirements
+    // - In-place vs extra space allowed
+
+    // 2. Identify the pattern
+    // - Two pointers for sorted arrays
+    // - Sliding window for subarrays
+    // - DP for optimization
+
+    // 3. Handle edge cases
+    if (!arr || arr.length === 0) return defaultValue;
+    if (arr.length === 1) return handleSingleElement(arr[0]);
+
+    // 4. Choose appropriate technique
+    let result = initialize();
+
+    // Main algorithm implementation
+    for (let i = 0; i < arr.length; i++) {
+        // Process current element
+        result = updateResult(result, arr[i], i);
+    }
+
+    return result;
+}
+```
+
+### Common Optimization Techniques
+
+#### 1. **Space Optimization**
+```javascript
+// Instead of creating new arrays
+const newArr = arr.map(x => x * 2);
+
+// Modify in-place when possible
+for (let i = 0; i < arr.length; i++) {
+    arr[i] *= 2;
+}
+```
+
+#### 2. **Early Termination**
+```javascript
+function findFirst(arr, condition) {
+    for (let i = 0; i < arr.length; i++) {
+        if (condition(arr[i])) {
+            return i; // Early return
+        }
+    }
+    return -1;
+}
+```
+
+#### 3. **Preprocessing**
+```javascript
+// Sort array if it helps reduce complexity
+arr.sort((a, b) => a - b);
+
+// Create frequency map
+const freq = new Map();
+for (const num of arr) {
+    freq.set(num, (freq.get(num) || 0) + 1);
+}
+```
+
+---
+
+## Practice Problems
+
+### Beginner Level
+1. **Two Sum** - Hash map or two pointers
+2. **Remove Duplicates** - Two pointers
+3. **Maximum Subarray** - Kadane's algorithm
+4. **Merge Sorted Array** - Two pointers
+5. **Plus One** - Array manipulation
+6. **Move Zeroes** - Two pointers
+
+### Intermediate Level
+1. **3Sum** - Two pointers with sorting
+2. **Container With Most Water** - Two pointers
+3. **Product of Array Except Self** - Prefix/suffix arrays
+4. **Spiral Matrix** - Matrix traversal
+5. **Rotate Array** - Array rotation techniques
+6. **Subarray Sum Equals K** - Prefix sum + hash map
+7. **Find Minimum in Rotated Sorted Array** - Binary search
+
+### Advanced Level
+1. **Trapping Rain Water** - Two pointers or stack
+2. **Largest Rectangle in Histogram** - Monotonic stack
+3. **Sliding Window Maximum** - Deque optimization
+4. **Jump Game II** - Greedy algorithm
+5. **First Missing Positive** - Array as hash table
+6. **Median of Two Sorted Arrays** - Binary search
+7. **Longest Increasing Subsequence** - DP + binary search
+
+### Expert Level
+1. **Regular Expression Matching** - Complex DP
+2. **Candy** - Greedy with two passes
+3. **Russian Doll Envelopes** - LIS variation
+4. **Count of Smaller Numbers After Self** - Merge sort variation
+5. **Maximum Rectangle** - Histogram + DP
+6. **Minimum Window Substring** - Advanced sliding window
+
+---
+
+## Time Complexity Analysis
+
+| Pattern/Algorithm | Time Complexity | Space Complexity | Use Cases |
+|-------------------|----------------|------------------|-----------|
+| Linear Scan | O(n) | O(1) | Basic traversal |
+| Two Pointers | O(n) | O(1) | Sorted arrays, palindromes |
+| Sliding Window | O(n) | O(k) | Subarray problems |
+| Binary Search | O(log n) | O(1) | Sorted arrays |
+| Quick Sort | O(n log n) avg | O(log n) | General sorting |
+| Merge Sort | O(n log n) | O(n) | Stable sorting |
+| Kadane's Algorithm | O(n) | O(1) | Maximum subarray |
+| Dutch Flag | O(n) | O(1) | 3-way partitioning |
+| Monotonic Stack | O(n) | O(n) | Next greater/smaller |
+
+---
+
+## Common Patterns Summary
+
+### 1. **Two Pointers Template**
+```javascript
+let left = 0, right = arr.length - 1;
+while (left < right) {
+    if (condition) {
+        // Found solution
+        return result;
+    } else if (needMoveLeft) {
+        left++;
+    } else {
+        right--;
+    }
+}
+```
+
+### 2. **Sliding Window Template**
+```javascript
+let left = 0, right = 0;
+let windowSum = 0;
+
+while (right < arr.length) {
+    windowSum += arr[right];
+
+    while (windowSum > target) {
+        windowSum -= arr[left];
+        left++;
+    }
+
+    // Update result
+    right++;
+}
+```
+
+### 3. **Prefix Sum Template**
+```javascript
+const prefixSum = [0];
+for (let i = 0; i < arr.length; i++) {
+    prefixSum[i + 1] = prefixSum[i] + arr[i];
+}
+
+// Range sum query [left, right]
+const rangeSum = prefixSum[right + 1] - prefixSum[left];
+```
+
+### 4. **Binary Search Template**
+```javascript
+let left = 0, right = arr.length - 1;
+
+while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+
+    if (arr[mid] === target) {
+        return mid;
+    } else if (arr[mid] < target) {
+        left = mid + 1;
+    } else {
+        right = mid - 1;
+    }
+}
+```
+
+### 5. **Monotonic Stack Template**
+```javascript
+const stack = [];
+const result = new Array(arr.length);
+
+for (let i = 0; i < arr.length; i++) {
+    while (stack.length > 0 &&
+           arr[stack[stack.length - 1]] < arr[i]) {
+        const index = stack.pop();
+        result[index] = arr[i]; // Next greater element
+    }
+    stack.push(i);
+}
+```
+
+---
+
+## Key Takeaways
+
+### ✅ **Array Advantages**
+- **O(1) random access** by index
+- **Cache-friendly** sequential access
+- **Memory efficient** (contiguous storage)
+- **Simple iteration** patterns
+- **Rich built-in methods** in modern languages
+
+### ⚠️ **Common Pitfalls**
+- **Index out of bounds** errors
+- **Modifying array during iteration**
+- **Not handling empty arrays**
+- **Overflow in sum/product calculations**
+- **Incorrect loop boundaries**
+
+### 🎯 **Best Practices**
+- **Validate inputs** and handle edge cases
+- **Choose appropriate data structure** for the problem
+- **Consider in-place vs extra space** trade-offs
+- **Use meaningful variable names** (left, right, slow, fast)
+- **Test with small examples** first
+
+### 🧠 **Memory Tricks**
+- **"Two pointers = O(1) space"** for sorted arrays
+- **"Sliding window = efficient subarrays"**
+- **"Prefix sum = O(1) range queries"**
+- **"Binary search = O(log n) in sorted"**
+- **"Stack = next greater/smaller patterns"**
+
+---
+
+## Quick Reference Cheat Sheet
+
+```javascript
+// Array Creation
+new Array(5).fill(0)              // [0,0,0,0,0]
+Array.from({length: 5}, (_, i) => i)  // [0,1,2,3,4]
+[...Array(5).keys()]              // [0,1,2,3,4]
+
+// Common Operations
+arr.push(item)                    // Add to end
+arr.pop()                         // Remove from end
+arr.unshift(item)                 // Add to beginning
+arr.shift()                       // Remove from beginning
+arr.slice(start, end)             // Copy subarray
+arr.splice(start, deleteCount, ...items) // Modify array
+
+// Searching
+arr.indexOf(item)                 // First occurrence
+arr.lastIndexOf(item)             // Last occurrence
+arr.includes(item)                // Check existence
+arr.find(predicate)               // First match
+arr.findIndex(predicate)          // Index of first match
+
+// Functional Methods
+arr.map(fn)                       // Transform elements
+arr.filter(fn)                    // Filter elements
+arr.reduce(fn, initial)           // Reduce to single value
+arr.forEach(fn)                   // Iterate over elements
+arr.every(fn)                     // All elements satisfy
+arr.some(fn)                      // Any element satisfies
+
+// Sorting
+arr.sort()                        // Sort in-place (lexicographic)
+arr.sort((a, b) => a - b)         // Numeric ascending
+arr.sort((a, b) => b - a)         // Numeric descending
+
+// Two Pointers
+let left = 0, right = arr.length - 1;
+while (left < right) { /* logic */ }
+
+// Sliding Window
+let left = 0;
+for (let right = 0; right < arr.length; right++) {
+    // Expand window
+    while (/* shrink condition */) {
+        left++;
+    }
+    // Update result
+}
+
+// Binary Search
+let left = 0, right = arr.length - 1;
+while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    // Compare and adjust bounds
+}
+```
+
+---

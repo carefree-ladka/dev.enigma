@@ -1,0 +1,1580 @@
+# N-ary Tree
+
+A comprehensive guide to N-ary tree algorithms and techniques for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Basic N-ary Tree Structures](#basic-n-ary-tree-structures)
+2. [Tree Traversal Techniques](#tree-traversal-techniques)
+3. [Tree Construction and Conversion](#tree-construction-and-conversion)
+4. [Tree Properties and Measurements](#tree-properties-and-measurements)
+5. [Path and Route Finding](#path-and-route-finding)
+6. [Tree Modification Operations](#tree-modification-operations)
+7. [Serialization and Deserialization](#serialization-and-deserialization)
+8. [Advanced Tree Algorithms](#advanced-tree-algorithms)
+9. [Tree Comparison and Validation](#tree-comparison-and-validation)
+10. [Usage Examples](#usage-examples)
+
+---
+
+## Basic N-ary Tree Structures
+
+### N-ary Tree Node Definition
+
+```javascript
+class NaryTreeNode {
+    constructor(val = 0, children = []) {
+        this.val = val;
+        this.children = children; // Array of child nodes
+    }
+}
+
+// Alternative definition with parent reference
+class NaryTreeNodeWithParent {
+    constructor(val = 0, children = [], parent = null) {
+        this.val = val;
+        this.children = children;
+        this.parent = parent;
+    }
+}
+```
+
+### Helper Functions
+
+```javascript
+// Create N-ary tree from array representation
+function createNaryTree(arr) {
+    if (!arr || arr.length === 0) return null;
+
+    const root = new NaryTreeNode(arr[0]);
+    const queue = [root];
+    let i = 2; // Skip root and first null
+
+    while (queue.length > 0 && i < arr.length) {
+        const node = queue.shift();
+
+        // Read children until we hit null or end of array
+        while (i < arr.length && arr[i] !== null) {
+            const child = new NaryTreeNode(arr[i]);
+            node.children.push(child);
+            queue.push(child);
+            i++;
+        }
+        i++; // Skip the null separator
+    }
+
+    return root;
+}
+
+// Print tree structure for visualization
+function printNaryTree(root, level = 0) {
+    if (!root) return;
+
+    console.log('  '.repeat(level) + root.val);
+    for (const child of root.children) {
+        printNaryTree(child, level + 1);
+    }
+}
+
+// Convert tree to array representation
+function treeToArray(root) {
+    if (!root) return [];
+
+    const result = [root.val, null];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const node = queue.shift();
+
+        for (const child of node.children) {
+            result.push(child.val);
+            queue.push(child);
+        }
+
+        if (queue.length > 0) {
+            result.push(null);
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Tree Traversal Techniques
+
+### 1. Preorder Traversal
+
+Visit root first, then children from left to right.
+
+```javascript
+// Recursive Preorder
+function preorderRecursive(root) {
+    if (!root) return [];
+
+    const result = [root.val];
+
+    for (const child of root.children) {
+        result.push(...preorderRecursive(child));
+    }
+
+    return result;
+}
+
+// Iterative Preorder
+function preorderIterative(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+        result.push(node.val);
+
+        // Add children in reverse order to maintain left-to-right processing
+        for (let i = node.children.length - 1; i >= 0; i--) {
+            stack.push(node.children[i]);
+        }
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** `O(n)` | **Space Complexity:** `O(h)` where h is height
+
+### 2. Postorder Traversal
+
+Visit children first, then root.
+
+```javascript
+// Recursive Postorder
+function postorderRecursive(root) {
+    if (!root) return [];
+
+    const result = [];
+
+    for (const child of root.children) {
+        result.push(...postorderRecursive(child));
+    }
+
+    result.push(root.val);
+    return result;
+}
+
+// Iterative Postorder
+function postorderIterative(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack = [root];
+    const visited = new Set();
+
+    while (stack.length > 0) {
+        const node = stack[stack.length - 1];
+
+        if (visited.has(node)) {
+            result.push(node.val);
+            stack.pop();
+        } else {
+            visited.add(node);
+            // Add children in reverse order
+            for (let i = node.children.length - 1; i >= 0; i--) {
+                stack.push(node.children[i]);
+            }
+        }
+    }
+
+    return result;
+}
+
+// Alternative iterative approach using two stacks
+function postorderTwoStacks(root) {
+    if (!root) return [];
+
+    const result = [];
+    const stack1 = [root];
+    const stack2 = [];
+
+    while (stack1.length > 0) {
+        const node = stack1.pop();
+        stack2.push(node);
+
+        for (const child of node.children) {
+            stack1.push(child);
+        }
+    }
+
+    while (stack2.length > 0) {
+        result.push(stack2.pop().val);
+    }
+
+    return result;
+}
+```
+
+### 3. Level Order Traversal (BFS)
+
+```javascript
+function levelOrder(root) {
+    if (!root) return [];
+
+    const result = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const levelSize = queue.length;
+        const currentLevel = [];
+
+        for (let i = 0; i < levelSize; i++) {
+            const node = queue.shift();
+            currentLevel.push(node.val);
+
+            for (const child of node.children) {
+                queue.push(child);
+            }
+        }
+
+        result.push(currentLevel);
+    }
+
+    return result;
+}
+
+// Single array level order
+function levelOrderFlat(root) {
+    if (!root) return [];
+
+    const result = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const node = queue.shift();
+        result.push(node.val);
+
+        for (const child of node.children) {
+            queue.push(child);
+        }
+    }
+
+    return result;
+}
+
+// Reverse level order (bottom-up)
+function levelOrderBottom(root) {
+    const levels = levelOrder(root);
+    return levels.reverse();
+}
+```
+
+### 4. Zigzag Level Order Traversal
+
+```javascript
+function zigzagLevelOrder(root) {
+    if (!root) return [];
+
+    const result = [];
+    const queue = [root];
+    let leftToRight = true;
+
+    while (queue.length > 0) {
+        const levelSize = queue.length;
+        const currentLevel = [];
+
+        for (let i = 0; i < levelSize; i++) {
+            const node = queue.shift();
+
+            if (leftToRight) {
+                currentLevel.push(node.val);
+            } else {
+                currentLevel.unshift(node.val);
+            }
+
+            for (const child of node.children) {
+                queue.push(child);
+            }
+        }
+
+        result.push(currentLevel);
+        leftToRight = !leftToRight;
+    }
+
+    return result;
+}
+```
+
+### 5. Vertical Order Traversal
+
+```javascript
+function verticalOrder(root) {
+    if (!root) return [];
+
+    const columnMap = new Map();
+    const queue = [[root, 0]]; // [node, column]
+    let minColumn = 0;
+    let maxColumn = 0;
+
+    while (queue.length > 0) {
+        const [node, col] = queue.shift();
+
+        if (!columnMap.has(col)) {
+            columnMap.set(col, []);
+        }
+        columnMap.get(col).push(node.val);
+
+        minColumn = Math.min(minColumn, col);
+        maxColumn = Math.max(maxColumn, col);
+
+        // For N-ary tree, distribute children across columns
+        const numChildren = node.children.length;
+        if (numChildren === 1) {
+            queue.push([node.children[0], col]);
+        } else if (numChildren > 1) {
+            const mid = Math.floor(numChildren / 2);
+            for (let i = 0; i < numChildren; i++) {
+                const childCol = col + (i - mid);
+                queue.push([node.children[i], childCol]);
+            }
+        }
+    }
+
+    const result = [];
+    for (let col = minColumn; col <= maxColumn; col++) {
+        if (columnMap.has(col)) {
+            result.push(columnMap.get(col));
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Tree Construction and Conversion
+
+### 1. Build Tree from Preorder and Postorder
+
+```javascript
+function buildTreePrePost(preorder, postorder) {
+    if (!preorder || !postorder || preorder.length === 0) return null;
+
+    const root = new NaryTreeNode(preorder[0]);
+
+    if (preorder.length === 1) return root;
+
+    // Find subtrees using postorder
+    const preorderChildren = preorder.slice(1);
+    const postorderChildren = postorder.slice(0, -1);
+
+    // For N-ary tree, we need additional information or constraints
+    // This is a simplified version assuming binary-like structure
+
+    return root;
+}
+```
+
+### 2. Convert Binary Tree to N-ary Tree
+
+```javascript
+function binaryToNary(binaryRoot) {
+    if (!binaryRoot) return null;
+
+    const naryRoot = new NaryTreeNode(binaryRoot.val);
+
+    // Convert left child
+    if (binaryRoot.left) {
+        naryRoot.children.push(binaryToNary(binaryRoot.left));
+    }
+
+    // Convert right child
+    if (binaryRoot.right) {
+        naryRoot.children.push(binaryToNary(binaryRoot.right));
+    }
+
+    return naryRoot;
+}
+```
+
+### 3. Convert N-ary Tree to Binary Tree
+
+```javascript
+function naryToBinary(naryRoot) {
+    if (!naryRoot) return null;
+
+    const binaryRoot = new TreeNode(naryRoot.val);
+
+    if (naryRoot.children.length > 0) {
+        // First child becomes left child
+        binaryRoot.left = naryToBinary(naryRoot.children[0]);
+
+        // Siblings become right children
+        let current = binaryRoot.left;
+        for (let i = 1; i < naryRoot.children.length; i++) {
+            current.right = naryToBinary(naryRoot.children[i]);
+            current = current.right;
+        }
+    }
+
+    return binaryRoot;
+}
+```
+
+---
+
+## Tree Properties and Measurements
+
+### 1. Maximum Depth/Height
+
+```javascript
+function maxDepth(root) {
+    if (!root) return 0;
+
+    if (root.children.length === 0) return 1;
+
+    let maxChildDepth = 0;
+    for (const child of root.children) {
+        maxChildDepth = Math.max(maxChildDepth, maxDepth(child));
+    }
+
+    return maxChildDepth + 1;
+}
+
+// Iterative approach
+function maxDepthIterative(root) {
+    if (!root) return 0;
+
+    const queue = [[root, 1]]; // [node, depth]
+    let maxDepth = 0;
+
+    while (queue.length > 0) {
+        const [node, depth] = queue.shift();
+        maxDepth = Math.max(maxDepth, depth);
+
+        for (const child of node.children) {
+            queue.push([child, depth + 1]);
+        }
+    }
+
+    return maxDepth;
+}
+```
+
+### 2. Minimum Depth
+
+```javascript
+function minDepth(root) {
+    if (!root) return 0;
+
+    if (root.children.length === 0) return 1;
+
+    let minChildDepth = Infinity;
+    for (const child of root.children) {
+        minChildDepth = Math.min(minChildDepth, minDepth(child));
+    }
+
+    return minChildDepth + 1;
+}
+```
+
+### 3. Count Total Nodes
+
+```javascript
+function countNodes(root) {
+    if (!root) return 0;
+
+    let count = 1; // Count current node
+
+    for (const child of root.children) {
+        count += countNodes(child);
+    }
+
+    return count;
+}
+
+// Iterative approach
+function countNodesIterative(root) {
+    if (!root) return 0;
+
+    let count = 0;
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+        count++;
+
+        for (const child of node.children) {
+            stack.push(child);
+        }
+    }
+
+    return count;
+}
+```
+
+### 4. Count Leaf Nodes
+
+```javascript
+function countLeaves(root) {
+    if (!root) return 0;
+
+    if (root.children.length === 0) return 1;
+
+    let leafCount = 0;
+    for (const child of root.children) {
+        leafCount += countLeaves(child);
+    }
+
+    return leafCount;
+}
+```
+
+### 5. Tree Diameter
+
+```javascript
+function diameter(root) {
+    if (!root) return 0;
+
+    let maxDiameter = 0;
+
+    function getDepth(node) {
+        if (!node) return 0;
+
+        if (node.children.length === 0) return 1;
+
+        // Get depths of all children
+        const childDepths = node.children.map(child => getDepth(child));
+        childDepths.sort((a, b) => b - a);
+
+        // Diameter through this node is sum of two largest child depths
+        const diameterThroughNode = (childDepths[0] || 0) + (childDepths[1] || 0);
+        maxDiameter = Math.max(maxDiameter, diameterThroughNode);
+
+        return (childDepths[0] || 0) + 1;
+    }
+
+    getDepth(root);
+    return maxDiameter;
+}
+```
+
+---
+
+## Path and Route Finding
+
+### 1. Find All Paths from Root to Leaves
+
+```javascript
+function rootToLeafPaths(root) {
+    if (!root) return [];
+
+    const paths = [];
+
+    function dfs(node, currentPath) {
+        if (!node) return;
+
+        currentPath.push(node.val);
+
+        if (node.children.length === 0) {
+            paths.push([...currentPath]);
+        } else {
+            for (const child of node.children) {
+                dfs(child, currentPath);
+            }
+        }
+
+        currentPath.pop(); // Backtrack
+    }
+
+    dfs(root, []);
+    return paths;
+}
+```
+
+### 2. Find Path to Target Node
+
+```javascript
+function findPath(root, target) {
+    if (!root) return null;
+
+    function dfs(node, path) {
+        if (!node) return false;
+
+        path.push(node.val);
+
+        if (node.val === target) {
+            return true;
+        }
+
+        for (const child of node.children) {
+            if (dfs(child, path)) {
+                return true;
+            }
+        }
+
+        path.pop(); // Backtrack
+        return false;
+    }
+
+    const path = [];
+    return dfs(root, path) ? path : null;
+}
+```
+
+### 3. Path Sum Problems
+
+```javascript
+// Check if path sum equals target
+function hasPathSum(root, targetSum) {
+    if (!root) return false;
+
+    if (root.children.length === 0) {
+        return root.val === targetSum;
+    }
+
+    for (const child of root.children) {
+        if (hasPathSum(child, targetSum - root.val)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Find all paths with target sum
+function pathSum(root, targetSum) {
+    if (!root) return [];
+
+    const paths = [];
+
+    function dfs(node, currentPath, currentSum) {
+        if (!node) return;
+
+        currentPath.push(node.val);
+        currentSum += node.val;
+
+        if (node.children.length === 0 && currentSum === targetSum) {
+            paths.push([...currentPath]);
+        } else {
+            for (const child of node.children) {
+                dfs(child, currentPath, currentSum);
+            }
+        }
+
+        currentPath.pop();
+    }
+
+    dfs(root, [], 0);
+    return paths;
+}
+
+// Maximum path sum
+function maxPathSum(root) {
+    let maxSum = -Infinity;
+
+    function dfs(node) {
+        if (!node) return 0;
+
+        if (node.children.length === 0) {
+            maxSum = Math.max(maxSum, node.val);
+            return node.val;
+        }
+
+        const childSums = node.children.map(child => dfs(child));
+        const maxChildSum = Math.max(0, ...childSums);
+
+        maxSum = Math.max(maxSum, node.val + maxChildSum);
+        return node.val + maxChildSum;
+    }
+
+    dfs(root);
+    return maxSum;
+}
+```
+
+### 4. Lowest Common Ancestor
+
+```javascript
+function lowestCommonAncestor(root, p, q) {
+    if (!root || root === p || root === q) return root;
+
+    const children = [];
+    for (const child of root.children) {
+        const result = lowestCommonAncestor(child, p, q);
+        if (result) children.push(result);
+    }
+
+    if (children.length === 2) return root;
+    if (children.length === 1) return children[0];
+    return null;
+}
+
+// Alternative approach with parent pointers
+function lcaWithParents(p, q) {
+    const ancestors = new Set();
+
+    // Collect all ancestors of p
+    let current = p;
+    while (current) {
+        ancestors.add(current);
+        current = current.parent;
+    }
+
+    // Find first common ancestor starting from q
+    current = q;
+    while (current) {
+        if (ancestors.has(current)) {
+            return current;
+        }
+        current = current.parent;
+    }
+
+    return null;
+}
+```
+
+---
+
+## Tree Modification Operations
+
+### 1. Clone/Copy Tree
+
+```javascript
+function cloneTree(root) {
+    if (!root) return null;
+
+    const cloned = new NaryTreeNode(root.val);
+
+    for (const child of root.children) {
+        cloned.children.push(cloneTree(child));
+    }
+
+    return cloned;
+}
+```
+
+### 2. Mirror/Flip Tree
+
+```javascript
+function mirrorTree(root) {
+    if (!root) return null;
+
+    // Reverse children array
+    root.children.reverse();
+
+    // Recursively mirror all children
+    for (const child of root.children) {
+        mirrorTree(child);
+    }
+
+    return root;
+}
+```
+
+### 3. Delete Node
+
+```javascript
+function deleteNode(root, target) {
+    if (!root) return null;
+
+    // If root is the target, we need special handling
+    if (root.val === target) {
+        // Return null if no children, or promote first child
+        return root.children.length > 0 ? root.children[0] : null;
+    }
+
+    function deleteHelper(node) {
+        if (!node) return;
+
+        // Check if any child needs to be deleted
+        for (let i = 0; i < node.children.length; i++) {
+            if (node.children[i].val === target) {
+                // Remove this child and add its children to current node
+                const grandChildren = node.children[i].children;
+                node.children.splice(i, 1, ...grandChildren);
+                return;
+            }
+        }
+
+        // Recursively delete in children
+        for (const child of node.children) {
+            deleteHelper(child);
+        }
+    }
+
+    deleteHelper(root);
+    return root;
+}
+```
+
+### 4. Insert Node
+
+```javascript
+function insertNode(root, parentVal, newVal) {
+    if (!root) return null;
+
+    if (root.val === parentVal) {
+        root.children.push(new NaryTreeNode(newVal));
+        return root;
+    }
+
+    for (const child of root.children) {
+        insertNode(child, parentVal, newVal);
+    }
+
+    return root;
+}
+```
+
+---
+
+## Serialization and Deserialization
+
+### 1. Serialize to String
+
+```javascript
+function serialize(root) {
+    if (!root) return "";
+
+    const result = [];
+
+    function preorder(node) {
+        if (!node) return;
+
+        result.push(node.val);
+        result.push(node.children.length); // Store number of children
+
+        for (const child of node.children) {
+            preorder(child);
+        }
+    }
+
+    preorder(root);
+    return result.join(',');
+}
+
+function deserialize(data) {
+    if (!data) return null;
+
+    const values = data.split(',').map(Number);
+    let index = 0;
+
+    function build() {
+        if (index >= values.length) return null;
+
+        const val = values[index++];
+        const childCount = values[index++];
+
+        const node = new NaryTreeNode(val);
+
+        for (let i = 0; i < childCount; i++) {
+            node.children.push(build());
+        }
+
+        return node;
+    }
+
+    return build();
+}
+```
+
+### 2. Level Order Serialization
+
+```javascript
+function serializeLevelOrder(root) {
+    if (!root) return "";
+
+    const result = [];
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const node = queue.shift();
+
+        if (node) {
+            result.push(node.val);
+            result.push(node.children.length);
+
+            for (const child of node.children) {
+                queue.push(child);
+            }
+        }
+    }
+
+    return result.join(',');
+}
+
+function deserializeLevelOrder(data) {
+    if (!data) return null;
+
+    const values = data.split(',').map(Number);
+    if (values.length < 2) return null;
+
+    const root = new NaryTreeNode(values[0]);
+    const queue = [root];
+    let i = 1;
+
+    while (queue.length > 0 && i < values.length) {
+        const node = queue.shift();
+        const childCount = values[i++];
+
+        for (let j = 0; j < childCount && i < values.length; j++) {
+            const child = new NaryTreeNode(values[i++]);
+            node.children.push(child);
+            queue.push(child);
+        }
+    }
+
+    return root;
+}
+```
+
+---
+
+## Advanced Tree Algorithms
+
+### 1. Tree Codec with Null Markers
+
+```javascript
+class CodecWithNull {
+    serialize(root) {
+        const result = [];
+
+        function preorder(node) {
+            if (!node) {
+                result.push('null');
+                return;
+            }
+
+            result.push(node.val);
+            result.push(node.children.length);
+
+            for (const child of node.children) {
+                preorder(child);
+            }
+        }
+
+        preorder(root);
+        return result.join(',');
+    }
+
+    deserialize(data) {
+        if (!data) return null;
+
+        const values = data.split(',');
+        let index = 0;
+
+        function build() {
+            if (index >= values.length || values[index] === 'null') {
+                index++;
+                return null;
+            }
+
+            const val = parseInt(values[index++]);
+            const childCount = parseInt(values[index++]);
+            const node = new NaryTreeNode(val);
+
+            for (let i = 0; i < childCount; i++) {
+                node.children.push(build());
+            }
+
+            return node;
+        }
+
+        return build();
+    }
+}
+```
+
+### 2. Tree Isomorphism
+
+```javascript
+function areTreesIsomorphic(root1, root2) {
+    if (!root1 && !root2) return true;
+    if (!root1 || !root2) return false;
+    if (root1.val !== root2.val) return false;
+    if (root1.children.length !== root2.children.length) return false;
+
+    // Try all permutations of children
+    return canMatchChildren(root1.children, root2.children);
+}
+
+function canMatchChildren(children1, children2) {
+    if (children1.length !== children2.length) return false;
+    if (children1.length === 0) return true;
+
+    const used = new Array(children2.length).fill(false);
+
+    function backtrack(index) {
+        if (index === children1.length) return true;
+
+        for (let i = 0; i < children2.length; i++) {
+            if (!used[i] && areTreesIsomorphic(children1[index], children2[i])) {
+                used[i] = true;
+                if (backtrack(index + 1)) return true;
+                used[i] = false;
+            }
+        }
+
+        return false;
+    }
+
+    return backtrack(0);
+}
+```
+
+### 3. Tree Validation
+
+```javascript
+// Check if tree is complete
+function isCompleteTree(root) {
+    if (!root) return true;
+
+    const queue = [root];
+    let foundNull = false;
+
+    while (queue.length > 0) {
+        const node = queue.shift();
+
+        if (!node) {
+            foundNull = true;
+        } else {
+            if (foundNull) return false;
+
+            for (const child of node.children) {
+                queue.push(child);
+            }
+
+            // Add null markers for missing positions if needed
+            queue.push(null);
+        }
+    }
+
+    return true;
+}
+
+// Check if tree is balanced
+function isBalanced(root) {
+    function checkBalance(node) {
+        if (!node) return 0;
+
+        const childHeights = [];
+        for (const child of node.children) {
+            const height = checkBalance(child);
+            if (height === -1) return -1;
+            childHeights.push(height);
+        }
+
+        if (childHeights.length > 0) {
+            const maxHeight = Math.max(...childHeights);
+            const minHeight = Math.min(...childHeights);
+            if (maxHeight - minHeight > 1) return -1;
+        }
+
+        return Math.max(0, ...childHeights) + 1;
+    }
+
+    return checkBalance(root) !== -1;
+}
+```
+
+---
+
+## Tree Comparison and Validation
+
+### 1. Same Tree Check
+
+```javascript
+function isSameTree(root1, root2) {
+    if (!root1 && !root2) return true;
+    if (!root1 || !root2) return false;
+    if (root1.val !== root2.val) return false;
+    if (root1.children.length !== root2.children.length) return false;
+
+    for (let i = 0; i < root1.children.length; i++) {
+        if (!isSameTree(root1.children[i], root2.children[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+### 2. Subtree Check
+
+```javascript
+function isSubtree(root, subRoot) {
+    if (!root) return !subRoot;
+
+    return isSameTree(root, subRoot) ||
+           root.children.some(child => isSubtree(child, subRoot));
+}
+```
+
+### 3. Symmetric Tree Check
+
+```javascript
+function isSymmetric(root) {
+    if (!root) return true;
+
+    function areSymmetric(left, right) {
+        if (!left && !right) return true;
+        if (!left || !right) return false;
+        if (left.val !== right.val) return false;
+        if (left.children.length !== right.children.length) return false;
+
+        const leftChildren = left.children;
+        const rightChildren = right.children;
+
+        for (let i = 0; i < leftChildren.length; i++) {
+            const j = rightChildren.length - 1 - i;
+            if (!areSymmetric(leftChildren[i], rightChildren[j])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return root.children.length % 2 === 0 &&
+           areSymmetric(root, root);
+}
+```
+
+---
+
+## Usage Examples
+
+```javascript
+console.log("=== N-ary Tree Algorithms Demo ===");
+
+// Create sample N-ary tree: [1,null,3,2,4,null,5,6]
+//       1
+//    /  |  \
+//   3   2   4
+//  / \
+// 5   6
+
+const root = new NaryTreeNode(1);
+const node3 = new NaryTreeNode(3);
+const node2 = new NaryTreeNode(2);
+const node4 = new NaryTreeNode(4);
+const node5 = new NaryTreeNode(5);
+const node6 = new NaryTreeNode(6);
+
+root.children = [node3, node2, node4];
+node3.children = [node5, node6];
+
+console.log("Tree structure:");
+printNaryTree(root);
+
+// Traversals
+console.log("Preorder traversal:", preorderRecursive(root));
+console.log("Postorder traversal:", postorderRecursive(root));
+console.log("Level order traversal:", levelOrder(root));
+console.log("Zigzag traversal:", zigzagLevelOrder(root));
+
+// Tree properties
+console.log("Max depth:", maxDepth(root));
+console.log("Min depth:", minDepth(root));
+console.log("Total nodes:", countNodes(root));
+console.log("Leaf nodes:", countLeaves(root));
+console.log("Tree diameter:", diameter(root));
+
+// Path finding
+console.log("Root to leaf paths:", rootToLeafPaths(root));
+console.log("Path to node 5:", findPath(root, 5));
+console.log("Has path sum 9:", hasPathSum(root, 9)); // 1->3->5
+console.log("All paths with sum 9:", pathSum(root, 9));
+
+// Serialization
+const codec = new CodecWithNull();
+const serialized = codec.serialize(root);
+console.log("Serialized:", serialized);
+const deserialized = codec.deserialize(serialized);
+console.log("Deserialized correctly:", isSameTree(root, deserialized));
+
+// Tree modifications
+const cloned = cloneTree(root);
+console.log("Cloned tree same as original:", isSameTree(root, cloned));
+
+const mirrored = mirrorTree(cloneTree(root));
+console.log("Mirrored tree preorder:", preorderRecursive(mirrored));
+```
+
+---
+
+## Time Complexity Summary
+
+| Algorithm | Time Complexity | Space Complexity | Use Case |
+|-----------|----------------|------------------|----------|
+| **Traversal Operations** |
+| Preorder Traversal | `O(n)` | `O(h)` | Tree processing, copying |
+| Postorder Traversal | `O(n)` | `O(h)` | Tree deletion, evaluation |
+| Level Order Traversal | `O(n)` | `O(w)` where w = max width | Level-wise processing |
+| Zigzag Traversal | `O(n)` | `O(w)` | Special display requirements |
+| **Tree Properties** |
+| Max/Min Depth | `O(n)` | `O(h)` | Tree height analysis |
+| Count Nodes | `O(n)` | `O(h)` | Size calculation |
+| Count Leaves | `O(n)` | `O(h)` | Leaf analysis |
+| Tree Diameter | `O(n²)` | `O(h)` | Longest path finding |
+| **Path Operations** |
+| Find All Paths | `O(n * 2^n)` | `O(n * 2^n)` | Path enumeration |
+| Find Path to Target | `O(n)` | `O(h)` | Path finding |
+| Path Sum | `O(n)` | `O(h)` | Sum validation |
+| Lowest Common Ancestor | `O(n)` | `O(h)` | Relationship finding |
+| **Tree Modifications** |
+| Clone Tree | `O(n)` | `O(n)` | Tree duplication |
+| Mirror Tree | `O(n)` | `O(h)` | Tree reflection |
+| Insert Node | `O(n)` | `O(h)` | Tree modification |
+| Delete Node | `O(n)` | `O(h)` | Tree modification |
+| **Serialization** |
+| Serialize | `O(n)` | `O(n)` | Tree storage |
+| Deserialize | `O(n)` | `O(n)` | Tree reconstruction |
+| **Advanced Operations** |
+| Tree Isomorphism | `O(n! * n)` | `O(n)` | Structure comparison |
+| Subtree Check | `O(n * m)` | `O(h)` | Pattern matching |
+| Symmetric Check | `O(n)` | `O(h)` | Symmetry validation |
+
+**Note:**
+- `n` = number of nodes
+- `h` = height of tree
+- `w` = maximum width of tree
+- `m` = size of subtree
+
+---
+
+## Common Patterns to Remember
+
+### 1. **Recursive Pattern**
+Most N-ary tree problems follow this structure:
+```javascript
+function processNaryTree(root) {
+    if (!root) return baseCase;
+
+    // Process current node
+    let result = processCurrentNode(root);
+
+    // Process all children
+    for (const child of root.children) {
+        const childResult = processNaryTree(child);
+        result = combineResults(result, childResult);
+    }
+
+    return result;
+}
+```
+
+### 2. **Level Order Pattern**
+For level-by-level processing:
+```javascript
+function levelOrderPattern(root) {
+    if (!root) return [];
+
+    const queue = [root];
+
+    while (queue.length > 0) {
+        const levelSize = queue.length;
+
+        for (let i = 0; i < levelSize; i++) {
+            const node = queue.shift();
+            // Process current node
+
+            for (const child of node.children) {
+                queue.push(child);
+            }
+        }
+    }
+}
+```
+
+### 3. **Path Tracking Pattern**
+For problems involving paths:
+```javascript
+function pathPattern(root, path = []) {
+    if (!root) return;
+
+    path.push(root.val);
+
+    if (isLeaf(root)) {
+        // Process complete path
+        processPath(path);
+    } else {
+        for (const child of root.children) {
+            pathPattern(child, path);
+        }
+    }
+
+    path.pop(); // Backtrack
+}
+```
+
+### 4. **Bottom-Up Pattern**
+For post-order processing:
+```javascript
+function bottomUpPattern(root) {
+    if (!root) return null;
+
+    // Process all children first
+    const childResults = [];
+    for (const child of root.children) {
+        childResults.push(bottomUpPattern(child));
+    }
+
+    // Process current node using child results
+    return processWithChildResults(root, childResults);
+}
+```
+
+### 5. **Serialization Pattern**
+For tree encoding/decoding:
+```javascript
+function serializePattern(root) {
+    if (!root) return "null";
+
+    const result = [root.val, root.children.length];
+
+    for (const child of root.children) {
+        result.push(serializePattern(child));
+    }
+
+    return result.join(',');
+}
+```
+
+---
+
+## Key Interview Tips
+
+### 1. **N-ary vs Binary Trees**
+Key differences to remember:
+- N-ary trees have variable number of children
+- Use `children` array instead of `left`/`right` pointers
+- Algorithms need to iterate through all children
+- Space complexity often depends on branching factor
+
+### 2. **Common Edge Cases**
+Always test with:
+```javascript
+// Empty tree
+const emptyTree = null;
+
+// Single node tree
+const singleNode = new NaryTreeNode(1);
+
+// Tree with only one child per node (like linked list)
+const chainTree = new NaryTreeNode(1);
+chainTree.children = [new NaryTreeNode(2)];
+chainTree.children[0].children = [new NaryTreeNode(3)];
+
+// Balanced tree with multiple children
+const balancedTree = new NaryTreeNode(1);
+balancedTree.children = [
+    new NaryTreeNode(2),
+    new NaryTreeNode(3),
+    new NaryTreeNode(4)
+];
+
+// Unbalanced tree
+const unbalancedTree = new NaryTreeNode(1);
+unbalancedTree.children = [new NaryTreeNode(2)];
+unbalancedTree.children[0].children = [
+    new NaryTreeNode(3),
+    new NaryTreeNode(4)
+];
+```
+
+### 3. **Memory Optimization**
+For large trees, consider:
+```javascript
+// Use iterative approaches to avoid stack overflow
+function iterativeTraversal(root) {
+    const stack = [root];
+
+    while (stack.length > 0) {
+        const node = stack.pop();
+        if (!node) continue;
+
+        // Process node
+
+        // Add children in reverse order for correct processing order
+        for (let i = node.children.length - 1; i >= 0; i--) {
+            stack.push(node.children[i]);
+        }
+    }
+}
+```
+
+### 4. **Children Array Manipulation**
+Common operations on children array:
+```javascript
+// Add child
+node.children.push(newChild);
+
+// Insert child at specific position
+node.children.splice(index, 0, newChild);
+
+// Remove child at index
+node.children.splice(index, 1);
+
+// Remove specific child
+const childIndex = node.children.indexOf(childToRemove);
+if (childIndex !== -1) {
+    node.children.splice(childIndex, 1);
+}
+
+// Reverse children (for mirroring)
+node.children.reverse();
+
+// Sort children by value
+node.children.sort((a, b) => a.val - b.val);
+```
+
+### 5. **Validation Techniques**
+```javascript
+// Validate tree structure
+function isValidNaryTree(root, visited = new Set()) {
+    if (!root) return true;
+
+    // Check for cycles
+    if (visited.has(root)) return false;
+    visited.add(root);
+
+    // Validate children
+    for (const child of root.children) {
+        if (!isValidNaryTree(child, visited)) {
+            return false;
+        }
+    }
+
+    visited.delete(root); // Allow node to be visited in different paths
+    return true;
+}
+```
+
+---
+
+## Practice Problems Categories
+
+### **Easy Level**
+- N-ary Tree Preorder Traversal
+- N-ary Tree Postorder Traversal
+- Maximum Depth of N-ary Tree
+- N-ary Tree Level Order Traversal
+- Find Root of N-Ary Tree
+
+### **Medium Level**
+- Encode and Decode N-ary Tree
+- Clone N-ary Tree
+- Diameter of N-Ary Tree
+- Serialize and Deserialize N-ary Tree
+- Lowest Common Ancestor of a N-ary Tree
+- Maximum Width of N-ary Tree
+
+### **Hard Level**
+- N-ary Tree Path Sum III
+- All Nodes Distance K in N-ary Tree
+- Vertical Order Traversal of N-ary Tree
+- N-ary Tree Isomorphism
+- Recover N-ary Tree from Preorder Traversal
+
+---
+
+## Advanced Topics for Further Study
+
+1. **Trie (Prefix Tree)** - Special case of N-ary tree
+2. **B-Trees and B+ Trees** - Database indexing
+3. **R-Trees** - Spatial data structures
+4. **Quadtrees and Octrees** - Spatial partitioning
+5. **Decision Trees** - Machine learning applications
+6. **Parse Trees** - Compiler design
+7. **File System Trees** - Directory structures
+8. **XML/HTML DOM Trees** - Document parsing
+
+---
+
+## Trie Implementation (Special N-ary Tree)
+
+Since Trie is a common special case of N-ary trees:
+
+```javascript
+class TrieNode {
+    constructor() {
+        this.children = new Map(); // Character -> TrieNode
+        this.isEndOfWord = false;
+    }
+}
+
+class Trie {
+    constructor() {
+        this.root = new TrieNode();
+    }
+
+    insert(word) {
+        let current = this.root;
+
+        for (const char of word) {
+            if (!current.children.has(char)) {
+                current.children.set(char, new TrieNode());
+            }
+            current = current.children.get(char);
+        }
+
+        current.isEndOfWord = true;
+    }
+
+    search(word) {
+        let current = this.root;
+
+        for (const char of word) {
+            if (!current.children.has(char)) {
+                return false;
+            }
+            current = current.children.get(char);
+        }
+
+        return current.isEndOfWord;
+    }
+
+    startsWith(prefix) {
+        let current = this.root;
+
+        for (const char of prefix) {
+            if (!current.children.has(char)) {
+                return false;
+            }
+            current = current.children.get(char);
+        }
+
+        return true;
+    }
+
+    getAllWords() {
+        const words = [];
+
+        function dfs(node, prefix) {
+            if (node.isEndOfWord) {
+                words.push(prefix);
+            }
+
+            for (const [char, childNode] of node.children) {
+                dfs(childNode, prefix + char);
+            }
+        }
+
+        dfs(this.root, "");
+        return words;
+    }
+}
+
+// Usage
+const trie = new Trie();
+trie.insert("apple");
+trie.insert("app");
+trie.insert("application");
+console.log("Search 'app':", trie.search("app")); // true
+console.log("Starts with 'app':", trie.startsWith("app")); // true
+console.log("All words:", trie.getAllWords());
+```
