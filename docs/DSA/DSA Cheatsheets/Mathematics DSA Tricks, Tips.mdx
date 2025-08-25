@@ -1,0 +1,1498 @@
+# Mathematics DSA Tricks, Tips & Patterns
+
+A comprehensive guide to mathematical techniques and patterns essential for Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Number Theory Fundamentals](#number-theory-fundamentals)
+2. [Modular Arithmetic](#modular-arithmetic)
+3. [Prime Numbers & Factorization](#prime-numbers--factorization)
+4. [GCD & LCM Techniques](#gcd--lcm-techniques)
+5. [Combinatorics & Probability](#combinatorics--probability)
+6. [Bit Manipulation Math](#bit-manipulation-math)
+7. [Mathematical Sequences](#mathematical-sequences)
+8. [Geometry & Coordinate Math](#geometry--coordinate-math)
+9. [Fast Exponentiation](#fast-exponentiation)
+10. [Matrix Operations](#matrix-operations)
+11. [Game Theory Basics](#game-theory-basics)
+12. [Common Mathematical Patterns](#common-mathematical-patterns)
+
+---
+
+## Number Theory Fundamentals
+
+### 1. Even/Odd Properties
+
+```javascript
+// Check if number is even/odd
+const isEven = (n) => n % 2 === 0;
+const isOdd = (n) => n % 2 !== 0;
+
+// Even ± Even = Even
+// Odd ± Odd = Even
+// Even ± Odd = Odd
+// Even × Any = Even
+// Odd × Odd = Odd
+
+// Sum of first n natural numbers
+const sumOfN = (n) => n * (n + 1) / 2;
+
+// Sum of first n odd numbers = n²
+const sumOfNOdds = (n) => n * n;
+
+// Sum of first n even numbers = n(n+1)
+const sumOfNEvens = (n) => n * (n + 1);
+```
+
+### 2. Divisibility Rules
+
+```javascript
+// Quick divisibility checks
+function isDivisible(n, d) {
+    const rules = {
+        2: n => n % 2 === 0,
+        3: n => sumOfDigits(n) % 3 === 0,
+        4: n => parseInt(String(n).slice(-2)) % 4 === 0,
+        5: n => n % 10 === 0 || n % 10 === 5,
+        6: n => n % 2 === 0 && sumOfDigits(n) % 3 === 0,
+        8: n => parseInt(String(n).slice(-3)) % 8 === 0,
+        9: n => sumOfDigits(n) % 9 === 0,
+        11: n => alternatingSum(n) % 11 === 0
+    };
+    return rules[d] ? rules[d](n) : n % d === 0;
+}
+
+function sumOfDigits(n) {
+    let sum = 0;
+    while (n > 0) {
+        sum += n % 10;
+        n = Math.floor(n / 10);
+    }
+    return sum;
+}
+
+function alternatingSum(n) {
+    let sum = 0, sign = 1;
+    while (n > 0) {
+        sum += sign * (n % 10);
+        sign *= -1;
+        n = Math.floor(n / 10);
+    }
+    return sum;
+}
+```
+
+### 3. Digital Root & Digit Manipulation
+
+```javascript
+// Digital root (repeated sum until single digit)
+function digitalRoot(n) {
+    if (n === 0) return 0;
+    return 1 + (n - 1) % 9;
+    // Alternative: while (n >= 10) n = sumOfDigits(n);
+}
+
+// Count digits
+const countDigits = (n) => String(Math.abs(n)).length;
+
+// Reverse number
+function reverseNumber(n) {
+    let result = 0;
+    while (n > 0) {
+        result = result * 10 + n % 10;
+        n = Math.floor(n / 10);
+    }
+    return result;
+}
+
+// Check palindrome number
+const isPalindromeNumber = (n) => n === reverseNumber(n);
+```
+
+---
+
+## Modular Arithmetic
+
+### 1. Basic Modular Operations
+
+```javascript
+// Modular addition/subtraction
+const modAdd = (a, b, mod) => ((a % mod) + (b % mod)) % mod;
+const modSub = (a, b, mod) => ((a % mod) - (b % mod) + mod) % mod;
+const modMul = (a, b, mod) => ((a % mod) * (b % mod)) % mod;
+
+// Handle negative numbers in modulo
+const safeMod = (a, mod) => ((a % mod) + mod) % mod;
+```
+
+### 2. Modular Exponentiation
+
+```javascript
+// Fast modular exponentiation: (base^exp) % mod
+function modPow(base, exp, mod) {
+    let result = 1;
+    base = base % mod;
+
+    while (exp > 0) {
+        if (exp % 2 === 1) {
+            result = (result * base) % mod;
+        }
+        exp = Math.floor(exp / 2);
+        base = (base * base) % mod;
+    }
+
+    return result;
+}
+
+// Power of 2 check using bit manipulation
+const isPowerOfTwo = (n) => n > 0 && (n & (n - 1)) === 0;
+```
+
+### 3. Modular Inverse
+
+```javascript
+// Extended Euclidean Algorithm
+function extendedGCD(a, b) {
+    if (a === 0) return [b, 0, 1];
+
+    const [gcd, x1, y1] = extendedGCD(b % a, a);
+    const x = y1 - Math.floor(b / a) * x1;
+    const y = x1;
+
+    return [gcd, x, y];
+}
+
+// Modular multiplicative inverse
+function modInverse(a, mod) {
+    const [gcd, x, y] = extendedGCD(a, mod);
+    if (gcd !== 1) return -1; // Inverse doesn't exist
+    return ((x % mod) + mod) % mod;
+}
+
+// Using Fermat's Little Theorem (when mod is prime)
+const modInverseFermat = (a, p) => modPow(a, p - 2, p);
+```
+
+---
+
+## Prime Numbers & Factorization
+
+### 1. Prime Checking & Generation
+
+```javascript
+// Optimized prime check
+function isPrime(n) {
+    if (n <= 1) return false;
+    if (n <= 3) return true;
+    if (n % 2 === 0 || n % 3 === 0) return false;
+
+    for (let i = 5; i * i <= n; i += 6) {
+        if (n % i === 0 || n % (i + 2) === 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Sieve of Eratosthenes
+function sieveOfEratosthenes(n) {
+    const primes = Array(n + 1).fill(true);
+    primes[0] = primes[1] = false;
+
+    for (let i = 2; i * i <= n; i++) {
+        if (primes[i]) {
+            for (let j = i * i; j <= n; j += i) {
+                primes[j] = false;
+            }
+        }
+    }
+
+    return primes.map((isPrime, num) => isPrime ? num : null)
+                 .filter(num => num !== null);
+}
+
+// Segmented Sieve for large ranges
+function segmentedSieve(left, right) {
+    const limit = Math.floor(Math.sqrt(right)) + 1;
+    const basePrimes = sieveOfEratosthenes(limit);
+
+    const size = right - left + 1;
+    const isPrime = Array(size).fill(true);
+
+    for (const prime of basePrimes) {
+        const start = Math.max(prime * prime, Math.ceil(left / prime) * prime);
+        for (let j = start; j <= right; j += prime) {
+            isPrime[j - left] = false;
+        }
+    }
+
+    const result = [];
+    for (let i = 0; i < size; i++) {
+        if (isPrime[i] && left + i > 1) {
+            result.push(left + i);
+        }
+    }
+
+    return result;
+}
+```
+
+### 2. Prime Factorization
+
+```javascript
+// Prime factorization
+function primeFactors(n) {
+    const factors = [];
+
+    // Check for 2
+    while (n % 2 === 0) {
+        factors.push(2);
+        n = Math.floor(n / 2);
+    }
+
+    // Check for odd factors
+    for (let i = 3; i * i <= n; i += 2) {
+        while (n % i === 0) {
+            factors.push(i);
+            n = Math.floor(n / i);
+        }
+    }
+
+    if (n > 2) factors.push(n);
+    return factors;
+}
+
+// Count divisors using prime factorization
+function countDivisors(n) {
+    let count = 1;
+
+    for (let i = 2; i * i <= n; i++) {
+        let power = 0;
+        while (n % i === 0) {
+            power++;
+            n = Math.floor(n / i);
+        }
+        count *= (power + 1);
+    }
+
+    if (n > 1) count *= 2;
+    return count;
+}
+
+// Sum of divisors
+function sumOfDivisors(n) {
+    let sum = 1;
+
+    for (let i = 2; i * i <= n; i++) {
+        let power = 0, temp = n;
+        while (temp % i === 0) {
+            power++;
+            temp = Math.floor(temp / i);
+        }
+
+        if (power > 0) {
+            sum *= (Math.pow(i, power + 1) - 1) / (i - 1);
+            n = temp;
+        }
+    }
+
+    if (n > 1) sum *= (n + 1);
+    return sum;
+}
+```
+
+---
+
+## GCD & LCM Techniques
+
+### 1. GCD Algorithms
+
+```javascript
+// Euclidean Algorithm
+function gcd(a, b) {
+    while (b !== 0) {
+        const temp = b;
+        b = a % b;
+        a = temp;
+    }
+    return a;
+}
+
+// Recursive GCD
+const gcdRecursive = (a, b) => b === 0 ? a : gcdRecursive(b, a % b);
+
+// GCD of array
+const gcdArray = (arr) => arr.reduce(gcd);
+
+// LCM using GCD
+const lcm = (a, b) => (a * b) / gcd(a, b);
+const lcmArray = (arr) => arr.reduce(lcm);
+
+// Binary GCD (Stein's Algorithm) - faster for large numbers
+function binaryGCD(a, b) {
+    if (a === b) return a;
+    if (a === 0) return b;
+    if (b === 0) return a;
+
+    if (~a & 1) {
+        if (b & 1) return binaryGCD(a >> 1, b);
+        else return binaryGCD(a >> 1, b >> 1) << 1;
+    }
+
+    if (~b & 1) return binaryGCD(a, b >> 1);
+
+    if (a > b) return binaryGCD((a - b) >> 1, b);
+    return binaryGCD((b - a) >> 1, a);
+}
+```
+
+### 2. Applications
+
+```javascript
+// Reduce fraction to lowest terms
+function reduceFraction(num, den) {
+    const g = gcd(num, den);
+    return [num / g, den / g];
+}
+
+// Check if two numbers are coprime
+const areCoprime = (a, b) => gcd(a, b) === 1;
+
+// Bezout's identity: ax + by = gcd(a,b)
+function extendedGCD(a, b) {
+    if (b === 0) return [a, 1, 0];
+
+    const [g, x1, y1] = extendedGCD(b, a % b);
+    return [g, y1, x1 - Math.floor(a / b) * y1];
+}
+```
+
+---
+
+## Combinatorics & Probability
+
+### 1. Basic Combinatorics
+
+```javascript
+// Factorial with memoization
+const factorialMemo = (() => {
+    const memo = [1, 1];
+    return function(n) {
+        if (memo[n] !== undefined) return memo[n];
+        for (let i = memo.length; i <= n; i++) {
+            memo[i] = memo[i - 1] * i;
+        }
+        return memo[n];
+    };
+})();
+
+// Modular factorial
+function factorialMod(n, mod) {
+    let result = 1;
+    for (let i = 1; i <= n; i++) {
+        result = (result * i) % mod;
+    }
+    return result;
+}
+
+// nCr - Combinations
+function nCr(n, r) {
+    if (r > n || r < 0) return 0;
+    if (r === 0 || r === n) return 1;
+
+    // Optimization: nCr = nC(n-r)
+    r = Math.min(r, n - r);
+
+    let result = 1;
+    for (let i = 0; i < r; i++) {
+        result = result * (n - i) / (i + 1);
+    }
+    return Math.round(result);
+}
+
+// nCr with modular arithmetic
+function nCrMod(n, r, mod) {
+    if (r > n || r < 0) return 0;
+    if (r === 0 || r === n) return 1;
+
+    const num = factorialMod(n, mod);
+    const den = modMul(factorialMod(r, mod), factorialMod(n - r, mod), mod);
+
+    return modMul(num, modInverse(den, mod), mod);
+}
+
+// nPr - Permutations
+function nPr(n, r) {
+    if (r > n || r < 0) return 0;
+
+    let result = 1;
+    for (let i = 0; i < r; i++) {
+        result *= (n - i);
+    }
+    return result;
+}
+
+// Pascal's Triangle row
+function pascalRow(n) {
+    const row = [1];
+    for (let i = 1; i <= n; i++) {
+        row.push(row[i - 1] * (n - i + 1) / i);
+    }
+    return row;
+}
+```
+
+### 2. Advanced Combinatorics
+
+```javascript
+// Catalan Numbers: C(n) = (2n)! / ((n+1)! * n!)
+function catalan(n) {
+    if (n <= 1) return 1;
+    return nCr(2 * n, n) / (n + 1);
+}
+
+// Derangements: !n = n! * Σ((-1)^k / k!) for k=0 to n
+function derangements(n) {
+    if (n === 0) return 1;
+    if (n === 1) return 0;
+
+    return (n - 1) * (derangements(n - 1) + derangements(n - 2));
+}
+
+// Stirling numbers of second kind: S(n,k)
+function stirling2(n, k) {
+    if (k === 0) return n === 0 ? 1 : 0;
+    if (k === 1 || k === n) return 1;
+    if (k > n) return 0;
+
+    return k * stirling2(n - 1, k) + stirling2(n - 1, k - 1);
+}
+
+// Bell numbers: B(n) = Σ S(n,k) for k=0 to n
+function bellNumber(n) {
+    let sum = 0;
+    for (let k = 0; k <= n; k++) {
+        sum += stirling2(n, k);
+    }
+    return sum;
+}
+```
+
+---
+
+## Bit Manipulation Math
+
+### 1. Bit Counting & Properties
+
+```javascript
+// Count set bits (Brian Kernighan's algorithm)
+function countSetBits(n) {
+    let count = 0;
+    while (n) {
+        n &= (n - 1); // Remove rightmost set bit
+        count++;
+    }
+    return count;
+}
+
+// Check if position i is set
+const isBitSet = (n, i) => (n & (1 << i)) !== 0;
+
+// Set bit at position i
+const setBit = (n, i) => n | (1 << i);
+
+// Clear bit at position i
+const clearBit = (n, i) => n & ~(1 << i);
+
+// Toggle bit at position i
+const toggleBit = (n, i) => n ^ (1 << i);
+
+// Get rightmost set bit
+const rightmostSetBit = (n) => n & (-n);
+
+// Check if power of 2
+const isPowerOf2 = (n) => n > 0 && (n & (n - 1)) === 0;
+
+// Next power of 2
+function nextPowerOf2(n) {
+    if (n <= 1) return 1;
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
+}
+```
+
+### 2. XOR Properties
+
+```javascript
+// XOR properties:
+// a ^ a = 0
+// a ^ 0 = a
+// XOR is commutative and associative
+
+// Find unique element in array where all others appear twice
+const findUnique = (arr) => arr.reduce((xor, num) => xor ^ num, 0);
+
+// Find two unique elements in array where all others appear twice
+function findTwoUnique(arr) {
+    const xorAll = arr.reduce((xor, num) => xor ^ num, 0);
+    const rightmostBit = xorAll & (-xorAll);
+
+    let num1 = 0, num2 = 0;
+    for (const num of arr) {
+        if (num & rightmostBit) {
+            num1 ^= num;
+        } else {
+            num2 ^= num;
+        }
+    }
+
+    return [num1, num2];
+}
+
+// XOR of range [1, n]
+function xorRange(n) {
+    const mod = n % 4;
+    if (mod === 0) return n;
+    if (mod === 1) return 1;
+    if (mod === 2) return n + 1;
+    return 0;
+}
+
+// XOR of range [a, b]
+const xorRangeAB = (a, b) => xorRange(b) ^ xorRange(a - 1);
+```
+
+---
+
+## Mathematical Sequences
+
+### 1. Fibonacci & Related
+
+```javascript
+// Fibonacci sequence
+function fibonacci(n) {
+    if (n <= 1) return n;
+
+    let a = 0, b = 1;
+    for (let i = 2; i <= n; i++) {
+        const temp = a + b;
+        a = b;
+        b = temp;
+    }
+    return b;
+}
+
+// Matrix exponentiation for Fibonacci (O(log n))
+function fibonacciMatrix(n) {
+    if (n <= 1) return n;
+
+    const matrix = [[1, 1], [1, 0]];
+    const result = matrixPower(matrix, n - 1);
+    return result[0][0];
+}
+
+function matrixMultiply(A, B) {
+    const result = [[0, 0], [0, 0]];
+    for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+            for (let k = 0; k < 2; k++) {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+    return result;
+}
+
+function matrixPower(matrix, n) {
+    if (n === 1) return matrix;
+
+    if (n % 2 === 0) {
+        const half = matrixPower(matrix, n / 2);
+        return matrixMultiply(half, half);
+    } else {
+        return matrixMultiply(matrix, matrixPower(matrix, n - 1));
+    }
+}
+
+// Check if number is Fibonacci
+function isFibonacci(n) {
+    return isPerfectSquare(5 * n * n + 4) || isPerfectSquare(5 * n * n - 4);
+}
+
+function isPerfectSquare(n) {
+    const sqrt = Math.floor(Math.sqrt(n));
+    return sqrt * sqrt === n;
+}
+```
+
+### 2. Other Important Sequences
+
+```javascript
+// Tribonacci: T(n) = T(n-1) + T(n-2) + T(n-3)
+function tribonacci(n) {
+    if (n === 0) return 0;
+    if (n <= 2) return 1;
+
+    let a = 0, b = 1, c = 1;
+    for (let i = 3; i <= n; i++) {
+        const temp = a + b + c;
+        a = b;
+        b = c;
+        c = temp;
+    }
+    return c;
+}
+
+// Arithmetic sequence sum: S = n/2 * (2a + (n-1)d)
+const arithmeticSum = (a, d, n) => n * (2 * a + (n - 1) * d) / 2;
+
+// Geometric sequence sum: S = a * (r^n - 1) / (r - 1)
+const geometricSum = (a, r, n) => r === 1 ? a * n : a * (Math.pow(r, n) - 1) / (r - 1);
+
+// Sum of squares: 1² + 2² + ... + n² = n(n+1)(2n+1)/6
+const sumOfSquares = (n) => n * (n + 1) * (2 * n + 1) / 6;
+
+// Sum of cubes: 1³ + 2³ + ... + n³ = [n(n+1)/2]²
+const sumOfCubes = (n) => {
+    const sum = n * (n + 1) / 2;
+    return sum * sum;
+};
+```
+
+---
+
+## Geometry & Coordinate Math
+
+### 1. 2D Geometry
+
+```javascript
+// Distance between two points
+const distance = (x1, y1, x2, y2) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
+// Area of triangle given three points
+function triangleArea(x1, y1, x2, y2, x3, y3) {
+    return Math.abs((x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2)) / 2);
+}
+
+// Check if three points are collinear
+function areCollinear(x1, y1, x2, y2, x3, y3) {
+    return triangleArea(x1, y1, x2, y2, x3, y3) === 0;
+}
+
+// Slope of line
+const slope = (x1, y1, x2, y2) => x2 === x1 ? Infinity : (y2 - y1) / (x2 - x1);
+
+// Point on line check
+function isPointOnLine(px, py, x1, y1, x2, y2) {
+    return areCollinear(px, py, x1, y1, x2, y2) &&
+           px >= Math.min(x1, x2) && px <= Math.max(x1, x2) &&
+           py >= Math.min(y1, y2) && py <= Math.max(y1, y2);
+}
+
+// Circle properties
+const circleArea = (r) => Math.PI * r * r;
+const circleCircumference = (r) => 2 * Math.PI * r;
+
+// Check if point is inside circle
+function isPointInCircle(px, py, cx, cy, r) {
+    return distance(px, py, cx, cy) <= r;
+}
+```
+
+### 2. Coordinate Transformations
+
+```javascript
+// Rotate point around origin
+function rotatePoint(x, y, angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [x * cos - y * sin, x * sin + y * cos];
+}
+
+// Reflect point across y = mx + b
+function reflectAcrossLine(px, py, m, b) {
+    const a = -m;
+    const c = -b;
+    const temp = a * a + 1;
+
+    const x = (px + a * py + a * c) / temp - a * (a * px - py - c) / temp;
+    const y = (a * px - py - c) / temp + (py + a * px + a * c) / temp;
+
+    return [x, y];
+}
+
+// Manhattan distance
+const manhattanDistance = (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2);
+
+// Chebyshev distance
+const chebyshevDistance = (x1, y1, x2, y2) => Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
+```
+
+---
+
+## Fast Exponentiation
+
+### 1. Binary Exponentiation
+
+```javascript
+// Fast exponentiation: a^n
+function fastPower(base, exp) {
+    if (exp === 0) return 1;
+    if (exp === 1) return base;
+
+    let result = 1;
+    while (exp > 0) {
+        if (exp % 2 === 1) {
+            result *= base;
+        }
+        base *= base;
+        exp = Math.floor(exp / 2);
+    }
+    return result;
+}
+
+// Matrix exponentiation for recurrence relations
+function matrixPowerMod(matrix, n, mod) {
+    const size = matrix.length;
+    let result = Array(size).fill().map(() => Array(size).fill(0));
+
+    // Initialize identity matrix
+    for (let i = 0; i < size; i++) {
+        result[i][i] = 1;
+    }
+
+    while (n > 0) {
+        if (n % 2 === 1) {
+            result = matrixMultiplyMod(result, matrix, mod);
+        }
+        matrix = matrixMultiplyMod(matrix, matrix, mod);
+        n = Math.floor(n / 2);
+    }
+
+    return result;
+}
+
+function matrixMultiplyMod(A, B, mod) {
+    const size = A.length;
+    const result = Array(size).fill().map(() => Array(size).fill(0));
+
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            for (let k = 0; k < size; k++) {
+                result[i][j] = (result[i][j] + A[i][k] * B[k][j]) % mod;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Matrix Operations
+
+### 1. Basic Matrix Operations
+
+```javascript
+// Matrix multiplication
+function matrixMultiply(A, B) {
+    const rows = A.length;
+    const cols = B[0].length;
+    const common = B.length;
+
+    const result = Array(rows).fill().map(() => Array(cols).fill(0));
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+            for (let k = 0; k < common; k++) {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+
+    return result;
+}
+
+// Matrix determinant (2x2)
+const det2x2 = (matrix) => matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+
+// Matrix transpose
+function transpose(matrix) {
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+
+    return Array(cols).fill().map((_, i) =>
+        Array(rows).fill().map((_, j) => matrix[j][i])
+    );
+}
+```
+
+---
+
+## Game Theory Basics
+
+### 1. Nim Game & Grundy Numbers
+
+```javascript
+// Nim game: XOR of all pile sizes
+function nimSum(piles) {
+    return piles.reduce((xor, pile) => xor ^ pile, 0);
+}
+
+// Winning position in Nim
+const isWinningNim = (piles) => nimSum(piles) !== 0;
+
+// Grundy number calculation
+function grundyNumber(n, moves) {
+    if (n === 0) return 0;
+
+    const reachable = new Set();
+    for (const move of moves) {
+        if (n >= move) {
+            reachable.add(grundyNumber(n - move, moves));
+        }
+    }
+
+    // Find mex (minimum excludant)
+    let mex = 0;
+    while (reachable.has(mex)) {
+        mex++;
+    }
+
+    return mex;
+}
+```
+
+---
+
+## Common Mathematical Patterns
+
+### 1. Pattern Recognition
+
+```javascript
+// Sum patterns
+const patterns = {
+    // 1 + 2 + ... + n = n(n+1)/2
+    triangular: n => n * (n + 1) / 2,
+
+    // 1² + 2² + ... + n² = n(n+1)(2n+1)/6
+    squares: n => n * (n + 1) * (2 * n + 1) / 6,
+
+    // 1³ + 2³ + ... + n³ = [n(n+1)/2]²
+    cubes: n => {
+        const sum = n * (n + 1) / 2;
+        return sum * sum;
+    },
+
+    // 1×2 + 2×3 + ... + n×(n+1) = n(n+1)(n+2)/3
+    consecutive: n => n * (n + 1) * (n + 2) / 3,
+
+    // Powers of 2: 1 + 2 + 4 + ... + 2^n = 2^(n+1) - 1
+    powersOf2: n => Math.pow(2, n + 1) - 1
+};
+
+// Check if number follows pattern
+function isTriangular(num) {
+    // n(n+1)/2 = num => n² + n - 2num = 0
+    // n = (-1 + √(1 + 8num)) / 2
+    const discriminant = 1 + 8 * num;
+    const sqrt = Math.sqrt(discriminant);
+    return sqrt === Math.floor(sqrt) && (sqrt - 1) % 2 === 0;
+}
+
+function isPentagonal(num) {
+    // n(3n-1)/2 = num => 3n² - n - 2num = 0
+    // n = (1 + √(1 + 24num)) / 6
+    const discriminant = 1 + 24 * num;
+    const sqrt = Math.sqrt(discriminant);
+    return sqrt === Math.floor(sqrt) && (sqrt - 1) % 6 === 0;
+}
+
+function isHexagonal(num) {
+    // n(2n-1) = num => 2n² - n - num = 0
+    // n = (1 + √(1 + 8num)) / 4
+    const discriminant = 1 + 8 * num;
+    const sqrt = Math.sqrt(discriminant);
+    return sqrt === Math.floor(sqrt) && (sqrt - 1) % 4 === 0;
+}
+```
+
+### 2. Mathematical Sequences & Series
+
+```javascript
+// Harmonic series: 1 + 1/2 + 1/3 + ... + 1/n
+function harmonicSum(n) {
+    let sum = 0;
+    for (let i = 1; i <= n; i++) {
+        sum += 1 / i;
+    }
+    return sum;
+}
+
+// Alternating harmonic series: 1 - 1/2 + 1/3 - 1/4 + ...
+function alternatingHarmonicSum(n) {
+    let sum = 0;
+    for (let i = 1; i <= n; i++) {
+        sum += Math.pow(-1, i - 1) / i;
+    }
+    return sum;
+}
+
+// Sum of arithmetic-geometric series
+function arithmeticGeometricSum(a, d, r, n) {
+    if (r === 1) return n * a + d * n * (n - 1) / 2;
+
+    const numerator = a * (1 - Math.pow(r, n)) + d * r * (1 - n * Math.pow(r, n - 1) + (n - 1) * Math.pow(r, n));
+    const denominator = Math.pow(1 - r, 2);
+
+    return numerator / denominator;
+}
+
+// Generating functions for sequences
+function fibonacciGeneratingFunction(x, terms) {
+    // F(x) = x / (1 - x - x²)
+    const coefficients = [];
+    coefficients[0] = 0;
+    coefficients[1] = 1;
+
+    for (let i = 2; i < terms; i++) {
+        coefficients[i] = coefficients[i - 1] + coefficients[i - 2];
+    }
+
+    return coefficients;
+}
+```
+
+### 3. Number Theory Applications
+
+```javascript
+// Euler's totient function φ(n)
+function eulerTotient(n) {
+    let result = n;
+
+    for (let i = 2; i * i <= n; i++) {
+        if (n % i === 0) {
+            while (n % i === 0) {
+                n = Math.floor(n / i);
+            }
+            result -= Math.floor(result / i);
+        }
+    }
+
+    if (n > 1) result -= Math.floor(result / n);
+    return result;
+}
+
+// Mobius function μ(n)
+function mobiusFunction(n) {
+    if (n === 1) return 1;
+
+    const factors = primeFactors(n);
+    const uniqueFactors = [...new Set(factors)];
+
+    // If n has squared prime factor, μ(n) = 0
+    if (factors.length !== uniqueFactors.length) return 0;
+
+    // μ(n) = (-1)^k where k is number of prime factors
+    return Math.pow(-1, uniqueFactors.length);
+}
+
+// Wilson's theorem: (p-1)! ≡ -1 (mod p) for prime p
+function wilsonTheorem(p) {
+    if (!isPrime(p)) return false;
+
+    let factorial = 1;
+    for (let i = 1; i < p; i++) {
+        factorial = (factorial * i) % p;
+    }
+
+    return factorial === p - 1;
+}
+
+// Fermat's little theorem: a^(p-1) ≡ 1 (mod p) for prime p
+function fermatLittleTheorem(a, p) {
+    if (!isPrime(p) || gcd(a, p) !== 1) return false;
+    return modPow(a, p - 1, p) === 1;
+}
+```
+
+### 4. Advanced Mathematical Tricks
+
+```javascript
+// Chinese Remainder Theorem
+function chineseRemainderTheorem(remainders, moduli) {
+    const n = remainders.length;
+    let result = 0;
+    let product = 1;
+
+    for (let i = 0; i < n; i++) {
+        product *= moduli[i];
+    }
+
+    for (let i = 0; i < n; i++) {
+        const partialProduct = Math.floor(product / moduli[i]);
+        result += remainders[i] * partialProduct * modInverse(partialProduct, moduli[i]);
+        result %= product;
+    }
+
+    return result;
+}
+
+// Miller-Rabin primality test (probabilistic)
+function millerRabinTest(n, k = 5) {
+    if (n === 2 || n === 3) return true;
+    if (n < 2 || n % 2 === 0) return false;
+
+    // Write n-1 as 2^r * d
+    let r = 0;
+    let d = n - 1;
+    while (d % 2 === 0) {
+        d = Math.floor(d / 2);
+        r++;
+    }
+
+    // Witness loop
+    for (let i = 0; i < k; i++) {
+        const a = 2 + Math.floor(Math.random() * (n - 4));
+        let x = modPow(a, d, n);
+
+        if (x === 1 || x === n - 1) continue;
+
+        let composite = true;
+        for (let j = 0; j < r - 1; j++) {
+            x = modPow(x, 2, n);
+            if (x === n - 1) {
+                composite = false;
+                break;
+            }
+        }
+
+        if (composite) return false;
+    }
+
+    return true;
+}
+
+// Pollard's rho algorithm for factorization
+function pollardRho(n) {
+    if (n % 2 === 0) return 2;
+
+    let x = 2, y = 2, d = 1;
+
+    const f = (x) => (x * x + 1) % n;
+
+    while (d === 1) {
+        x = f(x);
+        y = f(f(y));
+        d = gcd(Math.abs(x - y), n);
+    }
+
+    return d === n ? -1 : d;
+}
+```
+
+### 5. Optimization Techniques
+
+```javascript
+// Binary search for mathematical functions
+function binarySearchMath(left, right, target, func, epsilon = 1e-9) {
+    while (right - left > epsilon) {
+        const mid = (left + right) / 2;
+        const value = func(mid);
+
+        if (value < target) {
+            left = mid;
+        } else {
+            right = mid;
+        }
+    }
+
+    return (left + right) / 2;
+}
+
+// Ternary search for unimodal functions
+function ternarySearch(left, right, func, maximize = true, epsilon = 1e-9) {
+    while (right - left > epsilon) {
+        const m1 = left + (right - left) / 3;
+        const m2 = right - (right - left) / 3;
+
+        const val1 = func(m1);
+        const val2 = func(m2);
+
+        if (maximize) {
+            if (val1 < val2) {
+                left = m1;
+            } else {
+                right = m2;
+            }
+        } else {
+            if (val1 > val2) {
+                left = m1;
+            } else {
+                right = m2;
+            }
+        }
+    }
+
+    return (left + right) / 2;
+}
+
+// Golden section search
+function goldenSectionSearch(a, b, func, epsilon = 1e-9) {
+    const phi = (1 + Math.sqrt(5)) / 2;
+    const resphi = 2 - phi;
+
+    let x1 = a + resphi * (b - a);
+    let x2 = b - resphi * (b - a);
+    let f1 = func(x1);
+    let f2 = func(x2);
+
+    while (Math.abs(b - a) > epsilon) {
+        if (f1 > f2) {
+            b = x2;
+            x2 = x1;
+            f2 = f1;
+            x1 = a + resphi * (b - a);
+            f1 = func(x1);
+        } else {
+            a = x1;
+            x1 = x2;
+            f1 = f2;
+            x2 = b - resphi * (b - a);
+            f2 = func(x2);
+        }
+    }
+
+    return (a + b) / 2;
+}
+```
+
+---
+
+## Advanced Problem-Solving Patterns
+
+### 1. Mathematical Transformations
+
+```javascript
+// Transform problems to simpler forms
+const transformations = {
+    // Sum of products: Σ(ai * bi) using dot product
+    dotProduct: (a, b) => a.reduce((sum, val, i) => sum + val * b[i], 0),
+
+    // Convert multiplication to addition using logs
+    logMultiply: (a, b) => Math.exp(Math.log(a) + Math.log(b)),
+
+    // Use roots of unity for cyclic problems
+    rootsOfUnity: (n) => Array.from({length: n}, (_, k) => ({
+        real: Math.cos(2 * Math.PI * k / n),
+        imag: Math.sin(2 * Math.PI * k / n)
+    })),
+
+    // Transform coordinates for rotation problems
+    rotateCoords: (points, angle) => points.map(([x, y]) => {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return [x * cos - y * sin, x * sin + y * cos];
+    })
+};
+
+// Inclusion-exclusion principle
+function inclusionExclusion(sets) {
+    const n = sets.length;
+    let result = 0;
+
+    for (let mask = 1; mask < (1 << n); mask++) {
+        let intersection = new Set(sets[0]);
+        let bits = 0;
+
+        for (let i = 0; i < n; i++) {
+            if (mask & (1 << i)) {
+                intersection = new Set([...intersection].filter(x => sets[i].has(x)));
+                bits++;
+            }
+        }
+
+        result += Math.pow(-1, bits - 1) * intersection.size;
+    }
+
+    return result;
+}
+```
+
+### 2. Mathematical Invariants
+
+```javascript
+// Find invariants in problems
+const invariants = {
+    // Parity invariant
+    checkParity: (arr) => arr.reduce((sum, val) => sum + val, 0) % 2,
+
+    // Sum invariant
+    sumInvariant: (arr) => arr.reduce((sum, val) => sum + val, 0),
+
+    // Product invariant (useful in transformation problems)
+    productInvariant: (arr) => arr.reduce((prod, val) => prod * val, 1),
+
+    // Modular invariant
+    modularInvariant: (arr, mod) => arr.reduce((sum, val) => (sum + val) % mod, 0),
+
+    // XOR invariant
+    xorInvariant: (arr) => arr.reduce((xor, val) => xor ^ val, 0)
+};
+
+// Check if transformation preserves invariant
+function preservesInvariant(initial, final, invariantFunc) {
+    return invariantFunc(initial) === invariantFunc(final);
+}
+```
+
+### 3. Mathematical Induction Patterns
+
+```javascript
+// Templates for induction proofs
+const inductionPatterns = {
+    // Strong induction base cases
+    strongInductionBase: (n, baseValues) => {
+        if (n < baseValues.length) return baseValues[n];
+        return null;
+    },
+
+    // Prove divisibility by induction
+    divisibilityInduction: (n, divisor, formula) => {
+        if (n === 1) return formula(1) % divisor === 0;
+        return (formula(n) - formula(n - 1)) % divisor === 0;
+    },
+
+    // Inequality induction
+    inequalityInduction: (n, lhs, rhs) => {
+        // Base case
+        if (n === 1) return lhs(1) <= rhs(1);
+
+        // Inductive step: if P(k) then P(k+1)
+        // Usually requires proving lhs(k+1) - lhs(k) <= rhs(k+1) - rhs(k)
+        return true; // Implementation depends on specific problem
+    }
+};
+```
+
+---
+
+## Contest Math Shortcuts
+
+### 1. Quick Calculation Tricks
+
+```javascript
+// Fast mental math techniques
+const quickCalc = {
+    // Multiply by 11: (a*10 + b)*11 = a*110 + b*11 = a*100 + (a+b)*10 + b
+    multiplyBy11: (n) => {
+        const digits = String(n).split('').map(Number);
+        const result = [];
+        let carry = 0;
+
+        result.unshift((digits[digits.length - 1] + carry) % 10);
+        carry = Math.floor((digits[digits.length - 1] + carry) / 10);
+
+        for (let i = digits.length - 2; i >= 0; i--) {
+            const sum = digits[i] + digits[i + 1] + carry;
+            result.unshift(sum % 10);
+            carry = Math.floor(sum / 10);
+        }
+
+        if (carry > 0) result.unshift(carry);
+        return parseInt(result.join(''));
+    },
+
+    // Square numbers ending in 5: (10a + 5)² = 100a(a+1) + 25
+    squareEndingIn5: (n) => {
+        const a = Math.floor(n / 10);
+        return a * (a + 1) * 100 + 25;
+    },
+
+    // Divisibility by 9: sum of digits divisible by 9
+    divisibleBy9: (n) => sumOfDigits(n) % 9 === 0,
+
+    // Check if sum of digits is divisible by 3
+    divisibleBy3: (n) => sumOfDigits(n) % 3 === 0,
+
+    // Fast percentage calculations
+    percentage: (num, percent) => {
+        if (percent === 10) return num / 10;
+        if (percent === 25) return num / 4;
+        if (percent === 50) return num / 2;
+        return (num * percent) / 100;
+    }
+};
+
+// Vedic mathematics techniques
+const vedic = {
+    // All from 9 and last from 10 (for subtraction from powers of 10)
+    allFrom9LastFrom10: (n) => {
+        const digits = String(n).split('').map(Number);
+        const result = [];
+
+        for (let i = 0; i < digits.length - 1; i++) {
+            result.push(9 - digits[i]);
+        }
+        result.push(10 - digits[digits.length - 1]);
+
+        return parseInt(result.join(''));
+    },
+
+    // Vertically and crosswise multiplication
+    verticalCrosswise: (a, b) => {
+        // For 2-digit numbers: (10x + y)(10u + v) = 100xu + 10(xv + yu) + yv
+        if (a < 100 && b < 100) {
+            const x = Math.floor(a / 10), y = a % 10;
+            const u = Math.floor(b / 10), v = b % 10;
+
+            return 100 * x * u + 10 * (x * v + y * u) + y * v;
+        }
+        return a * b;
+    }
+};
+```
+
+### 2. Pattern Recognition Shortcuts
+
+```javascript
+// Common contest patterns
+const contestPatterns = {
+    // Stars and bars: distribute n identical objects into k bins
+    starsAndBars: (n, k) => nCr(n + k - 1, k - 1),
+
+    // Pigeonhole principle applications
+    pigeonhole: (objects, holes) => Math.ceil(objects / holes),
+
+    // Catalan number applications (parentheses, binary trees, etc.)
+    catalanApplications: {
+        parentheses: n => catalan(n),
+        binaryTrees: n => catalan(n),
+        triangulations: n => catalan(n - 2),
+        pathsInGrid: (n) => catalan(n) // Dyck paths
+    },
+
+    // Derangement applications
+    derangementProblems: {
+        hatCheck: n => derangements(n),
+        secretSanta: n => derangements(n)
+    }
+};
+
+// Mathematical competition formulas
+const competitionFormulas = {
+    // Sum of first n terms of AP: S = n/2[2a + (n-1)d]
+    apSum: (n, a, d) => n * (2 * a + (n - 1) * d) / 2,
+
+    // Sum of first n terms of GP: S = a(rⁿ - 1)/(r - 1)
+    gpSum: (n, a, r) => a * (Math.pow(r, n) - 1) / (r - 1),
+
+    // Number of divisors: if n = p₁^a₁ × p₂^a₂ × ... then d(n) = (a₁+1)(a₂+1)...
+    numDivisors: (primeFactorization) => {
+        return Object.values(primeFactorization).reduce((prod, exp) => prod * (exp + 1), 1);
+    },
+
+    // Legendre's formula: highest power of prime p dividing n!
+    legendreFormula: (n, p) => {
+        let power = 0;
+        let pk = p;
+        while (pk <= n) {
+            power += Math.floor(n / pk);
+            pk *= p;
+        }
+        return power;
+    }
+};
+```
+
+---
+
+## Usage Examples & Practice Problems
+
+```javascript
+console.log("=== Mathematical DSA Techniques Demo ===");
+
+// Number theory examples
+console.log("GCD(48, 18):", gcd(48, 18));
+console.log("LCM(12, 15):", lcm(12, 15));
+console.log("Is 17 prime?", isPrime(17));
+console.log("Prime factors of 60:", primeFactors(60));
+
+// Modular arithmetic
+console.log("2^10 mod 1000:", modPow(2, 10, 1000));
+console.log("Modular inverse of 3 mod 11:", modInverse(3, 11));
+
+// Combinatorics
+console.log("C(10, 3):", nCr(10, 3));
+console.log("P(10, 3):", nPr(10, 3));
+console.log("5th Catalan number:", catalan(5));
+
+// Sequences
+console.log("10th Fibonacci:", fibonacci(10));
+console.log("Sum of first 10 squares:", sumOfSquares(10));
+console.log("Is 15 triangular?", isTriangular(15));
+
+// Bit manipulation
+console.log("Count set bits in 25:", countSetBits(25));
+console.log("Is 16 power of 2?", isPowerOf2(16));
+console.log("XOR of [1,2,2,3,3]:", findUnique([1, 2, 2, 3, 3]));
+
+// Advanced techniques
+console.log("Euler's totient φ(12):", eulerTotient(12));
+console.log("Digital root of 789:", digitalRoot(789));
+
+// Geometry
+console.log("Distance (0,0) to (3,4):", distance(0, 0, 3, 4));
+console.log("Triangle area (0,0), (3,0), (0,4):", triangleArea(0, 0, 3, 0, 0, 4));
+```
+
+---
+
+## Time Complexity Reference
+
+| Algorithm | Time Complexity | Space Complexity | Notes |
+|-----------|----------------|------------------|-------|
+| GCD (Euclidean) | O(log min(a,b)) | O(1) | Very efficient |
+| Prime Check | O(√n) | O(1) | Can be optimized |
+| Sieve of Eratosthenes | O(n log log n) | O(n) | Batch prime generation |
+| Modular Exponentiation | O(log n) | O(1) | Essential for large numbers |
+| Matrix Exponentiation | O(k³ log n) | O(k²) | k = matrix dimension |
+| Fast Fibonacci | O(log n) | O(1) | Using matrix exponentiation |
+| Prime Factorization | O(√n) | O(log n) | Can be optimized with precomputed primes |
+| Chinese Remainder Theorem | O(n²) | O(1) | n = number of moduli |
+
+---
+
+## Key Problem-Solving Strategies
+
+### 1. **Mathematical Insight Recognition**
+- Look for patterns in small cases
+- Consider mathematical properties (parity, divisibility, modular arithmetic)
+- Transform the problem into a known mathematical form
+
+### 2. **Optimization Techniques**
+- Use precomputation when possible (factorials, primes, etc.)
+- Apply mathematical shortcuts and identities
+- Consider approximations for very large numbers
+
+### 3. **Common Pitfalls to Avoid**
+- Integer overflow (use modular arithmetic)
+- Floating point precision errors
+- Off-by-one errors in combinatorial formulas
+- Not handling edge cases (n=0, n=1)
+
+### 4. **Contest-Specific Tips**
+- Memorize common formulas and constants
+- Practice mental math for quick calculations
+- Use mathematical properties to simplify problems
+- Always check if the answer fits in the required data type
+
+This comprehensive guide covers the essential mathematical techniques and patterns you'll encounter in competitive programming and technical interviews. Master these concepts to solve complex problems efficiently!
+
+---
