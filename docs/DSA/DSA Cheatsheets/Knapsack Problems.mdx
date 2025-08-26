@@ -1236,3 +1236,306 @@ for (let i = n; i > 0 && w > 0; i--) {
 5. **DP table design**: Think about state representation
 6. **Edge cases**: Zero capacity, no items, negative values
 7. **Optimization**: Meet-in-middle for n ≤ 40, branch-and-bound for exact solutions
+
+# Essential DP Knapsack Patterns & Tricks
+
+## 🎯 Core Decision Framework
+
+### Choice: Skip or Take Current Number
+
+**If elements are 0/1 choice (bounded):**
+```javascript
+// Take and move to next element (can't reuse)
+const skip = dfs(i + 1, t);
+const take = dfs(i + 1, t - nums[i]);
+```
+
+**If elements are unbounded:**
+```javascript
+// Take and stay at same index (can reuse)
+const skip = dfs(i + 1, t);
+const take = dfs(i, t - nums[i]);
+```
+
+## 🔄 Bottom-Up DP Patterns
+
+### Knapsack 0/1 (Bounded)
+```javascript
+function subsetSum01(nums, target) {
+  const dp = Array(target + 1).fill(false);
+  dp[0] = true; // sum 0 always possible
+
+  for (let num of nums) {
+    // BACKWARD loop prevents reuse of same element
+    for (let t = target; t >= num; t--) {
+      dp[t] = dp[t] || dp[t - num];
+    }
+  }
+  return dp[target];
+}
+```
+
+### Knapsack Unbounded
+```javascript
+function subsetSumUnbounded(nums, target) {
+  const dp = Array(target + 1).fill(false);
+  dp[0] = true; // sum 0 always possible
+
+  for (let num of nums) {
+    // FORWARD loop allows reuse of same element
+    for (let t = num; t <= target; t++) {
+      dp[t] = dp[t] || dp[t - num];
+    }
+  }
+  return dp[target];
+}
+```
+
+## 🔑 Memory Trick (Bottom-Up)
+- **0/1 (bounded) → loop `t` BACKWARDS → ensures each number used once**
+- **Unbounded → loop `t` FORWARDS → allows reusing same number multiple times**
+
+## 📊 Counting Ways: Combinations vs Permutations
+
+### Combinations (Order Doesn't Matter)
+
+**Bottom-Up:**
+```javascript
+function countUnboundedSubsetSum(nums, target) {
+  const dp = Array(target + 1).fill(0);
+  dp[0] = 1; // one way to make 0
+
+  // Outer loop nums → inner loop target = COMBINATIONS
+  for (let num of nums) {
+    for (let t = num; t <= target; t++) {
+      dp[t] += dp[t - num];
+    }
+  }
+  return dp[target];
+}
+
+console.log(countUnboundedSubsetSum([3, 4, 5], 7));   // 1 → (3+4)
+console.log(countUnboundedSubsetSum([3, 4, 5], 11));  // 2 → (3+3+5), (4+4+3)
+console.log(countUnboundedSubsetSum([3, 4, 5], 2));   // 0
+```
+
+**Top-Down:**
+```javascript
+function countCombinations(nums, target) {
+  const memo = new Map();
+
+  function dfs(i, t) {
+    if (t === 0) return 1;
+    if (i >= nums.length || t < 0) return 0;
+
+    const key = `${i},${t}`;
+    if (memo.has(key)) return memo.get(key);
+
+    // Choice: skip current num OR take it (stay at i because unbounded)
+    let ways = dfs(i + 1, t);       // skip
+    ways += dfs(i, t - nums[i]);    // take (reuse allowed)
+
+    memo.set(key, ways);
+    return ways;
+  }
+
+  return dfs(0, target);
+}
+
+console.log(countCombinations([3, 4, 5], 7));   // 1 → {3+4}
+console.log(countCombinations([3, 4, 5], 11));  // 2 → {3+3+5}, {4+4+3}
+```
+
+### Permutations (Order Matters)
+
+**Bottom-Up:**
+```javascript
+function countPermutations(nums, target) {
+  const dp = Array(target + 1).fill(0);
+  dp[0] = 1;
+
+  // Outer loop target → inner loop nums = PERMUTATIONS
+  for (let t = 1; t <= target; t++) {
+    for (let num of nums) {
+      if (t >= num) {
+        dp[t] += dp[t - num];
+      }
+    }
+  }
+  return dp[target];
+}
+
+console.log(countPermutations([3, 4, 5], 7));   // 2 → [3,4], [4,3]
+console.log(countPermutations([3, 4, 5], 11));  // 4 → [3,3,5], [3,5,3], [5,3,3], [4,4,3]
+```
+
+**Top-Down:**
+```javascript
+function countPermutations(nums, target) {
+  const memo = new Map();
+
+  function dfs(t) {
+    if (t === 0) return 1;
+    if (t < 0) return 0;
+    if (memo.has(t)) return memo.get(t);
+
+    let ways = 0;
+    for (let num of nums) {
+      ways += dfs(t - num); // restart loop for each num
+    }
+
+    memo.set(t, ways);
+    return ways;
+  }
+
+  return dfs(target);
+}
+```
+
+**👉 Key Difference:** No index `i` — we try all nums every time, so [3,4] and [4,3] are treated differently.
+
+## ⚡ Loop Order Rules
+
+- **Outer loop nums → inner loop target = COMBINATIONS**
+- **Outer loop target → inner loop nums = PERMUTATIONS**
+
+## 🔄 Mapping Bottom-Up to Top-Down
+
+- **Combinations:** Recursion keeps index `i` (progress through nums)
+- **Permutations:** Recursion loops through all nums at each step
+
+## 🎒 Classic Knapsack with Weight & Value
+
+### 0/1 Knapsack
+```javascript
+function knapsack01(weights, values, capacity) {
+  const n = weights.length;
+  const dp = Array(n + 1).fill(null).map(() => Array(capacity + 1).fill(0));
+
+  for (let i = 1; i <= n; i++) {
+    for (let w = 0; w <= capacity; w++) {
+      // Don't take item i-1
+      dp[i][w] = dp[i-1][w];
+
+      // Take item i-1 if it fits
+      if (w >= weights[i-1]) {
+        dp[i][w] = Math.max(dp[i][w], dp[i-1][w - weights[i-1]] + values[i-1]);
+      }
+    }
+  }
+
+  return dp[n][capacity];
+}
+```
+
+### Unbounded Knapsack
+```javascript
+function knapsackUnbounded(weights, values, capacity) {
+  const dp = Array(capacity + 1).fill(0);
+
+  for (let w = 1; w <= capacity; w++) {
+    for (let i = 0; i < weights.length; i++) {
+      if (w >= weights[i]) {
+        dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+      }
+    }
+  }
+
+  return dp[capacity];
+}
+```
+
+## 🔍 Additional Optimization Tricks
+
+### Space Optimization (0/1 Knapsack)
+```javascript
+function knapsack01Optimized(weights, values, capacity) {
+  const dp = Array(capacity + 1).fill(0);
+
+  for (let i = 0; i < weights.length; i++) {
+    // BACKWARD to avoid using updated values
+    for (let w = capacity; w >= weights[i]; w--) {
+      dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+    }
+  }
+
+  return dp[capacity];
+}
+```
+
+### Path Reconstruction
+```javascript
+function knapsackWithPath(weights, values, capacity) {
+  const n = weights.length;
+  const dp = Array(n + 1).fill(null).map(() => Array(capacity + 1).fill(0));
+
+  // Fill DP table
+  for (let i = 1; i <= n; i++) {
+    for (let w = 0; w <= capacity; w++) {
+      dp[i][w] = dp[i-1][w];
+      if (w >= weights[i-1]) {
+        dp[i][w] = Math.max(dp[i][w], dp[i-1][w - weights[i-1]] + values[i-1]);
+      }
+    }
+  }
+
+  // Reconstruct path
+  const path = [];
+  let i = n, w = capacity;
+  while (i > 0 && w > 0) {
+    if (dp[i][w] !== dp[i-1][w]) {
+      path.push(i-1);
+      w -= weights[i-1];
+    }
+    i--;
+  }
+
+  return { maxValue: dp[n][capacity], items: path.reverse() };
+}
+```
+
+## 🏷️ Common DP State Patterns
+
+### Two Parameters (i, target)
+```javascript
+// Most knapsack problems
+function dfs(i, target) {
+  // Base cases
+  // Choices: skip vs take
+}
+```
+
+### One Parameter (target only)
+```javascript
+// Unbounded problems, coin change
+function dfs(target) {
+  // Try all possible choices
+  for (let choice of choices) {
+    // recurse with target - choice
+  }
+}
+```
+
+### Three Parameters (i, j, target)
+```javascript
+// Two arrays/strings problems
+function dfs(i, j, target) {
+  // Process both arrays simultaneously
+}
+```
+
+## 💡 Problem Recognition Patterns
+
+- **"Exact sum"** → Subset sum (boolean)
+- **"Number of ways"** → Count combinations/permutations
+- **"Maximum value with weight limit"** → 0/1 or unbounded knapsack
+- **"Minimum coins"** → Unbounded knapsack (minimize count)
+- **"Can partition"** → Subset sum with target = sum/2
+
+## ⚠️ Common Pitfalls
+
+1. **Loop direction matters:** Forward vs backward for bounded/unbounded
+2. **Memoization key:** Include all changing parameters
+3. **Base cases:** Handle edge cases (target=0, empty array)
+4. **Integer overflow:** Use appropriate data types for large sums
+5. **Index bounds:** Check array boundaries in recursive solutions
