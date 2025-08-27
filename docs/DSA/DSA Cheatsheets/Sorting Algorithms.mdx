@@ -1,0 +1,1607 @@
+# Sorting Algorithms
+
+A comprehensive guide to essential sorting algorithms for Data Structures and Algorithms interviews.
+
+## Table of Contents
+
+1. [Merge Sort](#merge-sort)
+2. [Quick Sort](#quick-sort)
+3. [Cyclic Sort](#cyclic-sort)
+4. [Counting Sort](#counting-sort)
+5. [Bucket Sort](#bucket-sort)
+6. [Problem Patterns & Applications](#problem-patterns--applications)
+7. [Comparison & When to Use](#comparison--when-to-use)
+8. [Advanced Problems](#advanced-problems)
+9. [Implementation Tips](#implementation-tips)
+
+---
+
+## Merge Sort
+
+### Overview
+
+Merge Sort is a stable, divide-and-conquer sorting algorithm that consistently performs in O(n log n) time. It works by recursively dividing the array into smaller subarrays, sorting them, and then merging them back together in sorted order.
+
+### When to Use Merge Sort
+
+✅ **Perfect for:**
+- When stability is required (maintains relative order of equal elements)
+- Large datasets where worst-case performance matters
+- Linked lists (no random access needed)
+- External sorting (sorting data that doesn't fit in memory)
+- When guaranteed O(n log n) performance is needed
+- Parallel processing scenarios
+
+❌ **Not suitable for:**
+- Small arrays (overhead of recursion)
+- Memory-constrained environments (requires O(n) extra space)
+- When in-place sorting is mandatory
+
+### Basic Implementation
+
+```javascript
+function mergeSort(arr) {
+    // Base case: arrays with 1 or 0 elements are already sorted
+    if (arr.length <= 1) {
+        return arr;
+    }
+
+    // Divide
+    const mid = Math.floor(arr.length / 2);
+    const left = arr.slice(0, mid);
+    const right = arr.slice(mid);
+
+    // Conquer (recursively sort both halves)
+    const sortedLeft = mergeSort(left);
+    const sortedRight = mergeSort(right);
+
+    // Combine
+    return merge(sortedLeft, sortedRight);
+}
+
+function merge(left, right) {
+    let result = [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+
+    // Merge the two sorted arrays
+    while (leftIndex < left.length && rightIndex < right.length) {
+        if (left[leftIndex] <= right[rightIndex]) {
+            result.push(left[leftIndex]);
+            leftIndex++;
+        } else {
+            result.push(right[rightIndex]);
+            rightIndex++;
+        }
+    }
+
+    // Add remaining elements
+    while (leftIndex < left.length) {
+        result.push(left[leftIndex]);
+        leftIndex++;
+    }
+
+    while (rightIndex < right.length) {
+        result.push(right[rightIndex]);
+        rightIndex++;
+    }
+
+    return result;
+}
+
+// Example usage
+console.log(mergeSort([64, 34, 25, 12, 22, 11, 90])); // [11, 12, 22, 25, 34, 64, 90]
+```
+
+**Time Complexity:** O(n log n) - all cases | **Space Complexity:** O(n)
+
+### In-Place Merge Sort (Space Optimized)
+
+```javascript
+function mergeSortInPlace(arr, left = 0, right = arr.length - 1) {
+    if (left < right) {
+        const mid = Math.floor((left + right) / 2);
+
+        // Sort both halves
+        mergeSortInPlace(arr, left, mid);
+        mergeSortInPlace(arr, mid + 1, right);
+
+        // Merge the sorted halves
+        mergeInPlace(arr, left, mid, right);
+    }
+
+    return arr;
+}
+
+function mergeInPlace(arr, left, mid, right) {
+    // Create temporary arrays for left and right subarrays
+    const leftArr = arr.slice(left, mid + 1);
+    const rightArr = arr.slice(mid + 1, right + 1);
+
+    let leftIndex = 0;
+    let rightIndex = 0;
+    let mergedIndex = left;
+
+    // Merge back into original array
+    while (leftIndex < leftArr.length && rightIndex < rightArr.length) {
+        if (leftArr[leftIndex] <= rightArr[rightIndex]) {
+            arr[mergedIndex] = leftArr[leftIndex];
+            leftIndex++;
+        } else {
+            arr[mergedIndex] = rightArr[rightIndex];
+            rightIndex++;
+        }
+        mergedIndex++;
+    }
+
+    // Copy remaining elements
+    while (leftIndex < leftArr.length) {
+        arr[mergedIndex] = leftArr[leftIndex];
+        leftIndex++;
+        mergedIndex++;
+    }
+
+    while (rightIndex < rightArr.length) {
+        arr[mergedIndex] = rightArr[rightIndex];
+        rightIndex++;
+        mergedIndex++;
+    }
+}
+```
+
+### Iterative Merge Sort (Bottom-Up)
+
+```javascript
+function mergeSortIterative(arr) {
+    const n = arr.length;
+
+    // Start with subarrays of size 1, then 2, 4, 8, ...
+    for (let size = 1; size < n; size *= 2) {
+        // Pick starting point of left subarray
+        for (let start = 0; start < n - 1; start += 2 * size) {
+            // Calculate mid and end points
+            const mid = Math.min(start + size - 1, n - 1);
+            const end = Math.min(start + 2 * size - 1, n - 1);
+
+            // Merge subarrays arr[start...mid] and arr[mid+1...end]
+            if (mid < end) {
+                mergeInPlace(arr, start, mid, end);
+            }
+        }
+    }
+
+    return arr;
+}
+```
+
+### Merge Sort for Linked Lists
+
+```javascript
+function mergeSortLinkedList(head) {
+    // Base case
+    if (!head || !head.next) {
+        return head;
+    }
+
+    // Find middle and split
+    const middle = findMiddle(head);
+    const rightHalf = middle.next;
+    middle.next = null;
+
+    // Recursively sort both halves
+    const left = mergeSortLinkedList(head);
+    const right = mergeSortLinkedList(rightHalf);
+
+    // Merge sorted halves
+    return mergeTwoSortedLists(left, right);
+}
+
+function findMiddle(head) {
+    let slow = head;
+    let fast = head;
+    let prev = null;
+
+    while (fast && fast.next) {
+        prev = slow;
+        slow = slow.next;
+        fast = fast.next.next;
+    }
+
+    return prev;
+}
+
+function mergeTwoSortedLists(l1, l2) {
+    const dummy = new ListNode(0);
+    let current = dummy;
+
+    while (l1 && l2) {
+        if (l1.val <= l2.val) {
+            current.next = l1;
+            l1 = l1.next;
+        } else {
+            current.next = l2;
+            l2 = l2.next;
+        }
+        current = current.next;
+    }
+
+    current.next = l1 || l2;
+    return dummy.next;
+}
+```
+
+### Merge Sort Applications
+
+#### 1. Count Inversions
+
+```javascript
+function countInversions(arr) {
+    let invCount = 0;
+
+    function mergeSortAndCount(arr, temp, left, right) {
+        if (left < right) {
+            const mid = Math.floor((left + right) / 2);
+
+            invCount += mergeSortAndCount(arr, temp, left, mid);
+            invCount += mergeSortAndCount(arr, temp, mid + 1, right);
+            invCount += mergeAndCount(arr, temp, left, mid, right);
+        }
+        return invCount;
+    }
+
+    function mergeAndCount(arr, temp, left, mid, right) {
+        let i = left, j = mid + 1, k = left;
+        let invCount = 0;
+
+        while (i <= mid && j <= right) {
+            if (arr[i] <= arr[j]) {
+                temp[k++] = arr[i++];
+            } else {
+                temp[k++] = arr[j++];
+                invCount += (mid - i + 1); // All elements from i to mid are greater than arr[j]
+            }
+        }
+
+        while (i <= mid) temp[k++] = arr[i++];
+        while (j <= right) temp[k++] = arr[j++];
+
+        for (let i = left; i <= right; i++) {
+            arr[i] = temp[i];
+        }
+
+        return invCount;
+    }
+
+    const temp = new Array(arr.length);
+    return mergeSortAndCount(arr, temp, 0, arr.length - 1);
+}
+```
+
+#### 2. Merge K Sorted Arrays
+
+```javascript
+function mergeKSortedArrays(arrays) {
+    if (!arrays || arrays.length === 0) return [];
+
+    while (arrays.length > 1) {
+        const mergedArrays = [];
+
+        for (let i = 0; i < arrays.length; i += 2) {
+            const arr1 = arrays[i];
+            const arr2 = i + 1 < arrays.length ? arrays[i + 1] : [];
+            mergedArrays.push(merge(arr1, arr2));
+        }
+
+        arrays = mergedArrays;
+    }
+
+    return arrays[0];
+}
+```
+
+---
+
+## Quick Sort
+
+### Overview
+
+Quick Sort is an efficient, in-place, divide-and-conquer sorting algorithm. It works by selecting a 'pivot' element and partitioning the array around the pivot, then recursively sorting the subarrays.
+
+### When to Use Quick Sort
+
+✅ **Perfect for:**
+- General-purpose sorting (most common choice)
+- In-place sorting (O(log n) space complexity)
+- Average case performance matters more than worst case
+- When randomized performance is acceptable
+- Large datasets with good pivot selection
+- Cache-efficient sorting
+
+❌ **Not suitable for:**
+- When stability is required
+- When worst-case O(n²) is unacceptable
+- Nearly sorted data (without randomization)
+- When guaranteed performance is critical
+
+### Basic Implementation (Lomuto Partition)
+
+```javascript
+function quickSort(arr, low = 0, high = arr.length - 1) {
+    if (low < high) {
+        // Partition the array and get pivot index
+        const pivotIndex = partition(arr, low, high);
+
+        // Recursively sort elements before and after partition
+        quickSort(arr, low, pivotIndex - 1);
+        quickSort(arr, pivotIndex + 1, high);
+    }
+
+    return arr;
+}
+
+function partition(arr, low, high) {
+    // Choose rightmost element as pivot
+    const pivot = arr[high];
+    let i = low - 1; // Index of smaller element
+
+    for (let j = low; j < high; j++) {
+        // If current element is smaller than or equal to pivot
+        if (arr[j] <= pivot) {
+            i++;
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    // Place pivot in correct position
+    [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+    return i + 1;
+}
+
+// Example usage
+console.log(quickSort([64, 34, 25, 12, 22, 11, 90])); // [11, 12, 22, 25, 34, 64, 90]
+```
+
+**Time Complexity:**
+- Average: O(n log n)
+- Worst: O(n²)
+- Best: O(n log n)
+
+**Space Complexity:** O(log n) average, O(n) worst case
+
+### Hoare Partition Scheme
+
+```javascript
+function quickSortHoare(arr, low = 0, high = arr.length - 1) {
+    if (low < high) {
+        const pivotIndex = hoarePartition(arr, low, high);
+
+        quickSortHoare(arr, low, pivotIndex);
+        quickSortHoare(arr, pivotIndex + 1, high);
+    }
+
+    return arr;
+}
+
+function hoarePartition(arr, low, high) {
+    const pivot = arr[low];
+    let i = low - 1;
+    let j = high + 1;
+
+    while (true) {
+        // Find element on left that should be on right
+        do {
+            i++;
+        } while (arr[i] < pivot);
+
+        // Find element on right that should be on left
+        do {
+            j--;
+        } while (arr[j] > pivot);
+
+        // If elements crossed, partitioning is done
+        if (i >= j) {
+            return j;
+        }
+
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+}
+```
+
+### Randomized Quick Sort
+
+```javascript
+function randomizedQuickSort(arr, low = 0, high = arr.length - 1) {
+    if (low < high) {
+        // Randomly select pivot to avoid worst case
+        const randomPivot = low + Math.floor(Math.random() * (high - low + 1));
+        [arr[randomPivot], arr[high]] = [arr[high], arr[randomPivot]];
+
+        const pivotIndex = partition(arr, low, high);
+
+        randomizedQuickSort(arr, low, pivotIndex - 1);
+        randomizedQuickSort(arr, pivotIndex + 1, high);
+    }
+
+    return arr;
+}
+```
+
+### 3-Way Quick Sort (Dutch National Flag)
+
+Perfect for arrays with many duplicate elements:
+
+```javascript
+function quickSort3Way(arr, low = 0, high = arr.length - 1) {
+    if (low < high) {
+        const [lt, gt] = partition3Way(arr, low, high);
+
+        quickSort3Way(arr, low, lt - 1);
+        quickSort3Way(arr, gt + 1, high);
+    }
+
+    return arr;
+}
+
+function partition3Way(arr, low, high) {
+    const pivot = arr[low];
+    let i = low;
+    let lt = low;      // arr[low...lt-1] < pivot
+    let gt = high + 1; // arr[gt...high] > pivot
+
+    while (i < gt) {
+        if (arr[i] < pivot) {
+            [arr[lt], arr[i]] = [arr[i], arr[lt]];
+            lt++;
+            i++;
+        } else if (arr[i] > pivot) {
+            gt--;
+            [arr[i], arr[gt]] = [arr[gt], arr[i]];
+            // Don't increment i, as we need to examine the swapped element
+        } else {
+            i++; // arr[i] == pivot
+        }
+    }
+
+    return [lt, gt];
+}
+```
+
+### Iterative Quick Sort
+
+```javascript
+function quickSortIterative(arr) {
+    const stack = [];
+    stack.push({ low: 0, high: arr.length - 1 });
+
+    while (stack.length > 0) {
+        const { low, high } = stack.pop();
+
+        if (low < high) {
+            const pivotIndex = partition(arr, low, high);
+
+            // Push left and right subarrays to stack
+            stack.push({ low: low, high: pivotIndex - 1 });
+            stack.push({ low: pivotIndex + 1, high: high });
+        }
+    }
+
+    return arr;
+}
+```
+
+### Quick Sort Applications
+
+#### 1. Quick Select (Find Kth Smallest Element)
+
+```javascript
+function quickSelect(arr, k) {
+    // Convert to 0-indexed
+    k = k - 1;
+
+    function quickSelectHelper(arr, low, high, k) {
+        if (low === high) {
+            return arr[low];
+        }
+
+        const pivotIndex = partition(arr, low, high);
+
+        if (k === pivotIndex) {
+            return arr[k];
+        } else if (k < pivotIndex) {
+            return quickSelectHelper(arr, low, pivotIndex - 1, k);
+        } else {
+            return quickSelectHelper(arr, pivotIndex + 1, high, k);
+        }
+    }
+
+    return quickSelectHelper(arr.slice(), 0, arr.length - 1, k);
+}
+
+// Example: Find 3rd smallest element
+console.log(quickSelect([7, 10, 4, 3, 20, 15], 3)); // 7
+```
+
+**Time Complexity:** O(n) average, O(n²) worst case
+
+#### 2. Find Top K Elements
+
+```javascript
+function findTopKElements(arr, k) {
+    function quickSelectTopK(arr, low, high, k) {
+        if (low <= high) {
+            const pivotIndex = partitionDescending(arr, low, high);
+
+            if (pivotIndex === k - 1) {
+                return arr.slice(0, k);
+            } else if (pivotIndex < k - 1) {
+                return quickSelectTopK(arr, pivotIndex + 1, high, k);
+            } else {
+                return quickSelectTopK(arr, low, pivotIndex - 1, k);
+            }
+        }
+    }
+
+    return quickSelectTopK(arr.slice(), 0, arr.length - 1, k);
+}
+
+function partitionDescending(arr, low, high) {
+    const pivot = arr[high];
+    let i = low - 1;
+
+    for (let j = low; j < high; j++) {
+        if (arr[j] >= pivot) { // Note: >= for descending order
+            i++;
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+    return i + 1;
+}
+```
+
+#### 3. Sort Colors (3-Way Partitioning)
+
+```javascript
+function sortColors(nums) {
+    let low = 0;      // Boundary for 0s
+    let mid = 0;      // Current element
+    let high = nums.length - 1; // Boundary for 2s
+
+    while (mid <= high) {
+        if (nums[mid] === 0) {
+            [nums[low], nums[mid]] = [nums[mid], nums[low]];
+            low++;
+            mid++;
+        } else if (nums[mid] === 1) {
+            mid++;
+        } else { // nums[mid] === 2
+            [nums[mid], nums[high]] = [nums[high], nums[mid]];
+            high--;
+            // Don't increment mid, as we need to examine the swapped element
+        }
+    }
+
+    return nums;
+}
+```
+
+### Optimizations
+
+#### 1. Hybrid Quick Sort (with Insertion Sort for small arrays)
+
+```javascript
+function hybridQuickSort(arr, low = 0, high = arr.length - 1) {
+    const INSERTION_SORT_THRESHOLD = 10;
+
+    if (low < high) {
+        if (high - low + 1 < INSERTION_SORT_THRESHOLD) {
+            insertionSort(arr, low, high);
+        } else {
+            const pivotIndex = partition(arr, low, high);
+            hybridQuickSort(arr, low, pivotIndex - 1);
+            hybridQuickSort(arr, pivotIndex + 1, high);
+        }
+    }
+
+    return arr;
+}
+
+function insertionSort(arr, low, high) {
+    for (let i = low + 1; i <= high; i++) {
+        let key = arr[i];
+        let j = i - 1;
+
+        while (j >= low && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+
+        arr[j + 1] = key;
+    }
+}
+```
+
+#### 2. Median-of-Three Pivot Selection
+
+```javascript
+function medianOfThree(arr, low, high) {
+    const mid = Math.floor((low + high) / 2);
+
+    // Sort low, mid, high
+    if (arr[mid] < arr[low]) {
+        [arr[low], arr[mid]] = [arr[mid], arr[low]];
+    }
+    if (arr[high] < arr[low]) {
+        [arr[low], arr[high]] = [arr[high], arr[low]];
+    }
+    if (arr[high] < arr[mid]) {
+        [arr[mid], arr[high]] = [arr[high], arr[mid]];
+    }
+
+    // Place median at end as pivot
+    [arr[mid], arr[high]] = [arr[high], arr[mid]];
+
+    return arr[high];
+}
+
+function quickSortMedianOfThree(arr, low = 0, high = arr.length - 1) {
+    if (low < high) {
+        medianOfThree(arr, low, high);
+        const pivotIndex = partition(arr, low, high);
+
+        quickSortMedianOfThree(arr, low, pivotIndex - 1);
+        quickSortMedianOfThree(arr, pivotIndex + 1, high);
+    }
+
+    return arr;
+}
+```
+
+---
+
+## Cyclic Sort
+
+### Overview
+
+Cyclic Sort is an in-place sorting algorithm that works perfectly when dealing with arrays containing numbers in a given range (usually 1 to n or 0 to n-1). It's based on the idea that we can place each number at its correct index directly.
+
+### When to Use Cyclic Sort
+
+✅ **Perfect for:**
+- Arrays with numbers in range [1, n] or [0, n-1]
+- Finding missing numbers
+- Finding duplicate numbers
+- Problems requiring O(1) space complexity
+- When array elements represent indices
+
+❌ **Not suitable for:**
+- Arrays with arbitrary ranges
+- Arrays with many duplicates outside the expected range
+- When stability is required
+
+### Core Algorithm
+
+```javascript
+function cyclicSort(nums) {
+    let i = 0;
+
+    while (i < nums.length) {
+        const correctIndex = nums[i] - 1; // For 1-indexed numbers
+
+        if (nums[i] !== nums[correctIndex]) {
+            // Swap current element to its correct position
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    return nums;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+### Cyclic Sort Variations
+
+#### For 0-indexed arrays (numbers 0 to n-1)
+
+```javascript
+function cyclicSortZeroIndexed(nums) {
+    let i = 0;
+
+    while (i < nums.length) {
+        const correctIndex = nums[i]; // For 0-indexed numbers
+
+        if (nums[i] !== nums[correctIndex]) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    return nums;
+}
+```
+
+### Cyclic Sort Problems
+
+#### 1. Find Missing Number
+
+**Problem:** Given an array containing n distinct numbers taken from 0 to n, find the missing number.
+
+```javascript
+function findMissingNumber(nums) {
+    let i = 0;
+    const n = nums.length;
+
+    // Cyclic sort for numbers 0 to n-1
+    while (i < n) {
+        if (nums[i] < n && nums[i] !== nums[nums[i]]) {
+            [nums[i], nums[nums[i]]] = [nums[nums[i]], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    // Find the missing number
+    for (let i = 0; i < n; i++) {
+        if (nums[i] !== i) {
+            return i;
+        }
+    }
+
+    return n; // If all numbers 0 to n-1 are present
+}
+
+// Example usage
+console.log(findMissingNumber([3, 0, 1])); // Output: 2
+console.log(findMissingNumber([0, 1])); // Output: 2
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(1)
+
+#### 2. Find All Missing Numbers
+
+```javascript
+function findAllMissingNumbers(nums) {
+    const missing = [];
+    let i = 0;
+
+    // Cyclic sort
+    while (i < nums.length) {
+        const correctIndex = nums[i] - 1;
+        if (nums[i] > 0 && nums[i] <= nums.length && nums[i] !== nums[correctIndex]) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    // Find all missing numbers
+    for (let i = 0; i < nums.length; i++) {
+        if (nums[i] !== i + 1) {
+            missing.push(i + 1);
+        }
+    }
+
+    return missing;
+}
+
+// Example usage
+console.log(findAllMissingNumbers([4, 3, 2, 7, 8, 2, 3, 1])); // Output: [5, 6]
+```
+
+#### 3. Find Duplicate Number
+
+```javascript
+function findDuplicate(nums) {
+    let i = 0;
+
+    while (i < nums.length) {
+        const correctIndex = nums[i] - 1;
+        if (nums[i] !== nums[correctIndex]) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    // Find the duplicate
+    for (let i = 0; i < nums.length; i++) {
+        if (nums[i] !== i + 1) {
+            return nums[i];
+        }
+    }
+
+    return -1;
+}
+```
+
+#### 4. First Missing Positive
+
+**Problem:** Find the smallest missing positive integer.
+
+```javascript
+function firstMissingPositive(nums) {
+    const n = nums.length;
+
+    // Cyclic sort for positive numbers
+    for (let i = 0; i < n; i++) {
+        while (nums[i] > 0 && nums[i] <= n && nums[nums[i] - 1] !== nums[i]) {
+            [nums[nums[i] - 1], nums[i]] = [nums[i], nums[nums[i] - 1]];
+        }
+    }
+
+    // Find first missing positive
+    for (let i = 0; i < n; i++) {
+        if (nums[i] !== i + 1) {
+            return i + 1;
+        }
+    }
+
+    return n + 1;
+}
+
+// Example usage
+console.log(firstMissingPositive([1, 2, 0])); // Output: 3
+console.log(firstMissingPositive([3, 4, -1, 1])); // Output: 2
+```
+
+---
+
+## Counting Sort
+
+### Overview
+
+Counting Sort is a non-comparison based sorting algorithm that works by counting the number of objects having distinct key values. It's particularly efficient when the range of potential items (k) is not significantly greater than the number of items (n).
+
+### When to Use Counting Sort
+
+✅ **Perfect for:**
+- Small range of integers (k is small)
+- When stability is required
+- Frequency counting problems
+- Character sorting (ASCII range)
+- Age sorting, grade sorting
+
+❌ **Not suitable for:**
+- Large range of values (k >> n)
+- Floating-point numbers
+- Objects without integer keys
+- Memory-constrained environments
+
+### Basic Implementation
+
+```javascript
+function countingSort(arr, maxValue = null) {
+    if (!maxValue) {
+        maxValue = Math.max(...arr);
+    }
+
+    const count = new Array(maxValue + 1).fill(0);
+    const output = new Array(arr.length);
+
+    // Count occurrences
+    for (let i = 0; i < arr.length; i++) {
+        count[arr[i]]++;
+    }
+
+    // Transform count array to actual positions
+    for (let i = 1; i <= maxValue; i++) {
+        count[i] += count[i - 1];
+    }
+
+    // Build output array (stable sorting)
+    for (let i = arr.length - 1; i >= 0; i--) {
+        output[count[arr[i]] - 1] = arr[i];
+        count[arr[i]]--;
+    }
+
+    return output;
+}
+
+// Example usage
+console.log(countingSort([4, 2, 2, 8, 3, 3, 1])); // [1, 2, 2, 3, 3, 4, 8]
+```
+
+**Time Complexity:** O(n + k) | **Space Complexity:** O(k)
+where k is the range of input values.
+
+### Counting Sort for Negative Numbers
+
+```javascript
+function countingSortWithNegatives(arr) {
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+    const range = max - min + 1;
+
+    const count = new Array(range).fill(0);
+    const output = new Array(arr.length);
+
+    // Count occurrences (shift by min)
+    for (let i = 0; i < arr.length; i++) {
+        count[arr[i] - min]++;
+    }
+
+    // Transform count array
+    for (let i = 1; i < range; i++) {
+        count[i] += count[i - 1];
+    }
+
+    // Build output array
+    for (let i = arr.length - 1; i >= 0; i--) {
+        output[count[arr[i] - min] - 1] = arr[i];
+        count[arr[i] - min]--;
+    }
+
+    return output;
+}
+```
+
+### Counting Sort Problems
+
+#### 1. Sort Colors (Dutch National Flag)
+
+```javascript
+function sortColors(nums) {
+    const count = [0, 0, 0];
+
+    // Count colors
+    for (const num of nums) {
+        count[num]++;
+    }
+
+    // Fill array
+    let index = 0;
+    for (let color = 0; color < 3; color++) {
+        for (let i = 0; i < count[color]; i++) {
+            nums[index++] = color;
+        }
+    }
+
+    return nums;
+}
+```
+
+#### 2. Character Frequency Sort
+
+```javascript
+function frequencySort(s) {
+    const count = {};
+
+    // Count characters
+    for (const char of s) {
+        count[char] = (count[char] || 0) + 1;
+    }
+
+    // Sort by frequency
+    const sorted = Object.entries(count)
+        .sort((a, b) => b[1] - a[1]);
+
+    // Build result
+    let result = '';
+    for (const [char, freq] of sorted) {
+        result += char.repeat(freq);
+    }
+
+    return result;
+}
+```
+
+---
+
+## Bucket Sort
+
+### Overview
+
+Bucket Sort distributes elements into a number of buckets, sorts each bucket individually, then concatenates the sorted buckets. It's most effective when input is uniformly distributed over a range.
+
+### When to Use Bucket Sort
+
+✅ **Perfect for:**
+- Uniformly distributed data
+- Floating-point numbers in range [0, 1)
+- Large datasets that can be divided
+- Parallel processing scenarios
+- When average case O(n) is desired
+
+❌ **Not suitable for:**
+- Non-uniform data distribution
+- Unknown data range
+- Memory-constrained environments
+- Small datasets
+
+### Basic Implementation
+
+```javascript
+function bucketSort(arr, bucketSize = 5) {
+    if (arr.length === 0) return arr;
+
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+    const bucketCount = Math.floor((max - min) / bucketSize) + 1;
+
+    // Create empty buckets
+    const buckets = Array.from({ length: bucketCount }, () => []);
+
+    // Distribute elements into buckets
+    for (const num of arr) {
+        const bucketIndex = Math.floor((num - min) / bucketSize);
+        buckets[bucketIndex].push(num);
+    }
+
+    // Sort individual buckets and concatenate
+    let result = [];
+    for (const bucket of buckets) {
+        if (bucket.length > 0) {
+            bucket.sort((a, b) => a - b); // Use any sorting algorithm
+            result = result.concat(bucket);
+        }
+    }
+
+    return result;
+}
+
+// Example usage
+console.log(bucketSort([0.78, 0.17, 0.39, 0.26, 0.72, 0.94, 0.21, 0.12, 0.23, 0.68]));
+```
+
+**Time Complexity:**
+- Average: O(n + k)
+- Worst: O(n²)
+
+**Space Complexity:** O(n + k)
+
+### Bucket Sort for Integers
+
+```javascript
+function bucketSortIntegers(arr, bucketSize = 10) {
+    if (arr.length === 0) return arr;
+
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+    const bucketCount = Math.floor((max - min) / bucketSize) + 1;
+
+    const buckets = Array.from({ length: bucketCount }, () => []);
+
+    // Distribute elements
+    for (const num of arr) {
+        const bucketIndex = Math.floor((num - min) / bucketSize);
+        buckets[bucketIndex].push(num);
+    }
+
+    // Sort and concatenate
+    let result = [];
+    for (const bucket of buckets) {
+        if (bucket.length > 0) {
+            // Use insertion sort for small buckets
+            insertionSort(bucket);
+            result = result.concat(bucket);
+        }
+    }
+
+    return result;
+}
+
+function insertionSort(arr) {
+    for (let i = 1; i < arr.length; i++) {
+        let key = arr[i];
+        let j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;
+        }
+        arr[j + 1] = key;
+    }
+    return arr;
+}
+```
+
+### Bucket Sort Problems
+
+#### 1. Top K Frequent Elements
+
+```javascript
+function topKFrequent(nums, k) {
+    const count = {};
+
+    // Count frequencies
+    for (const num of nums) {
+        count[num] = (count[num] || 0) + 1;
+    }
+
+    // Create buckets based on frequency
+    const buckets = Array.from({ length: nums.length + 1 }, () => []);
+
+    for (const [num, freq] of Object.entries(count)) {
+        buckets[freq].push(parseInt(num));
+    }
+
+    // Collect top k elements
+    const result = [];
+    for (let i = buckets.length - 1; i >= 0 && result.length < k; i--) {
+        if (buckets[i].length > 0) {
+            result.push(...buckets[i]);
+        }
+    }
+
+    return result.slice(0, k);
+}
+```
+
+#### 2. Maximum Gap
+
+```javascript
+function maximumGap(nums) {
+    if (nums.length < 2) return 0;
+
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+
+    if (min === max) return 0;
+
+    const n = nums.length;
+    const bucketSize = Math.max(1, Math.floor((max - min) / (n - 1)));
+    const bucketCount = Math.floor((max - min) / bucketSize) + 1;
+
+    const buckets = Array.from({ length: bucketCount }, () => ({
+        min: Infinity,
+        max: -Infinity,
+        hasNum: false
+    }));
+
+    // Fill buckets
+    for (const num of nums) {
+        const bucketIndex = Math.floor((num - min) / bucketSize);
+        buckets[bucketIndex].hasNum = true;
+        buckets[bucketIndex].min = Math.min(buckets[bucketIndex].min, num);
+        buckets[bucketIndex].max = Math.max(buckets[bucketIndex].max, num);
+    }
+
+    // Find maximum gap
+    let maxGap = 0;
+    let prevMax = min;
+
+    for (const bucket of buckets) {
+        if (!bucket.hasNum) continue;
+
+        maxGap = Math.max(maxGap, bucket.min - prevMax);
+        prevMax = bucket.max;
+    }
+
+    return maxGap;
+}
+```
+
+---
+
+## Problem Patterns & Applications
+
+### Cyclic Sort Pattern Problems
+
+```javascript
+// Pattern: Array with numbers in range [1,n] or [0,n-1]
+const cyclicSortProblems = [
+    "Find Missing Number",
+    "Find All Missing Numbers",
+    "Find Duplicate Number",
+    "Find All Duplicates",
+    "First Missing Positive",
+    "Find Corrupt Pair"
+];
+
+// Template for cyclic sort problems
+function cyclicSortTemplate(nums, isOneIndexed = true) {
+    let i = 0;
+
+    while (i < nums.length) {
+        const correctIndex = isOneIndexed ? nums[i] - 1 : nums[i];
+
+        if (nums[i] !== nums[correctIndex] &&
+            nums[i] > 0 &&
+            nums[i] <= nums.length) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    return nums;
+}
+```
+
+### Counting Sort Pattern Problems
+
+```javascript
+const countingSortProblems = [
+    "Sort Colors",
+    "Relative Sort Array",
+    "Sort Characters by Frequency",
+    "Custom Sort String",
+    "Rank Transform of Array"
+];
+
+// Template for counting sort problems
+function countingSortTemplate(arr, getKey, maxKey) {
+    const count = new Array(maxKey + 1).fill(0);
+
+    // Count frequencies
+    for (const item of arr) {
+        count[getKey(item)]++;
+    }
+
+    // Optional: convert to cumulative count for stable sorting
+    for (let i = 1; i <= maxKey; i++) {
+        count[i] += count[i - 1];
+    }
+
+    return count;
+}
+```
+
+### Bucket Sort Pattern Problems
+
+```javascript
+const bucketSortProblems = [
+    "Top K Frequent Elements",
+    "Sort Array by Increasing Frequency",
+    "Maximum Gap",
+    "Contains Duplicate III",
+    "Group Anagrams"
+];
+```
+
+---
+
+## Comparison & When to Use
+
+| Algorithm | Time Complexity | Space Complexity | Best For |
+|-----------|----------------|------------------|----------|
+| **Merge Sort** | O(n log n) - all cases | O(n) | Stability, large datasets, linked lists |
+| **Quick Sort** | O(n log n) avg, O(n²) worst | O(log n) avg | General purpose, in-place sorting |
+| **Cyclic Sort** | O(n) | O(1) | Numbers in range [1,n] |
+| **Counting Sort** | O(n + k) | O(k) | Small range integers |
+| **Bucket Sort** | O(n + k) avg, O(n²) worst | O(n + k) | Uniformly distributed data |
+
+### Decision Tree
+
+```javascript
+function chooseSortingAlgorithm(data, requirements = {}) {
+    const {
+        stabilityRequired = false,
+        inPlaceRequired = false,
+        guaranteedPerformance = false,
+        memoryConstrained = false
+    } = requirements;
+
+    // Check for cyclic sort applicability
+    if (isInRange(data, 1, data.length) || isInRange(data, 0, data.length - 1)) {
+        return "Cyclic Sort";
+    }
+
+    // Check for counting sort applicability
+    const range = Math.max(...data) - Math.min(...data) + 1;
+    if (range <= data.length * 2) {
+        return "Counting Sort";
+    }
+
+    // Check for bucket sort applicability
+    if (isUniformlyDistributed(data) && !inPlaceRequired) {
+        return "Bucket Sort";
+    }
+
+    // Choose between merge sort and quick sort
+    if (stabilityRequired || guaranteedPerformance) {
+        return memoryConstrained ? "Heap Sort" : "Merge Sort";
+    }
+
+    if (inPlaceRequired || !memoryConstrained) {
+        return "Quick Sort";
+    }
+
+    return "Merge Sort"; // Default safe choice
+}
+
+function isInRange(arr, min, max) {
+    return arr.every(num => num >= min && num <= max);
+}
+
+function isUniformlyDistributed(arr) {
+    // Simple heuristic - check if range/length ratio is reasonable
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+    return (max - min) / arr.length < 10;
+}
+```
+
+---
+
+## Advanced Problems
+
+### 1. Find Corrupt Pair (Cyclic Sort)
+
+```javascript
+function findErrorNums(nums) {
+    let i = 0;
+
+    // Cyclic sort
+    while (i < nums.length) {
+        const correctIndex = nums[i] - 1;
+        if (nums[i] !== nums[correctIndex]) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    // Find duplicate and missing
+    for (let i = 0; i < nums.length; i++) {
+        if (nums[i] !== i + 1) {
+            return [nums[i], i + 1]; // [duplicate, missing]
+        }
+    }
+
+    return [];
+}
+```
+
+### 2. Radix Sort (Using Counting Sort)
+
+```javascript
+function radixSort(nums) {
+    const max = Math.max(...nums);
+
+    // Sort by each digit
+    for (let exp = 1; Math.floor(max / exp) > 0; exp *= 10) {
+        countingSortByDigit(nums, exp);
+    }
+
+    return nums;
+}
+
+function countingSortByDigit(nums, exp) {
+    const count = new Array(10).fill(0);
+    const output = new Array(nums.length);
+
+    // Count occurrences of digits
+    for (let i = 0; i < nums.length; i++) {
+        const digit = Math.floor(nums[i] / exp) % 10;
+        count[digit]++;
+    }
+
+    // Transform to positions
+    for (let i = 1; i < 10; i++) {
+        count[i] += count[i - 1];
+    }
+
+    // Build output array
+    for (let i = nums.length - 1; i >= 0; i--) {
+        const digit = Math.floor(nums[i] / exp) % 10;
+        output[count[digit] - 1] = nums[i];
+        count[digit]--;
+    }
+
+    // Copy back to original array
+    for (let i = 0; i < nums.length; i++) {
+        nums[i] = output[i];
+    }
+}
+```
+
+### 4. Merge Intervals (Merge Sort Application)
+
+```javascript
+function mergeIntervals(intervals) {
+    if (intervals.length <= 1) return intervals;
+
+    // Sort intervals by start time
+    intervals.sort((a, b) => a[0] - b[0]);
+
+    const merged = [intervals[0]];
+
+    for (let i = 1; i < intervals.length; i++) {
+        const current = intervals[i];
+        const lastMerged = merged[merged.length - 1];
+
+        if (current[0] <= lastMerged[1]) {
+            // Overlapping intervals - merge them
+            lastMerged[1] = Math.max(lastMerged[1], current[1]);
+        } else {
+            // Non-overlapping interval
+            merged.push(current);
+        }
+    }
+
+    return merged;
+}
+```
+
+### 5. Kth Largest Element in Array (Quick Select)
+
+```javascript
+function findKthLargest(nums, k) {
+    // Convert to finding (n-k)th smallest (0-indexed)
+    const targetIndex = nums.length - k;
+
+    function quickSelect(low, high) {
+        const pivotIndex = partition(nums, low, high);
+
+        if (pivotIndex === targetIndex) {
+            return nums[pivotIndex];
+        } else if (pivotIndex < targetIndex) {
+            return quickSelect(pivotIndex + 1, high);
+        } else {
+            return quickSelect(low, pivotIndex - 1);
+        }
+    }
+
+    return quickSelect(0, nums.length - 1);
+}
+```
+
+### 7. Sort Array by Increasing Frequency (Bucket Sort)
+
+```javascript
+function frequencySort(nums) {
+    const count = {};
+
+    // Count frequencies
+    for (const num of nums) {
+        count[num] = (count[num] || 0) + 1;
+    }
+
+    // Create frequency buckets
+    const maxFreq = Math.max(...Object.values(count));
+    const buckets = Array.from({ length: maxFreq + 1 }, () => []);
+
+    // Group numbers by frequency
+    for (const [num, freq] of Object.entries(count)) {
+        buckets[freq].push(parseInt(num));
+    }
+
+    // Sort numbers within each frequency bucket (descending for same frequency)
+    for (const bucket of buckets) {
+        bucket.sort((a, b) => b - a);
+    }
+
+    // Build result
+    const result = [];
+    for (let freq = 1; freq <= maxFreq; freq++) {
+        for (const num of buckets[freq]) {
+            for (let i = 0; i < freq; i++) {
+                result.push(num);
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+---
+
+## Implementation Tips
+
+### Merge Sort Tips
+
+1. **Base case handling**: Always check for arrays of size ≤ 1
+2. **Merge optimization**: Use sentinel values to avoid boundary checks
+3. **Memory optimization**: Reuse temporary arrays when possible
+4. **Stability**: Ensure equal elements maintain relative order in merge step
+
+```javascript
+// Optimized merge with single temporary array
+function mergeOptimized(arr, left, mid, right, temp) {
+    let i = left, j = mid + 1, k = left;
+
+    // Copy to temp array
+    for (let idx = left; idx <= right; idx++) {
+        temp[idx] = arr[idx];
+    }
+
+    // Merge back to original array
+    while (i <= mid && j <= right) {
+        if (temp[i] <= temp[j]) {
+            arr[k++] = temp[i++];
+        } else {
+            arr[k++] = temp[j++];
+        }
+    }
+
+    while (i <= mid) arr[k++] = temp[i++];
+    while (j <= right) arr[k++] = temp[j++];
+}
+```
+
+### Quick Sort Tips
+
+1. **Pivot selection**: Use median-of-three or randomization to avoid worst case
+2. **Small arrays**: Switch to insertion sort for arrays < 10 elements
+3. **Duplicate handling**: Use 3-way partitioning for arrays with many duplicates
+4. **Tail recursion**: Optimize recursion for larger partition first
+
+```javascript
+// Tail recursion optimized quicksort
+function quickSortTailRecursive(arr, low = 0, high = arr.length - 1) {
+    while (low < high) {
+        const pivotIndex = partition(arr, low, high);
+
+        // Recur for smaller partition and iterate for larger
+        if (pivotIndex - low < high - pivotIndex) {
+            quickSortTailRecursive(arr, low, pivotIndex - 1);
+            low = pivotIndex + 1;
+        } else {
+            quickSortTailRecursive(arr, pivotIndex + 1, high);
+            high = pivotIndex - 1;
+        }
+    }
+
+    return arr;
+}
+```
+
+### Cyclic Sort Tips
+
+1. **Always validate range**: Ensure numbers are in expected range before swapping
+2. **Handle edge cases**: Empty arrays, single elements
+3. **Use while loop**: More intuitive than for loop for this pattern
+
+```javascript
+// Good practice template
+function cyclicSortSafe(nums) {
+    let i = 0;
+
+    while (i < nums.length) {
+        const correctIndex = nums[i] - 1;
+
+        // Validate before swapping
+        if (nums[i] > 0 &&
+            nums[i] <= nums.length &&
+            nums[i] !== nums[correctIndex]) {
+            [nums[i], nums[correctIndex]] = [nums[correctIndex], nums[i]];
+        } else {
+            i++;
+        }
+    }
+
+    return nums;
+}
+```
+
+### Counting Sort Tips
+
+1. **Consider negative numbers**: Shift indices appropriately
+2. **Memory optimization**: Use bit manipulation for boolean counting
+3. **Stability matters**: Iterate backwards when building output
+
+### Bucket Sort Tips
+
+1. **Choose bucket size wisely**: Balance between memory and performance
+2. **Handle empty buckets**: Check before processing
+3. **Secondary sort**: Choose appropriate algorithm for individual buckets
+
+---
+
+## Practice Problems
+
+### Easy
+- Find Missing Number
+- Sort Colors
+- Missing Number
+
+### Medium
+- Find All Missing Numbers
+- Top K Frequent Elements
+- Sort Characters by Frequency
+- Maximum Gap
+- Find All Duplicates in Array
+
+### Hard
+- First Missing Positive
+- Contains Duplicate III
+- Minimum Window Substring (counting pattern)
+
+---
