@@ -1,0 +1,2772 @@
+# Java Optional Class
+
+A comprehensive guide to Java Optional class methods, theory, and usage patterns for modern Java development.
+
+## Table of Contents
+
+1. [Introduction and Theory](#introduction-and-theory)
+2. [Creation Methods](#creation-methods)
+3. [Presence Check Methods](#presence-check-methods)
+4. [Value Retrieval Methods](#value-retrieval-methods)
+5. [Conditional Operations](#conditional-operations)
+6. [Transformation Methods](#transformation-methods)
+7. [Filtering and Predicates](#filtering-and-predicates)
+8. [Combination and Chaining](#combination-and-chaining)
+9. [Best Practices](#best-practices)
+10. [Common Anti-Patterns](#common-anti-patterns)
+11. [Real-World Examples](#real-world-examples)
+
+---
+
+## Introduction and Theory
+
+### What is Optional?
+
+Java Optional is a container object introduced in Java 8 that may or may not contain a non-null value. It's designed to represent optional values and help eliminate `NullPointerException`.
+
+### Why Use Optional?
+
+- **Null Safety**: Explicitly handles the possibility of null values
+- **Readability**: Makes code intention clearer
+- **Functional Style**: Enables functional programming patterns
+- **API Design**: Clearly communicates when a value might be absent
+
+### When to Use Optional
+
+```java
+// ✅ Good uses
+public Optional<User> findUserById(Long id)
+public Optional<String> getConfigValue(String key)
+Optional<String> result = processData();
+
+// ❌ Avoid these uses
+Optional<List<String>> list; // Use empty list instead
+void method(Optional<String> param); // Don't use in parameters
+Optional<String> field; // Don't use as class fields
+```
+
+---
+
+## Creation Methods
+
+### 1. Optional.empty()
+
+Creates an empty Optional instance:
+
+```java
+Optional<String> empty = Optional.empty();
+System.out.println(empty.isPresent()); // false
+```
+
+### 2. Optional.of(value)
+
+Creates Optional with non-null value (throws NPE if null):
+
+```java
+String value = "Hello";
+Optional<String> optional = Optional.of(value);
+
+// ❌ This throws NullPointerException
+// Optional<String> nullOptional = Optional.of(null);
+```
+
+### 3. Optional.ofNullable(value)
+
+Creates Optional that handles null values safely:
+
+```java
+String nullValue = null;
+String nonNullValue = "Hello";
+
+Optional<String> fromNull = Optional.ofNullable(nullValue);     // empty
+Optional<String> fromValue = Optional.ofNullable(nonNullValue); // contains "Hello"
+
+System.out.println(fromNull.isEmpty());    // true
+System.out.println(fromValue.isPresent()); // true
+```
+
+**Time Complexity:** O(1) | **Space Complexity:** O(1)
+
+---
+
+## Presence Check Methods
+
+### 1. isPresent()
+
+Checks if value is present:
+
+```java
+Optional<String> optional = Optional.of("Hello");
+Optional<String> empty = Optional.empty();
+
+if (optional.isPresent()) {
+    System.out.println("Value exists: " + optional.get());
+}
+
+if (!empty.isPresent()) {
+    System.out.println("No value present");
+}
+```
+
+### 2. isEmpty() (Java 11+)
+
+Opposite of isPresent():
+
+```java
+Optional<String> empty = Optional.empty();
+Optional<String> filled = Optional.of("Value");
+
+System.out.println(empty.isEmpty());  // true
+System.out.println(filled.isEmpty()); // false
+```
+
+---
+
+## Value Retrieval Methods
+
+### 1. get()
+
+Retrieves value (throws exception if empty):
+
+```java
+Optional<String> optional = Optional.of("Hello");
+String value = optional.get(); // "Hello"
+
+// ❌ Dangerous - throws NoSuchElementException
+Optional<String> empty = Optional.empty();
+// String badValue = empty.get(); // Exception!
+```
+
+> **⚠️ Warning:** Avoid `get()` without checking presence first!
+
+### 2. orElse(defaultValue)
+
+Returns value or default:
+
+```java
+Optional<String> optional = Optional.ofNullable(getName());
+String result = optional.orElse("Unknown");
+
+// Practical example
+public String getUserDisplayName(User user) {
+    return Optional.ofNullable(user)
+            .map(User::getName)
+            .orElse("Anonymous User");
+}
+```
+
+### 3. orElseGet(supplier)
+
+Returns value or result of supplier function:
+
+```java
+Optional<String> optional = Optional.empty();
+
+// Supplier is only called if Optional is empty
+String result = optional.orElseGet(() -> {
+    System.out.println("Computing default value...");
+    return "Computed Default";
+});
+
+// Better performance for expensive operations
+String expensiveDefault = optional.orElseGet(this::computeExpensiveDefault);
+```
+
+**Performance Note:** Use `orElseGet()` for expensive default computations!
+
+### 4. orElseThrow()
+
+Throws exception if empty:
+
+```java
+// Java 10+: Throws NoSuchElementException
+Optional<String> optional = Optional.empty();
+// String value = optional.orElseThrow(); // Exception!
+
+// Custom exception
+String value = optional.orElseThrow(() ->
+    new IllegalArgumentException("Value not found"));
+```
+
+---
+
+## Conditional Operations
+
+### 1. ifPresent(consumer)
+
+Executes action if value is present:
+
+```java
+Optional<User> user = findUser(id);
+
+user.ifPresent(u -> {
+    System.out.println("Found user: " + u.getName());
+    logUserAccess(u);
+});
+
+// Method reference style
+user.ifPresent(this::processUser);
+```
+
+### 2. ifPresentOrElse(consumer, runnable) (Java 9+)
+
+Executes different actions based on presence:
+
+```java
+Optional<User> user = findUser(id);
+
+user.ifPresentOrElse(
+    u -> System.out.println("User found: " + u.getName()),
+    () -> System.out.println("User not found")
+);
+
+// Practical example
+user.ifPresentOrElse(
+    this::sendWelcomeEmail,
+    this::handleUserNotFound
+);
+```
+
+---
+
+## Transformation Methods
+
+### 1. map(mapper)
+
+Transforms the value if present:
+
+```java
+Optional<String> name = Optional.of("john doe");
+
+Optional<String> upperName = name.map(String::toUpperCase);
+Optional<Integer> nameLength = name.map(String::length);
+
+// Chaining transformations
+Optional<String> result = Optional.of("  hello world  ")
+    .map(String::trim)
+    .map(String::toUpperCase)
+    .map(s -> s.replace(" ", "_"));
+```
+
+### 2. flatMap(mapper)
+
+Flattens nested Optionals:
+
+```java
+public class User {
+    private String name;
+    private Optional<Address> address;
+
+    public Optional<Address> getAddress() {
+        return address;
+    }
+}
+
+public class Address {
+    private String street;
+
+    public Optional<String> getStreet() {
+        return Optional.ofNullable(street);
+    }
+}
+
+// Without flatMap (creates Optional<Optional<String>>)
+Optional<Optional<String>> nested = userOpt.map(user -> user.getAddress().map(Address::getStreet));
+
+// With flatMap (creates Optional<String>)
+Optional<String> street = userOpt
+    .flatMap(User::getAddress)
+    .flatMap(Address::getStreet);
+```
+
+### 3. Practical Transformation Examples
+
+```java
+// Parse string to integer safely
+public Optional<Integer> parseInteger(String str) {
+    return Optional.ofNullable(str)
+        .filter(s -> s.matches("\\d+"))
+        .map(Integer::parseInt);
+}
+
+// Extract file extension
+public Optional<String> getFileExtension(String filename) {
+    return Optional.ofNullable(filename)
+        .filter(f -> f.contains("."))
+        .map(f -> f.substring(f.lastIndexOf(".") + 1));
+}
+
+// Safe division
+public Optional<Double> safeDivide(double a, double b) {
+    return b == 0 ? Optional.empty() : Optional.of(a / b);
+}
+```
+
+---
+
+## Filtering and Predicates
+
+### 1. filter(predicate)
+
+Filters value based on condition:
+
+```java
+Optional<Integer> number = Optional.of(42);
+
+Optional<Integer> evenNumber = number.filter(n -> n % 2 == 0);
+Optional<Integer> largeNumber = number.filter(n -> n > 100);
+
+// Chaining filters
+Optional<String> validEmail = Optional.of("user@example.com")
+    .filter(email -> email.contains("@"))
+    .filter(email -> email.length() > 5)
+    .filter(email -> !email.startsWith("."));
+```
+
+### 2. Complex Filtering Examples
+
+```java
+public class Product {
+    private String name;
+    private double price;
+    private boolean inStock;
+
+    // constructors, getters...
+}
+
+public Optional<Product> findAffordableProduct(List<Product> products, double budget) {
+    return products.stream()
+        .filter(p -> p.getPrice() <= budget)
+        .filter(Product::isInStock)
+        .findFirst();
+}
+
+// Age validation
+public Optional<Person> validateAge(Person person) {
+    return Optional.of(person)
+        .filter(p -> p.getAge() >= 18)
+        .filter(p -> p.getAge() <= 120);
+}
+```
+
+---
+
+## Combination and Chaining
+
+### 1. or(supplier) (Java 9+)
+
+Provides alternative Optional if current is empty:
+
+```java
+Optional<String> primary = Optional.empty();
+Optional<String> secondary = Optional.of("backup");
+
+Optional<String> result = primary.or(() -> secondary);
+// Returns secondary since primary is empty
+
+// Chaining multiple alternatives
+Optional<String> config = getConfigFromFile()
+    .or(this::getConfigFromEnvironment)
+    .or(this::getDefaultConfig);
+```
+
+### 2. Stream Integration (Java 9+)
+
+Convert Optional to Stream:
+
+```java
+List<Optional<String>> optionals = Arrays.asList(
+    Optional.of("Hello"),
+    Optional.empty(),
+    Optional.of("World")
+);
+
+List<String> values = optionals.stream()
+    .flatMap(Optional::stream)
+    .collect(Collectors.toList());
+// Result: ["Hello", "World"]
+```
+
+### 3. Complex Chaining Examples
+
+```java
+public class UserService {
+    public Optional<String> getUserEmailById(Long id) {
+        return findUser(id)
+            .filter(user -> user.isActive())
+            .map(User::getProfile)
+            .flatMap(Profile::getEmail)
+            .filter(email -> isValidEmail(email))
+            .map(String::toLowerCase);
+    }
+
+    public String getDisplayName(Long userId) {
+        return findUser(userId)
+            .map(User::getFullName)
+            .filter(name -> !name.trim().isEmpty())
+            .or(() -> findUser(userId).map(User::getUsername))
+            .orElse("Anonymous User");
+    }
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Prefer Optional in Return Types
+
+```java
+// ✅ Good
+public Optional<User> findUserByEmail(String email) {
+    // Implementation
+}
+
+// ❌ Avoid
+public User findUserByEmail(String email) {
+    // May return null - unclear from signature
+}
+```
+
+### 2. Use Method Chaining
+
+```java
+// ✅ Functional style
+public String processUser(Long id) {
+    return findUser(id)
+        .filter(User::isActive)
+        .map(User::getName)
+        .map(String::toUpperCase)
+        .orElse("UNKNOWN");
+}
+
+// ❌ Imperative style
+public String processUser(Long id) {
+    Optional<User> userOpt = findUser(id);
+    if (userOpt.isPresent()) {
+        User user = userOpt.get();
+        if (user.isActive()) {
+            String name = user.getName();
+            return name.toUpperCase();
+        }
+    }
+    return "UNKNOWN";
+}
+```
+
+### 3. Avoid Unnecessary Optional Creation
+
+```java
+// ✅ Good - return Optional directly from method that might not find value
+public Optional<String> findConfigValue(String key) {
+    return configMap.containsKey(key) ?
+        Optional.of(configMap.get(key)) :
+        Optional.empty();
+}
+
+// ❌ Avoid - wrapping known values
+String knownValue = "Hello";
+Optional<String> unnecessary = Optional.of(knownValue);
+```
+
+### 4. Use orElseGet for Expensive Defaults
+
+```java
+// ✅ Lazy evaluation
+String result = optional.orElseGet(this::expensiveComputation);
+
+// ❌ Eager evaluation (always executes)
+String result = optional.orElse(expensiveComputation());
+```
+
+---
+
+## Common Anti-Patterns
+
+### 1. Don't Use Optional.get() Without Checking
+
+```java
+// ❌ Dangerous
+Optional<String> opt = Optional.empty();
+String value = opt.get(); // NoSuchElementException!
+
+// ✅ Safe alternatives
+String value1 = opt.orElse("default");
+String value2 = opt.orElseThrow(() -> new CustomException("Value required"));
+```
+
+### 2. Don't Use Optional as Method Parameters
+
+```java
+// ❌ Avoid
+public void processUser(Optional<User> userOpt) {
+    // Caller has to wrap value in Optional
+}
+
+// ✅ Better
+public void processUser(User user) {
+    if (user != null) {
+        // Handle user
+    }
+}
+
+// ✅ Or use overloading
+public void processUser(User user) { /* implementation */ }
+public void processUserOptional() { /* no user case */ }
+```
+
+### 3. Don't Use Optional for Class Fields
+
+```java
+// ❌ Avoid
+public class User {
+    private Optional<String> email; // Unnecessary overhead
+}
+
+// ✅ Better
+public class User {
+    private String email; // Can be null
+
+    public Optional<String> getEmail() {
+        return Optional.ofNullable(email);
+    }
+}
+```
+
+### 4. Don't Use Optional for Collections
+
+```java
+// ❌ Avoid
+Optional<List<String>> optionalList = Optional.of(Collections.emptyList());
+
+// ✅ Better
+List<String> list = Collections.emptyList(); // Use empty collections
+```
+
+---
+
+## Real-World Examples
+
+### 1. Repository Pattern
+
+```java
+public class UserRepository {
+    private Map<Long, User> users = new HashMap<>();
+
+    public Optional<User> findById(Long id) {
+        return Optional.ofNullable(users.get(id));
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return users.values().stream()
+            .filter(user -> email.equals(user.getEmail()))
+            .findFirst();
+    }
+}
+```
+
+### 2. Service Layer with Optional
+
+```java
+public class UserService {
+    private UserRepository userRepository;
+
+    public String getUserDisplayName(Long userId) {
+        return userRepository.findById(userId)
+            .map(User::getFirstName)
+            .filter(name -> !name.trim().isEmpty())
+            .orElseGet(() -> {
+                return userRepository.findById(userId)
+                    .map(User::getEmail)
+                    .map(email -> email.substring(0, email.indexOf('@')))
+                    .orElse("Anonymous");
+            });
+    }
+
+    public Optional<String> getVerifiedEmail(Long userId) {
+        return userRepository.findById(userId)
+            .filter(User::isEmailVerified)
+            .map(User::getEmail);
+    }
+
+    public boolean updateUserProfile(Long userId, ProfileUpdateRequest request) {
+        return userRepository.findById(userId)
+            .filter(User::isActive)
+            .map(user -> {
+                user.updateProfile(request);
+                return userRepository.save(user);
+            })
+            .isPresent();
+    }
+}
+```
+
+### 3. Configuration Management
+
+```java
+public class ConfigService {
+    private Properties properties;
+
+    public Optional<String> getStringProperty(String key) {
+        return Optional.ofNullable(properties.getProperty(key))
+            .filter(value -> !value.trim().isEmpty());
+    }
+
+    public Optional<Integer> getIntProperty(String key) {
+        return getStringProperty(key)
+            .flatMap(this::parseInteger);
+    }
+
+    public Optional<Boolean> getBooleanProperty(String key) {
+        return getStringProperty(key)
+            .filter(value -> "true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))
+            .map(Boolean::parseBoolean);
+    }
+
+    private Optional<Integer> parseInteger(String value) {
+        try {
+            return Optional.of(Integer.parseInt(value));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
+    // Fallback chain
+    public String getDatabaseUrl() {
+        return getStringProperty("db.url")
+            .or(() -> getStringProperty("database.url"))
+            .or(() -> getStringProperty("DATABASE_URL"))
+            .orElse("jdbc:h2:mem:testdb");
+    }
+}
+```
+
+### 4. API Response Handling
+
+```java
+public class ApiService {
+
+    public Optional<ApiResponse> callExternalApi(String endpoint) {
+        try {
+            ApiResponse response = httpClient.get(endpoint);
+            return response.isSuccessful() ?
+                Optional.of(response) :
+                Optional.empty();
+        } catch (Exception e) {
+            logger.error("API call failed", e);
+            return Optional.empty();
+        }
+    }
+
+    public Optional<UserData> fetchUserData(String userId) {
+        return callExternalApi("/users/" + userId)
+            .filter(response -> response.getStatusCode() == 200)
+            .map(ApiResponse::getBody)
+            .flatMap(this::parseUserData);
+    }
+
+    private Optional<UserData> parseUserData(String json) {
+        try {
+            return Optional.of(objectMapper.readValue(json, UserData.class));
+        } catch (JsonProcessingException e) {
+            return Optional.empty();
+        }
+    }
+}
+```
+
+### 5. Validation Chains
+
+```java
+public class ValidationService {
+
+    public Optional<User> validateUser(User user) {
+        return Optional.of(user)
+            .filter(this::isValidEmail)
+            .filter(this::isValidAge)
+            .filter(this::isValidName);
+    }
+
+    public ValidationResult validateUserWithDetails(User user) {
+        List<String> errors = new ArrayList<>();
+
+        Optional<User> validUser = Optional.of(user)
+            .filter(u -> {
+                if (!isValidEmail(u)) {
+                    errors.add("Invalid email format");
+                    return false;
+                }
+                return true;
+            })
+            .filter(u -> {
+                if (!isValidAge(u)) {
+                    errors.add("Age must be between 13 and 120");
+                    return false;
+                }
+                return true;
+            });
+
+        return new ValidationResult(validUser.isPresent(), errors);
+    }
+
+    private boolean isValidEmail(User user) {
+        return Optional.ofNullable(user.getEmail())
+            .filter(email -> email.contains("@"))
+            .filter(email -> email.matches("^[^@]+@[^@]+\\.[^@]+$"))
+            .isPresent();
+    }
+
+    private boolean isValidAge(User user) {
+        return user.getAge() >= 13 && user.getAge() <= 120;
+    }
+
+    private boolean isValidName(User user) {
+        return Optional.ofNullable(user.getName())
+            .filter(name -> name.trim().length() >= 2)
+            .isPresent();
+    }
+}
+```
+
+---
+
+## Advanced Patterns
+
+### 1. Optional with Streams
+
+```java
+public class DataProcessor {
+
+    public Optional<String> findFirstValidData(List<String> inputs) {
+        return inputs.stream()
+            .map(this::processData)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .findFirst();
+    }
+
+    // Better approach using flatMap
+    public Optional<String> findFirstValidDataBetter(List<String> inputs) {
+        return inputs.stream()
+            .map(this::processData)
+            .flatMap(Optional::stream) // Java 9+
+            .findFirst();
+    }
+
+    private Optional<String> processData(String input) {
+        return Optional.ofNullable(input)
+            .filter(s -> s.length() > 3)
+            .map(String::toUpperCase);
+    }
+}
+```
+
+### 2. Builder Pattern with Optional
+
+```java
+public class QueryBuilder {
+    private Optional<String> where = Optional.empty();
+    private Optional<String> orderBy = Optional.empty();
+    private Optional<Integer> limit = Optional.empty();
+
+    public QueryBuilder where(String condition) {
+        this.where = Optional.of(condition);
+        return this;
+    }
+
+    public QueryBuilder orderBy(String column) {
+        this.orderBy = Optional.of(column);
+        return this;
+    }
+
+    public QueryBuilder limit(int count) {
+        this.limit = Optional.of(count);
+        return this;
+    }
+
+    public String build() {
+        StringBuilder sql = new StringBuilder("SELECT * FROM users");
+
+        where.ifPresent(w -> sql.append(" WHERE ").append(w));
+        orderBy.ifPresent(o -> sql.append(" ORDER BY ").append(o));
+        limit.ifPresent(l -> sql.append(" LIMIT ").append(l));
+
+        return sql.toString();
+    }
+}
+
+// Usage
+String query = new QueryBuilder()
+    .where("age > 18")
+    .orderBy("name")
+    .limit(10)
+    .build();
+```
+
+### 3. Caching with Optional
+
+```java
+public class CacheService {
+    private Map<String, String> cache = new ConcurrentHashMap<>();
+
+    public Optional<String> getCachedValue(String key) {
+        return Optional.ofNullable(cache.get(key));
+    }
+
+    public String getOrCompute(String key, Supplier<String> computation) {
+        return getCachedValue(key)
+            .orElseGet(() -> {
+                String computed = computation.get();
+                cache.put(key, computed);
+                return computed;
+            });
+    }
+
+    // With expiration
+    public Optional<String> getWithExpiration(String key, Duration maxAge) {
+        return getCachedValue(key + "_timestamp")
+            .flatMap(timestampStr -> parseTimestamp(timestampStr))
+            .filter(timestamp -> timestamp.plus(maxAge).isAfter(Instant.now()))
+            .flatMap(timestamp -> getCachedValue(key));
+    }
+}
+```
+
+---
+
+## Performance Considerations
+
+### Memory Overhead
+
+```java
+// Optional has memory overhead - use judiciously
+public class PerformanceTips {
+
+    // ✅ Good for return types
+    public Optional<String> findUserName(Long id) {
+        return userRepository.findById(id).map(User::getName);
+    }
+
+    // ❌ Avoid for hot paths with primitives
+    // Optional<Integer> count; // Use int with special value instead
+
+    // ✅ Use for complex objects where null is meaningful
+    private Optional<DatabaseConnection> connection;
+}
+```
+
+### Lazy Evaluation
+
+```java
+// ✅ Lazy - only computed if needed
+String result = optional.orElseGet(this::expensiveOperation);
+
+// ❌ Eager - always computed
+String result = optional.orElse(expensiveOperation());
+
+// ✅ Lazy chaining
+Optional<String> result = getData()
+    .filter(this::isValid)
+    .map(this::transform) // Only called if filter passes
+    .flatMap(this::process); // Only called if map succeeds
+```
+
+---
+
+## Testing with Optional
+
+### Unit Testing Patterns
+
+```java
+@Test
+public void testOptionalService() {
+    UserService service = new UserService();
+
+    // Test empty case
+    Optional<User> empty = service.findUser(999L);
+    assertThat(empty).isEmpty();
+
+    // Test present case
+    Optional<User> found = service.findUser(1L);
+    assertThat(found).isPresent();
+    assertThat(found.get().getName()).isEqualTo("John");
+
+    // Test transformation
+    Optional<String> email = service.findUser(1L)
+        .map(User::getEmail);
+    assertThat(email).hasValue("john@example.com");
+}
+
+// Custom assertions for better readability
+public static class OptionalAssert {
+    public static <T> void assertPresent(Optional<T> optional) {
+        assertTrue("Optional should be present", optional.isPresent());
+    }
+
+    public static <T> void assertEmpty(Optional<T> optional) {
+        assertTrue("Optional should be empty", optional.isEmpty());
+    }
+
+    public static <T> void assertValue(Optional<T> optional, T expected) {
+        assertPresent(optional);
+        assertEquals(expected, optional.get());
+    }
+}
+```
+
+---
+
+## Method Reference Summary
+
+| Method | Returns | Description | Java Version |
+|--------|---------|-------------|--------------|
+| `empty()` | `Optional<T>` | Creates empty Optional | 8 |
+| `of(value)` | `Optional<T>` | Creates Optional with non-null value | 8 |
+| `ofNullable(value)` | `Optional<T>` | Creates Optional, handles null | 8 |
+| `isPresent()` | `boolean` | Checks if value exists | 8 |
+| `isEmpty()` | `boolean` | Checks if value is absent | 11 |
+| `get()` | `T` | Gets value (throws if empty) | 8 |
+| `orElse(other)` | `T` | Returns value or default | 8 |
+| `orElseGet(supplier)` | `T` | Returns value or supplier result | 8 |
+| `orElseThrow()` | `T` | Gets value or throws exception | 10 |
+| `orElseThrow(supplier)` | `T` | Gets value or throws custom exception | 8 |
+| `ifPresent(consumer)` | `void` | Executes action if present | 8 |
+| `ifPresentOrElse(consumer, runnable)` | `void` | Executes different actions | 9 |
+| `map(mapper)` | `Optional<U>` | Transforms value if present | 8 |
+| `flatMap(mapper)` | `Optional<U>` | Flattens nested Optionals | 8 |
+| `filter(predicate)` | `Optional<T>` | Filters based on condition | 8 |
+| `or(supplier)` | `Optional<T>` | Alternative Optional if empty | 9 |
+| `stream()` | `Stream<T>` | Converts to Stream | 9 |
+
+---
+
+## Complex Example: Order Processing System
+
+```java
+public class OrderProcessingService {
+
+    public Optional<Order> processOrder(OrderRequest request) {
+        return validateOrderRequest(request)
+            .flatMap(this::checkInventory)
+            .flatMap(this::calculatePricing)
+            .flatMap(this::applyDiscounts)
+            .flatMap(this::processPayment)
+            .map(this::createOrder);
+    }
+
+    private Optional<OrderRequest> validateOrderRequest(OrderRequest request) {
+        return Optional.of(request)
+            .filter(r -> r.getCustomerId() != null)
+            .filter(r -> r.getItems() != null && !r.getItems().isEmpty())
+            .filter(r -> r.getItems().stream().allMatch(this::isValidItem));
+    }
+
+    private Optional<OrderRequest> checkInventory(OrderRequest request) {
+        boolean allAvailable = request.getItems().stream()
+            .allMatch(item ->
+                inventoryService.getStock(item.getProductId())
+                    .map(stock -> stock >= item.getQuantity())
+                    .orElse(false)
+            );
+
+        return allAvailable ? Optional.of(request) : Optional.empty();
+    }
+
+    private Optional<PricedOrder> calculatePricing(OrderRequest request) {
+        return request.getItems().stream()
+            .map(this::calculateItemPrice)
+            .reduce(Optional.of(BigDecimal.ZERO), this::addOptionalPrices)
+            .map(total -> new PricedOrder(request, total));
+    }
+
+    private Optional<BigDecimal> addOptionalPrices(Optional<BigDecimal> acc, Optional<BigDecimal> price) {
+        return acc.flatMap(a -> price.map(p -> a.add(p)));
+    }
+
+    public String getOrderStatus(Long orderId) {
+        return orderRepository.findById(orderId)
+            .map(Order::getStatus)
+            .map(Status::getDisplayName)
+            .orElse("Order not found");
+    }
+
+    public Optional<String> getEstimatedDeliveryDate(Long orderId) {
+        return orderRepository.findById(orderId)
+            .filter(order -> order.getStatus() != Status.CANCELLED)
+            .map(Order::getShippingInfo)
+            .flatMap(ShippingInfo::getEstimatedDelivery)
+            .map(date -> date.format(DateTimeFormatter.ISO_LOCAL_DATE));
+    }
+}
+```
+
+---
+
+## Performance Tips
+
+### 1. Avoid Boxing/Unboxing
+
+```java
+// For primitives, consider specialized Optional classes
+OptionalInt intOpt = OptionalInt.of(42);
+OptionalLong longOpt = OptionalLong.of(100L);
+OptionalDouble doubleOpt = OptionalDouble.of(3.14);
+
+// Avoid unnecessary boxing
+public OptionalInt findMaxValue(int[] array) {
+    return array.length == 0 ?
+        OptionalInt.empty() :
+        OptionalInt.of(Arrays.stream(array).max().orElse(0));
+}
+```
+
+### 2. Minimize Optional Creation
+
+```java
+public class PerformantService {
+
+    // ✅ Return existing Optional from repository
+    public Optional<User> getUser(Long id) {
+        return userRepository.findById(id); // Already returns Optional
+    }
+
+    // ❌ Creating unnecessary Optionals
+    public Optional<User> getUserBad(Long id) {
+        User user = userRepository.findByIdRaw(id); // Returns User or null
+        return Optional.ofNullable(user); // Unnecessary creation
+    }
+}
+```
+
+---
+
+## Migration Strategies
+
+### From Null-Based Code
+
+```java
+// Before: Null-based approach
+public String processUserName(User user) {
+    if (user != null) {
+        String name = user.getName();
+        if (name != null && !name.trim().isEmpty()) {
+            return name.toUpperCase();
+        }
+    }
+    return "UNKNOWN";
+}
+
+// After: Optional approach
+public String processUserName(User user) {
+    return Optional.ofNullable(user)
+        .map(User::getName)
+        .filter(name -> !name.trim().isEmpty())
+        .map(String::toUpperCase)
+        .orElse("UNKNOWN");
+}
+
+// Gradual migration - keep null checks for backward compatibility
+public Optional<String> processUserNameSafe(User user) {
+    if (user == null) return Optional.empty();
+
+    return Optional.ofNullable(user.getName())
+        .filter(name -> !name.trim().isEmpty())
+        .map(String::toUpperCase);
+}
+```
+
+---
+
+## Exception Handling with Optional
+
+### 1. Safe Exception Handling
+
+```java
+public class SafeOperations {
+
+    public Optional<Integer> safeParseInt(String str) {
+        try {
+            return Optional.of(Integer.parseInt(str));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<LocalDate> safeParseDate(String dateStr) {
+        try {
+            return Optional.of(LocalDate.parse(dateStr));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<JsonNode> safeParseJson(String json) {
+        try {
+            return Optional.of(objectMapper.readTree(json));
+        } catch (JsonProcessingException e) {
+            logger.warn("Invalid JSON: {}", json);
+            return Optional.empty();
+        }
+    }
+
+    // Combining safe operations
+    public Optional<BigDecimal> calculateTax(String amountStr, String rateStr) {
+        return safeParseInt(amountStr)
+            .flatMap(amount -> safeParseInt(rateStr)
+                .map(rate -> BigDecimal.valueOf(amount * rate / 100.0)));
+    }
+}
+```
+
+### 2. Resource Management
+
+```java
+public class ResourceManager {
+
+    public Optional<String> readFileContent(String filename) {
+        return Optional.ofNullable(filename)
+            .filter(name -> Files.exists(Paths.get(name)))
+            .flatMap(this::safeReadFile);
+    }
+
+    private Optional<String> safeReadFile(String filename) {
+        try {
+            return Optional.of(Files.readString(Paths.get(filename)));
+        } catch (IOException e) {
+            logger.error("Failed to read file: {}", filename, e);
+            return Optional.empty();
+        }
+    }
+
+    public boolean saveToFile(String filename, String content) {
+        return Optional.ofNullable(content)
+            .filter(c -> !c.trim().isEmpty())
+            .map(c -> {
+                try {
+                    Files.writeString(Paths.get(filename), c);
+                    return true;
+                } catch (IOException e) {
+                    logger.error("Failed to write file: {}", filename, e);
+                    return false;
+                }
+            })
+            .orElse(false);
+    }
+}
+```
+
+---
+
+## Design Patterns with Optional
+
+### 1. Factory Pattern
+
+```java
+public class UserFactory {
+
+    public static Optional<User> createUser(String email, String name, Integer age) {
+        return validateEmail(email)
+            .flatMap(validEmail -> validateName(name)
+                .flatMap(validName -> validateAge(age)
+                    .map(validAge -> new User(validEmail, validName, validAge))));
+    }
+
+    private static Optional<String> validateEmail(String email) {
+        return Optional.ofNullable(email)
+            .filter(e -> e.matches("^[^@]+@[^@]+\\.[^@]+$"));
+    }
+
+    private static Optional<String> validateName(String name) {
+        return Optional.ofNullable(name)
+            .filter(n -> n.trim().length() >= 2);
+    }
+
+    private static Optional<Integer> validateAge(Integer age) {
+        return Optional.ofNullable(age)
+            .filter(a -> a >= 0 && a <= 150);
+    }
+}
+```
+
+### 2. Strategy Pattern
+
+```java
+public class PaymentProcessor {
+    private Map<PaymentType, PaymentStrategy> strategies = new HashMap<>();
+
+    public Optional<PaymentResult> processPayment(PaymentRequest request) {
+        return Optional.ofNullable(request)
+            .map(PaymentRequest::getPaymentType)
+            .map(strategies::get)
+            .flatMap(strategy -> strategy.process(request));
+    }
+
+    public interface PaymentStrategy {
+        Optional<PaymentResult> process(PaymentRequest request);
+    }
+
+    public class CreditCardStrategy implements PaymentStrategy {
+        public Optional<PaymentResult> process(PaymentRequest request) {
+            return validateCreditCard(request)
+                .flatMap(this::chargeCard)
+                .map(this::createSuccessResult);
+        }
+    }
+}
+```
+
+### 3. Chain of Responsibility
+
+```java
+public class NotificationService {
+    private List<NotificationChannel> channels;
+
+    public boolean sendNotification(User user, String message) {
+        return channels.stream()
+            .map(channel -> channel.send(user, message))
+            .filter(Optional::isPresent)
+            .findFirst()
+            .isPresent();
+    }
+
+    public interface NotificationChannel {
+        Optional<NotificationResult> send(User user, String message);
+    }
+
+    public class EmailChannel implements NotificationChannel {
+        public Optional<NotificationResult> send(User user, String message) {
+            return Optional.ofNullable(user.getEmail())
+                .filter(this::isValidEmail)
+                .flatMap(email -> sendEmail(email, message));
+        }
+    }
+
+    public class SmsChannel implements NotificationChannel {
+        public Optional<NotificationResult> send(User user, String message) {
+            return Optional.ofNullable(user.getPhoneNumber())
+                .filter(this::isValidPhoneNumber)
+                .flatMap(phone -> sendSms(phone, message));
+        }
+    }
+}
+```
+
+---
+
+## Debugging and Logging
+
+### 1. Optional-Friendly Logging
+
+```java
+public class LoggingService {
+
+    public void logUserAction(Long userId, String action) {
+        userRepository.findById(userId)
+            .ifPresentOrElse(
+                user -> logger.info("User {} performed action: {}",
+                    user.getName(), action),
+                () -> logger.warn("Action attempted by unknown user ID: {}", userId)
+            );
+    }
+
+    public void debugOptionalChain(String input) {
+        logger.debug("Starting processing for input: {}", input);
+
+        Optional<String> result = Optional.ofNullable(input)
+            .filter(s -> {
+                boolean valid = s.length() > 3;
+                logger.debug("Length validation: {} -> {}", s.length(), valid);
+                return valid;
+            })
+            .map(s -> {
+                String upper = s.toUpperCase();
+                logger.debug("Uppercase transformation: {} -> {}", s, upper);
+                return upper;
+            })
+            .filter(s -> {
+                boolean isAlpha = s.matches("[A-Z]+");
+                logger.debug("Alpha validation: {} -> {}", s, isAlpha);
+                return isAlpha;
+            });
+
+        result.ifPresentOrElse(
+            value -> logger.info("Processing successful: {}", value),
+            () -> logger.warn("Processing failed for input: {}", input)
+        );
+    }
+}
+```
+
+### 2. Error Context Preservation
+
+```java
+public class ErrorHandlingService {
+
+    public class ProcessingResult {
+        private final Optional<String> value;
+        private final List<String> errors;
+
+        public ProcessingResult(Optional<String> value, List<String> errors) {
+            this.value = value;
+            this.errors = errors;
+        }
+
+        // getters...
+    }
+
+    public ProcessingResult processWithErrorTracking(String input) {
+        List<String> errors = new ArrayList<>();
+
+        Optional<String> result = Optional.ofNullable(input)
+            .filter(s -> {
+                if (s.trim().isEmpty()) {
+                    errors.add("Input cannot be empty");
+                    return false;
+                }
+                return true;
+            })
+            .filter(s -> {
+                if (s.length() < 5) {
+                    errors.add("Input must be at least 5 characters");
+                    return false;
+                }
+                return true;
+            })
+            .map(s -> {
+                try {
+                    return s.toUpperCase();
+                } catch (Exception e) {
+                    errors.add("Failed to convert to uppercase: " + e.getMessage());
+                    return null;
+                }
+            })
+            .filter(Objects::nonNull);
+
+        return new ProcessingResult(result, errors);
+    }
+}
+```
+
+---
+
+## Integration with Modern Java Features
+
+### 1. Records and Optional (Java 14+)
+
+```java
+public record UserProfile(
+    String name,
+    Optional<String> email,
+    Optional<LocalDate> birthDate,
+    Optional<String> phoneNumber
+) {
+    public String getDisplayName() {
+        return Optional.ofNullable(name)
+            .filter(n -> !n.trim().isEmpty())
+            .orElse("Anonymous");
+    }
+
+    public Optional<Integer> getAge() {
+        return birthDate
+            .map(date -> Period.between(date, LocalDate.now()).getYears())
+            .filter(age -> age >= 0);
+    }
+}
+```
+
+### 2. Pattern Matching (Java 17+)
+
+```java
+public class ModernOptionalUsage {
+
+    public String processOptional(Optional<String> opt) {
+        return switch (opt.isEmpty()) {
+            case true -> "Empty optional";
+            case false -> "Value: " + opt.get();
+        };
+    }
+
+    // With sealed classes (Java 17+)
+    public sealed interface Result permits Success, Failure {}
+    public record Success(String value) implements Result {}
+    public record Failure(String error) implements Result {}
+
+    public Result processWithResult(String input) {
+        return Optional.ofNullable(input)
+            .filter(s -> !s.trim().isEmpty())
+            .map(s -> (Result) new Success(s.toUpperCase()))
+            .orElse(new Failure("Invalid input"));
+    }
+}
+```
+
+### 3. Virtual Threads Integration (Java 21+)
+
+```java
+public class AsyncOptionalService {
+
+    public CompletableFuture<Optional<User>> findUserAsync(Long id) {
+        return CompletableFuture.supplyAsync(() ->
+            userRepository.findById(id), virtualThreadExecutor);
+    }
+
+    public CompletableFuture<String> processUserAsync(Long id) {
+        return findUserAsync(id)
+            .thenCompose(userOpt ->
+                userOpt.map(this::enrichUserDataAsync)
+                    .orElse(CompletableFuture.completedFuture("User not found"))
+            );
+    }
+
+    private CompletableFuture<String> enrichUserDataAsync(User user) {
+        return CompletableFuture.supplyAsync(() ->
+            Optional.of(user)
+                .map(User::getName)
+                .map(String::toUpperCase)
+                .orElse("UNKNOWN")
+        );
+    }
+}
+```
+
+---
+
+## Testing Strategies
+
+### 1. Comprehensive Test Examples
+
+```java
+@ExtendWith(MockitoExtension.class)
+public class OptionalServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    @DisplayName("Should return user when found")
+    void shouldReturnUserWhenFound() {
+        // Given
+        User expectedUser = new User("John", "john@example.com");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(expectedUser));
+
+        // When
+        Optional<User> result = userService.getUser(1L);
+
+        // Then
+        assertThat(result)
+            .isPresent()
+            .hasValueSatisfying(user -> {
+                assertThat(user.getName()).isEqualTo("John");
+                assertThat(user.getEmail()).isEqualTo("john@example.com");
+            });
+    }
+
+    @Test
+    @DisplayName("Should return empty when user not found")
+    void shouldReturnEmptyWhenUserNotFound() {
+        // Given
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When
+        Optional<User> result = userService.getUser(999L);
+
+        // Then
+        assertThat(result).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "a", "ab"})
+    @DisplayName("Should filter out invalid names")
+    void shouldFilterInvalidNames(String invalidName) {
+        // Given
+        User user = new User(invalidName, "email@test.com");
+
+        // When
+        Optional<String> result = userService.getValidatedName(user);
+
+        // Then
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should chain transformations correctly")
+    void shouldChainTransformations() {
+        // Given
+        User user = new User("john doe", "john@example.com");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // When
+        String result = userService.getFormattedUserName(1L);
+
+        // Then
+        assertThat(result).isEqualTo("JOHN DOE");
+
+        // Verify the chain works
+        verify(userRepository).findById(1L);
+    }
+}
+```
+
+### 2. Property-Based Testing
+
+```java
+@TestPropertySource(properties = {
+    "junit.jupiter.testinstance.lifecycle.default = per_class"
+})
+public class OptionalPropertyTest {
+
+    @Property
+    void optionalMapPreservesPresence(@ForAll Optional<@IntRange(min = 1, max = 100) Integer> opt) {
+        Optional<String> mapped = opt.map(Object::toString);
+        assertThat(mapped.isPresent()).isEqualTo(opt.isPresent());
+    }
+
+    @Property
+    void optionalOrElseIsIdempotent(@ForAll String defaultValue) {
+        Optional<String> empty = Optional.empty();
+        String result1 = empty.orElse(defaultValue);
+        String result2 = empty.orElse(defaultValue);
+        assertThat(result1).isEqualTo(result2);
+    }
+
+    @Property
+    void optionalFilterReducesOrMaintains(@ForAll Optional<@IntRange(min = 1, max = 100) Integer> opt) {
+        Optional<Integer> filtered = opt.filter(n -> n > 50);
+
+        if (filtered.isPresent()) {
+            assertThat(opt.isPresent()).isTrue();
+            assertThat(opt.get()).isGreaterThan(50);
+        }
+    }
+}
+```
+
+---
+
+## Functional Programming Patterns
+
+### 1. Monadic Patterns
+
+```java
+public class MonadicOptional {
+
+    // Functor: map preserves structure
+    public static <T, R> Optional<R> fmap(Optional<T> opt, Function<T, R> f) {
+        return opt.map(f);
+    }
+
+    // Monad: flatMap allows chaining
+    public static <T, R> Optional<R> bind(Optional<T> opt, Function<T, Optional<R>> f) {
+        return opt.flatMap(f);
+    }
+
+    // Applicative: apply function in Optional to value in Optional
+    public static <T, R> Optional<R> apply(Optional<Function<T, R>> optFunc, Optional<T> optValue) {
+        return optFunc.flatMap(func -> optValue.map(func));
+    }
+
+    // Lifting regular functions to work with Optional
+    public static <T, U, R> Function<Optional<T>, Function<Optional<U>, Optional<R>>>
+            lift2(BiFunction<T, U, R> func) {
+        return optT -> optU -> optT.flatMap(t -> optU.map(u -> func.apply(t, u)));
+    }
+
+    // Usage example
+    public Optional<String> combineNames(Optional<String> firstName, Optional<String> lastName) {
+        BiFunction<String, String, String> combiner = (f, l) -> f + " " + l;
+        return lift2(combiner).apply(firstName).apply(lastName);
+    }
+}
+```
+
+### 2. Validation Chains
+
+```java
+public class ValidationChain {
+
+    public static class ValidationError {
+        private final String field;
+        private final String message;
+
+        public ValidationError(String field, String message) {
+            this.field = field;
+            this.message = message;
+        }
+
+        // getters...
+    }
+
+    public class Validator<T> {
+        private final List<ValidationError> errors = new ArrayList<>();
+        private final Optional<T> value;
+
+        private Validator(T value) {
+            this.value = Optional.ofNullable(value);
+        }
+
+        public static <T> Validator<T> of(T value) {
+            return new Validator<>(value);
+        }
+
+        public Validator<T> validate(Predicate<T> condition, String field, String message) {
+            if (value.isPresent() && !condition.test(value.get())) {
+                errors.add(new ValidationError(field, message));
+            }
+            return this;
+        }
+
+        public <U> Validator<U> map(Function<T, U> mapper) {
+            return new Validator<>(value.map(mapper).orElse(null));
+        }
+
+        public Optional<T> get() {
+            return errors.isEmpty() ? value : Optional.empty();
+        }
+
+        public List<ValidationError> getErrors() {
+            return Collections.unmodifiableList(errors);
+        }
+    }
+
+    // Usage
+    public Optional<User> validateAndCreateUser(String name, String email, Integer age) {
+        return Validator.of(new User(name, email, age))
+            .validate(u -> u.getName() != null && u.getName().length() >= 2,
+                     "name", "Name must be at least 2 characters")
+            .validate(u -> u.getEmail() != null && u.getEmail().contains("@"),
+                     "email", "Email must be valid")
+            .validate(u -> u.getAge() != null && u.getAge() >= 18,
+                     "age", "Age must be 18 or older")
+            .get();
+    }
+}
+```
+
+---
+
+## Reactive Programming Integration
+
+### 1. Optional with Reactive Streams
+
+```java
+public class ReactiveOptionalService {
+
+    // Convert Optional to Mono (Project Reactor)
+    public Mono<User> findUserReactive(Long id) {
+        return Mono.fromCallable(() -> userRepository.findById(id))
+            .flatMap(opt -> opt.map(Mono::just).orElse(Mono.empty()));
+    }
+
+    // Convert Optional to Maybe (RxJava)
+    public Maybe<User> findUserRx(Long id) {
+        return Maybe.fromCallable(() -> userRepository.findById(id))
+            .flatMap(opt -> opt.map(Maybe::just).orElse(Maybe.empty()));
+    }
+
+    // Processing streams of Optionals
+    public Flux<String> processUserNames(Flux<Long> userIds) {
+        return userIds
+            .flatMap(id -> findUserReactive(id))
+            .map(User::getName)
+            .filter(name -> !name.trim().isEmpty());
+    }
+}
+```
+
+---
+
+## Memory and Performance Optimizations
+
+### 1. Optional Caching
+
+```java
+public class OptimizedService {
+    private final Map<String, Optional<String>> cache = new ConcurrentHashMap<>();
+
+    // Cache Optional results to avoid repeated empty checks
+    public Optional<String> getCachedValue(String key) {
+        return cache.computeIfAbsent(key, k ->
+            Optional.ofNullable(expensiveDataSource.getValue(k))
+        );
+    }
+
+    // Batch processing to reduce Optional creation
+    public Map<Long, Optional<User>> findUsersBatch(Set<Long> ids) {
+        Map<Long, User> found = userRepository.findByIds(ids);
+        return ids.stream()
+            .collect(Collectors.toMap(
+                Function.identity(),
+                id -> Optional.ofNullable(found.get(id))
+            ));
+    }
+}
+```
+
+### 2. Memory-Efficient Patterns
+
+```java
+public class MemoryEfficientOptional {
+
+    // Reuse empty instances
+    private static final Optional<String> EMPTY_STRING = Optional.empty();
+
+    public Optional<String> processString(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return EMPTY_STRING; // Reuse singleton
+        }
+        return Optional.of(input.trim());
+    }
+
+    // Avoid creating Optionals in hot paths
+    public boolean hasValidEmail(User user) {
+        String email = user.getEmail();
+        return email != null && email.contains("@") && email.length() > 5;
+    }
+
+    // Create Optional only when needed for API
+    public Optional<String> getValidEmail(User user) {
+        return hasValidEmail(user) ?
+            Optional.of(user.getEmail()) :
+            Optional.empty();
+    }
+}
+```
+
+---
+
+## Advanced Use Cases
+
+### 1. Database Integration
+
+```java
+@Repository
+public class OptionalUserRepository {
+
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    Optional<User> findByEmail(@Param("email") String email);
+
+    @Query("SELECT u FROM User u WHERE u.isActive = true AND u.lastLogin > :since")
+    List<User> findActiveUsersSince(@Param("since") LocalDateTime since);
+
+    // Custom query with Optional result
+    public Optional<UserStats> getUserStats(Long userId) {
+        return findById(userId)
+            .map(user -> UserStats.builder()
+                .userId(user.getId())
+                .loginCount(getLoginCount(user))
+                .lastActivity(user.getLastActivity())
+                .build());
+    }
+
+    // Conditional updates
+    public boolean updateUserEmail(Long userId, String newEmail) {
+        return findById(userId)
+            .filter(User::isActive)
+            .filter(user -> isValidEmail(newEmail))
+            .map(user -> {
+                user.setEmail(newEmail);
+                user.setEmailVerified(false);
+                return save(user);
+            })
+            .isPresent();
+    }
+}
+```
+
+### 2. REST API Controllers
+
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @Autowired
+    private UserService userService;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
+        return userService.findUser(id)
+            .map(UserDto::from)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<UserProfileDto> getUserProfile(@PathVariable Long id) {
+        return userService.findUser(id)
+            .filter(User::isActive)
+            .map(User::getProfile)
+            .filter(Objects::nonNull)
+            .map(UserProfileDto::from)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/activate")
+    public ResponseEntity<String> activateUser(@PathVariable Long id) {
+        return userService.findUser(id)
+            .filter(user -> !user.isActive())
+            .map(user -> {
+                user.setActive(true);
+                userService.save(user);
+                return ResponseEntity.ok("User activated successfully");
+            })
+            .orElse(ResponseEntity.badRequest().body("User not found or already active"));
+    }
+}
+```
+
+---
+
+## Comparison with Other Languages
+
+### 1. Optional vs Nullable Types
+
+```java
+// Java Optional
+public Optional<String> findValue(String key) {
+    return Optional.ofNullable(map.get(key));
+}
+
+// Kotlin nullable types (for reference)
+// fun findValue(key: String): String? = map[key]
+
+// C# nullable reference types (for reference)
+// public string? FindValue(string key) => map.TryGetValue(key, out var value) ? value : null;
+```
+
+### 2. Optional vs Maybe Monad
+
+```java
+// Java Optional (limited monad)
+Optional<String> result = Optional.of("hello")
+    .map(String::toUpperCase)
+    .filter(s -> s.length() > 3);
+
+// Haskell Maybe (for reference)
+// result = Just "hello" >>= return . toUpper >>= \s -> if length s > 3 then Just s else Nothing
+```
+
+---
+
+## Key Interview Tips
+
+### 1. Common Interview Questions
+
+```java
+public class InterviewExamples {
+
+    // Q: Find first even number in a list
+    public Optional<Integer> findFirstEven(List<Integer> numbers) {
+        return numbers.stream()
+            .filter(n -> n % 2 == 0)
+            .findFirst();
+    }
+
+    // Q: Safe string parsing with default
+    public int parseIntWithDefault(String str, int defaultValue) {
+        return Optional.ofNullable(str)
+            .flatMap(s -> {
+                try {
+                    return Optional.of(Integer.parseInt(s));
+                } catch (NumberFormatException e) {
+                    return Optional.empty();
+                }
+            })
+            .orElse(defaultValue);
+    }
+
+    // Q: Chain multiple Optional operations
+    public Optional<String> processUserData(Long userId) {
+        return userRepository.findById(userId)
+            .filter(User::isActive)
+            .map(User::getProfile)
+            .flatMap(Profile::getBio)
+            .filter(bio -> bio.length() > 10)
+            .map(bio -> bio.substring(0, 50));
+    }
+
+    // Q: Handle nested Optional structures
+    public Optional<String> getNestedProperty(User user) {
+        return Optional.ofNullable(user)
+            .map(User::getAddress)
+            .flatMap(Address::getCountry)
+            .map(Country::getCode);
+    }
+}
+```
+
+### 2. Performance Considerations
+
+| Operation | Time Complexity | Notes |
+|-----------|----------------|-------|
+| `Optional.of()` | O(1) | Lightweight wrapper |
+| `Optional.empty()` | O(1) | Singleton instance |
+| `isPresent()` | O(1) | Simple null check |
+| `map()` | O(1) + O(f) | Where f is mapper function |
+| `flatMap()` | O(1) + O(f) | Where f is mapper function |
+| `filter()` | O(1) + O(p) | Where p is predicate function |
+| `orElse()` | O(1) | Always evaluates default |
+| `orElseGet()` | O(1) + O(s) | Lazy evaluation of supplier |
+
+---
+
+## Complete Example: E-commerce Order System
+
+```java
+public class EcommerceOrderService {
+
+    public class OrderResult {
+        private final Optional<Order> order;
+        private final List<String> warnings;
+        private final Optional<String> errorMessage;
+
+        // constructors, getters...
+    }
+
+    public OrderResult createOrder(OrderRequest request) {
+        List<String> warnings = new ArrayList<>();
+
+        Optional<Order> order = validateRequest(request)
+            .flatMap(this::checkInventory)
+            .flatMap(req -> applyDiscounts(req, warnings))
+            .flatMap(this::calculateShipping)
+            .flatMap(this::processPayment)
+            .map(this::createOrderEntity);
+
+        String errorMessage = order.isEmpty() ? "Order creation failed" : null;
+
+        return new OrderResult(order, warnings, Optional.ofNullable(errorMessage));
+    }
+
+    private Optional<OrderRequest> validateRequest(OrderRequest request) {
+        return Optional.ofNullable(request)
+            .filter(req -> req.getCustomerId() != null)
+            .filter(req -> req.getItems() != null && !req.getItems().isEmpty())
+            .filter(req -> req.getItems().stream()
+                .allMatch(item -> item.getQuantity() > 0 && item.getProductId() != null));
+    }
+
+    private Optional<OrderRequest> checkInventory(OrderRequest request) {
+        boolean allAvailable = request.getItems().stream()
+            .allMatch(item ->
+                inventoryService.getAvailableStock(item.getProductId())
+                    .map(stock -> stock >= item.getQuantity())
+                    .orElse(false));
+
+        return allAvailable ? Optional.of(request) : Optional.empty();
+    }
+
+    private Optional<OrderRequest> applyDiscounts(OrderRequest request, List<String> warnings) {
+        return Optional.of(request)
+            .map(req -> {
+                discountService.getApplicableDiscount(req.getCustomerId())
+                    .ifPresentOrElse(
+                        discount -> {
+                            req.applyDiscount(discount);
+                            warnings.add("Discount applied: " + discount.getDescription());
+                        },
+                        () -> warnings.add("No applicable discounts found")
+                    );
+                return req;
+            });
+    }
+
+    public Optional<OrderSummary> getOrderSummary(Long orderId) {
+        return orderRepository.findById(orderId)
+            .map(order -> OrderSummary.builder()
+                .orderId(order.getId())
+                .status(order.getStatus())
+                .total(order.getTotal())
+                .estimatedDelivery(order.getShippingInfo()
+                    .flatMap(ShippingInfo::getEstimatedDelivery))
+                .trackingNumber(order.getShippingInfo()
+                    .flatMap(ShippingInfo::getTrackingNumber))
+                .build());
+    }
+}
+```
+
+---
+
+## Migration and Refactoring Guide
+
+### 1. Step-by-Step Migration
+
+```java
+// Step 1: Original null-based code
+public String getUpperCaseName(User user) {
+    if (user != null) {
+        String name = user.getName();
+        if (name != null && !name.trim().isEmpty()) {
+            return name.toUpperCase();
+        }
+    }
+    return "UNKNOWN";
+}
+
+// Step 2: Introduce Optional gradually
+public String getUpperCaseName(User user) {
+    return Optional.ofNullable(user)
+        .map(User::getName)
+        .filter(name -> name != null && !name.trim().isEmpty())
+        .map(String::toUpperCase)
+        .orElse("UNKNOWN");
+}
+
+// Step 3: Full Optional integration
+public Optional<String> getUpperCaseNameOptional(Optional<User> userOpt) {
+    return userOpt
+        .map(User::getName)
+        .filter(name -> !name.trim().isEmpty())
+        .map(String::toUpperCase);
+}
+```
+
+### 2. Refactoring Utilities
+
+```java
+public class RefactoringUtils {
+
+    // Helper to gradually introduce Optional
+    public static <T> Optional<T> nullable(T value) {
+        return Optional.ofNullable(value);
+    }
+
+    // Convert existing null checks
+    public static <T> Predicate<T> nonNull() {
+        return Objects::nonNull;
+    }
+
+    // Safe getter conversion
+    public static <T, R> Function<T, Optional<R>> safeGetter(Function<T, R> getter) {
+        return obj -> {
+            try {
+                return Optional.ofNullable(getter.apply(obj));
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+        };
+    }
+
+    // Usage example
+    Function<User, Optional<String>> safeEmailGetter = safeGetter(User::getEmail);
+}
+```
+
+---
+
+## Debugging and Troubleshooting
+
+### 1. Optional Debugging Techniques
+
+```java
+public class OptionalDebugging {
+
+    // Add debugging to Optional chains
+    public Optional<String> debugChain(String input) {
+        return Optional.ofNullable(input)
+            .peek(s -> System.out.println("Input: " + s))
+            .filter(s -> s.length() > 3)
+            .peek(s -> System.out.println("After length filter: " + s))
+            .map(String::toUpperCase)
+            .peek(s -> System.out.println("After uppercase: " + s))
+            .filter(s -> s.contains("VALID"))
+            .peek(s -> System.out.println("Final result: " + s));
+    }
+
+    // Custom peek method for Optional (Java 8 compatible)
+    public static <T> Optional<T> peek(Optional<T> opt, Consumer<T> action) {
+        opt.ifPresent(action);
+        return opt;
+    }
+
+    // Usage
+    public Optional<User> findAndLogUser(Long id) {
+        return peek(userRepository.findById(id),
+            user -> logger.debug("Found user: {}", user.getName()));
+    }
+
+    // Conditional debugging
+    public Optional<String> processWithConditionalLogging(String input, boolean debug) {
+        Optional<String> result = Optional.ofNullable(input)
+            .filter(s -> !s.trim().isEmpty())
+            .map(String::toUpperCase);
+
+        if (debug) {
+            result.ifPresentOrElse(
+                value -> logger.debug("Processing successful: {}", value),
+                () -> logger.debug("Processing failed for input: {}", input)
+            );
+        }
+
+        return result;
+    }
+}
+```
+
+### 2. Common Debugging Scenarios
+
+```java
+public class DebuggingScenarios {
+
+    // Debug why Optional chain returns empty
+    public Optional<String> debugEmptyChain(User user) {
+        System.out.println("Starting with user: " + (user != null ? user.getName() : "null"));
+
+        return Optional.ofNullable(user)
+            .peek(u -> System.out.println("User is present: " + u.getName()))
+            .filter(u -> {
+                boolean active = u.isActive();
+                System.out.println("User active check: " + active);
+                return active;
+            })
+            .map(u -> {
+                String email = u.getEmail();
+                System.out.println("User email: " + email);
+                return email;
+            })
+            .filter(email -> {
+                boolean valid = email != null && email.contains("@");
+                System.out.println("Email validation: " + valid);
+                return valid;
+            });
+    }
+
+    // Track Optional transformations
+    public class OptionalTracker<T> {
+        private final Optional<T> optional;
+        private final List<String> operations;
+
+        private OptionalTracker(Optional<T> optional) {
+            this.optional = optional;
+            this.operations = new ArrayList<>();
+        }
+
+        public static <T> OptionalTracker<T> of(Optional<T> optional) {
+            OptionalTracker<T> tracker = new OptionalTracker<>(optional);
+            tracker.operations.add("Initial: " + optional.isPresent());
+            return tracker;
+        }
+
+        public <R> OptionalTracker<R> map(Function<T, R> mapper, String description) {
+            Optional<R> result = optional.map(mapper);
+            operations.add("Map (" + description + "): " + result.isPresent());
+            return new OptionalTracker<>(result);
+        }
+
+        public OptionalTracker<T> filter(Predicate<T> predicate, String description) {
+            Optional<T> result = optional.filter(predicate);
+            operations.add("Filter (" + description + "): " + result.isPresent());
+            return new OptionalTracker<>(result);
+        }
+
+        public Optional<T> get() {
+            operations.forEach(System.out::println);
+            return optional;
+        }
+    }
+}
+```
+
+---
+
+## Integration with Testing Frameworks
+
+### 1. AssertJ Optional Assertions
+
+```java
+@Test
+public void testWithAssertJ() {
+    Optional<String> result = service.processData("input");
+
+    // Rich Optional assertions
+    assertThat(result)
+        .isPresent()
+        .hasValueSatisfying(value -> {
+            assertThat(value).startsWith("PROCESSED");
+            assertThat(value).hasSize(15);
+        });
+
+    // Testing empty Optionals
+    Optional<String> empty = service.processData(null);
+    assertThat(empty).isEmpty();
+
+    // Testing Optional chains
+    Optional<Integer> number = Optional.of("123")
+        .map(Integer::parseInt);
+    assertThat(number).hasValue(123);
+}
+```
+
+### 2. Mockito with Optional
+
+```java
+@Test
+public void testMockingOptionalReturns() {
+    // Mock repository returning Optional
+    when(userRepository.findById(1L))
+        .thenReturn(Optional.of(new User("John")));
+    when(userRepository.findById(999L))
+        .thenReturn(Optional.empty());
+
+    // Test service behavior
+    String result1 = userService.getUserName(1L);
+    assertThat(result1).isEqualTo("JOHN");
+
+    String result2 = userService.getUserName(999L);
+    assertThat(result2).isEqualTo("UNKNOWN");
+
+    // Verify Optional methods were called
+    verify(userRepository, times(2)).findById(any());
+}
+```
+
+### 3. Test Data Builders with Optional
+
+```java
+public class UserTestDataBuilder {
+    private String name = "Test User";
+    private Optional<String> email = Optional.empty();
+    private Optional<Integer> age = Optional.empty();
+
+    public UserTestDataBuilder withEmail(String email) {
+        this.email = Optional.ofNullable(email);
+        return this;
+    }
+
+    public UserTestDataBuilder withAge(Integer age) {
+        this.age = Optional.ofNullable(age);
+        return this;
+    }
+
+    public UserTestDataBuilder withoutEmail() {
+        this.email = Optional.empty();
+        return this;
+    }
+
+    public User build() {
+        User user = new User(name);
+        email.ifPresent(user::setEmail);
+        age.ifPresent(user::setAge);
+        return user;
+    }
+
+    // Usage in tests
+    @Test
+    public void testUserWithOptionalData() {
+        User userWithEmail = new UserTestDataBuilder()
+            .withEmail("test@example.com")
+            .build();
+
+        User userWithoutEmail = new UserTestDataBuilder()
+            .withoutEmail()
+            .build();
+
+        // Test both scenarios
+    }
+}
+```
+
+---
+
+## Library Integrations
+
+### 1. Jackson JSON Serialization
+
+```java
+public class User {
+    private String name;
+
+    @JsonProperty
+    @JsonInclude(JsonInclude.Include.NON_ABSENT)
+    private Optional<String> email = Optional.empty();
+
+    @JsonProperty
+    @JsonInclude(JsonInclude.Include.NON_ABSENT)
+    private Optional<LocalDate> birthDate = Optional.empty();
+
+    // Custom serializer for Optional
+    @JsonSerialize(using = OptionalSerializer.class)
+    @JsonDeserialize(using = OptionalDeserializer.class)
+    private Optional<Address> address = Optional.empty();
+}
+
+public class OptionalSerializer extends JsonSerializer<Optional<?>> {
+    @Override
+    public void serialize(Optional<?> value, JsonGenerator gen, SerializerProvider serializers)
+            throws IOException {
+        if (value.isPresent()) {
+            gen.writeObject(value.get());
+        } else {
+            gen.writeNull();
+        }
+    }
+}
+```
+
+### 2. Spring Framework Integration
+
+```java
+@Service
+public class SpringOptionalService {
+
+    // Spring Data JPA automatically supports Optional
+    @Autowired
+    private UserRepository userRepository; // returns Optional<User>
+
+    // Cache with Optional
+    @Cacheable(value = "users", unless = "#result.isEmpty()")
+    public Optional<User> getCachedUser(Long id) {
+        return userRepository.findById(id);
+    }
+
+    // Conditional bean creation
+    @Bean
+    @ConditionalOnProperty(name = "feature.advanced", havingValue = "true")
+    public Optional<AdvancedService> advancedService() {
+        return Optional.of(new AdvancedServiceImpl());
+    }
+
+    // Configuration properties with Optional
+    @ConfigurationProperties(prefix = "app")
+    public class AppConfig {
+        private Optional<String> apiKey = Optional.empty();
+        private Optional<Duration> timeout = Optional.empty();
+
+        // getters and setters...
+    }
+}
+```
+
+### 3. Hibernate/JPA Integration
+
+```java
+@Entity
+public class UserEntity {
+    @Id
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = true)
+    private String email;
+
+    // Don't store Optional as field, provide Optional getter
+    public Optional<String> getEmail() {
+        return Optional.ofNullable(email);
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    // Custom query methods
+    @NamedQuery(
+        name = "User.findByActiveEmail",
+        query = "SELECT u FROM UserEntity u WHERE u.email IS NOT NULL AND u.isActive = true"
+    )
+}
+
+@Repository
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+
+    Optional<UserEntity> findByEmail(String email);
+
+    @Query("SELECT u FROM UserEntity u WHERE u.name = :name AND u.isActive = true")
+    Optional<UserEntity> findActiveUserByName(@Param("name") String name);
+
+    // Custom implementation
+    default Optional<UserEntity> findByEmailDomain(String domain) {
+        return findAll().stream()
+            .filter(user -> user.getEmail()
+                .map(email -> email.endsWith("@" + domain))
+                .orElse(false))
+            .findFirst();
+    }
+}
+```
+
+---
+
+## Concurrency and Optional
+
+### 1. Thread-Safe Optional Operations
+
+```java
+public class ConcurrentOptionalService {
+    private final ConcurrentMap<String, Optional<String>> cache = new ConcurrentHashMap<>();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    public Optional<String> getOrComputeThreadSafe(String key, Supplier<String> computation) {
+        // Double-checked locking with Optional
+        Optional<String> result = cache.get(key);
+        if (result != null) {
+            return result;
+        }
+
+        lock.writeLock().lock();
+        try {
+            result = cache.get(key);
+            if (result == null) {
+                String computed = computation.get();
+                result = Optional.ofNullable(computed);
+                cache.put(key, result);
+            }
+            return result;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    // Atomic operations with Optional
+    private final AtomicReference<Optional<String>> currentValue =
+        new AtomicReference<>(Optional.empty());
+
+    public boolean updateIfBetter(String newValue, Comparator<String> comparator) {
+        return currentValue.updateAndGet(current ->
+            Optional.ofNullable(newValue)
+                .filter(nv -> current.map(cv -> comparator.compare(nv, cv) > 0).orElse(true))
+                .or(() -> current)
+        ).isPresent();
+    }
+}
+```
+
+### 2. CompletableFuture with Optional
+
+```java
+public class AsyncOptionalService {
+
+    public CompletableFuture<Optional<User>> findUserAsync(Long id) {
+        return CompletableFuture
+            .supplyAsync(() -> userRepository.findById(id))
+            .exceptionally(throwable -> {
+                logger.error("Error finding user: " + id, throwable);
+                return Optional.empty();
+            });
+    }
+
+    public CompletableFuture<String> processUserAsync(Long id) {
+        return findUserAsync(id)
+            .thenCompose(userOpt ->
+                userOpt.map(this::enrichUserAsync)
+                    .orElse(CompletableFuture.completedFuture("User not found"))
+            );
+    }
+
+    private CompletableFuture<String> enrichUserAsync(User user) {
+        return CompletableFuture
+            .supplyAsync(() ->
+                Optional.of(user)
+                    .map(User::getName)
+                    .filter(name -> !name.trim().isEmpty())
+                    .map(String::toUpperCase)
+                    .orElse("INVALID_USER")
+            );
+    }
+
+    // Parallel processing with Optional results
+    public CompletableFuture<List<String>> processUsersInParallel(List<Long> userIds) {
+        List<CompletableFuture<Optional<String>>> futures = userIds.stream()
+            .map(id -> findUserAsync(id).thenApply(opt -> opt.map(User::getName)))
+            .collect(Collectors.toList());
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+            .thenApply(v -> futures.stream()
+                .map(CompletableFuture::join)
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList()));
+    }
+}
+```
+
+---
+
+## Design Patterns Deep Dive
+
+### 1. Null Object Pattern with Optional
+
+```java
+public class NullObjectOptional {
+
+    public interface UserService {
+        String getName();
+        Optional<String> getEmail();
+        boolean isActive();
+    }
+
+    public class RealUser implements UserService {
+        private final User user;
+
+        public RealUser(User user) {
+            this.user = user;
+        }
+
+        @Override
+        public String getName() {
+            return user.getName();
+        }
+
+        @Override
+        public Optional<String> getEmail() {
+            return Optional.ofNullable(user.getEmail());
+        }
+
+        @Override
+        public boolean isActive() {
+            return user.isActive();
+        }
+    }
+
+    public class NullUser implements UserService {
+        private static final NullUser INSTANCE = new NullUser();
+
+        public static NullUser getInstance() {
+            return INSTANCE;
+        }
+
+        @Override
+        public String getName() {
+            return "Unknown User";
+        }
+
+        @Override
+        public Optional<String> getEmail() {
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean isActive() {
+            return false;
+        }
+    }
+
+    public UserService getUser(Long id) {
+        return userRepository.findById(id)
+            .map(RealUser::new)
+            .map(UserService.class::cast)
+            .orElse(NullUser.getInstance());
+    }
+}
+```
+
+### 2. Command Pattern with Optional
+
+```java
+public class OptionalCommandPattern {
+
+    public interface Command<T> {
+        Optional<T> execute();
+    }
+
+    public class FindUserCommand implements Command<User> {
+        private final Long userId;
+        private final UserRepository repository;
+
+        public FindUserCommand(Long userId, UserRepository repository) {
+            this.userId = userId;
+            this.repository = repository;
+        }
+
+        @Override
+        public Optional<User> execute() {
+            return repository.findById(userId)
+                .filter(User::isActive);
+        }
+    }
+
+    public class CommandProcessor {
+        public <T> Optional<T> processCommand(Command<T> command) {
+            try {
+                return command.execute();
+            } catch (Exception e) {
+                logger.error("Command execution failed", e);
+                return Optional.empty();
+            }
+        }
+
+        public <T> CompletableFuture<Optional<T>> processCommandAsync(Command<T> command) {
+            return CompletableFuture.supplyAsync(() -> processCommand(command));
+        }
+    }
+}
+```
+
+---
+
+## Serialization and Persistence
+
+### 1. Custom Serialization Strategies
+
+```java
+public class OptionalSerialization {
+
+    // Custom JSON serialization
+    public static class OptionalStringSerializer extends JsonSerializer<Optional<String>> {
+        @Override
+        public void serialize(Optional<String> value, JsonGenerator gen, SerializerProvider serializers)
+                throws IOException {
+            value.ifPresentOrElse(gen::writeString, gen::writeNull);
+        }
+    }
+
+    public static class OptionalStringDeserializer extends JsonDeserializer<Optional<String>> {
+        @Override
+        public Optional<String> deserialize(JsonParser p, DeserializationContext ctxt)
+                throws IOException {
+            String value = p.getValueAsString();
+            return Optional.ofNullable(value);
+        }
+    }
+
+    // Database persistence helper
+    public class OptionalDatabaseMapper {
+
+        public void setOptionalString(PreparedStatement stmt, int index, Optional<String> value)
+                throws SQLException {
+            value.ifPresentOrElse(
+                v -> {
+                    try {
+                        stmt.setString(index, v);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                () -> {
+                    try {
+                        stmt.setNull(index, Types.VARCHAR);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+        }
+
+        public Optional<String> getOptionalString(ResultSet rs, String columnName)
+                throws SQLException {
+            String value = rs.getString(columnName);
+            return rs.wasNull() ? Optional.empty() : Optional.of(value);
+        }
+    }
+}
+```
+
+### 2. Configuration Management
+
+```java
+@Component
+@ConfigurationProperties(prefix = "app")
+public class OptionalConfig {
+
+    private Optional<String> databaseUrl = Optional.empty();
+    private Optional<Integer> maxConnections = Optional.empty();
+    private Optional<Duration> connectionTimeout = Optional.empty();
+
+    // Getters and setters that handle Optional
+    public Optional<String> getDatabaseUrl() {
+        return databaseUrl;
+    }
+
+    public void setDatabaseUrl(String databaseUrl) {
+        this.databaseUrl = Optional.ofNullable(databaseUrl);
+    }
+
+    // Validation with Optional
+    @PostConstruct
+    public void validate() {
+        List<String> errors = new ArrayList<>();
+
+        if (databaseUrl.isEmpty()) {
+            errors.add("Database URL is required");
+        }
+
+        maxConnections
+            .filter(max -> max <= 0)
+            .ifPresent(max -> errors.add("Max connections must be positive"));
+
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException("Configuration errors: " + String.join(", ", errors));
+        }
+    }
+
+    // Provide configured services
+    @Bean
+    public DataSource dataSource() {
+        return databaseUrl
+            .map(url -> {
+                HikariConfig config = new HikariConfig();
+                config.setJdbcUrl(url);
+                maxConnections.ifPresent(config::setMaximumPoolSize);
+                connectionTimeout.ifPresent(timeout ->
+                    config.setConnectionTimeout(timeout.toMillis()));
+                return new HikariDataSource(config);
+            })
+            .orElseThrow(() -> new IllegalStateException("Database URL not configured"));
+    }
+}
+```
+
+---
+
+## Summary and Quick Reference
+
+### Essential Patterns to Remember
+
+1. **Creation Patterns**
+   ```java
+   Optional.empty()                    // Empty Optional
+   Optional.of(value)                  // Non-null value (throws if null)
+   Optional.ofNullable(value)          // Handles null safely
+   ```
+
+2. **Transformation Patterns**
+   ```java
+   opt.map(func)                       // Transform value
+   opt.flatMap(func)                   // Flatten nested Optional
+   opt.filter(predicate)               // Conditional filtering
+   ```
+
+3. **Terminal Operations**
+   ```java
+   opt.orElse(defaultValue)            // Get value or default
+   opt.orElseGet(supplier)             // Lazy default computation
+   opt.ifPresent(consumer)             // Action if present
+   opt.ifPresentOrElse(consumer, runnable) // Conditional actions
+   ```
+
+4. **Safety Patterns**
+   ```java
+   // ✅ Safe extraction
+   String result = optional.orElse("default");
+
+   // ❌ Dangerous extraction
+   String result = optional.get(); // May throw!
+   ```
+
+### Best Practices Checklist
+
+- ✅ Use Optional for return types that may not have a value
+- ✅ Prefer `orElseGet()` for expensive default computations
+- ✅ Chain operations using `map()`, `flatMap()`, and `filter()`
+- ✅ Use `ifPresent()` instead of `isPresent()` + `get()`
+- ❌ Don't use Optional for method parameters
+- ❌ Don't use Optional for class fields
+- ❌ Don't use Optional for collections (use empty collections)
+- ❌ Avoid `get()` without presence checks
+
+### Performance Guidelines
+
+| Scenario | Recommendation | Reason |
+|----------|---------------|--------|
+| Hot paths | Minimize Optional creation | Reduce object allocation |
+| Default values | Use `orElseGet()` for expensive operations | Lazy evaluation |
+| Primitive values | Consider `OptionalInt/Long/Double` | Avoid boxing overhead |
+| Collections | Return empty collections, not Optional | Standard Java conventions |
+| Caching | Cache Optional results when appropriate | Reduce repeated computations |
+
+This comprehensive guide covers all essential aspects of Java Optional for effective use in modern Java development, from basic operations to advanced patterns and real-world applications!
