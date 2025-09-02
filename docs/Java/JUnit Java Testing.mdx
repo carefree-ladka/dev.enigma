@@ -1,0 +1,634 @@
+# JUnit Java Testing - Complete Developer Guide
+
+## Table of Contents
+1. [Introduction to JUnit](#introduction-to-junit)
+2. [Core Annotations](#core-annotations)
+3. [Assertions](#assertions)
+4. [Test Lifecycle](#test-lifecycle)
+5. [Parameterized Tests](#parameterized-tests)
+6. [Exception Testing](#exception-testing)
+7. [Timeout Testing](#timeout-testing)
+8. [Test Organization](#test-organization)
+9. [Mocking with Mockito](#mocking-with-mockito)
+10. [Best Practices](#best-practices)
+
+---
+
+## Introduction to JUnit
+
+**JUnit** is the most popular testing framework for Java applications. It provides annotations to identify test methods, assertions to verify expected results, and test runners to execute tests.
+
+### Why JUnit is Essential:
+- **Unit Testing**: Validates individual components work correctly
+- **Regression Prevention**: Catches bugs when code changes
+- **Documentation**: Tests serve as living documentation
+- **Confidence**: Enables refactoring with confidence
+
+### JUnit 5 Architecture:
+- **JUnit Platform**: Foundation for launching testing frameworks
+- **JUnit Jupiter**: Programming and extension model for JUnit 5
+- **JUnit Vintage**: Backward compatibility with JUnit 3 and 4
+
+---
+
+## Core Annotations
+
+### @Test - The Foundation
+```java
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+public class CalculatorTest {
+
+    @Test
+    void testAddition() {
+        Calculator calc = new Calculator();
+        int result = calc.add(2, 3);
+        assertEquals(5, result, "2 + 3 should equal 5");
+    }
+}
+```
+
+### @DisplayName - Better Test Descriptions
+```java
+@Test
+@DisplayName("Should calculate correct sum when adding positive numbers")
+void testAddPositiveNumbers() {
+    // Test implementation
+}
+```
+
+### @Disabled - Skip Tests Temporarily
+```java
+@Test
+@Disabled("Feature not yet implemented")
+void testFeatureNotReady() {
+    // This test will be skipped
+}
+```
+
+---
+
+## Assertions
+
+### Basic Assertions (Most Frequently Used)
+
+```java
+import static org.junit.jupiter.api.Assertions.*;
+
+@Test
+void basicAssertions() {
+    // Equality checks
+    assertEquals(expected, actual);
+    assertEquals(expected, actual, "Custom error message");
+
+    // Boolean checks
+    assertTrue(condition);
+    assertFalse(condition);
+
+    // Null checks
+    assertNull(object);
+    assertNotNull(object);
+
+    // Reference checks
+    assertSame(expected, actual);  // Same object reference
+    assertNotSame(expected, actual);
+}
+```
+
+### Array and Collection Assertions
+```java
+@Test
+void collectionAssertions() {
+    String[] expected = {"apple", "banana", "cherry"};
+    String[] actual = {"apple", "banana", "cherry"};
+
+    // Array comparison
+    assertArrayEquals(expected, actual);
+
+    // Collection comparison
+    List<String> expectedList = Arrays.asList("a", "b", "c");
+    List<String> actualList = Arrays.asList("a", "b", "c");
+    assertEquals(expectedList, actualList);
+}
+```
+
+### Exception Assertions
+```java
+@Test
+void exceptionAssertions() {
+    // Assert that exception is thrown
+    Exception exception = assertThrows(
+        IllegalArgumentException.class,
+        () -> calculator.divide(10, 0)
+    );
+
+    assertEquals("Cannot divide by zero", exception.getMessage());
+
+    // Assert no exception is thrown
+    assertDoesNotThrow(() -> calculator.add(1, 2));
+}
+```
+
+### Advanced Assertions
+```java
+@Test
+void advancedAssertions() {
+    Person person = new Person("John", 25);
+
+    // Multiple assertions executed together
+    assertAll("person properties",
+        () -> assertEquals("John", person.getName()),
+        () -> assertEquals(25, person.getAge()),
+        () -> assertTrue(person.isAdult())
+    );
+}
+```
+
+---
+
+## Test Lifecycle
+
+### Setup and Teardown Annotations
+
+```java
+import org.junit.jupiter.api.*;
+
+public class DatabaseTest {
+    private static Database database;
+    private Connection connection;
+
+    @BeforeAll
+    static void setupDatabase() {
+        // Runs once before all tests in the class
+        database = new Database();
+        database.initialize();
+    }
+
+    @BeforeEach
+    void setupConnection() {
+        // Runs before each test method
+        connection = database.getConnection();
+        connection.beginTransaction();
+    }
+
+    @Test
+    void testUserCreation() {
+        // Test implementation
+    }
+
+    @AfterEach
+    void cleanupConnection() {
+        // Runs after each test method
+        connection.rollback();
+        connection.close();
+    }
+
+    @AfterAll
+    static void cleanupDatabase() {
+        // Runs once after all tests in the class
+        database.shutdown();
+    }
+}
+```
+
+**Important Note**: `@BeforeAll` and `@AfterAll` methods must be static.
+
+---
+
+## Parameterized Tests
+
+### @ValueSource - Simple Parameter Testing
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.*;
+
+@ParameterizedTest
+@ValueSource(ints = {1, 2, 3, 5, 8, 13})
+@DisplayName("Should return true for positive numbers")
+void testPositiveNumbers(int number) {
+    assertTrue(MathUtils.isPositive(number));
+}
+
+@ParameterizedTest
+@ValueSource(strings = {"", " ", "   "})
+void testBlankStrings(String input) {
+    assertTrue(StringUtils.isBlank(input));
+}
+```
+
+### @CsvSource - Multiple Parameters
+```java
+@ParameterizedTest
+@CsvSource({
+    "1, 1, 2",
+    "2, 3, 5",
+    "5, 7, 12"
+})
+void testAddition(int a, int b, int expected) {
+    assertEquals(expected, calculator.add(a, b));
+}
+```
+
+### @MethodSource - Complex Data
+```java
+@ParameterizedTest
+@MethodSource("providePersonData")
+void testPersonValidation(String name, int age, boolean expectedValid) {
+    Person person = new Person(name, age);
+    assertEquals(expectedValid, person.isValid());
+}
+
+static Stream<Arguments> providePersonData() {
+    return Stream.of(
+        Arguments.of("John", 25, true),
+        Arguments.of("", 25, false),
+        Arguments.of("Jane", -5, false)
+    );
+}
+```
+
+---
+
+## Exception Testing
+
+### Testing Expected Exceptions
+```java
+@Test
+void testDivisionByZero() {
+    ArithmeticException exception = assertThrows(
+        ArithmeticException.class,
+        () -> calculator.divide(10, 0),
+        "Division by zero should throw ArithmeticException"
+    );
+
+    assertTrue(exception.getMessage().contains("zero"));
+}
+
+@Test
+void testValidInput() {
+    // Ensure no exception is thrown with valid input
+    assertDoesNotThrow(() -> calculator.divide(10, 2));
+}
+```
+
+---
+
+## Timeout Testing
+
+### @Timeout Annotation
+```java
+import org.junit.jupiter.api.Timeout;
+import java.util.concurrent.TimeUnit;
+
+@Test
+@Timeout(value = 2, unit = TimeUnit.SECONDS)
+void testLongRunningOperation() {
+    // This test will fail if it takes longer than 2 seconds
+    heavyComputation();
+}
+
+@Test
+void testWithAssertTimeout() {
+    assertTimeout(Duration.ofSeconds(2), () -> {
+        // Code that should complete within 2 seconds
+        return heavyComputation();
+    });
+}
+```
+
+---
+
+## Test Organization
+
+### Nested Test Classes
+```java
+import org.junit.jupiter.api.Nested;
+
+public class CalculatorTest {
+
+    @Nested
+    @DisplayName("Addition Tests")
+    class AdditionTests {
+
+        @Test
+        @DisplayName("Should add positive numbers correctly")
+        void addPositiveNumbers() {
+            assertEquals(5, calculator.add(2, 3));
+        }
+
+        @Test
+        @DisplayName("Should handle negative numbers")
+        void addNegativeNumbers() {
+            assertEquals(-1, calculator.add(-3, 2));
+        }
+    }
+
+    @Nested
+    @DisplayName("Division Tests")
+    class DivisionTests {
+
+        @Test
+        void divideNormalNumbers() {
+            assertEquals(2.5, calculator.divide(5, 2));
+        }
+    }
+}
+```
+
+### Test Ordering
+```java
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class OrderedTests {
+
+    @Test
+    @Order(1)
+    void firstTest() {
+        // Runs first
+    }
+
+    @Test
+    @Order(2)
+    void secondTest() {
+        // Runs second
+    }
+}
+```
+
+---
+
+## Mocking with Mockito
+
+### Basic Mocking Setup
+```java
+import org.mockito.*;
+import static org.mockito.Mockito.*;
+
+public class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
+    @Test
+    void testFindUser() {
+        // Arrange
+        User mockUser = new User("John", "john@email.com");
+        when(userRepository.findById(1L)).thenReturn(mockUser);
+
+        // Act
+        User result = userService.findUser(1L);
+
+        // Assert
+        assertEquals("John", result.getName());
+        verify(userRepository).findById(1L);
+    }
+}
+```
+
+### Argument Matchers
+```java
+@Test
+void testWithArgumentMatchers() {
+    // Match any string
+    when(userRepository.findByEmail(anyString())).thenReturn(new User());
+
+    // Match specific conditions
+    when(userRepository.findByAge(argThat(age -> age > 18)))
+        .thenReturn(Arrays.asList(new User()));
+
+    // Match exact values
+    when(userRepository.save(eq(user))).thenReturn(user);
+}
+```
+
+### Stubbing Void Methods
+```java
+@Test
+void testVoidMethod() {
+    // For void methods, use doNothing(), doThrow(), etc.
+    doNothing().when(emailService).sendEmail(anyString());
+
+    // Test the service
+    userService.registerUser(user);
+
+    verify(emailService).sendEmail(user.getEmail());
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Follow AAA Pattern (Arrange, Act, Assert)
+```java
+@Test
+void testUserRegistration() {
+    // Arrange
+    User newUser = new User("John", "john@email.com");
+    when(userRepository.existsByEmail(anyString())).thenReturn(false);
+
+    // Act
+    boolean result = userService.registerUser(newUser);
+
+    // Assert
+    assertTrue(result);
+    verify(userRepository).save(newUser);
+}
+```
+
+### 2. Use Descriptive Test Names
+```java
+// Good
+@Test
+void shouldReturnTrueWhenUserEmailIsUnique() { }
+
+// Bad
+@Test
+void testUser() { }
+```
+
+### 3. Test One Thing at a Time
+```java
+// Good - Tests one specific behavior
+@Test
+void shouldThrowExceptionWhenEmailAlreadyExists() {
+    when(userRepository.existsByEmail("test@email.com")).thenReturn(true);
+
+    assertThrows(EmailAlreadyExistsException.class,
+        () -> userService.registerUser(new User("John", "test@email.com")));
+}
+```
+
+### 4. Use Custom Assertions for Complex Objects
+```java
+public class UserAssertions {
+    public static void assertUserEquals(User expected, User actual) {
+        assertAll("user properties",
+            () -> assertEquals(expected.getName(), actual.getName()),
+            () -> assertEquals(expected.getEmail(), actual.getEmail()),
+            () -> assertEquals(expected.getAge(), actual.getAge())
+        );
+    }
+}
+```
+
+### 5. Test Data Builders
+```java
+public class UserTestDataBuilder {
+    private String name = "Default Name";
+    private String email = "default@email.com";
+    private int age = 25;
+
+    public UserTestDataBuilder withName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public UserTestDataBuilder withEmail(String email) {
+        this.email = email;
+        return this;
+    }
+
+    public User build() {
+        return new User(name, email, age);
+    }
+}
+
+// Usage in tests
+@Test
+void testUserCreation() {
+    User user = new UserTestDataBuilder()
+        .withName("John")
+        .withEmail("john@email.com")
+        .build();
+
+    // Test with the created user
+}
+```
+
+---
+
+## Frequently Used Testing Patterns
+
+### 1. Repository Layer Testing
+```java
+@SpringBootTest
+@Transactional
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldFindUserByEmail() {
+        // Given
+        User user = new User("John", "john@email.com");
+        userRepository.save(user);
+
+        // When
+        Optional<User> found = userRepository.findByEmail("john@email.com");
+
+        // Then
+        assertTrue(found.isPresent());
+        assertEquals("John", found.get().getName());
+    }
+}
+```
+
+### 2. Service Layer Testing with Mocks
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void shouldRegisterUserSuccessfully() {
+        // Given
+        User user = new User("John", "john@email.com");
+        when(userRepository.existsByEmail(user.getEmail())).thenReturn(false);
+        when(userRepository.save(user)).thenReturn(user);
+
+        // When
+        User registered = userService.registerUser(user);
+
+        // Then
+        assertNotNull(registered);
+        verify(emailService).sendWelcomeEmail(user.getEmail());
+    }
+}
+```
+
+### 3. Controller Testing
+```java
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldCreateUser() throws Exception {
+        User user = new User("John", "john@email.com");
+        when(userService.createUser(any(User.class))).thenReturn(user);
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"John\",\"email\":\"john@email.com\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("John"))
+                .andExpect(jsonPath("$.email").value("john@email.com"));
+    }
+}
+```
+
+---
+
+## Key Takeaways for Development
+
+### Most Important Annotations:
+- `@Test` - Mark test methods
+- `@BeforeEach` / `@AfterEach` - Setup and cleanup
+- `@ParameterizedTest` - Data-driven tests
+- `@Mock` / `@InjectMocks` - For mocking dependencies
+
+### Essential Assertions:
+- `assertEquals()` - Most common assertion
+- `assertThrows()` - Exception testing
+- `assertAll()` - Multiple related assertions
+- `assertTrue()` / `assertFalse()` - Boolean checks
+
+### Testing Strategy:
+1. **Unit Tests**: Test individual components in isolation
+2. **Integration Tests**: Test component interactions
+3. **Test Coverage**: Aim for meaningful coverage, not just high percentages
+4. **Test Maintenance**: Keep tests simple and maintainable
+
+### Remember:
+- Write tests first (TDD) or alongside code
+- Tests should be fast, independent, and repeatable
+- Good tests serve as documentation
+- Mock external dependencies in unit tests
+- Use real dependencies in integration tests

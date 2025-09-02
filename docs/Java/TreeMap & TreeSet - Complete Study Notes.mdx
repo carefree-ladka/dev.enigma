@@ -1,0 +1,425 @@
+# TreeMap & TreeSet - Guide
+
+## 📋 Requirements Exploration
+
+### What are TreeMap and TreeSet?
+- **TreeMap**: A sorted map implementation that maintains key-value pairs in sorted order
+- **TreeSet**: A sorted set implementation that maintains unique elements in sorted order
+- Both use Red-Black tree internally for balanced tree operations
+
+### Key Questions to Consider:
+1. **When to use TreeMap vs HashMap?**
+   - Use TreeMap when you need sorted keys or range operations
+   - Use HashMap for faster O(1) operations without ordering requirements
+
+2. **When to use TreeSet vs HashSet?**
+   - Use TreeSet for sorted elements and range queries
+   - Use HashSet for faster O(1) operations without ordering
+
+3. **What are the ordering requirements?**
+   - Elements must implement Comparable OR provide a Comparator
+   - Natural ordering vs custom ordering
+
+---
+
+## 🏗️ Architecture/High-level Design
+
+### TreeMap Architecture
+```
+TreeMap
+├── Red-Black Tree Structure
+├── NavigableMap Interface
+├── SortedMap Interface
+└── Map Interface
+```
+
+### TreeSet Architecture
+```
+TreeSet
+├── Red-Black Tree Structure (internally uses TreeMap)
+├── NavigableSet Interface
+├── SortedSet Interface
+└── Set Interface
+```
+
+### Component Relationships
+- **TreeSet internally uses TreeMap** with dummy values
+- Both implement **NavigableXXX** interfaces for range operations
+- Balanced tree ensures **O(log n)** for most operations
+
+### Performance Characteristics
+| Operation | TreeMap | TreeSet | HashMap | HashSet |
+|-----------|---------|---------|---------|---------|
+| Insert    | O(log n)| O(log n)| O(1)    | O(1)    |
+| Search    | O(log n)| O(log n)| O(1)    | O(1)    |
+| Delete    | O(log n)| O(log n)| O(1)    | O(1)    |
+| Min/Max   | O(log n)| O(log n)| O(n)    | O(n)    |
+| Range Ops | O(log n)| O(log n)| N/A     | N/A     |
+
+---
+
+## 📊 Data Model
+
+### TreeMap Data Structure
+```java
+// Internal structure conceptually
+class TreeMapNode<K,V> {
+    K key;
+    V value;
+    TreeMapNode<K,V> left;
+    TreeMapNode<K,V> right;
+    TreeMapNode<K,V> parent;
+    boolean color; // RED-BLACK tree coloring
+}
+```
+
+### TreeSet Data Structure
+```java
+// TreeSet internally uses TreeMap
+class TreeSet<E> {
+    private final NavigableMap<E,Object> map;
+    private static final Object PRESENT = new Object();
+}
+```
+
+### Key Data Entities
+1. **Keys/Elements**: Must be comparable or have comparator
+2. **Values**: Only in TreeMap, can be any object
+3. **Comparator**: Optional custom ordering logic
+4. **Tree Structure**: Red-Black tree for balancing
+
+---
+
+## 🔌 Interface Definition (API)
+
+### TreeMap Core APIs
+
+#### Construction APIs
+```java
+// Natural order
+TreeMap<Integer, String> map = new TreeMap<>();
+
+// Custom order
+TreeMap<Integer, String> mapDesc = new TreeMap<>(Comparator.reverseOrder());
+
+// From existing map
+TreeMap<Integer, String> mapCopy = new TreeMap<>(existingMap);
+```
+
+#### Basic Operations
+```java
+// Insert/Update - O(log n)
+V put(K key, V value)
+void putAll(Map<? extends K, ? extends V> map)
+
+// Retrieve - O(log n)
+V get(Object key)
+boolean containsKey(Object key)
+boolean containsValue(Object value)
+
+// Remove - O(log n)
+V remove(Object key)
+void clear()
+
+// Size operations - O(1)
+int size()
+boolean isEmpty()
+```
+
+#### Navigation APIs (Key Feature!)
+```java
+// Boundary operations - O(log n)
+K firstKey()                    // Smallest key
+K lastKey()                     // Largest key
+
+// Range operations - O(log n)
+K ceilingKey(K key)            // Smallest key ≥ given key
+K floorKey(K key)              // Largest key ≤ given key
+K higherKey(K key)             // Smallest key > given key
+K lowerKey(K key)              // Largest key < given key
+
+// Entry operations - O(log n)
+Map.Entry<K,V> firstEntry()
+Map.Entry<K,V> lastEntry()
+Map.Entry<K,V> ceilingEntry(K key)
+Map.Entry<K,V> floorEntry(K key)
+Map.Entry<K,V> higherEntry(K key)
+Map.Entry<K,V> lowerEntry(K key)
+
+// Poll operations - O(log n)
+Map.Entry<K,V> pollFirstEntry()  // Remove and return first
+Map.Entry<K,V> pollLastEntry()   // Remove and return last
+```
+
+#### View APIs
+```java
+Set<K> keySet()                           // All keys
+Collection<V> values()                    // All values
+Set<Map.Entry<K,V>> entrySet()           // All entries
+
+// Range views
+SortedMap<K,V> subMap(K fromKey, K toKey)
+SortedMap<K,V> headMap(K toKey)
+SortedMap<K,V> tailMap(K fromKey)
+NavigableMap<K,V> descendingMap()
+```
+
+### TreeSet Core APIs
+
+#### Construction APIs
+```java
+// Natural order
+TreeSet<Integer> set = new TreeSet<>();
+
+// Custom order
+TreeSet<Integer> setDesc = new TreeSet<>(Comparator.reverseOrder());
+
+// From collection
+TreeSet<Integer> setCopy = new TreeSet<>(existingCollection);
+```
+
+#### Basic Operations
+```java
+// Insert - O(log n)
+boolean add(E e)
+boolean addAll(Collection<? extends E> c)
+
+// Query - O(log n)
+boolean contains(Object o)
+boolean containsAll(Collection<?> c)
+
+// Remove - O(log n)
+boolean remove(Object o)
+boolean removeAll(Collection<?> c)
+void clear()
+
+// Size operations - O(1)
+int size()
+boolean isEmpty()
+```
+
+#### Navigation APIs (Key Feature!)
+```java
+// Boundary operations - O(log n)
+E first()                       // Smallest element
+E last()                        // Largest element
+
+// Range operations - O(log n)
+E ceiling(E e)                  // Smallest element ≥ given element
+E floor(E e)                    // Largest element ≤ given element
+E higher(E e)                   // Smallest element > given element
+E lower(E e)                    // Largest element < given element
+
+// Poll operations - O(log n)
+E pollFirst()                   // Remove and return smallest
+E pollLast()                    // Remove and return largest
+```
+
+#### Iterator APIs
+```java
+Iterator<E> iterator()                    // Ascending order
+Iterator<E> descendingIterator()          // Descending order
+
+// Range views
+SortedSet<E> subSet(E fromElement, E toElement)
+SortedSet<E> headSet(E toElement)
+SortedSet<E> tailSet(E fromElement)
+NavigableSet<E> descendingSet()
+```
+
+---
+
+## ⚡ Optimizations and Deep Dives
+
+### Performance Optimization Tips
+
+#### 1. Constructor Choice
+```java
+// ✅ Good: Provide initial capacity hint when possible
+TreeSet<Integer> set = new TreeSet<>(existingCollection);
+
+// ✅ Good: Custom comparator for specific ordering
+TreeMap<String, Integer> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+// ❌ Avoid: Frequent rebalancing with poor initial data
+```
+
+#### 2. Range Operations Optimization
+```java
+// ✅ Efficient: Use subMap/subSet for range queries
+NavigableMap<Integer, String> range = map.subMap(10, true, 20, true);
+
+// ✅ Efficient: Use ceiling/floor instead of iteration
+Integer nextKey = map.ceilingKey(searchKey);
+
+// ❌ Inefficient: Manual iteration for range operations
+```
+
+#### 3. Bulk Operations
+```java
+// ✅ Efficient: Use putAll/addAll for bulk operations
+map.putAll(anotherMap);
+set.addAll(anotherCollection);
+
+// ❌ Inefficient: Individual puts/adds in loop
+```
+
+### Memory Optimization
+- **TreeSet memory**: Uses TreeMap internally, so has overhead of dummy values
+- **Node overhead**: Each node has parent, left, right pointers + color bit
+- **Consider alternatives**: For small datasets, ArrayList with Collections.sort() might be more memory-efficient
+
+### Common Pitfalls and Solutions
+
+#### 1. Comparable vs Comparator
+```java
+// ❌ Problem: ClassCastException
+TreeSet<Person> set = new TreeSet<>(); // Person doesn't implement Comparable
+
+// ✅ Solution: Provide Comparator
+TreeSet<Person> set = new TreeSet<>((p1, p2) -> p1.getName().compareTo(p2.getName()));
+```
+
+#### 2. Null Handling
+```java
+// ❌ Problem: NullPointerException
+TreeMap<String, Integer> map = new TreeMap<>();
+map.put(null, 1); // Throws NPE
+
+// ✅ Solution: Use HashMap for null keys or handle explicitly
+```
+
+#### 3. Mutating Keys/Elements
+```java
+// ❌ Dangerous: Mutating key after insertion
+Person person = new Person("John");
+TreeSet<Person> set = new TreeSet<>(Comparator.comparing(Person::getName));
+set.add(person);
+person.setName("Jane"); // Breaks tree structure!
+
+// ✅ Solution: Use immutable keys or rebuild tree after mutations
+```
+
+### Interview-Focused Optimizations
+
+#### Range Query Patterns
+```java
+// Pattern 1: Find all elements in range [low, high]
+NavigableSet<Integer> range = set.subSet(low, true, high, true);
+
+// Pattern 2: Find closest elements
+Integer lower = set.lower(target);
+Integer higher = set.higher(target);
+
+// Pattern 3: Sliding window maximum/minimum
+TreeMap<Integer, Integer> frequencyMap = new TreeMap<>();
+// Use firstKey()/lastKey() for min/max in sliding window
+```
+
+#### Common Interview Questions
+
+1. **Implement a data structure that supports insert, delete, and getRandom in O(log n)**
+   ```java
+   // Use TreeMap with running indices
+   ```
+
+2. **Find the kth smallest element in a stream**
+   ```java
+   // Use TreeMap to maintain frequency count
+   ```
+
+3. **Range sum queries**
+   ```java
+   // Use TreeMap with prefix sums
+   ```
+
+4. **Sliding window median**
+   ```java
+   // Use two TreeMaps or TreeSet with careful balancing
+   ```
+
+### Advanced Use Cases
+
+#### 1. Event Timeline Management
+```java
+TreeMap<LocalDateTime, Event> timeline = new TreeMap<>();
+// Efficiently query events in time ranges
+NavigableMap<LocalDateTime, Event> dayEvents =
+    timeline.subMap(dayStart, true, dayEnd, true);
+```
+
+#### 2. Range-based Caching
+```java
+TreeMap<Integer, CacheEntry> rangeCache = new TreeMap<>();
+// Find cached ranges that overlap with query range
+Map.Entry<Integer, CacheEntry> floor = rangeCache.floorEntry(queryStart);
+```
+
+#### 3. Interval Scheduling
+```java
+TreeSet<Interval> intervals = new TreeSet<>(Comparator.comparing(i -> i.start));
+// Efficiently find overlapping intervals
+```
+
+### Comparison with Alternatives
+
+| Use Case | TreeMap/TreeSet | Alternative | When to Use Alternative |
+|----------|-----------------|-------------|------------------------|
+| Sorted iteration | ✅ O(log n) ops | PriorityQueue | Only need min/max, not full sorting |
+| Range queries | ✅ O(log n) range | HashMap + sort | Infrequent range queries |
+| Frequent updates | ⚠️ O(log n) | ArrayList + sort | Batch updates with infrequent reads |
+| Small datasets | ⚠️ High overhead | ArrayList | < 50 elements approximately |
+
+---
+
+## 🎯 Quick Reference Card
+
+### TreeMap Cheat Sheet
+```java
+TreeMap<Integer, String> map = new TreeMap<>();
+
+// Basic operations
+map.put(key, value);        // Insert/update
+map.get(key);              // Retrieve
+map.remove(key);           // Delete
+map.containsKey(key);      // Check existence
+
+// Navigation (★ Interview favorites)
+map.firstKey() / lastKey();           // Min/max keys
+map.ceilingKey(k) / floorKey(k);     // Range boundaries
+map.higherKey(k) / lowerKey(k);      // Strict boundaries
+map.pollFirstEntry() / pollLastEntry(); // Remove min/max
+```
+
+### TreeSet Cheat Sheet
+```java
+TreeSet<Integer> set = new TreeSet<>();
+
+// Basic operations
+set.add(element);          // Insert
+set.contains(element);     // Check existence
+set.remove(element);       // Delete
+
+// Navigation (★ Interview favorites)
+set.first() / last();             // Min/max elements
+set.ceiling(e) / floor(e);        // Range boundaries
+set.higher(e) / lower(e);         // Strict boundaries
+set.pollFirst() / pollLast();     // Remove min/max
+```
+
+### Time Complexity Summary
+- **All basic operations**: O(log n)
+- **Range operations**: O(log n) to find boundaries + O(k) for k results
+- **Iteration**: O(n) for full traversal
+- **Space**: O(n) with additional overhead for tree structure
+
+---
+
+## 💡 Interview Tips
+
+1. **Mention the Red-Black tree**: Shows deep understanding
+2. **Highlight NavigableMap/Set interfaces**: Key differentiator from HashMap/HashSet
+3. **Know the range operation methods**: ceiling, floor, higher, lower are commonly tested
+4. **Understand the tradeoffs**: When to use Tree vs Hash implementations
+5. **Practice range query problems**: Intervals, sliding windows, event processing
+6. **Remember null handling**: TreeMap/Set don't allow null keys/elements (unlike HashMap/HashSet)
