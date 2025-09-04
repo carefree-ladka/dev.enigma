@@ -1,0 +1,415 @@
+# Spring Boot SQL Cheat Sheet
+
+## 1. Common SQL Data Types & Java Mapping
+
+| SQL Type | Description | Java Type |
+|----------|-------------|-----------|
+| `INT` / `INTEGER` | Whole numbers | `int` / `Integer` |
+| `BIGINT` | Large integers | `long` / `Long` |
+| `DECIMAL(p,s)` | Fixed-point numbers | `BigDecimal` |
+| `FLOAT` / `DOUBLE` | Floating-point numbers | `float` / `double` |
+| `CHAR(n)` | Fixed-length string | `String` |
+| `VARCHAR(n)` | Variable-length string | `String` |
+| `TEXT` / `CLOB` | Large text | `String` |
+| `DATE` | Date only | `LocalDate` |
+| `TIME` | Time only | `LocalTime` |
+| `TIMESTAMP` / `DATETIME` | Date + time | `LocalDateTime` |
+| `BOOLEAN` / `BIT(1)` | true/false | `Boolean` |
+| `UUID` | Unique identifier | `UUID` |
+| `BLOB` | Binary data | `byte[]` |
+| `JSON` | JSON data (MySQL/PostgreSQL) | `String` |
+
+## 2. Common Constraints
+
+| Constraint | Description | SQL Example | JPA Annotation |
+|------------|-------------|-------------|----------------|
+| PRIMARY KEY | Unique identifier | `id BIGINT PRIMARY KEY` | `@Id` |
+| FOREIGN KEY | Links tables | `FOREIGN KEY(dept_id) REFERENCES dept(id)` | `@ManyToOne` + `@JoinColumn` |
+| NOT NULL | Column cannot be null | `name VARCHAR(50) NOT NULL` | `@Column(nullable = false)` |
+| UNIQUE | Unique values | `email VARCHAR(100) UNIQUE` | `@Column(unique = true)` |
+| DEFAULT | Default value | `active BOOLEAN DEFAULT TRUE` | `private Boolean active = true;` |
+| CHECK | Must satisfy a condition | `CHECK (salary >= 0)` | `@Check(constraints = "...")` |
+| COMPOSITE KEY | Primary key using multiple columns | `PRIMARY KEY(student_id, course_id)` | `@EmbeddedId` / `@IdClass` |
+
+## 3. CRUD SQL Queries
+
+### SELECT – Read
+
+```sql
+-- Basic selection
+SELECT * FROM employee;
+SELECT name, email FROM employee;
+
+-- With conditions
+SELECT * FROM employee WHERE salary > 5000;
+SELECT * FROM employee WHERE department_id IN (1, 2, 3);
+SELECT * FROM employee WHERE name LIKE 'J%';
+SELECT * FROM employee WHERE salary BETWEEN 4000 AND 6000;
+SELECT * FROM employee WHERE email IS NOT NULL;
+
+-- Ordering and pagination
+SELECT * FROM employee ORDER BY salary DESC;
+SELECT * FROM employee LIMIT 5 OFFSET 0;
+SELECT DISTINCT department_id FROM employee;
+```
+
+### INSERT – Create
+
+```sql
+-- Single record
+INSERT INTO employee (name, email, salary, department_id, active)
+VALUES ('John Doe', 'john@example.com', 5000, 1, TRUE);
+
+-- Multiple records
+INSERT INTO employee (name, email, salary, department_id, active)
+VALUES
+    ('Jane Smith', 'jane@example.com', 5500, 2, TRUE),
+    ('Bob Johnson', 'bob@example.com', 4800, 1, TRUE);
+```
+
+### UPDATE – Update
+
+```sql
+-- Update single record
+UPDATE employee
+SET salary = 6000
+WHERE id = 1;
+
+-- Update multiple fields
+UPDATE employee
+SET salary = salary * 1.1, active = TRUE
+WHERE department_id = 2;
+
+-- Conditional update
+UPDATE employee
+SET salary = CASE
+    WHEN department_id = 1 THEN salary * 1.15
+    WHEN department_id = 2 THEN salary * 1.10
+    ELSE salary * 1.05
+END;
+```
+
+### DELETE – Delete
+
+```sql
+-- Delete single record
+DELETE FROM employee WHERE id = 3;
+
+-- Delete with conditions
+DELETE FROM employee WHERE active = FALSE;
+DELETE FROM employee WHERE salary < 3000;
+```
+
+## 4. Joins
+
+| Join Type | Description | SQL Example |
+|-----------|-------------|-------------|
+| **INNER JOIN** | Only matching rows in both tables | `SELECT e.name, d.name FROM employee e INNER JOIN department d ON e.department_id = d.id;` |
+| **LEFT JOIN** | All rows from left table + matching from right | `SELECT e.name, d.name FROM employee e LEFT JOIN department d ON e.department_id = d.id;` |
+| **RIGHT JOIN** | All rows from right table + matching from left | `SELECT e.name, d.name FROM employee e RIGHT JOIN department d ON e.department_id = d.id;` |
+| **FULL OUTER JOIN** | All rows from both tables | `SELECT e.name, d.name FROM employee e FULL OUTER JOIN department d ON e.department_id = d.id;` |
+
+### Complex Join Examples
+
+```sql
+-- Multiple joins
+SELECT e.name, d.name as dept_name, p.title as project_title
+FROM employee e
+INNER JOIN department d ON e.department_id = d.id
+LEFT JOIN project_assignment pa ON e.id = pa.employee_id
+LEFT JOIN project p ON pa.project_id = p.id;
+
+-- Self join
+SELECT e1.name as employee, e2.name as manager
+FROM employee e1
+LEFT JOIN employee e2 ON e1.manager_id = e2.id;
+```
+
+## 5. Aggregation Functions
+
+```sql
+-- Basic aggregations
+SELECT COUNT(*) AS total_employees FROM employee;
+SELECT SUM(salary) AS total_salary FROM employee;
+SELECT AVG(salary) AS avg_salary FROM employee;
+SELECT MIN(salary) AS min_salary FROM employee;
+SELECT MAX(salary) AS max_salary FROM employee;
+
+-- Group by
+SELECT department_id, COUNT(*) AS employee_count
+FROM employee
+GROUP BY department_id;
+
+SELECT department_id, AVG(salary) AS avg_salary
+FROM employee
+GROUP BY department_id
+HAVING AVG(salary) > 5000;
+
+-- Advanced grouping
+SELECT
+    department_id,
+    COUNT(*) as total_employees,
+    AVG(salary) as avg_salary,
+    MIN(salary) as min_salary,
+    MAX(salary) as max_salary
+FROM employee
+GROUP BY department_id
+ORDER BY avg_salary DESC;
+```
+
+## 6. Useful SQL Clauses & Functions
+
+| Clause/Function | Purpose | Example |
+|-----------------|---------|---------|
+| **DISTINCT** | Remove duplicates | `SELECT DISTINCT department_id FROM employee` |
+| **LIKE** | Pattern matching | `WHERE name LIKE 'J%'` (starts with J) |
+| **IN** | Multiple values | `WHERE department_id IN (1,2,3)` |
+| **BETWEEN** | Range | `WHERE salary BETWEEN 4000 AND 6000` |
+| **IS NULL / IS NOT NULL** | Check nullability | `WHERE manager_id IS NULL` |
+| **COALESCE** | Handle nulls | `SELECT COALESCE(manager_id, 0) FROM employee` |
+| **CASE** | Conditional logic | `CASE WHEN salary > 5000 THEN 'High' ELSE 'Low' END` |
+
+## 7. SQL → Spring Boot / JPA Mapping
+
+| SQL Operation | Spring Data JPA Method | JPA Annotation Example |
+|---------------|------------------------|-------------------------|
+| **SELECT *** | `findAll()`, `findById(id)` | `@Repository` interface |
+| **SELECT + WHERE** | `findByName(String name)` | Method naming convention |
+| **INSERT** | `save(entity)` (if ID is null) | `@Entity` class |
+| **UPDATE** | `save(entity)` (if ID exists) | `@Entity` class |
+| **DELETE** | `deleteById(id)`, `delete(entity)` | Repository method |
+| **JOIN** | `@Query` with JPQL | `@Query("SELECT e FROM Employee e JOIN e.department d")` |
+| **Pagination** | `Pageable` parameter | `findAll(Pageable pageable)` |
+
+## 8. Spring Boot JPA Examples
+
+### Entity Definition
+
+```java
+@Entity
+@Table(name = "employee")
+public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
+
+    @Column(name = "email", unique = true, nullable = false)
+    private String email;
+
+    @Column(name = "salary")
+    private BigDecimal salary;
+
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @Column(name = "active")
+    private Boolean active = true;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    // Constructors, getters, setters
+}
+```
+
+### Repository Interface
+
+```java
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+    // Derived query methods
+    List<Employee> findByName(String name);
+    List<Employee> findBySalaryGreaterThan(BigDecimal salary);
+    List<Employee> findByDepartmentId(Long departmentId);
+    List<Employee> findByActiveTrue();
+
+    // Custom JPQL queries
+    @Query("SELECT e FROM Employee e WHERE e.salary > :salary")
+    List<Employee> findBySalaryGreaterThan(@Param("salary") BigDecimal salary);
+
+    @Query("SELECT e FROM Employee e JOIN e.department d WHERE d.name = :deptName")
+    List<Employee> findByDepartmentName(@Param("deptName") String departmentName);
+
+    // Native SQL queries
+    @Query(value = "SELECT * FROM employee WHERE active = 1", nativeQuery = true)
+    List<Employee> findActiveEmployees();
+
+    // Aggregation queries
+    @Query("SELECT COUNT(e) FROM Employee e WHERE e.department.id = :deptId")
+    Long countEmployeesByDepartment(@Param("deptId") Long departmentId);
+
+    // Update queries
+    @Modifying
+    @Query("UPDATE Employee e SET e.salary = e.salary * 1.1 WHERE e.department.id = :deptId")
+    int increaseSalaryByDepartment(@Param("deptId") Long departmentId);
+
+    // Delete queries
+    @Modifying
+    @Query("DELETE FROM Employee e WHERE e.active = false")
+    int deleteInactiveEmployees();
+}
+```
+
+### Service Layer
+
+```java
+@Service
+@Transactional
+public class EmployeeService {
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    public List<Employee> getAllEmployees() {
+        return employeeRepository.findAll();
+    }
+
+    public Page<Employee> getEmployees(Pageable pageable) {
+        return employeeRepository.findAll(pageable);
+    }
+
+    public Employee saveEmployee(Employee employee) {
+        return employeeRepository.save(employee);
+    }
+
+    public void deleteEmployee(Long id) {
+        employeeRepository.deleteById(id);
+    }
+
+    @Transactional
+    public void updateEmployeeSalary(Long id, BigDecimal newSalary) {
+        Employee employee = employeeRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Employee not found"));
+        employee.setSalary(newSalary);
+        employeeRepository.save(employee);
+    }
+}
+```
+
+## 9. Advanced JPA Features
+
+### Specifications (Dynamic Queries)
+
+```java
+public class EmployeeSpecifications {
+
+    public static Specification<Employee> hasName(String name) {
+        return (root, query, criteriaBuilder) ->
+            name == null ? null : criteriaBuilder.like(root.get("name"), "%" + name + "%");
+    }
+
+    public static Specification<Employee> hasSalaryGreaterThan(BigDecimal salary) {
+        return (root, query, criteriaBuilder) ->
+            salary == null ? null : criteriaBuilder.greaterThan(root.get("salary"), salary);
+    }
+
+    public static Specification<Employee> belongsToDepartment(String departmentName) {
+        return (root, query, criteriaBuilder) ->
+            departmentName == null ? null :
+                criteriaBuilder.equal(root.get("department").get("name"), departmentName);
+    }
+}
+```
+
+### Projections
+
+```java
+public interface EmployeeProjection {
+    String getName();
+    String getEmail();
+    String getDepartmentName();
+}
+
+// In repository
+@Query("SELECT e.name as name, e.email as email, d.name as departmentName " +
+       "FROM Employee e JOIN e.department d")
+List<EmployeeProjection> findAllEmployeeProjections();
+```
+
+## 10. Common Query Patterns
+
+### Pagination and Sorting
+
+```java
+// Controller
+@GetMapping("/employees")
+public Page<Employee> getEmployees(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "10") int size,
+    @RequestParam(defaultValue = "id") String sortBy,
+    @RequestParam(defaultValue = "asc") String sortDir
+) {
+    Sort sort = sortDir.equalsIgnoreCase("desc") ?
+        Sort.by(sortBy).descending() :
+        Sort.by(sortBy).ascending();
+
+    Pageable pageable = PageRequest.of(page, size, sort);
+    return employeeService.getEmployees(pageable);
+}
+```
+
+### Error Handling
+
+```java
+@Service
+public class EmployeeService {
+
+    public Employee getEmployeeById(Long id) {
+        return employeeRepository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException(
+                "Employee not found with id: " + id));
+    }
+
+    public Employee updateEmployee(Long id, Employee employeeDetails) {
+        Employee employee = getEmployeeById(id);
+        employee.setName(employeeDetails.getName());
+        employee.setEmail(employeeDetails.getEmail());
+        employee.setSalary(employeeDetails.getSalary());
+        return employeeRepository.save(employee);
+    }
+}
+```
+
+## 11. Performance Tips
+
+### Database Indexing
+
+```sql
+-- Create indexes for frequently queried columns
+CREATE INDEX idx_employee_email ON employee(email);
+CREATE INDEX idx_employee_department ON employee(department_id);
+CREATE INDEX idx_employee_salary ON employee(salary);
+
+-- Composite index for multiple column queries
+CREATE INDEX idx_employee_dept_salary ON employee(department_id, salary);
+```
+
+### JPA Performance
+
+```java
+// Use @BatchSize for collections
+@OneToMany(mappedBy = "employee")
+@BatchSize(size = 10)
+private Set<Project> projects;
+
+// Use fetch joins to avoid N+1 queries
+@Query("SELECT e FROM Employee e JOIN FETCH e.department")
+List<Employee> findAllWithDepartment();
+
+// Use pagination for large result sets
+@Query(value = "SELECT e FROM Employee e WHERE e.salary > :salary",
+       countQuery = "SELECT count(e) FROM Employee e WHERE e.salary > :salary")
+Page<Employee> findBySalaryGreaterThan(@Param("salary") BigDecimal salary, Pageable pageable);
+```
+
+---
+
+*This cheat sheet covers the essential SQL operations and their Spring Boot/JPA equivalents. Keep it handy for quick reference during development!*
