@@ -1,0 +1,468 @@
+# Java Functional Interfaces
+
+## Quick Navigation
+- [What are Functional Interfaces?](#what-are-functional-interfaces)
+- [Built-in Functional Interfaces](#built-in-functional-interfaces-in-javautilfunction)
+  - [1. Predicate<T>](#1-predicatet)
+  - [2. Function<T R>](#2-functiontr)
+  - [3. Consumer<T>](#3-consumert)
+  - [4. Supplier<T>](#4-suppliert)
+  - [5. UnaryOperator<T>](#5-unaryoperatort)
+  - [6. BinaryOperator<T>](#6-binaryoperatort)
+- [Specialized Primitive Functional Interfaces](#specialized-primitive-functional-interfaces)
+- [Creating Custom Functional Interfaces](#creating-custom-functional-interfaces)
+- [Best Practices](#best-practices)
+
+---
+
+## What are Functional Interfaces?
+
+A **functional interface** is an interface that contains exactly one abstract method. They serve as the foundation for lambda expressions and method references in Java 8+. The `@FunctionalInterface` annotation can be used to ensure an interface has only one abstract method.
+
+```java
+@FunctionalInterface
+public interface Calculator {
+    int calculate(int a, int b);
+
+    // Default and static methods are allowed
+    default void printResult(int result) {
+        System.out.println("Result: " + result);
+    }
+}
+```
+
+## Built-in Functional Interfaces in `java.util.function`
+
+### 1. Predicate\<T>
+
+**Purpose**: Represents a boolean-valued function that tests a condition.
+
+**Method Signature**: `boolean test(T t)`
+
+**Use Cases**: Filtering, validation, conditional logic
+
+```java
+import java.util.function.Predicate;
+import java.util.List;
+import java.util.Arrays;
+
+public class PredicateExample {
+    public static void main(String[] args) {
+        // Basic predicate
+        Predicate<Integer> isEven = n -> n % 2 == 0;
+        System.out.println(isEven.test(4)); // true
+        System.out.println(isEven.test(5)); // false
+
+        // String predicate
+        Predicate<String> isEmpty = String::isEmpty;
+        Predicate<String> isNotEmpty = isEmpty.negate();
+
+        // Using with streams for filtering
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6);
+        List<Integer> evenNumbers = numbers.stream()
+            .filter(isEven)
+            .toList();
+        System.out.println(evenNumbers); // [2, 4, 6]
+
+        // Combining predicates
+        Predicate<Integer> greaterThan3 = n -> n > 3;
+        Predicate<Integer> evenAndGreaterThan3 = isEven.and(greaterThan3);
+
+        List<Integer> filtered = numbers.stream()
+            .filter(evenAndGreaterThan3)
+            .toList();
+        System.out.println(filtered); // [4, 6]
+    }
+}
+```
+
+### 2. Function\<T,R>
+
+**Purpose**: Represents a function that takes one argument and produces a result.
+
+**Method Signature**: `R apply(T t)`
+
+**Use Cases**: Data transformation, mapping operations
+
+```java
+import java.util.function.Function;
+import java.util.List;
+import java.util.Arrays;
+
+public class FunctionExample {
+    public static void main(String[] args) {
+        // Basic function - String to Integer
+        Function<String, Integer> stringLength = String::length;
+        System.out.println(stringLength.apply("Hello")); // 5
+
+        // Integer to String
+        Function<Integer, String> intToString = Object::toString;
+
+        // Function composition
+        Function<String, String> upperCase = String::toUpperCase;
+        Function<String, Integer> upperCaseLength = upperCase.andThen(stringLength);
+        System.out.println(upperCaseLength.apply("hello")); // 5
+
+        // Using with streams
+        List<String> words = Arrays.asList("java", "python", "javascript");
+        List<Integer> lengths = words.stream()
+            .map(stringLength)
+            .toList();
+        System.out.println(lengths); // [4, 6, 10]
+
+        // Complex transformation
+        Function<Person, String> personToFullName = person ->
+            person.getFirstName() + " " + person.getLastName();
+    }
+}
+
+class Person {
+    private String firstName;
+    private String lastName;
+
+    public Person(String firstName, String lastName) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+    }
+
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
+}
+```
+
+### 3. Consumer\<T>
+
+**Purpose**: Represents an operation that accepts a single input argument and returns no result.
+
+**Method Signature**: `void accept(T t)`
+
+**Use Cases**: Side effects like printing, logging, updating state
+
+```java
+import java.util.function.Consumer;
+import java.util.List;
+import java.util.Arrays;
+
+public class ConsumerExample {
+    public static void main(String[] args) {
+        // Basic consumer
+        Consumer<String> printer = System.out::println;
+        printer.accept("Hello World!"); // Hello World!
+
+        // Consumer for modifying objects
+        Consumer<StringBuilder> appendExclamation = sb -> sb.append("!");
+        StringBuilder sb = new StringBuilder("Hello");
+        appendExclamation.accept(sb);
+        System.out.println(sb); // Hello!
+
+        // Using with streams
+        List<String> names = Arrays.asList("Alice", "Bob", "Charlie");
+        names.stream()
+            .forEach(printer); // Prints each name
+
+        // Chaining consumers
+        Consumer<String> upperCasePrinter = s -> System.out.println(s.toUpperCase());
+        Consumer<String> lengthPrinter = s -> System.out.println("Length: " + s.length());
+
+        Consumer<String> combinedConsumer = upperCasePrinter.andThen(lengthPrinter);
+        combinedConsumer.accept("hello");
+        // Output:
+        // HELLO
+        // Length: 5
+
+        // Practical example: Database operations
+        Consumer<User> saveUser = user -> {
+            // Simulate saving to database
+            System.out.println("Saving user: " + user.getName());
+        };
+    }
+}
+
+class User {
+    private String name;
+    public User(String name) { this.name = name; }
+    public String getName() { return name; }
+}
+```
+
+### 4. Supplier\<T>
+
+**Purpose**: Represents a supplier of results with no input arguments.
+
+**Method Signature**: `T get()`
+
+**Use Cases**: Lazy evaluation, factory methods, generating values
+
+```java
+import java.util.function.Supplier;
+import java.util.Random;
+import java.util.List;
+import java.util.stream.Stream;
+
+public class SupplierExample {
+    public static void main(String[] args) {
+        // Basic supplier
+        Supplier<String> stringSupplier = () -> "Hello World!";
+        System.out.println(stringSupplier.get()); // Hello World!
+
+        // Random number supplier
+        Supplier<Integer> randomInt = () -> new Random().nextInt(100);
+        System.out.println(randomInt.get()); // Random number 0-99
+
+        // Current timestamp supplier
+        Supplier<Long> timestampSupplier = System::currentTimeMillis;
+        System.out.println(timestampSupplier.get());
+
+        // Using with Stream.generate()
+        List<Integer> randomNumbers = Stream.generate(randomInt)
+            .limit(5)
+            .toList();
+        System.out.println(randomNumbers);
+
+        // Factory pattern with supplier
+        Supplier<List<String>> listFactory = () -> Arrays.asList("a", "b", "c");
+        List<String> newList = listFactory.get();
+
+        // Lazy evaluation example
+        Supplier<String> expensiveOperation = () -> {
+            System.out.println("Performing expensive operation...");
+            // Simulate expensive computation
+            try { Thread.sleep(1000); } catch (InterruptedException e) {}
+            return "Result of expensive operation";
+        };
+
+        // The operation is only executed when get() is called
+        String result = expensiveOperation.get();
+        System.out.println(result);
+    }
+}
+```
+
+### 5. UnaryOperator\<T>
+
+**Purpose**: Represents an operation on a single operand that produces a result of the same type.
+
+**Method Signature**: `T apply(T t)` (extends Function<T,T>)
+
+**Use Cases**: In-place transformations, mathematical operations
+
+```java
+import java.util.function.UnaryOperator;
+import java.util.List;
+import java.util.Arrays;
+
+public class UnaryOperatorExample {
+    public static void main(String[] args) {
+        // Basic unary operator
+        UnaryOperator<Integer> square = x -> x * x;
+        System.out.println(square.apply(5)); // 25
+
+        // String operations
+        UnaryOperator<String> upperCase = String::toUpperCase;
+        UnaryOperator<String> addPrefix = s -> "Mr. " + s;
+
+        // Composition
+        UnaryOperator<String> upperCaseWithPrefix = upperCase.compose(addPrefix);
+        System.out.println(upperCaseWithPrefix.apply("smith")); // MR. SMITH
+
+        // Using with streams
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+        List<Integer> squared = numbers.stream()
+            .map(square)
+            .toList();
+        System.out.println(squared); // [1, 4, 9, 16, 25]
+
+        // Mathematical transformations
+        UnaryOperator<Double> addTax = price -> price * 1.08;
+        UnaryOperator<Double> applyDiscount = price -> price * 0.9;
+
+        double finalPrice = addTax.andThen(applyDiscount).apply(100.0);
+        System.out.println(finalPrice); // 97.2
+
+        // Identity operator
+        UnaryOperator<String> identity = UnaryOperator.identity();
+        System.out.println(identity.apply("unchanged")); // unchanged
+    }
+}
+```
+
+### 6. BinaryOperator\<T>
+
+**Purpose**: Represents an operation upon two operands of the same type, producing a result of the same type.
+
+**Method Signature**: `T apply(T t1, T t2)` (extends BiFunction<T,T,T>)
+
+**Use Cases**: Aggregation, reduction operations, combining values
+
+```java
+import java.util.function.BinaryOperator;
+import java.util.List;
+import java.util.Arrays;
+import java.util.Optional;
+
+public class BinaryOperatorExample {
+    public static void main(String[] args) {
+        // Basic binary operators
+        BinaryOperator<Integer> add = (a, b) -> a + b;
+        BinaryOperator<Integer> multiply = (a, b) -> a * b;
+        BinaryOperator<Integer> max = Integer::max;
+        BinaryOperator<Integer> min = Integer::min;
+
+        System.out.println(add.apply(5, 3)); // 8
+        System.out.println(multiply.apply(4, 7)); // 28
+        System.out.println(max.apply(10, 15)); // 15
+
+        // String concatenation
+        BinaryOperator<String> concat = (s1, s2) -> s1 + " " + s2;
+        System.out.println(concat.apply("Hello", "World")); // Hello World
+
+        // Using with streams for reduction
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+
+        Optional<Integer> sum = numbers.stream().reduce(add);
+        Optional<Integer> product = numbers.stream().reduce(multiply);
+        Optional<Integer> maximum = numbers.stream().reduce(max);
+
+        System.out.println("Sum: " + sum.orElse(0)); // Sum: 15
+        System.out.println("Product: " + product.orElse(1)); // Product: 120
+        System.out.println("Max: " + maximum.orElse(0)); // Max: 5
+
+        // Custom object operations
+        BinaryOperator<Person> youngerPerson = (p1, p2) ->
+            p1.getAge() < p2.getAge() ? p1 : p2;
+
+        Person alice = new Person("Alice", 25);
+        Person bob = new Person("Bob", 30);
+        Person younger = youngerPerson.apply(alice, bob);
+        System.out.println("Younger: " + younger.getName()); // Younger: Alice
+
+        // Using static methods from BinaryOperator
+        BinaryOperator<String> maxByLength = BinaryOperator.maxBy(
+            (s1, s2) -> Integer.compare(s1.length(), s2.length())
+        );
+        String longer = maxByLength.apply("Java", "Programming");
+        System.out.println(longer); // Programming
+    }
+}
+
+class Person {
+    private String name;
+    private int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+}
+```
+
+## Specialized Primitive Functional Interfaces
+
+Java also provides specialized versions for primitive types to avoid boxing/unboxing:
+
+```java
+import java.util.function.*;
+
+public class PrimitiveFunctionalInterfaces {
+    public static void main(String[] args) {
+        // IntPredicate instead of Predicate<Integer>
+        IntPredicate isEven = n -> n % 2 == 0;
+        System.out.println(isEven.test(4)); // true
+
+        // IntFunction instead of Function<Integer, R>
+        IntFunction<String> intToString = Integer::toString;
+        System.out.println(intToString.apply(42)); // "42"
+
+        // IntConsumer instead of Consumer<Integer>
+        IntConsumer printer = System.out::println;
+        printer.accept(100); // 100
+
+        // IntSupplier instead of Supplier<Integer>
+        IntSupplier randomInt = () -> (int)(Math.random() * 100);
+        System.out.println(randomInt.getAsInt());
+
+        // IntUnaryOperator instead of UnaryOperator<Integer>
+        IntUnaryOperator square = x -> x * x;
+        System.out.println(square.applyAsInt(5)); // 25
+
+        // IntBinaryOperator instead of BinaryOperator<Integer>
+        IntBinaryOperator add = (a, b) -> a + b;
+        System.out.println(add.applyAsInt(3, 7)); // 10
+    }
+}
+```
+
+## Creating Custom Functional Interfaces
+
+```java
+@FunctionalInterface
+public interface TriFunction<T, U, V, R> {
+    R apply(T t, U u, V v);
+}
+
+@FunctionalInterface
+public interface Validator<T> {
+    ValidationResult validate(T item);
+
+    default Validator<T> and(Validator<T> other) {
+        return item -> {
+            ValidationResult first = this.validate(item);
+            return first.isValid() ? other.validate(item) : first;
+        };
+    }
+}
+
+class ValidationResult {
+    private final boolean valid;
+    private final String message;
+
+    public ValidationResult(boolean valid, String message) {
+        this.valid = valid;
+        this.message = message;
+    }
+
+    public boolean isValid() { return valid; }
+    public String getMessage() { return message; }
+
+    public static ValidationResult valid() {
+        return new ValidationResult(true, "Valid");
+    }
+
+    public static ValidationResult invalid(String message) {
+        return new ValidationResult(false, message);
+    }
+}
+```
+
+## Best Practices
+
+1. **Use method references when possible** for better readability:
+   ```java
+   // Instead of: s -> System.out.println(s)
+   Consumer<String> printer = System.out::println;
+   ```
+
+2. **Compose functions** for complex operations:
+   ```java
+   Function<String, String> processText = String::trim
+       .andThen(String::toUpperCase)
+       .andThen(s -> s.replace(" ", "_"));
+   ```
+
+3. **Use primitive specializations** to avoid boxing:
+   ```java
+   // Prefer IntPredicate over Predicate<Integer>
+   IntPredicate isPositive = n -> n > 0;
+   ```
+
+4. **Chain operations** using default methods:
+   ```java
+   Predicate<String> notNull = Objects::nonNull;
+   Predicate<String> notEmpty = s -> !s.isEmpty();
+   Predicate<String> valid = notNull.and(notEmpty);
+   ```
+
+Functional interfaces enable powerful functional programming patterns in Java, making code more concise, readable, and maintainable when used appropriately.
