@@ -1,0 +1,926 @@
+# MockMvc Spring Boot Testing Guide
+
+## Table of Contents
+1. [Introduction to MockMvc](#introduction-to-mockmvc)
+2. [Setting Up Test Dependencies](#setting-up-test-dependencies)
+3. [Testing Controllers](#testing-controllers)
+4. [Testing Services](#testing-services)
+5. [Testing Repositories](#testing-repositories)
+6. [Integration Testing](#integration-testing)
+7. [Testing Security](#testing-security)
+8. [Testing JSON Serialization/Deserialization](#testing-json-serializationdeserialization)
+9. [Testing Exception Handling](#testing-exception-handling)
+10. [Advanced Testing Techniques](#advanced-testing-techniques)
+11. [Best Practices](#best-practices)
+
+---
+
+## Introduction to MockMvc
+
+MockMvc is a powerful testing framework in Spring Boot that allows you to test Spring MVC controllers without starting a full HTTP server. It provides a fluent API for performing HTTP requests and validating responses.
+
+### Key Benefits
+- **Fast execution** - No need to start a web server
+- **Isolated testing** - Test specific layers independently
+- **Comprehensive assertions** - Rich API for validating responses
+- **Mock integration** - Easy integration with Mockito
+
+---
+
+## Setting Up Test Dependencies
+
+### Maven Dependencies
+
+```xml
+<dependencies>
+    <!-- Spring Boot Test Starter -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+
+    <!-- Spring Boot Web Starter (for MockMvc) -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- Spring Security Test (if using security) -->
+    <dependency>
+        <groupId>org.springframework.security</groupId>
+        <artifactId>spring-security-test</artifactId>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+### Gradle Dependencies
+
+```gradle
+dependencies {
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.security:spring-security-test' // if using security
+}
+```
+
+---
+
+## Testing Controllers
+
+### Basic Controller Test Setup
+
+```java
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldGetUserById() throws Exception {
+        // Given
+        User user = new User(1L, "John Doe", "john@example.com");
+        when(userService.findById(1L)).thenReturn(user);
+
+        // When & Then
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("John Doe"))
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+}
+```
+
+### Testing POST Requests
+
+```java
+@Test
+void shouldCreateUser() throws Exception {
+    // Given
+    User newUser = new User(null, "Jane Doe", "jane@example.com");
+    User savedUser = new User(2L, "Jane Doe", "jane@example.com");
+
+    when(userService.save(any(User.class))).thenReturn(savedUser);
+
+    // When & Then
+    mockMvc.perform(post("/api/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                    "name": "Jane Doe",
+                    "email": "jane@example.com"
+                }
+                """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(2))
+            .andExpect(jsonPath("$.name").value("Jane Doe"));
+}
+```
+
+### Testing PUT Requests
+
+```java
+@Test
+void shouldUpdateUser() throws Exception {
+    // Given
+    User updatedUser = new User(1L, "John Smith", "johnsmith@example.com");
+    when(userService.update(eq(1L), any(User.class))).thenReturn(updatedUser);
+
+    // When & Then
+    mockMvc.perform(put("/api/users/1")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                    "name": "John Smith",
+                    "email": "johnsmith@example.com"
+                }
+                """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("John Smith"));
+}
+```
+
+### Testing DELETE Requests
+
+```java
+@Test
+void shouldDeleteUser() throws Exception {
+    // Given
+    doNothing().when(userService).deleteById(1L);
+
+    // When & Then
+    mockMvc.perform(delete("/api/users/1"))
+            .andExpect(status().isNoContent());
+
+    verify(userService).deleteById(1L);
+}
+```
+
+### Testing Query Parameters
+
+```java
+@Test
+void shouldGetUsersWithPagination() throws Exception {
+    // Given
+    List<User> users = Arrays.asList(
+        new User(1L, "John", "john@example.com"),
+        new User(2L, "Jane", "jane@example.com")
+    );
+
+    when(userService.findAll(0, 10)).thenReturn(users);
+
+    // When & Then
+    mockMvc.perform(get("/api/users")
+            .param("page", "0")
+            .param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].name").value("John"))
+            .andExpect(jsonPath("$[1].name").value("Jane"));
+}
+```
+
+### Testing Request Headers
+
+```java
+@Test
+void shouldAcceptCustomHeader() throws Exception {
+    mockMvc.perform(get("/api/users/1")
+            .header("X-Request-ID", "12345")
+            .header("Accept", MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk());
+}
+```
+
+---
+
+## Testing Services
+
+### Unit Testing Services with Mockito
+
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void shouldFindUserById() {
+        // Given
+        User user = new User(1L, "John Doe", "john@example.com");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // When
+        User result = userService.findById(1L);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("John Doe");
+        verify(userRepository).findById(1L);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUserNotFound() {
+        // Given
+        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.findById(1L))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessage("User not found with id: 1");
+    }
+
+    @Test
+    void shouldSaveUserAndSendWelcomeEmail() {
+        // Given
+        User user = new User(null, "John Doe", "john@example.com");
+        User savedUser = new User(1L, "John Doe", "john@example.com");
+
+        when(userRepository.save(user)).thenReturn(savedUser);
+
+        // When
+        User result = userService.save(user);
+
+        // Then
+        assertThat(result.getId()).isEqualTo(1L);
+        verify(userRepository).save(user);
+        verify(emailService).sendWelcomeEmail("john@example.com");
+    }
+}
+```
+
+### Testing Service with @MockBean in Spring Context
+
+```java
+@SpringBootTest
+class UserServiceIntegrationTest {
+
+    @MockBean
+    private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
+
+    @Test
+    void shouldFindAllUsers() {
+        // Given
+        List<User> users = Arrays.asList(
+            new User(1L, "John", "john@example.com"),
+            new User(2L, "Jane", "jane@example.com")
+        );
+        when(userRepository.findAll()).thenReturn(users);
+
+        // When
+        List<User> result = userService.findAll();
+
+        // Then
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getName()).isEqualTo("John");
+    }
+}
+```
+
+---
+
+## Testing Repositories
+
+### Testing JPA Repositories with @DataJpaTest
+
+```java
+@DataJpaTest
+class UserRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldFindUserByEmail() {
+        // Given
+        User user = new User(null, "John Doe", "john@example.com");
+        entityManager.persistAndFlush(user);
+
+        // When
+        Optional<User> result = userRepository.findByEmail("john@example.com");
+
+        // Then
+        assertThat(result).isPresent();
+        assertThat(result.get().getName()).isEqualTo("John Doe");
+    }
+
+    @Test
+    void shouldFindUsersByNameContaining() {
+        // Given
+        User user1 = new User(null, "John Doe", "john@example.com");
+        User user2 = new User(null, "Jane Doe", "jane@example.com");
+        User user3 = new User(null, "Bob Smith", "bob@example.com");
+
+        entityManager.persistAndFlush(user1);
+        entityManager.persistAndFlush(user2);
+        entityManager.persistAndFlush(user3);
+
+        // When
+        List<User> result = userRepository.findByNameContaining("Doe");
+
+        // Then
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(User::getName)
+                .containsExactlyInAnyOrder("John Doe", "Jane Doe");
+    }
+
+    @Test
+    void shouldDeleteUserById() {
+        // Given
+        User user = new User(null, "John Doe", "john@example.com");
+        User savedUser = entityManager.persistAndFlush(user);
+
+        // When
+        userRepository.deleteById(savedUser.getId());
+
+        // Then
+        Optional<User> result = userRepository.findById(savedUser.getId());
+        assertThat(result).isEmpty();
+    }
+}
+```
+
+### Testing Custom Repository Methods
+
+```java
+@DataJpaTest
+class UserRepositoryCustomTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    @Sql("/test-data.sql") // Load test data from SQL file
+    void shouldFindActiveUsersCreatedAfterDate() {
+        // Given
+        LocalDateTime cutoffDate = LocalDateTime.of(2023, 1, 1, 0, 0);
+
+        // When
+        List<User> result = userRepository.findActiveUsersCreatedAfter(cutoffDate);
+
+        // Then
+        assertThat(result).isNotEmpty();
+        assertThat(result).allMatch(user ->
+            user.isActive() && user.getCreatedAt().isAfter(cutoffDate));
+    }
+}
+```
+
+---
+
+## Integration Testing
+
+### Full Integration Test with @SpringBootTest
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+class UserIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldCreateAndRetrieveUser() {
+        // Given
+        User user = new User(null, "Integration Test User", "integration@example.com");
+
+        // When - Create user
+        ResponseEntity<User> createResponse = restTemplate.postForEntity(
+                "/api/users", user, User.class);
+
+        // Then - Verify creation
+        assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(createResponse.getBody()).isNotNull();
+        Long userId = createResponse.getBody().getId();
+
+        // When - Retrieve user
+        ResponseEntity<User> getResponse = restTemplate.getForEntity(
+                "/api/users/" + userId, User.class);
+
+        // Then - Verify retrieval
+        assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(getResponse.getBody().getName()).isEqualTo("Integration Test User");
+
+        // Verify in database
+        Optional<User> dbUser = userRepository.findById(userId);
+        assertThat(dbUser).isPresent();
+    }
+}
+```
+
+### Testing with MockMvc and Real Database
+
+```java
+@SpringBootTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@AutoConfigureMockMvc
+@Transactional
+class UserControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldCreateUserInDatabase() throws Exception {
+        // When
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "Database Test User",
+                        "email": "dbtest@example.com"
+                    }
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").exists());
+
+        // Then - Verify in database
+        Optional<User> user = userRepository.findByEmail("dbtest@example.com");
+        assertThat(user).isPresent();
+        assertThat(user.get().getName()).isEqualTo("Database Test User");
+    }
+}
+```
+
+---
+
+## Testing Security
+
+### Testing Secured Endpoints
+
+```java
+@WebMvcTest(UserController.class)
+@Import(SecurityConfig.class)
+class UserControllerSecurityTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldReturnUnauthorizedWhenNoToken() throws Exception {
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldAllowUserRoleAccess() throws Exception {
+        User user = new User(1L, "John", "john@example.com");
+        when(userService.findById(1L)).thenReturn(user);
+
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void shouldAllowAdminToDeleteUser() throws Exception {
+        doNothing().when(userService).deleteById(1L);
+
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void shouldForbidUserFromDeletingUser() throws Exception {
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isForbidden());
+    }
+}
+```
+
+### Testing JWT Authentication
+
+```java
+@Test
+void shouldAuthenticateWithValidJWT() throws Exception {
+    String token = jwtTokenProvider.createToken("john@example.com", Arrays.asList("ROLE_USER"));
+
+    mockMvc.perform(get("/api/users/profile")
+            .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk());
+}
+```
+
+---
+
+## Testing JSON Serialization/Deserialization
+
+### Testing JSON Serialization with @JsonTest
+
+```java
+@JsonTest
+class UserJsonTest {
+
+    @Autowired
+    private JacksonTester<User> json;
+
+    @Test
+    void shouldSerializeUser() throws Exception {
+        User user = new User(1L, "John Doe", "john@example.com");
+
+        assertThat(json.write(user)).isEqualToJson("expected-user.json");
+        assertThat(json.write(user)).hasJsonPathStringValue("@.name");
+        assertThat(json.write(user)).extractingJsonPathStringValue("@.name")
+                .isEqualTo("John Doe");
+    }
+
+    @Test
+    void shouldDeserializeUser() throws Exception {
+        String jsonContent = """
+            {
+                "id": 1,
+                "name": "John Doe",
+                "email": "john@example.com"
+            }
+            """;
+
+        assertThat(json.parse(jsonContent))
+                .usingRecursiveComparison()
+                .isEqualTo(new User(1L, "John Doe", "john@example.com"));
+    }
+}
+```
+
+---
+
+## Testing Exception Handling
+
+### Testing Global Exception Handler
+
+```java
+@WebMvcTest(UserController.class)
+class UserControllerExceptionTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldHandleUserNotFoundException() throws Exception {
+        when(userService.findById(999L))
+                .thenThrow(new UserNotFoundException("User not found with id: 999"));
+
+        mockMvc.perform(get("/api/users/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("User not found with id: 999"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void shouldHandleValidationErrors() throws Exception {
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                        "name": "",
+                        "email": "invalid-email"
+                    }
+                    """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.validationErrors").exists())
+                .andExpect(jsonPath("$.validationErrors.name").value("Name is required"))
+                .andExpect(jsonPath("$.validationErrors.email").value("Email format is invalid"));
+    }
+}
+```
+
+---
+
+## Advanced Testing Techniques
+
+### Testing File Uploads
+
+```java
+@Test
+void shouldUploadUserProfilePicture() throws Exception {
+    MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "profile.jpg",
+            MediaType.IMAGE_JPEG_VALUE,
+            "image content".getBytes());
+
+    mockMvc.perform(multipart("/api/users/1/profile-picture")
+            .file(file))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("Profile picture uploaded successfully"));
+}
+```
+
+### Testing Async Operations
+
+```java
+@Test
+void shouldProcessAsyncUserRegistration() throws Exception {
+    when(userService.registerAsync(any(User.class)))
+            .thenReturn(CompletableFuture.completedFuture("Registration completed"));
+
+    MvcResult result = mockMvc.perform(post("/api/users/register-async")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""
+                {
+                    "name": "Async User",
+                    "email": "async@example.com"
+                }
+                """))
+            .andExpect(request().asyncStarted())
+            .andReturn();
+
+    mockMvc.perform(asyncDispatch(result))
+            .andExpect(status().isOk())
+            .andExpect(content().string("Registration completed"));
+}
+```
+
+### Testing with Custom Argument Resolvers
+
+```java
+@WebMvcTest(UserController.class)
+@Import(CustomArgumentResolverConfig.class)
+class UserControllerCustomResolverTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void shouldResolveCurrentUserFromToken() throws Exception {
+        mockMvc.perform(get("/api/users/current")
+                .header("Authorization", "Bearer valid-jwt-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Current User"));
+    }
+}
+```
+
+### Testing Caching
+
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+class UserCachingTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserRepository userRepository;
+
+    @Test
+    void shouldCacheUserData() throws Exception {
+        User user = new User(1L, "John", "john@example.com");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // First call - should hit the repository
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk());
+
+        // Second call - should use cache
+        mockMvc.perform(get("/api/users/1"))
+                .andExpect(status().isOk());
+
+        // Verify repository was called only once
+        verify(userRepository, times(1)).findById(1L);
+    }
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Test Organization
+
+```java
+@DisplayName("User Controller Tests")
+class UserControllerTest {
+
+    @Nested
+    @DisplayName("GET /api/users/{id}")
+    class GetUserById {
+
+        @Test
+        @DisplayName("Should return user when valid ID provided")
+        void shouldReturnUser_WhenValidIdProvided() {
+            // Test implementation
+        }
+
+        @Test
+        @DisplayName("Should return 404 when user not found")
+        void shouldReturn404_WhenUserNotFound() {
+            // Test implementation
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/users")
+    class CreateUser {
+
+        @Test
+        @DisplayName("Should create user with valid data")
+        void shouldCreateUser_WithValidData() {
+            // Test implementation
+        }
+    }
+}
+```
+
+### 2. Test Data Builders
+
+```java
+public class UserTestDataBuilder {
+    private Long id = 1L;
+    private String name = "John Doe";
+    private String email = "john@example.com";
+    private boolean active = true;
+
+    public static UserTestDataBuilder aUser() {
+        return new UserTestDataBuilder();
+    }
+
+    public UserTestDataBuilder withId(Long id) {
+        this.id = id;
+        return this;
+    }
+
+    public UserTestDataBuilder withName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public UserTestDataBuilder withEmail(String email) {
+        this.email = email;
+        return this;
+    }
+
+    public UserTestDataBuilder inactive() {
+        this.active = false;
+        return this;
+    }
+
+    public User build() {
+        return new User(id, name, email, active);
+    }
+}
+
+// Usage in tests
+@Test
+void shouldCreateInactiveUser() {
+    User user = aUser().withName("Jane").inactive().build();
+    // Test with user
+}
+```
+
+### 3. Custom Matchers
+
+```java
+public class UserMatchers {
+
+    public static Matcher<User> hasName(String expectedName) {
+        return new TypeSafeMatcher<User>() {
+            @Override
+            protected boolean matchesSafely(User user) {
+                return Objects.equals(user.getName(), expectedName);
+            }
+
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("user with name ").appendValue(expectedName);
+            }
+        };
+    }
+}
+
+// Usage
+assertThat(user, hasName("John Doe"));
+```
+
+### 4. Test Configuration
+
+```java
+@TestConfiguration
+public class TestConfig {
+
+    @Bean
+    @Primary
+    public Clock testClock() {
+        return Clock.fixed(Instant.parse("2023-01-01T00:00:00Z"), ZoneOffset.UTC);
+    }
+
+    @Bean
+    @Primary
+    public EmailService mockEmailService() {
+        return Mockito.mock(EmailService.class);
+    }
+}
+```
+
+### 5. Test Profiles
+
+```yaml
+# application-test.yml
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  logging:
+    level:
+      org.springframework.web: DEBUG
+```
+
+### 6. Parameterized Tests
+
+```java
+@ParameterizedTest
+@ValueSource(strings = {"", " ", "invalid-email", "@example.com"})
+void shouldRejectInvalidEmails(String invalidEmail) throws Exception {
+    mockMvc.perform(post("/api/users")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(String.format("""
+                {
+                    "name": "Test User",
+                    "email": "%s"
+                }
+                """, invalidEmail)))
+            .andExpect(status().isBadRequest());
+}
+
+@ParameterizedTest
+@CsvSource({
+    "1, John, john@example.com",
+    "2, Jane, jane@example.com",
+    "3, Bob, bob@example.com"
+})
+void shouldReturnUsersWithValidData(Long id, String name, String email) throws Exception {
+    User user = new User(id, name, email);
+    when(userService.findById(id)).thenReturn(user);
+
+    mockMvc.perform(get("/api/users/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value(name))
+            .andExpect(jsonPath("$.email").value(email));
+}
+```
+
+---
+
+## Summary
+
+This guide covers comprehensive testing strategies for Spring Boot applications using MockMvc:
+
+- **Controller Testing**: Unit tests with mocked dependencies
+- **Service Testing**: Business logic validation with mocked repositories
+- **Repository Testing**: Data access layer testing with @DataJpaTest
+- **Integration Testing**: End-to-end testing with real databases
+- **Security Testing**: Authentication and authorization testing
+- **Advanced Techniques**: File uploads, async operations, caching
+
+Remember to:
+- Use appropriate test slices (@WebMvcTest, @DataJpaTest, @JsonTest)
+- Mock external dependencies appropriately
+- Write clear, descriptive test names
+- Organize tests logically with @Nested classes
+- Use test data builders for complex objects
+- Follow the AAA pattern (Arrange, Act, Assert)
+- Keep tests independent and repeatable

@@ -1,0 +1,2586 @@
+# Spring Boot Annotations - Complete Developer Guide
+
+## Table of Contents
+1. [Entity & JPA Annotations](#entity--jpa-annotations)
+2. [Request Mapping Annotations](#request-mapping-annotations)
+3. [Parameter Binding Annotations](#parameter-binding-annotations)
+4. [Validation Annotations](#validation-annotations)
+5. [Relationship Mapping Annotations](#relationship-mapping-annotations)
+6. [Spring Core Annotations](#spring-core-annotations)
+7. [Configuration Annotations](#configuration-annotations)
+8. [Security Annotations](#security-annotations)
+9. [Testing Annotations](#testing-annotations)
+10. [Best Practices & Common Patterns](#best-practices--common-patterns)
+
+---
+
+## Entity & JPA Annotations
+
+### @Entity
+Marks a class as a JPA entity (database table)
+
+```java
+@Entity
+@Table(name = "users") // Optional: specify table name
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+
+    // Constructors, getters, setters
+}
+```
+
+**Key Points:**
+- Must have a no-arg constructor
+- All fields should have getters/setters or be public
+- Requires @Id annotation on primary key field
+
+### @Id & @GeneratedValue
+Define primary key and generation strategy
+
+```java
+@Entity
+public class Product {
+    // Auto-increment (MySQL, PostgreSQL)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Sequence-based (Oracle, PostgreSQL)
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "product_seq")
+    @SequenceGenerator(name = "product_seq", sequenceName = "product_sequence", allocationSize = 1)
+    private Long sequenceId;
+
+    // UUID generation
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String uuid;
+
+    // Manual assignment
+    @Id
+    private String customId;
+}
+```
+
+**Generation Strategies:**
+- `IDENTITY`: Auto-increment (database-dependent)
+- `SEQUENCE`: Database sequence
+- `TABLE`: Uses a table to simulate sequences
+- `UUID`: Generates UUID values
+- `AUTO`: JPA provider chooses strategy
+
+### @Column
+Customize column mapping
+
+```java
+@Entity
+public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "employee_name", nullable = false, length = 100)
+    private String name;
+
+    @Column(name = "email_address", unique = true, nullable = false)
+    private String email;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(precision = 10, scale = 2) // For BigDecimal
+    private BigDecimal salary;
+
+    @Column(insertable = false, updatable = false)
+    @CreationTimestamp
+    private LocalDateTime createdAt;
+
+    @Column(columnDefinition = "BOOLEAN DEFAULT true")
+    private Boolean active;
+}
+```
+
+**Common Attributes:**
+- `name`: Column name in database
+- `nullable`: Allow null values (default: true)
+- `unique`: Unique constraint
+- `length`: String column length
+- `precision/scale`: For decimal numbers
+- `insertable/updatable`: Control insert/update operations
+
+### @Table
+Configure table-specific settings
+
+```java
+@Entity
+@Table(
+    name = "user_profiles",
+    schema = "public",
+    indexes = {
+        @Index(name = "idx_email", columnList = "email"),
+        @Index(name = "idx_name_email", columnList = "name, email")
+    },
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_username", columnNames = "username")
+    }
+)
+public class UserProfile {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+}
+```
+
+### @Temporal & Date/Time Annotations
+Handle date and time fields
+
+```java
+@Entity
+public class Event {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Legacy Date handling
+    @Temporal(TemporalType.DATE) // Only date
+    private Date eventDate;
+
+    @Temporal(TemporalType.TIME) // Only time
+    private Date eventTime;
+
+    @Temporal(TemporalType.TIMESTAMP) // Date and time
+    private Date eventDateTime;
+
+    // Modern Java 8+ approach (Recommended)
+    private LocalDate startDate;
+    private LocalTime startTime;
+    private LocalDateTime createdAt;
+    private ZonedDateTime scheduledAt;
+
+    // Automatic timestamps
+    @CreationTimestamp
+    private LocalDateTime createdTimestamp;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedTimestamp;
+}
+```
+
+### @Enumerated
+Map Java enums to database
+
+```java
+public enum Status {
+    ACTIVE, INACTIVE, PENDING, SUSPENDED
+}
+
+public enum Priority {
+    LOW(1), MEDIUM(2), HIGH(3), CRITICAL(4);
+
+    private final int value;
+    Priority(int value) { this.value = value; }
+    public int getValue() { return value; }
+}
+
+@Entity
+public class Task {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING) // Stores enum name (Recommended)
+    private Status status;
+
+    @Enumerated(EnumType.ORDINAL) // Stores enum position (0, 1, 2...)
+    private Priority priority;
+
+    // Custom enum converter for complex cases
+    @Convert(converter = StatusConverter.class)
+    private Status customStatus;
+}
+
+// Custom enum converter
+@Converter(autoApply = true)
+public class StatusConverter implements AttributeConverter<Status, String> {
+    @Override
+    public String convertToDatabaseColumn(Status status) {
+        return status != null ? status.name().toLowerCase() : null;
+    }
+
+    @Override
+    public Status convertToEntityAttribute(String value) {
+        return value != null ? Status.valueOf(value.toUpperCase()) : null;
+    }
+}
+```
+
+### @Lob & @Basic
+Handle large objects and lazy loading
+
+```java
+@Entity
+public class Document {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Large text content
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    // Binary data (files, images)
+    @Lob
+    @Basic(fetch = FetchType.LAZY) // Lazy load large data
+    private byte[] fileData;
+
+    // Control fetching behavior
+    @Basic(fetch = FetchType.EAGER, optional = false)
+    private String title;
+
+    @Basic(fetch = FetchType.LAZY, optional = true)
+    private String description;
+}
+```
+
+---
+
+## Request Mapping Annotations
+
+### @RestController vs @Controller
+```java
+// REST API controller - automatically serializes return values to JSON
+@RestController
+@RequestMapping("/api/users")
+public class UserRestController {
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        // Returns JSON automatically
+        return ResponseEntity.ok(userService.findById(id));
+    }
+}
+
+// Traditional MVC controller - returns view names
+@Controller
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/{id}")
+    public String getUser(@PathVariable Long id, Model model) {
+        model.addAttribute("user", userService.findById(id));
+        return "user-detail"; // Returns view name
+    }
+
+    // For JSON response in @Controller
+    @GetMapping("/{id}/json")
+    @ResponseBody
+    public User getUserJson(@PathVariable Long id) {
+        return userService.findById(id);
+    }
+}
+```
+
+### @RequestMapping & HTTP Method Specific Annotations
+```java
+@RestController
+@RequestMapping("/api/products")
+@CrossOrigin(origins = "http://localhost:3000") // CORS support
+public class ProductController {
+
+    // Generic mapping
+    @RequestMapping(value = "/search", method = RequestMethod.GET)
+    public List<Product> search(@RequestParam String query) {
+        return productService.search(query);
+    }
+
+    // HTTP method specific annotations (Recommended)
+    @GetMapping // GET /api/products
+    public ResponseEntity<List<Product>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(productService.findAll(page, size));
+    }
+
+    @GetMapping("/{id}") // GET /api/products/{id}
+    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.findById(id));
+    }
+
+    @PostMapping // POST /api/products
+    public ResponseEntity<Product> createProduct(@RequestBody @Valid CreateProductRequest request) {
+        Product created = productService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/{id}") // PUT /api/products/{id}
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable Long id,
+            @RequestBody @Valid UpdateProductRequest request) {
+        Product updated = productService.update(id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{id}/status") // PATCH /api/products/{id}/status
+    public ResponseEntity<Product> updateStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        Product updated = productService.updateStatus(id, updates);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}") // DELETE /api/products/{id}
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Advanced mapping with headers and params
+    @GetMapping(value = "/export",
+                headers = "Accept=application/json",
+                params = "format=json")
+    public ResponseEntity<List<Product>> exportProducts() {
+        return ResponseEntity.ok(productService.findAll());
+    }
+
+    // Content type specific mapping
+    @PostMapping(value = "/upload",
+                 consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+                 produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        String result = fileService.upload(file);
+        return ResponseEntity.ok(result);
+    }
+}
+```
+
+---
+
+## Parameter Binding Annotations
+
+### @PathVariable
+Extract values from URL path
+
+```java
+@RestController
+@RequestMapping("/api")
+public class PathVariableExamples {
+
+    // Simple path variable
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    // Multiple path variables
+    @GetMapping("/users/{userId}/orders/{orderId}")
+    public ResponseEntity<Order> getUserOrder(
+            @PathVariable Long userId,
+            @PathVariable Long orderId) {
+        return ResponseEntity.ok(orderService.findByUserAndId(userId, orderId));
+    }
+
+    // Custom variable names
+    @GetMapping("/categories/{cat-id}/products/{prod-id}")
+    public ResponseEntity<Product> getProduct(
+            @PathVariable("cat-id") Long categoryId,
+            @PathVariable("prod-id") Long productId) {
+        return ResponseEntity.ok(productService.findByCategoryAndId(categoryId, productId));
+    }
+
+    // Optional path variable with Map
+    @GetMapping({"/search", "/search/{query}"})
+    public ResponseEntity<List<Product>> search(@PathVariable Map<String, String> pathVars) {
+        String query = pathVars.getOrDefault("query", "");
+        return ResponseEntity.ok(productService.search(query));
+    }
+
+    // Regex pattern matching
+    @GetMapping("/products/{id:[0-9]+}") // Only numeric IDs
+    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.findById(id));
+    }
+
+    @GetMapping("/products/{code:[A-Z]{3}[0-9]{3}}") // Pattern: ABC123
+    public ResponseEntity<Product> getProductByCode(@PathVariable String code) {
+        return ResponseEntity.ok(productService.findByCode(code));
+    }
+}
+```
+
+### @RequestParam
+Extract query parameters from URL
+
+```java
+@RestController
+@RequestMapping("/api/products")
+public class RequestParamExamples {
+
+    // Simple request parameter
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> search(@RequestParam String query) {
+        return ResponseEntity.ok(productService.search(query));
+    }
+
+    // Optional parameters with defaults
+    @GetMapping
+    public ResponseEntity<Page<Product>> getProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String category) {
+
+        Page<Product> products = productService.findAll(page, size, sortBy, sortDir, category);
+        return ResponseEntity.ok(products);
+    }
+
+    // Custom parameter names
+    @GetMapping("/filter")
+    public ResponseEntity<List<Product>> filter(
+            @RequestParam("min-price") BigDecimal minPrice,
+            @RequestParam("max-price") BigDecimal maxPrice,
+            @RequestParam("cat") String category) {
+        return ResponseEntity.ok(productService.findByPriceRange(minPrice, maxPrice, category));
+    }
+
+    // Multiple values for same parameter
+    @GetMapping("/by-categories")
+    public ResponseEntity<List<Product>> getByCategories(
+            @RequestParam List<String> categories) {
+        return ResponseEntity.ok(productService.findByCategories(categories));
+    }
+
+    // Map for dynamic parameters
+    @GetMapping("/dynamic-filter")
+    public ResponseEntity<List<Product>> dynamicFilter(
+            @RequestParam Map<String, String> filters) {
+        return ResponseEntity.ok(productService.findByFilters(filters));
+    }
+
+    // Date parameters
+    @GetMapping("/created-between")
+    public ResponseEntity<List<Product>> getCreatedBetween(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+        return ResponseEntity.ok(productService.findCreatedBetween(startDate, endDate));
+    }
+}
+```
+
+### @RequestBody
+Bind request body to object
+
+```java
+// Request DTOs
+public class CreateUserRequest {
+    @NotBlank(message = "Name is required")
+    private String name;
+
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String password;
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+
+public class UpdateUserRequest {
+    private String name;
+    private String email;
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+}
+
+@RestController
+@RequestMapping("/api/users")
+public class RequestBodyExamples {
+
+    // Simple request body binding
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody @Valid CreateUserRequest request) {
+        User user = userService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    // Partial updates
+    @PatchMapping("/{id}")
+    public ResponseEntity<User> updateUser(
+            @PathVariable Long id,
+            @RequestBody UpdateUserRequest request) {
+        User updated = userService.update(id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    // Raw JSON handling
+    @PostMapping("/raw")
+    public ResponseEntity<String> handleRawJson(@RequestBody String json) {
+        // Process raw JSON string
+        String result = jsonProcessor.process(json);
+        return ResponseEntity.ok(result);
+    }
+
+    // Map for dynamic JSON
+    @PostMapping("/dynamic")
+    public ResponseEntity<Map<String, Object>> handleDynamic(
+            @RequestBody Map<String, Object> data) {
+        Map<String, Object> result = dataProcessor.process(data);
+        return ResponseEntity.ok(result);
+    }
+
+    // List of objects
+    @PostMapping("/batch")
+    public ResponseEntity<List<User>> createUsers(
+            @RequestBody @Valid List<CreateUserRequest> requests) {
+        List<User> users = userService.createBatch(requests);
+        return ResponseEntity.status(HttpStatus.CREATED).body(users);
+    }
+
+    // Optional request body
+    @PostMapping("/optional")
+    public ResponseEntity<String> handleOptional(
+            @RequestBody(required = false) CreateUserRequest request) {
+        if (request != null) {
+            User user = userService.create(request);
+            return ResponseEntity.ok("User created: " + user.getId());
+        }
+        return ResponseEntity.ok("No data provided");
+    }
+}
+```
+
+### @RequestHeader
+Access HTTP headers
+
+```java
+@RestController
+@RequestMapping("/api")
+public class RequestHeaderExamples {
+
+    // Single header
+    @GetMapping("/protected")
+    public ResponseEntity<String> protectedEndpoint(
+            @RequestHeader("Authorization") String authToken) {
+        // Validate token
+        if (authService.validateToken(authToken)) {
+            return ResponseEntity.ok("Access granted");
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+    }
+
+    // Multiple headers
+    @PostMapping("/upload")
+    public ResponseEntity<String> uploadFile(
+            @RequestHeader("Content-Type") String contentType,
+            @RequestHeader("Content-Length") long contentLength,
+            @RequestHeader(value = "X-User-ID", required = false) String userId,
+            @RequestBody byte[] fileData) {
+
+        String result = fileService.upload(fileData, contentType, contentLength, userId);
+        return ResponseEntity.ok(result);
+    }
+
+    // Default values and optional headers
+    @GetMapping("/info")
+    public ResponseEntity<Map<String, String>> getInfo(
+            @RequestHeader(value = "User-Agent", defaultValue = "Unknown") String userAgent,
+            @RequestHeader(value = "Accept-Language", required = false) String language,
+            @RequestHeader(value = "X-Request-ID", required = false) String requestId) {
+
+        Map<String, String> info = new HashMap<>();
+        info.put("userAgent", userAgent);
+        info.put("language", language);
+        info.put("requestId", requestId);
+
+        return ResponseEntity.ok(info);
+    }
+
+    // All headers as Map
+    @GetMapping("/headers")
+    public ResponseEntity<Map<String, String>> getAllHeaders(
+            @RequestHeader Map<String, String> headers) {
+        return ResponseEntity.ok(headers);
+    }
+
+    // HttpHeaders object
+    @PostMapping("/analyze")
+    public ResponseEntity<String> analyzeRequest(
+            @RequestHeader HttpHeaders headers,
+            @RequestBody String data) {
+
+        String analysis = requestAnalyzer.analyze(headers, data);
+        return ResponseEntity.ok(analysis);
+    }
+}
+```
+
+### @CookieValue
+Access HTTP cookies
+
+```java
+@RestController
+@RequestMapping("/api")
+public class CookieValueExamples {
+
+    // Simple cookie access
+    @GetMapping("/profile")
+    public ResponseEntity<User> getProfile(
+            @CookieValue("sessionId") String sessionId) {
+        User user = sessionService.getUserBySession(sessionId);
+        return ResponseEntity.ok(user);
+    }
+
+    // Optional cookie with default
+    @GetMapping("/preferences")
+    public ResponseEntity<Map<String, String>> getPreferences(
+            @CookieValue(value = "theme", defaultValue = "light") String theme,
+            @CookieValue(value = "language", required = false) String language) {
+
+        Map<String, String> preferences = new HashMap<>();
+        preferences.put("theme", theme);
+        preferences.put("language", language != null ? language : "en");
+
+        return ResponseEntity.ok(preferences);
+    }
+
+    // Set cookies in response
+    @PostMapping("/login")
+    public ResponseEntity<String> login(
+            @RequestBody LoginRequest request,
+            HttpServletResponse response) {
+
+        String sessionId = authService.authenticate(request);
+
+        // Set cookie
+        Cookie cookie = new Cookie("sessionId", sessionId);
+        cookie.setMaxAge(3600); // 1 hour
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok("Login successful");
+    }
+}
+```
+
+### @ModelAttribute
+Bind form data and model attributes
+
+```java
+// Form DTO
+public class UserForm {
+    private String name;
+    private String email;
+    private Integer age;
+    private String address;
+
+    // Default constructor
+    public UserForm() {}
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+}
+
+@Controller
+@RequestMapping("/users")
+public class ModelAttributeExamples {
+
+    // Bind form data
+    @PostMapping("/create")
+    public String createUser(@ModelAttribute @Valid UserForm userForm,
+                           BindingResult result,
+                           Model model) {
+        if (result.hasErrors()) {
+            return "user-form";
+        }
+
+        User user = userService.create(userForm);
+        model.addAttribute("message", "User created successfully");
+        return "redirect:/users/" + user.getId();
+    }
+
+    // Custom attribute name
+    @PostMapping("/update/{id}")
+    public String updateUser(@PathVariable Long id,
+                           @ModelAttribute("updateForm") UserForm form,
+                           Model model) {
+        User updated = userService.update(id, form);
+        model.addAttribute("user", updated);
+        return "user-detail";
+    }
+
+    // Add model attributes for all methods in controller
+    @ModelAttribute("countries")
+    public List<String> getCountries() {
+        return Arrays.asList("USA", "Canada", "UK", "Australia");
+    }
+
+    @ModelAttribute("user")
+    public User getUser(@PathVariable(required = false) Long id) {
+        if (id != null) {
+            return userService.findById(id);
+        }
+        return new User();
+    }
+
+    // REST API with @ModelAttribute
+    @RestController
+    @RequestMapping("/api/users")
+    public static class UserRestController {
+
+        @PostMapping(consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+        public ResponseEntity<User> createUserFromForm(@ModelAttribute @Valid UserForm form) {
+            User user = userService.create(form);
+            return ResponseEntity.status(HttpStatus.CREATED).body(user);
+        }
+    }
+}
+```
+
+---
+
+## Validation Annotations
+
+### Basic Validation Annotations
+```java
+public class CreateUserRequest {
+    // Null checks
+    @NotNull(message = "ID cannot be null")
+    private Long id;
+
+    // String validations
+    @NotBlank(message = "Name is required") // Not null, not empty, not whitespace
+    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
+    private String name;
+
+    @NotEmpty(message = "Email is required") // Not null and not empty
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must be 10 digits")
+    private String phoneNumber;
+
+    // Numeric validations
+    @Min(value = 18, message = "Age must be at least 18")
+    @Max(value = 120, message = "Age must be less than 120")
+    private Integer age;
+
+    @DecimalMin(value = "0.0", inclusive = false, message = "Salary must be positive")
+    @DecimalMax(value = "1000000.0", message = "Salary cannot exceed 1,000,000")
+    @Digits(integer = 7, fraction = 2, message = "Salary format: max 7 digits, 2 decimal places")
+    private BigDecimal salary;
+
+    // Boolean validation
+    @AssertTrue(message = "Must agree to terms and conditions")
+    private Boolean agreeToTerms;
+
+    @AssertFalse(message = "Cannot be a test account")
+    private Boolean isTestAccount;
+
+    // Date validations
+    @Past(message = "Birth date must be in the past")
+    private LocalDate birthDate;
+
+    @Future(message = "Event date must be in the future")
+    private LocalDateTime eventDate;
+
+    @PastOrPresent(message = "Created date must be in the past or present")
+    private LocalDateTime createdAt;
+
+    @FutureOrPresent(message = "Start date must be in the future or present")
+    private LocalDate startDate;
+
+    // Collection validations
+    @NotEmpty(message = "Skills list cannot be empty")
+    @Size(min = 1, max = 10, message = "Must have 1-10 skills")
+    private List<@NotBlank String> skills;
+
+    // Nested object validation
+    @Valid
+    @NotNull(message = "Address is required")
+    private Address address;
+
+    // Custom validation
+    @ValidPassword
+    private String password;
+
+    // Getters and setters...
+}
+
+// Nested object with validation
+public class Address {
+    @NotBlank(message = "Street is required")
+    private String street;
+
+    @NotBlank(message = "City is required")
+    private String city;
+
+    @Pattern(regexp = "^[0-9]{5}(-[0-9]{4})?$", message = "Invalid ZIP code format")
+    private String zipCode;
+
+    @NotBlank(message = "Country is required")
+    private String country;
+
+    // Getters and setters...
+}
+```
+
+### Custom Validation Annotations
+```java
+// Custom validation annotation
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = PasswordValidator.class)
+@Documented
+public @interface ValidPassword {
+    String message() default "Password must be at least 8 characters with uppercase, lowercase, digit and special character";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+
+// Validator implementation
+public class PasswordValidator implements ConstraintValidator<ValidPassword, String> {
+    private static final String PASSWORD_PATTERN =
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+
+    private final Pattern pattern = Pattern.compile(PASSWORD_PATTERN);
+
+    @Override
+    public boolean isValid(String password, ConstraintValidatorContext context) {
+        if (password == null) {
+            return false;
+        }
+        return pattern.matcher(password).matches();
+    }
+}
+
+// Class-level validation
+@ValidUserAge
+public class User {
+    private LocalDate birthDate;
+    private Integer age;
+    // ...
+}
+
+@Target({ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = UserAgeValidator.class)
+@Documented
+public @interface ValidUserAge {
+    String message() default "Age and birth date don't match";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+
+public class UserAgeValidator implements ConstraintValidator<ValidUserAge, User> {
+    @Override
+    public boolean isValid(User user, ConstraintValidatorContext context) {
+        if (user.getBirthDate() == null || user.getAge() == null) {
+            return true; // Let other validations handle null checks
+        }
+
+        int calculatedAge = Period.between(user.getBirthDate(), LocalDate.now()).getYears();
+        return calculatedAge == user.getAge();
+    }
+}
+```
+
+### Validation Groups
+```java
+// Validation groups
+public interface CreateValidation {}
+public interface UpdateValidation {}
+
+public class UserRequest {
+    @Null(groups = CreateValidation.class, message = "ID must be null for creation")
+    @NotNull(groups = UpdateValidation.class, message = "ID is required for update")
+    private Long id;
+
+    @NotBlank(groups = {CreateValidation.class, UpdateValidation.class},
+              message = "Name is required")
+    private String name;
+
+    @NotBlank(groups = CreateValidation.class, message = "Password is required for creation")
+    @Size(min = 8, groups = CreateValidation.class, message = "Password must be at least 8 characters")
+    private String password;
+
+    // Getters and setters...
+}
+
+@RestController
+@RequestMapping("/api/users")
+@Validated
+public class UserController {
+
+    @PostMapping
+    public ResponseEntity<User> createUser(
+            @RequestBody @Validated(CreateValidation.class) UserRequest request) {
+        User user = userService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(
+            @PathVariable Long id,
+            @RequestBody @Validated(UpdateValidation.class) UserRequest request) {
+        User user = userService.update(id, request);
+        return ResponseEntity.ok(user);
+    }
+}
+```
+
+### Error Handling for Validations
+```java
+@ControllerAdvice
+public class ValidationExceptionHandler {
+
+    // Handle @Valid and @Validated errors for @RequestBody
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errors.put(error.getField(), error.getDefaultMessage()));
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message("Validation failed")
+            .errors(errors)
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    // Handle @Validated errors for path variables and request parameters
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation -> {
+            String fieldName = violation.getPropertyPath().toString();
+            String message = violation.getMessage();
+            errors.put(fieldName, message);
+        });
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message("Constraint violation")
+            .errors(errors)
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+}
+
+// Error response DTO
+@Data
+@Builder
+public class ErrorResponse {
+    private int status;
+    private String message;
+    private Map<String, String> errors;
+    private LocalDateTime timestamp;
+}
+```
+
+---
+
+## Relationship Mapping Annotations
+
+### @OneToOne
+One-to-one relationship mapping
+
+```java
+// User entity (parent)
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+
+    // Unidirectional OneToOne
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_id", unique = true)
+    private UserProfile profile;
+
+    // Bidirectional OneToOne (owning side)
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @JoinColumn(name = "address_id", unique = true)
+    private Address address;
+
+    // Constructors, getters, setters
+    public User() {}
+
+    public User(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }
+
+    // Getters and setters...
+}
+
+// UserProfile entity (child)
+@Entity
+@Table(name = "user_profiles")
+public class UserProfile {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String bio;
+    private String website;
+    private LocalDate birthDate;
+
+    // Constructors, getters, setters...
+}
+
+// Address entity (child with back-reference)
+@Entity
+@Table(name = "addresses")
+public class Address {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String street;
+    private String city;
+    private String zipCode;
+    private String country;
+
+    // Bidirectional OneToOne (inverse/mapped side)
+    @OneToOne(mappedBy = "address", fetch = FetchType.LAZY)
+    private User user;
+
+    // Constructors, getters, setters...
+}
+```
+
+### @OneToMany & @ManyToOne
+One-to-many and many-to-one relationships
+
+```java
+// Department entity (One side)
+@Entity
+@Table(name = "departments")
+public class Department {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String description;
+
+    // OneToMany (bidirectional)
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Employee> employees = new ArrayList<>();
+
+    // OneToMany (unidirectional with join table)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "department_projects",
+        joinColumns = @JoinColumn(name = "department_id"),
+        inverseJoinColumns = @JoinColumn(name = "project_id")
+    )
+    private Set<Project> projects = new HashSet<>();
+
+    // Helper methods for bidirectional relationship
+    public void addEmployee(Employee employee) {
+        employees.add(employee);
+        employee.setDepartment(this);
+    }
+
+    public void removeEmployee(Employee employee) {
+        employees.remove(employee);
+        employee.setDepartment(null);
+    }
+
+    // Constructors, getters, setters...
+}
+
+// Employee entity (Many side)
+@Entity
+@Table(name = "employees")
+public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+    private BigDecimal salary;
+
+    // ManyToOne (owning side)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
+
+    // ManyToOne with custom foreign key
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id", referencedColumnName = "id")
+    private Employee manager;
+
+    // OneToMany (self-referencing)
+    @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL)
+    private List<Employee> subordinates = new ArrayList<>();
+
+    // Constructors, getters, setters...
+}
+
+// Advanced OneToMany with ordering and filtering
+@Entity
+public class Blog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+
+    // Ordered collection
+    @OneToMany(mappedBy = "blog", cascade = CascadeType.ALL)
+    @OrderBy("createdAt DESC") // Order by creation date
+    private List<Post> posts = new ArrayList<>();
+
+    // Filtered collection
+    @OneToMany(mappedBy = "blog")
+    @Where(clause = "status = 'PUBLISHED'") // Only published posts
+    private List<Post> publishedPosts = new ArrayList<>();
+
+    // Custom fetch with @Fetch
+    @OneToMany(mappedBy = "blog", fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT) // Avoid N+1 problem
+    private Set<Category> categories = new HashSet<>();
+}
+```
+
+### @ManyToMany
+Many-to-many relationship mapping
+
+```java
+// Student entity
+@Entity
+@Table(name = "students")
+public class Student {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+
+    // ManyToMany (owning side)
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "student_courses", // Join table name
+        joinColumns = @JoinColumn(name = "student_id"), // Foreign key to Student
+        inverseJoinColumns = @JoinColumn(name = "course_id") // Foreign key to Course
+    )
+    private Set<Course> courses = new HashSet<>();
+
+    // Helper methods for bidirectional relationship
+    public void addCourse(Course course) {
+        courses.add(course);
+        course.getStudents().add(this);
+    }
+
+    public void removeCourse(Course course) {
+        courses.remove(course);
+        course.getStudents().remove(this);
+    }
+
+    // Constructors, getters, setters...
+}
+
+// Course entity
+@Entity
+@Table(name = "courses")
+public class Course {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String code;
+    private Integer credits;
+
+    // ManyToMany (inverse side)
+    @ManyToMany(mappedBy = "courses", fetch = FetchType.LAZY)
+    private Set<Student> students = new HashSet<>();
+
+    // Constructors, getters, setters...
+}
+
+// ManyToMany with additional attributes using @JoinTable
+@Entity
+public class Author {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    // ManyToMany with join entity for additional attributes
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    private Set<BookAuthor> bookAuthors = new HashSet<>();
+
+    // Helper method
+    public void addBook(Book book, String role) {
+        BookAuthor bookAuthor = new BookAuthor(this, book, role);
+        bookAuthors.add(bookAuthor);
+        book.getBookAuthors().add(bookAuthor);
+    }
+}
+
+@Entity
+public class Book {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+
+    @OneToMany(mappedBy = "book", cascade = CascadeType.ALL)
+    private Set<BookAuthor> bookAuthors = new HashSet<>();
+}
+
+// Join entity with additional attributes
+@Entity
+@Table(name = "book_authors")
+public class BookAuthor {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "author_id")
+    private Author author;
+
+    @ManyToOne
+    @JoinColumn(name = "book_id")
+    private Book book;
+
+    private String role; // e.g., "PRIMARY", "CO_AUTHOR", "EDITOR"
+
+    @CreationTimestamp
+    private LocalDateTime assignedAt;
+
+    // Constructors
+    public BookAuthor() {}
+
+    public BookAuthor(Author author, Book book, String role) {
+        this.author = author;
+        this.book = book;
+        this.role = role;
+    }
+
+    // Getters and setters...
+}
+```
+
+### @JoinColumn & @JoinTable
+Customize foreign key columns and join tables
+
+```java
+@Entity
+@Table(name = "orders")
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // Custom foreign key column name
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "customer_id", // Column name in orders table
+        referencedColumnName = "id", // Referenced column in customer table
+        nullable = false,
+        foreignKey = @ForeignKey(name = "fk_order_customer")
+    )
+    private Customer customer;
+
+    // Composite foreign key
+    @ManyToOne
+    @JoinColumns({
+        @JoinColumn(name = "product_code", referencedColumnName = "code"),
+        @JoinColumn(name = "product_version", referencedColumnName = "version")
+    })
+    private Product product;
+
+    // Self-referencing with custom column
+    @ManyToOne
+    @JoinColumn(name = "parent_order_id")
+    private Order parentOrder;
+
+    @OneToMany(mappedBy = "parentOrder")
+    private List<Order> subOrders = new ArrayList<>();
+}
+
+// Custom join table configuration
+@Entity
+public class User {
+    @Id
+    private Long id;
+
+    @ManyToMany
+    @JoinTable(
+        name = "user_roles", // Custom table name
+        joinColumns = @JoinColumn(
+            name = "user_id",
+            foreignKey = @ForeignKey(name = "fk_user_role_user")
+        ),
+        inverseJoinColumns = @JoinColumn(
+            name = "role_id",
+            foreignKey = @ForeignKey(name = "fk_user_role_role")
+        ),
+        uniqueConstraints = @UniqueConstraint(
+            name = "uk_user_role",
+            columnNames = {"user_id", "role_id"}
+        ),
+        indexes = {
+            @Index(name = "idx_user_roles_user", columnList = "user_id"),
+            @Index(name = "idx_user_roles_role", columnList = "role_id")
+        }
+    )
+    private Set<Role> roles = new HashSet<>();
+}
+```
+
+---
+
+## Spring Core Annotations
+
+### Dependency Injection Annotations
+```java
+// Service layer
+@Service
+@Transactional
+public class UserService {
+
+    // Field injection (not recommended in production)
+    @Autowired
+    private UserRepository userRepository;
+
+    // Constructor injection (recommended)
+    private final EmailService emailService;
+    private final ValidationService validationService;
+
+    @Autowired
+    public UserService(EmailService emailService, ValidationService validationService) {
+        this.emailService = emailService;
+        this.validationService = validationService;
+    }
+
+    // Setter injection
+    private AuditService auditService;
+
+    @Autowired
+    public void setAuditService(AuditService auditService) {
+        this.auditService = auditService;
+    }
+
+    // Qualified injection when multiple beans of same type exist
+    @Autowired
+    @Qualifier("primaryEmailService")
+    private EmailService primaryEmailService;
+
+    // Optional dependency
+    @Autowired(required = false)
+    private NotificationService notificationService;
+
+    // Collection injection
+    @Autowired
+    private List<PaymentProcessor> paymentProcessors;
+
+    @Autowired
+    private Map<String, CacheManager> cacheManagers;
+
+    public User createUser(CreateUserRequest request) {
+        validationService.validate(request);
+
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+
+        User savedUser = userRepository.save(user);
+
+        // Send welcome email
+        emailService.sendWelcomeEmail(savedUser);
+
+        // Optional notification
+        if (notificationService != null) {
+            notificationService.notify(savedUser);
+        }
+
+        // Audit
+        auditService.logUserCreation(savedUser);
+
+        return savedUser;
+    }
+}
+
+// Repository layer
+@Repository
+public class CustomUserRepository {
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @PersistenceContext
+    private EntityManager em; // Alternative for EntityManager injection
+
+    public List<User> findUsersByCustomCriteria(String criteria) {
+        String jpql = "SELECT u FROM User u WHERE u.name LIKE :criteria";
+        return entityManager.createQuery(jpql, User.class)
+                          .setParameter("criteria", "%" + criteria + "%")
+                          .getResultList();
+    }
+}
+
+// Component scanning and stereotypes
+@Component("userValidator")
+public class UserValidator {
+
+    public boolean validate(User user) {
+        return user.getName() != null && user.getEmail() != null;
+    }
+}
+
+@Component
+@Primary // This bean will be preferred when multiple beans of same type exist
+public class PrimaryEmailService implements EmailService {
+
+    @Override
+    public void sendEmail(String to, String subject, String body) {
+        // Primary email implementation
+    }
+}
+
+@Component
+@Qualifier("backup")
+public class BackupEmailService implements EmailService {
+
+    @Override
+    public void sendEmail(String to, String subject, String body) {
+        // Backup email implementation
+    }
+}
+```
+
+### Configuration Annotations
+```java
+// Main application class
+@SpringBootApplication // Combines @Configuration, @EnableAutoConfiguration, @ComponentScan
+@EnableJpaRepositories(basePackages = "com.example.repository")
+@EnableTransactionManagement
+@EnableScheduling
+@EnableAsync
+public class Application {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+
+    // Bean definitions in main class
+    @Bean
+    @Primary
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+// Configuration class
+@Configuration
+@PropertySource("classpath:custom.properties")
+@EnableConfigurationProperties({DatabaseProperties.class, EmailProperties.class})
+public class AppConfig {
+
+    // Simple bean definition
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    // Bean with dependencies
+    @Bean
+    public EmailService emailService(@Value("${email.smtp.host}") String smtpHost,
+                                   @Value("${email.smtp.port}") int smtpPort) {
+        return new EmailServiceImpl(smtpHost, smtpPort);
+    }
+
+    // Conditional bean creation
+    @Bean
+    @ConditionalOnProperty(name = "cache.enabled", havingValue = "true")
+    public CacheManager cacheManager() {
+        return new ConcurrentMapCacheManager();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public DefaultUserService defaultUserService() {
+        return new DefaultUserService();
+    }
+
+    // Profile-specific beans
+    @Bean
+    @Profile("development")
+    public DataSource developmentDataSource() {
+        return new EmbeddedDatabaseBuilder()
+                .setType(EmbeddedDatabaseType.H2)
+                .build();
+    }
+
+    @Bean
+    @Profile("production")
+    public DataSource productionDataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mysql://localhost:3306/mydb");
+        config.setUsername("user");
+        config.setPassword("password");
+        return new HikariDataSource(config);
+    }
+
+    // Method-level configuration
+    @Bean
+    @Scope("prototype") // New instance for each request
+    public ShoppingCart shoppingCart() {
+        return new ShoppingCart();
+    }
+
+    @Bean
+    @Scope("request") // One instance per HTTP request
+    public RequestContext requestContext() {
+        return new RequestContext();
+    }
+
+    // Lazy initialization
+    @Bean
+    @Lazy
+    public ExpensiveService expensiveService() {
+        return new ExpensiveService();
+    }
+}
+
+// Configuration properties
+@ConfigurationProperties(prefix = "database")
+@Data
+@Component
+public class DatabaseProperties {
+    private String url;
+    private String username;
+    private String password;
+    private int maxConnections;
+    private boolean enableSsl;
+}
+
+@ConfigurationProperties(prefix = "email")
+@Data
+@Validated
+public class EmailProperties {
+    @NotBlank
+    private String host;
+
+    @Range(min = 1, max = 65535)
+    private int port;
+
+    @Email
+    private String from;
+
+    private boolean enabled = true;
+}
+```
+
+### Value Injection Annotations
+```java
+@Component
+public class ConfigurableService {
+
+    // Simple property injection
+    @Value("${app.name}")
+    private String appName;
+
+    // With default value
+    @Value("${app.version:1.0.0}")
+    private String appVersion;
+
+    // System property
+    @Value("${java.home}")
+    private String javaHome;
+
+    // Environment variable
+    @Value("${HOME}")
+    private String homeDirectory;
+
+    // Expression evaluation
+    @Value("#{systemProperties['user.home']}")
+    private String userHome;
+
+    // Mathematical expressions
+    @Value("#{10 * 2}")
+    private int calculatedValue;
+
+    // Bean property access
+    @Value("#{databaseProperties.maxConnections}")
+    private int maxConnections;
+
+    // Collection from properties
+    @Value("${app.supported.languages}")
+    private List<String> supportedLanguages; // Comma-separated values
+
+    // Map from properties
+    @Value("#{${app.database.pools}}")
+    private Map<String, String> databasePools;
+
+    // Constructor injection with @Value
+    public ConfigurableService(@Value("${app.timeout:5000}") int timeout,
+                              @Value("${app.retry.attempts:3}") int retryAttempts) {
+        // Initialize with values
+    }
+
+    // Method parameter injection
+    @EventListener
+    public void handleEvent(@Value("${app.event.enabled:true}") boolean enabled,
+                           ApplicationEvent event) {
+        if (enabled) {
+            // Handle event
+        }
+    }
+}
+
+// Environment access
+@Service
+public class EnvironmentService {
+
+    @Autowired
+    private Environment environment;
+
+    public void printProperties() {
+        // Get property with default
+        String appName = environment.getProperty("app.name", "Default App");
+
+        // Get required property (throws exception if not found)
+        String dbUrl = environment.getRequiredProperty("database.url");
+
+        // Get property with type conversion
+        Integer port = environment.getProperty("server.port", Integer.class, 8080);
+
+        // Check active profiles
+        String[] activeProfiles = environment.getActiveProfiles();
+
+        // Check if profile is active
+        boolean isDev = environment.acceptsProfiles("development");
+    }
+}
+```
+
+---
+
+## Security Annotations
+
+### Method-Level Security
+```java
+@RestController
+@RequestMapping("/api/admin")
+@PreAuthorize("hasRole('ADMIN')") // Apply to all methods in controller
+public class AdminController {
+
+    // Role-based access control
+    @GetMapping("/users")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    public ResponseEntity<List<User>> getAllUsers() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    // Authority-based access control
+    @PostMapping("/users")
+    @PreAuthorize("hasAuthority('USER_CREATE')")
+    public ResponseEntity<User> createUser(@RequestBody CreateUserRequest request) {
+        return ResponseEntity.ok(userService.create(request));
+    }
+
+    // Expression-based authorization
+    @PutMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('MANAGER') and #id == authentication.principal.id)")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
+    }
+
+    // Post-authorization (check return value)
+    @GetMapping("/users/{id}")
+    @PostAuthorize("hasRole('ADMIN') or returnObject.body.id == authentication.principal.id")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    // Method parameter access control
+    @DeleteMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @userService.isOwner(#id, authentication.principal.id)")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+@Service
+public class UserService {
+
+    // Filtering collections based on permissions
+    @PostFilter("hasRole('ADMIN') or filterObject.department == authentication.principal.department")
+    public List<User> findAllInDepartment() {
+        return userRepository.findAll();
+    }
+
+    // Filtering method parameters
+    @PreFilter("hasRole('ADMIN') or filterObject.departmentId == authentication.principal.departmentId")
+    public List<User> createUsers(List<CreateUserRequest> requests) {
+        return requests.stream()
+                      .map(this::create)
+                      .collect(Collectors.toList());
+    }
+
+    // Custom security expression
+    @PreAuthorize("@securityService.canAccessUser(authentication, #userId)")
+    public User findById(Long userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    // Secured annotation (simpler alternative)
+    @Secured({"ROLE_ADMIN", "ROLE_MANAGER"})
+    public void performAdminTask() {
+        // Admin task
+    }
+
+    // JSR-250 annotations
+    @RolesAllowed({"ADMIN", "MANAGER"})
+    public void jsr250SecuredMethod() {
+        // JSR-250 secured method
+    }
+
+    @PermitAll
+    public List<User> getPublicUsers() {
+        return userRepository.findPublicUsers();
+    }
+
+    @DenyAll
+    public void restrictedMethod() {
+        // This method is never accessible
+    }
+}
+
+// Custom security service
+@Service
+public class SecurityService {
+
+    public boolean canAccessUser(Authentication authentication, Long userId) {
+        // Custom logic to determine access
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        return principal.hasRole("ADMIN") || principal.getId().equals(userId);
+    }
+
+    public boolean isOwner(Long resourceId, Long userId) {
+        // Check if user owns the resource
+        return resourceService.isOwner(resourceId, userId);
+    }
+}
+```
+
+---
+
+## Testing Annotations
+
+### Integration Testing
+```java
+// Full Spring Boot test
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@TestPropertySource(locations = "classpath:test.properties")
+@ActiveProfiles("test")
+class UserControllerIntegrationTest {
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @LocalServerPort
+    private int port;
+
+    @Test
+    void shouldCreateUser() {
+        CreateUserRequest request = new CreateUserRequest("John Doe", "john@example.com");
+
+        ResponseEntity<User> response = restTemplate.postForEntity(
+            "/api/users", request, User.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody().getName()).isEqualTo("John Doe");
+    }
+}
+
+// Web layer test (controllers only)
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldReturnUser() throws Exception {
+        User user = new User(1L, "John Doe", "john@example.com");
+        given(userService.findById(1L)).willReturn(user);
+
+        mockMvc.perform(get("/api/users/1"))
+               .andExpect(status().isOk())
+               .andExpected(jsonPath("$.name").value("John Doe"))
+               .andExpected(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    void shouldCreateUser() throws Exception {
+        CreateUserRequest request = new CreateUserRequest("Jane Doe", "jane@example.com");
+        User createdUser = new User(2L, "Jane Doe", "jane@example.com");
+
+        given(userService.create(any(CreateUserRequest.class))).willReturn(createdUser);
+
+        mockMvc.perform(post("/api/users")
+                       .contentType(MediaType.APPLICATION_JSON)
+                       .content("""
+                           {
+                               "name": "Jane Doe",
+                               "email": "jane@example.com"
+                           }
+                           """))
+               .andExpected(status().isCreated())
+               .andExpected(jsonPath("$.name").value("Jane Doe"));
+    }
+}
+
+// Data layer test (repositories only)
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class UserRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldFindUserByEmail() {
+        // Given
+        User user = new User("John Doe", "john@example.com");
+        entityManager.persistAndFlush(user);
+
+        // When
+        Optional<User> found = userRepository.findByEmail("john@example.com");
+
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().getName()).isEqualTo("John Doe");
+    }
+}
+
+// Service layer test
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void shouldCreateUser() {
+        // Given
+        CreateUserRequest request = new CreateUserRequest("John Doe", "john@example.com");
+        User savedUser = new User(1L, "John Doe", "john@example.com");
+
+        given(userRepository.save(any(User.class))).willReturn(savedUser);
+
+        // When
+        User result = userService.create(request);
+
+        // Then
+        assertThat(result.getName()).isEqualTo("John Doe");
+        verify(emailService).sendWelcomeEmail(savedUser);
+    }
+}
+
+// JSON serialization test
+@JsonTest
+class UserJsonTest {
+
+    @Autowired
+    private JacksonTester<User> json;
+
+    @Test
+    void shouldSerializeUser() throws Exception {
+        User user = new User(1L, "John Doe", "john@example.com");
+
+        assertThat(json.write(user)).isEqualToJson("""
+            {
+                "id": 1,
+                "name": "John Doe",
+                "email": "john@example.com"
+            }
+            """);
+    }
+
+    @Test
+    void shouldDeserializeUser() throws Exception {
+        String content = """
+            {
+                "id": 1,
+                "name": "John Doe",
+                "email": "john@example.com"
+            }
+            """;
+
+        User user = json.parseObject(content);
+
+        assertThat(user.getId()).isEqualTo(1L);
+        assertThat(user.getName()).isEqualTo("John Doe");
+    }
+}
+```
+
+---
+
+## Best Practices & Common Patterns
+
+### Controller Best Practices
+
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+@Validated
+@Slf4j
+public class UserController {
+
+    private final UserService userService;
+
+    // Constructor injection (recommended)
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public ResponseEntity<PagedResponse<UserDto>> getUsers(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(required = false) String search) {
+
+        log.info("Fetching users - page: {}, size: {}, search: {}", page, size, search);
+
+        PagedResponse<UserDto> users = userService.findAll(page, size, search);
+        return ResponseEntity.ok(users);
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDto> createUser(
+            @RequestBody @Valid CreateUserRequest request,
+            HttpServletRequest httpRequest) {
+
+        log.info("Creating user with email: {}", request.getEmail());
+
+        UserDto user = userService.create(request);
+
+        URI location = ServletUriComponentsBuilder
+            .fromCurrentRequest()
+            .path("/{id}")
+            .buildAndExpand(user.getId())
+            .toUri();
+
+        return ResponseEntity.created(location).body(user);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        ErrorResponse error = ErrorResponse.builder()
+            .status(HttpStatus.NOT_FOUND.value())
+            .message(ex.getMessage())
+            .timestamp(LocalDateTime.now())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+}
+```
+
+### Service Layer Patterns
+
+```java
+@Service
+@Transactional(readOnly = true)
+@Slf4j
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+    private final UserMapper userMapper;
+
+    public UserService(UserRepository userRepository,
+                      PasswordEncoder passwordEncoder,
+                      EmailService emailService,
+                      UserMapper userMapper) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
+        this.userMapper = userMapper;
+    }
+
+    @Transactional
+    public UserDto create(CreateUserRequest request) {
+        validateUniqueEmail(request.getEmail());
+
+        User user = User.builder()
+            .name(request.getName())
+            .email(request.getEmail())
+            .password(passwordEncoder.encode(request.getPassword()))
+            .status(UserStatus.ACTIVE)
+            .createdAt(LocalDateTime.now())
+            .build();
+
+        User savedUser = userRepository.save(user);
+
+        // Async operations
+        emailService.sendWelcomeEmailAsync(savedUser);
+
+        log.info("User created successfully: {}", savedUser.getId());
+        return userMapper.toDto(savedUser);
+    }
+
+    private void validateUniqueEmail(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new EmailAlreadyExistsException("Email already exists: " + email);
+        }
+    }
+}
+```
+
+### Repository Patterns
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    List<User> findByStatus(@Param("status") UserStatus status);
+
+    @Query(value = "SELECT * FROM users u WHERE u.created_at >= :date", nativeQuery = true)
+    List<User> findUsersCreatedAfter(@Param("date") LocalDateTime date);
+
+    @Modifying
+    @Query("UPDATE User u SET u.lastLoginAt = :loginTime WHERE u.id = :userId")
+    void updateLastLoginTime(@Param("userId") Long userId, @Param("loginTime") LocalDateTime loginTime);
+}
+
+// Custom repository implementation
+@Repository
+public class CustomUserRepositoryImpl implements CustomUserRepository {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    public Page<User> findByDynamicCriteria(UserSearchCriteria criteria, Pageable pageable) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<User> query = cb.createQuery(User.class);
+        Root<User> user = query.from(User.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (criteria.getName() != null) {
+            predicates.add(cb.like(cb.lower(user.get("name")),
+                                 "%" + criteria.getName().toLowerCase() + "%"));
+        }
+
+        if (criteria.getEmail() != null) {
+            predicates.add(cb.equal(user.get("email"), criteria.getEmail()));
+        }
+
+        if (!predicates.isEmpty()) {
+            query.where(cb.and(predicates.toArray(new Predicate[0])));
+        }
+
+        TypedQuery<User> typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult((int) pageable.getOffset());
+        typedQuery.setMaxResults(pageable.getPageSize());
+
+        List<User> users = typedQuery.getResultList();
+        long total = countByDynamicCriteria(criteria);
+
+        return new PageImpl<>(users, pageable, total);
+    }
+}
+```
+
+### DTOs and Mapping
+
+```java
+// Request DTOs
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CreateUserRequest {
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 50)
+    private String name;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 100)
+    private String password;
+}
+
+// Response DTOs
+@Data
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class UserDto {
+    private Long id;
+    private String name;
+    private String email;
+    private UserStatus status;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime createdAt;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime updatedAt;
+}
+
+// MapStruct mapper
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+
+    UserDto toDto(User user);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    User toEntity(CreateUserRequest request);
+
+    List<UserDto> toDtoList(List<User> users);
+
+    @Mapping(target = "password", ignore = true)
+    void updateUserFromDto(UpdateUserRequest request, @MappingTarget User user);
+}
+```
+
+### Configuration Classes
+
+```java
+@Configuration
+@EnableConfigurationProperties({DatabaseProperties.class, EmailProperties.class})
+public class ApplicationConfig {
+
+    @Bean
+    @Primary
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        RestTemplate template = new RestTemplate();
+        template.setRequestFactory(new HttpComponentsClientHttpRequestFactory());
+        return template;
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "app.async.enabled", havingValue = "true")
+    public TaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(25);
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean
+    public ModelMapper modelMapper() {
+        ModelMapper mapper = new ModelMapper();
+        mapper.getConfiguration()
+              .setMatchingStrategy(MatchingStrategies.STRICT)
+              .setFieldMatchingEnabled(true)
+              .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE);
+        return mapper;
+    }
+}
+```
+
+### Exception Handling
+
+```java
+@ControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+            errors.put(error.getField(), error.getDefaultMessage()));
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message("Validation failed")
+            .errors(errors)
+            .timestamp(LocalDateTime.now())
+            .path(getRequestPath())
+            .build();
+
+        log.warn("Validation error: {}", errors);
+        return ResponseEntity.badRequest().body(errorResponse);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(
+            EntityNotFoundException ex) {
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .status(HttpStatus.NOT_FOUND.value())
+            .message(ex.getMessage())
+            .timestamp(LocalDateTime.now())
+            .path(getRequestPath())
+            .build();
+
+        log.warn("Entity not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+            .message("An unexpected error occurred")
+            .timestamp(LocalDateTime.now())
+            .path(getRequestPath())
+            .build();
+
+        log.error("Unexpected error", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+
+    private String getRequestPath() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (requestAttributes instanceof ServletRequestAttributes) {
+            HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
+            return request.getRequestURI();
+        }
+        return "unknown";
+    }
+}
+
+@Data
+@Builder
+public class ErrorResponse {
+    private int status;
+    private String message;
+    private Map<String, String> errors;
+    private LocalDateTime timestamp;
+    private String path;
+}
+```
+
+### Security Configuration
+
+```java
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+public class SecurityConfig {
+
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtRequestFilter jwtRequestFilter;
+
+    public SecurityConfig(JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                         JwtRequestFilter jwtRequestFilter) {
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.jwtRequestFilter = jwtRequestFilter;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(jwtAuthenticationEntryPoint))
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            );
+
+        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+}
+```
+
+### Testing Patterns
+
+```java
+@SpringBootTest
+@TestPropertySource(locations = "classpath:application-test.properties")
+@ActiveProfiles("test")
+class UserServiceIntegrationTest {
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Test
+    @Transactional
+    @Rollback
+    void shouldCreateUserSuccessfully() {
+        // Given
+        CreateUserRequest request = CreateUserRequest.builder()
+            .name("John Doe")
+            .email("john@example.com")
+            .password("password123")
+            .build();
+
+        // When
+        UserDto result = userService.create(request);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("John Doe");
+        assertThat(result.getEmail()).isEqualTo("john@example.com");
+
+        // Verify in database
+        Optional<User> saved = userRepository.findByEmail("john@example.com");
+        assertThat(saved).isPresent();
+        assertThat(saved.get().getName()).isEqualTo("John Doe");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenEmailExists() {
+        // Given
+        User existingUser = User.builder()
+            .name("Jane Doe")
+            .email("existing@example.com")
+            .password("encoded-password")
+            .build();
+        entityManager.persistAndFlush(existingUser);
+
+        CreateUserRequest request = CreateUserRequest.builder()
+            .name("John Doe")
+            .email("existing@example.com")
+            .password("password123")
+            .build();
+
+        // When & Then
+        assertThatThrownBy(() -> userService.create(request))
+            .isInstanceOf(EmailAlreadyExistsException.class)
+            .hasMessage("Email already exists: existing@example.com");
+    }
+}
+```
+
+### Utility Classes
+
+```java
+@UtilityClass
+public class ValidationUtils {
+
+    public static boolean isValidEmail(String email) {
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    }
+
+    public static boolean isStrongPassword(String password) {
+        return password != null &&
+               password.length() >= 8 &&
+               password.matches(".*[A-Z].*") &&
+               password.matches(".*[a-z].*") &&
+               password.matches(".*\\d.*") &&
+               password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*");
+    }
+}
+
+@Component
+@Slf4j
+public class DatabaseHealthIndicator implements HealthIndicator {
+
+    private final DataSource dataSource;
+
+    public DatabaseHealthIndicator(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Override
+    public Health health() {
+        try (Connection connection = dataSource.getConnection()) {
+            if (connection.isValid(1)) {
+                return Health.up()
+                    .withDetail("database", "Available")
+                    .withDetail("validationQuery", "Connection is valid")
+                    .build();
+            }
+        } catch (SQLException e) {
+            log.error("Database health check failed", e);
+        }
+
+        return Health.down()
+            .withDetail("database", "Unavailable")
+            .build();
+    }
+}
+```
+
+### Performance Optimization
+
+```java
+@Service
+@Transactional(readOnly = true)
+public class OptimizedUserService {
+
+    @Cacheable(value = "users", key = "#id")
+    public UserDto findById(Long id) {
+        return userRepository.findById(id)
+            .map(userMapper::toDto)
+            .orElseThrow(() -> new UserNotFoundException("User not found: " + id));
+    }
+
+    @CacheEvict(value = "users", key = "#result.id")
+    @Transactional
+    public UserDto update(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new UserNotFoundException("User not found: " + id));
+
+        userMapper.updateUserFromDto(request, user);
+        User updated = userRepository.save(user);
+
+        return userMapper.toDto(updated);
+    }
+
+    // Batch operations for better performance
+    @Transactional
+    public List<UserDto> createBatch(List<CreateUserRequest> requests) {
+        List<User> users = requests.stream()
+            .map(userMapper::toEntity)
+            .collect(Collectors.toList());
+
+        List<User> savedUsers = userRepository.saveAll(users);
+        return userMapper.toDtoList(savedUsers);
+    }
+
+    // Pagination with specifications
+    public Page<UserDto> findAllWithFilters(UserSearchCriteria criteria, Pageable pageable) {
+        Specification<User> spec = UserSpecifications.withCriteria(criteria);
+        Page<User> users = userRepository.findAll(spec, pageable);
+        return users.map(userMapper::toDto);
+    }
+}
+
+// Specification pattern for dynamic queries
+public class UserSpecifications {
+
+    public static Specification<User> withCriteria(UserSearchCriteria criteria) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (criteria.getName() != null && !criteria.getName().isEmpty()) {
+                predicates.add(criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("name")),
+                    "%" + criteria.getName().toLowerCase() + "%"
+                ));
+            }
+
+            if (criteria.getStatus() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), criteria.getStatus()));
+            }
+
+            if (criteria.getCreatedAfter() != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                    root.get("createdAt"), criteria.getCreatedAfter()
+                ));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+}
+```
