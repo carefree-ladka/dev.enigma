@@ -1,0 +1,623 @@
+# GitHub Actions + Docker CI/CD Pipeline for Spring Boot
+
+## Overview
+
+GitHub Actions provides powerful CI/CD capabilities that integrate seamlessly with Docker for Spring Boot applications. This guide covers everything from basic workflows to advanced deployment pipelines.
+
+## Core Concepts
+
+### GitHub Actions Terminology
+- **Workflow**: Automated process defined in YAML file
+- **Job**: Set of steps that execute on the same runner
+- **Step**: Individual task within a job
+- **Action**: Reusable unit of code
+- **Runner**: Server that runs workflows
+- **Trigger**: Event that starts a workflow
+
+### CI/CD Pipeline Stages
+1. **Source** → Code push/PR
+2. **Build** → Compile and test
+3. **Package** → Create Docker image
+4. **Deploy** → Release to environments
+
+## Basic GitHub Actions Workflow
+
+### Simple CI Workflow
+`.github/workflows/ci.yml`
+
+```yaml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run tests
+      run: mvn clean test
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+
+    - name: Generate test report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: Maven Tests
+        path: target/surefire-reports/*.xml
+        reporter: java-junit
+```
+
+## Complete CI/CD Pipeline with Docker
+
+### Advanced Workflow
+`.github/workflows/cicd.yml`
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Run unit tests
+      run: mvn clean test
+
+    - name: Run integration tests
+      run: mvn verify -P integration-tests
+      env:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/testdb
+        SPRING_DATASOURCE_USERNAME: postgres
+        SPRING_DATASOURCE_PASSWORD: postgres
+        SPRING_REDIS_HOST: localhost
+        SPRING_REDIS_PORT: 6379
+
+    - name: Generate code coverage report
+      run: mvn jacoco:report
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: target/site/jacoco/jacoco.xml
+
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    - name: Build application
+      run: mvn clean package -DskipTests
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix=sha-,format=short
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  security-scan:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build-and-push.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    needs: [test, build-and-push, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "Deploying ${{ needs.build-and-push.outputs.image-tag }} to staging"
+        # Add your staging deployment logic here
+
+  deploy-production:
+    needs: [test, build-and-push, security-scan]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+
+    steps:
+    - name: Deploy to production
+      run: |
+        echo "Deploying ${{ needs.build-and-push.outputs.image-tag }} to production"
+        # Add your production deployment logic here
+```
+
+## Multi-Environment Deployment
+
+### Environment-Specific Workflows
+`.github/workflows/deploy-staging.yml`
+
+```yaml
+name: Deploy to Staging
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types:
+      - completed
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy to ECS
+      run: |
+        # Update ECS service with new image
+        aws ecs update-service \
+          --cluster staging-cluster \
+          --service myapp-service \
+          --force-new-deployment \
+          --task-definition myapp-staging:${{ github.sha }}
+
+    - name: Wait for deployment
+      run: |
+        aws ecs wait services-stable \
+          --cluster staging-cluster \
+          --services myapp-service
+
+    - name: Run smoke tests
+      run: |
+        # Wait for service to be healthy
+        sleep 30
+        curl -f https://staging.myapp.com/actuator/health
+```
+
+## Docker Multi-Stage Build for CI/CD
+
+### Optimized Dockerfile for CI/CD
+```dockerfile
+# Build stage
+FROM maven:3.9-openjdk-17 AS build
+WORKDIR /app
+
+# Copy dependency files first for better caching
+COPY pom.xml .
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Test stage
+FROM build AS test
+RUN mvn test
+
+# Runtime stage
+FROM openjdk:17-jre-slim AS runtime
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r spring && useradd -r -g spring spring
+
+WORKDIR /app
+
+# Copy built artifact
+COPY --from=build /app/target/*.jar app.jar
+
+# Change ownership
+RUN chown spring:spring app.jar
+
+# Switch to non-root user
+USER spring
+
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# Run application
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+## Advanced Patterns
+
+### Matrix Strategy for Multiple Environments
+```yaml
+strategy:
+  matrix:
+    environment: [staging, production]
+    java-version: [11, 17, 21]
+
+steps:
+- name: Set up JDK ${{ matrix.java-version }}
+  uses: actions/setup-java@v4
+  with:
+    java-version: ${{ matrix.java-version }}
+    distribution: 'temurin'
+```
+
+### Conditional Deployments
+```yaml
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+
+    steps:
+    - name: Deploy to staging
+      if: github.ref == 'refs/heads/main'
+      run: echo "Deploying to staging"
+
+    - name: Deploy to production
+      if: startsWith(github.ref, 'refs/tags/')
+      run: echo "Deploying to production"
+```
+
+### Parallel Jobs with Dependencies
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # ... build steps
+
+  test-unit:
+    needs: build
+    runs-on: ubuntu-latest
+    # ... unit test steps
+
+  test-integration:
+    needs: build
+    runs-on: ubuntu-latest
+    # ... integration test steps
+
+  deploy:
+    needs: [test-unit, test-integration]
+    runs-on: ubuntu-latest
+    # ... deployment steps
+```
+
+## Secrets and Environment Management
+
+### Required Secrets
+```bash
+# Container Registry
+GITHUB_TOKEN                 # Automatic
+DOCKER_USERNAME             # Docker Hub
+DOCKER_PASSWORD             # Docker Hub
+
+# Cloud Providers
+AWS_ACCESS_KEY_ID           # AWS
+AWS_SECRET_ACCESS_KEY       # AWS
+AZURE_CREDENTIALS           # Azure
+GCP_SA_KEY                  # Google Cloud
+
+# External Services
+SONAR_TOKEN                 # SonarCloud
+CODECOV_TOKEN              # Codecov
+
+# Database
+DB_PASSWORD                 # Production DB
+```
+
+### Environment Variables in Workflow
+```yaml
+env:
+  SPRING_PROFILES_ACTIVE: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  REDIS_URL: ${{ secrets.REDIS_URL }}
+```
+
+## Performance Optimization
+
+### Caching Strategies
+```yaml
+- name: Cache Docker layers
+  uses: actions/cache@v4
+  with:
+    path: /tmp/.buildx-cache
+    key: ${{ runner.os }}-buildx-${{ github.sha }}
+    restore-keys: |
+      ${{ runner.os }}-buildx-
+
+- name: Cache Maven dependencies
+  uses: actions/cache@v4
+  with:
+    path: ~/.m2
+    key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+    restore-keys: ${{ runner.os }}-m2
+```
+
+### Build Optimization
+```yaml
+- name: Build with BuildKit
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    push: true
+    tags: myapp:latest
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+    build-args: |
+      BUILDKIT_INLINE_CACHE=1
+```
+
+## Monitoring and Notifications
+
+### Slack Notifications
+```yaml
+- name: Notify Slack on failure
+  if: failure()
+  uses: 8398a7/action-slack@v3
+  with:
+    status: failure
+    channel: '#deployments'
+    webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+```
+
+### Status Badges
+Add to README.md:
+```markdown
+![CI/CD Pipeline](https://github.com/username/repo/actions/workflows/cicd.yml/badge.svg)
+![Docker Build](https://github.com/username/repo/actions/workflows/docker.yml/badge.svg)
+```
+
+## Deployment Strategies
+
+### Blue-Green Deployment
+```yaml
+- name: Blue-Green Deployment
+  run: |
+    # Deploy to green environment
+    kubectl set image deployment/myapp myapp=myapp:${{ github.sha }} -n green
+    kubectl rollout status deployment/myapp -n green
+
+    # Switch traffic
+    kubectl patch service myapp -p '{"spec":{"selector":{"version":"green"}}}' -n production
+
+    # Clean up blue environment
+    kubectl delete deployment myapp -n blue
+```
+
+### Rolling Updates with Health Checks
+```yaml
+- name: Rolling Update
+  run: |
+    kubectl set image deployment/myapp myapp=myapp:${{ github.sha }}
+    kubectl rollout status deployment/myapp --timeout=300s
+
+    # Health check
+    kubectl get pods -l app=myapp
+    curl -f https://api.myapp.com/actuator/health
+```
+
+## Troubleshooting Common Issues
+
+### Docker Build Failures
+```yaml
+- name: Debug Docker build
+  if: failure()
+  run: |
+    docker images
+    docker system df
+    docker buildx ls
+```
+
+### Test Failures
+```yaml
+- name: Upload test artifacts
+  if: failure()
+  uses: actions/upload-artifact@v4
+  with:
+    name: test-results
+    path: |
+      target/surefire-reports/
+      target/site/jacoco/
+      logs/
+```
+
+### Deployment Rollback
+```yaml
+- name: Rollback on failure
+  if: failure()
+  run: |
+    kubectl rollout undo deployment/myapp
+    kubectl rollout status deployment/myapp
+```
+
+## Best Practices Summary
+
+### Security
+- Use least privilege principle for secrets
+- Scan container images for vulnerabilities
+- Use non-root users in containers
+- Keep dependencies updated
+
+### Performance
+- Use multi-stage builds
+- Implement proper caching strategies
+- Parallel job execution where possible
+- Optimize Docker layer caching
+
+### Reliability
+- Implement comprehensive testing
+- Use health checks and readiness probes
+- Plan for rollback scenarios
+- Monitor deployment success
+
+### Maintainability
+- Use reusable workflows and actions
+- Document deployment processes
+- Implement proper logging and monitoring
+- Version your deployment artifacts
+
+This comprehensive guide provides everything needed to implement robust CI/CD pipelines with GitHub Actions and Docker for Spring Boot applications.

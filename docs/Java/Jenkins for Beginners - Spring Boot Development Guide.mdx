@@ -1,0 +1,966 @@
+# Jenkins for Beginners - Spring Boot Development Guide
+
+## What is Jenkins?
+
+Jenkins is an open-source automation server that enables Continuous Integration (CI) and Continuous Deployment (CD) for software development. It helps automate the building, testing, and deployment of Spring Boot applications.
+
+### Why Jenkins for Spring Boot?
+- **Automation**: Automatically build and test your Spring Boot apps on code changes
+- **Integration**: Works seamlessly with Maven/Gradle, Git, Docker
+- **Flexibility**: Extensive plugin ecosystem
+- **Scalability**: Can handle multiple projects and environments
+- **Free**: Open-source with strong community support
+
+## Core Jenkins Concepts
+
+### Key Terminology
+- **Job/Project**: A runnable task in Jenkins (e.g., build Spring Boot app)
+- **Build**: Single execution of a job
+- **Workspace**: Directory where Jenkins runs your job
+- **Node/Agent**: Machine where Jenkins executes jobs
+- **Pipeline**: Code-based job definition using Groovy
+- **Plugin**: Extension that adds functionality to Jenkins
+
+### Jenkins Architecture
+```
+┌─────────────────┐
+│   Jenkins Master │  ← Web UI, Job scheduling, Plugin management
+├─────────────────┤
+│   Jenkins Agents │  ← Execute jobs, can be on different machines
+├─────────────────┤
+│   Source Code    │  ← Git repositories
+├─────────────────┤
+│   Artifacts      │  ← JAR files, Docker images
+└─────────────────┘
+```
+
+## Jenkins Installation
+
+### Local Installation (Development)
+
+#### Option 1: Download WAR File
+```bash
+# Download Jenkins WAR
+wget https://get.jenkins.io/war-stable/latest/jenkins.war
+
+# Run Jenkins
+java -jar jenkins.war --httpPort=8080
+
+# Access: http://localhost:8080
+```
+
+#### Option 2: Docker (Recommended for beginners)
+```bash
+# Pull Jenkins image
+docker pull jenkins/jenkins:lts
+
+# Run Jenkins container
+docker run -d \
+  --name jenkins \
+  -p 8080:8080 \
+  -p 50000:50000 \
+  -v jenkins_home:/var/jenkins_home \
+  jenkins/jenkins:lts
+
+# Access: http://localhost:8080
+```
+
+#### Option 3: Docker Compose
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JENKINS_OPTS="--httpPort=8080"
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
+```
+
+### Initial Setup Steps
+1. **Access Jenkins**: Navigate to `http://localhost:8080`
+2. **Unlock Jenkins**: Use initial admin password from logs
+3. **Install Plugins**: Choose "Install suggested plugins"
+4. **Create Admin User**: Set up your admin account
+5. **Configure Instance**: Set Jenkins URL
+
+## Essential Plugins for Spring Boot Development
+
+### Must-Have Plugins
+```bash
+# Core plugins for Spring Boot
+- Git Plugin                    # Git integration
+- Maven Integration Plugin      # Maven support
+- Gradle Plugin                # Gradle support
+- JUnit Plugin                 # Test result visualization
+- Jacoco Plugin                # Code coverage
+- SonarQube Scanner            # Code quality
+- Docker Plugin                # Docker integration
+- Blue Ocean                   # Modern UI
+- Pipeline Plugin              # Pipeline as Code
+- Credentials Plugin           # Secure credential storage
+- SSH Agent Plugin             # SSH key management
+```
+
+### Installation via UI
+1. **Manage Jenkins** → **Manage Plugins**
+2. **Available** tab → Search for plugins
+3. Select plugins → **Install without restart**
+
+### Installation via Plugin Manager
+```groovy
+// plugins.txt (for automated installation)
+git:latest
+maven-plugin:latest
+gradle:latest
+junit:latest
+jacoco:latest
+sonar:latest
+docker-plugin:latest
+blueocean:latest
+workflow-aggregator:latest
+```
+
+## Creating Your First Spring Boot Job
+
+### Freestyle Project (Beginner-Friendly)
+
+#### Step 1: Create New Job
+1. **New Item** → Enter name: `springboot-hello-world`
+2. Select **Freestyle project** → **OK**
+
+#### Step 2: Configure Source Code Management
+```bash
+# Git Configuration
+Repository URL: https://github.com/yourusername/spring-boot-demo.git
+Credentials: Add your Git credentials
+Branch: */main
+```
+
+#### Step 3: Build Triggers
+```bash
+# Options:
+☑ GitHub hook trigger for GITScm polling    # Webhook-based
+☑ Poll SCM: H/5 * * * *                     # Every 5 minutes
+☑ Build periodically: H 2 * * *             # Daily at 2 AM
+```
+
+#### Step 4: Build Environment
+```bash
+☑ Delete workspace before build starts
+☑ Add timestamps to the Console Output
+```
+
+#### Step 5: Build Steps
+```bash
+# Add Build Step → Invoke top-level Maven targets
+Goals: clean compile test package
+Advanced:
+  - Maven Version: (Default)
+  - Settings file: settings.xml (if needed)
+  - Global Settings: (Default)
+```
+
+#### Step 6: Post-Build Actions
+```bash
+# Add post-build action → Archive the artifacts
+Files to archive: target/*.jar
+
+# Add post-build action → Publish JUnit test result report
+Test report XMLs: target/surefire-reports/*.xml
+
+# Add post-build action → Record jacoco coverage report
+Path to exec files: target/jacoco.exec
+Class Dirs: target/classes
+Source Dirs: src/main/java
+```
+
+### Sample Spring Boot Application Structure
+```
+spring-boot-demo/
+├── pom.xml
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/example/demo/
+│   │   │       └── DemoApplication.java
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/
+│       └── java/
+│           └── com/example/demo/
+│               └── DemoApplicationTests.java
+└── Jenkinsfile (for Pipeline)
+```
+
+## Jenkins Pipelines for Spring Boot
+
+### Declarative Pipeline (Recommended for Beginners)
+
+#### Basic Jenkinsfile
+```groovy
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven-3.9'
+        jdk 'JDK-17'
+    }
+
+    environment {
+        SPRING_PROFILES_ACTIVE = 'test'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/yourusername/spring-boot-demo.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+                    publishCoverage adapters: [
+                        jacocoAdapter('target/site/jacoco/jacoco.xml')
+                    ]
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar',
+                                   fingerprint: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+
+        stage('Deploy to Staging') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo 'Deploying to staging environment...'
+                sh 'java -jar target/*.jar --server.port=8081 &'
+                sh 'sleep 30' // Wait for app to start
+                sh 'curl -f http://localhost:8081/actuator/health || exit 1'
+            }
+        }
+
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: 'Deploy to production?', ok: 'Deploy'
+                echo 'Deploying to production environment...'
+                // Add production deployment steps
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            emailext (
+                subject: "✅ Build Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: "Build succeeded: ${env.BUILD_URL}",
+                to: "developer@company.com"
+            )
+        }
+        failure {
+            emailext (
+                subject: "❌ Build Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+                body: "Build failed: ${env.BUILD_URL}",
+                to: "developer@company.com"
+            )
+        }
+    }
+}
+```
+
+#### Advanced Pipeline with Docker
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = "myapp"
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        REGISTRY_URL = "your-registry.com"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            parallel {
+                stage('Maven Build') {
+                    steps {
+                        sh 'mvn clean package'
+                    }
+                }
+                stage('Unit Tests') {
+                    steps {
+                        sh 'mvn test'
+                    }
+                    post {
+                        always {
+                            publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Integration Tests') {
+                    steps {
+                        sh 'mvn verify -P integration-tests'
+                    }
+                }
+            }
+        }
+
+        stage('Code Quality') {
+            parallel {
+                stage('SonarQube') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            sh 'mvn sonar:sonar'
+                        }
+                    }
+                }
+                stage('Security Scan') {
+                    steps {
+                        sh 'mvn org.owasp:dependency-check-maven:check'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.withRegistry("https://${REGISTRY_URL}", 'docker-registry-credentials') {
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    def environment = env.BRANCH_NAME == 'main' ? 'production' : 'staging'
+                    sh "docker run -d --name ${environment}-${BUILD_NUMBER} -p 808${BUILD_NUMBER % 10}:8080 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+
+                    // Health check
+                    sh "sleep 30"
+                    sh "curl -f http://localhost:808${BUILD_NUMBER % 10}/actuator/health"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up Docker containers
+            sh "docker stop \$(docker ps -aq) || true"
+            sh "docker rm \$(docker ps -aq) || true"
+            cleanWs()
+        }
+    }
+}
+```
+
+## Multi-Branch Pipeline Setup
+
+### Step 1: Create Multi-Branch Pipeline
+1. **New Item** → **Multibranch Pipeline**
+2. **Branch Sources** → **Git**
+3. **Project Repository**: Your Git URL
+4. **Credentials**: Your Git credentials
+5. **Scan Multibranch Pipeline Triggers**: Periodically
+
+### Step 2: Branch Strategy
+```groovy
+// Jenkinsfile - Branch-specific deployment
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Deploy') {
+            parallel {
+                stage('Deploy to Dev') {
+                    when { branch 'feature/*' }
+                    steps {
+                        echo "Deploying feature branch to dev environment"
+                    }
+                }
+                stage('Deploy to Staging') {
+                    when { branch 'develop' }
+                    steps {
+                        echo "Deploying to staging environment"
+                    }
+                }
+                stage('Deploy to Production') {
+                    when { branch 'main' }
+                    steps {
+                        input message: 'Deploy to production?'
+                        echo "Deploying to production environment"
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+## Jenkins Configuration for Spring Boot
+
+### Global Tool Configuration
+1. **Manage Jenkins** → **Global Tool Configuration**
+
+#### Maven Configuration
+```bash
+Name: Maven-3.9
+Install automatically: ✓
+Version: 3.9.0
+```
+
+#### JDK Configuration
+```bash
+Name: JDK-17
+Install automatically: ✓
+Add Installer: Install from adoptium.net
+Version: jdk-17.0.7+7
+```
+
+#### Git Configuration
+```bash
+Name: Default
+Path to Git executable: git (or /usr/bin/git)
+```
+
+### System Configuration
+1. **Manage Jenkins** → **Configure System**
+
+#### Global Properties
+```bash
+Environment variables:
+- JAVA_HOME: /opt/java/openjdk
+- MAVEN_HOME: /opt/maven
+- PATH: $MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH
+```
+
+## Spring Boot Specific Configurations
+
+### Maven Settings for Jenkins
+```xml
+<!-- settings.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+    <profiles>
+        <profile>
+            <id>jenkins</id>
+            <properties>
+                <spring.profiles.active>jenkins</spring.profiles.active>
+                <skipTests>false</skipTests>
+            </properties>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>jenkins</activeProfile>
+    </activeProfiles>
+</settings>
+```
+
+### Application Properties for Testing
+```properties
+# application-jenkins.properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+
+# Disable security for testing
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+
+# Logging
+logging.level.com.example=DEBUG
+logging.pattern.console=%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+```
+
+### POM.xml Configuration for Jenkins
+```xml
+<properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <spring-boot.version>3.1.0</spring-boot.version>
+    <jacoco.version>0.8.8</jacoco.version>
+</properties>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+        </plugin>
+
+        <!-- Surefire for unit tests -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+                <testFailureIgnore>false</testFailureIgnore>
+                <skipTests>${skipTests}</skipTests>
+            </configuration>
+        </plugin>
+
+        <!-- Failsafe for integration tests -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>integration-test</goal>
+                        <goal>verify</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+
+        <!-- JaCoCo for code coverage -->
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>test</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+## Testing Strategies in Jenkins
+
+### Unit Tests with JUnit
+```groovy
+stage('Unit Tests') {
+    steps {
+        sh 'mvn clean test'
+    }
+    post {
+        always {
+            publishTestResults testResultsPattern: 'target/surefire-reports/*.xml'
+            publishCoverage adapters: [
+                jacocoAdapter('target/site/jacoco/jacoco.xml')
+            ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
+        }
+    }
+}
+```
+
+### Integration Tests
+```groovy
+stage('Integration Tests') {
+    steps {
+        sh 'mvn verify -P integration-tests'
+    }
+    post {
+        always {
+            publishTestResults testResultsPattern: 'target/failsafe-reports/*.xml'
+        }
+    }
+}
+```
+
+### Database Testing
+```groovy
+pipeline {
+    agent any
+
+    services {
+        postgres {
+            image 'postgres:13'
+            environment {
+                POSTGRES_PASSWORD = 'test'
+                POSTGRES_DB = 'testdb'
+            }
+        }
+    }
+
+    stages {
+        stage('Database Tests') {
+            environment {
+                SPRING_DATASOURCE_URL = 'jdbc:postgresql://postgres:5432/testdb'
+                SPRING_DATASOURCE_USERNAME = 'postgres'
+                SPRING_DATASOURCE_PASSWORD = 'test'
+            }
+            steps {
+                sh 'mvn test -P database-tests'
+            }
+        }
+    }
+}
+```
+
+## Deployment Strategies
+
+### Simple Deployment
+```groovy
+stage('Deploy') {
+    steps {
+        sh '''
+            # Stop existing application
+            pkill -f "spring-boot-demo" || true
+
+            # Deploy new version
+            nohup java -jar target/*.jar --server.port=8080 > app.log 2>&1 &
+
+            # Health check
+            sleep 30
+            curl -f http://localhost:8080/actuator/health
+        '''
+    }
+}
+```
+
+### Docker Deployment
+```groovy
+stage('Docker Deploy') {
+    steps {
+        script {
+            // Build image
+            def image = docker.build("myapp:${BUILD_NUMBER}")
+
+            // Stop existing container
+            sh 'docker stop myapp-container || true'
+            sh 'docker rm myapp-container || true'
+
+            // Run new container
+            sh """
+                docker run -d \
+                    --name myapp-container \
+                    -p 8080:8080 \
+                    -e SPRING_PROFILES_ACTIVE=production \
+                    myapp:${BUILD_NUMBER}
+            """
+
+            // Health check
+            sh 'sleep 30'
+            sh 'curl -f http://localhost:8080/actuator/health'
+        }
+    }
+}
+```
+
+### Blue-Green Deployment
+```groovy
+stage('Blue-Green Deploy') {
+    steps {
+        script {
+            def newPort = env.CURRENT_PORT == '8080' ? '8081' : '8080'
+
+            // Deploy to new port
+            sh """
+                docker run -d \
+                    --name myapp-${newPort} \
+                    -p ${newPort}:8080 \
+                    myapp:${BUILD_NUMBER}
+            """
+
+            // Health check
+            sh "sleep 30"
+            sh "curl -f http://localhost:${newPort}/actuator/health"
+
+            // Switch traffic (update load balancer)
+            sh "echo 'Switching traffic to port ${newPort}'"
+
+            // Stop old version
+            sh "docker stop myapp-${env.CURRENT_PORT} || true"
+
+            // Update current port
+            env.CURRENT_PORT = newPort
+        }
+    }
+}
+```
+
+## Monitoring and Notifications
+
+### Email Notifications
+```groovy
+post {
+    always {
+        emailext (
+            subject: "Build ${currentBuild.result}: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
+            body: """
+                Build ${currentBuild.result}
+
+                Job: ${env.JOB_NAME}
+                Build: ${env.BUILD_NUMBER}
+                URL: ${env.BUILD_URL}
+
+                Changes:
+                ${env.CHANGE_LOG}
+            """,
+            recipientProviders: [
+                [$class: 'DevelopersRecipientProvider'],
+                [$class: 'RequesterRecipientProvider']
+            ]
+        )
+    }
+}
+```
+
+### Slack Integration
+```groovy
+post {
+    success {
+        slackSend(
+            channel: '#deployments',
+            color: 'good',
+            message: "✅ Deploy Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+        )
+    }
+    failure {
+        slackSend(
+            channel: '#deployments',
+            color: 'danger',
+            message: "❌ Deploy Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+        )
+    }
+}
+```
+
+## Troubleshooting Common Issues
+
+### Build Failures
+
+#### Maven Issues
+```bash
+# Problem: Maven not found
+Solution: Configure Maven in Global Tool Configuration
+
+# Problem: Java version mismatch
+Solution: Set JAVA_HOME correctly in pipeline:
+environment {
+    JAVA_HOME = tool('JDK-17')
+    PATH = "${JAVA_HOME}/bin:${env.PATH}"
+}
+
+# Problem: Dependencies not downloading
+Solution: Clear Maven cache:
+sh 'rm -rf ~/.m2/repository'
+```
+
+#### Test Failures
+```groovy
+// Problem: Tests failing in Jenkins but passing locally
+stage('Debug Tests') {
+    steps {
+        sh 'mvn test -X'  // Debug mode
+        sh 'cat target/surefire-reports/*.txt'  // View test output
+    }
+}
+```
+
+#### Permission Issues
+```bash
+# Problem: Permission denied
+Solution: Fix file permissions:
+sh 'chmod +x mvnw'
+```
+
+### Performance Issues
+```groovy
+// Problem: Slow builds
+// Solution: Use parallel execution
+pipeline {
+    agent any
+    stages {
+        stage('Parallel Tasks') {
+            parallel {
+                stage('Unit Tests') {
+                    steps { sh 'mvn test' }
+                }
+                stage('Static Analysis') {
+                    steps { sh 'mvn checkstyle:check' }
+                }
+                stage('Security Scan') {
+                    steps { sh 'mvn dependency-check:check' }
+                }
+            }
+        }
+    }
+}
+```
+
+## Best Practices for Spring Boot with Jenkins
+
+### 1. Pipeline Structure
+```groovy
+// Good: Clear, readable stages
+pipeline {
+    agent any
+    stages {
+        stage('Prepare') { ... }
+        stage('Build') { ... }
+        stage('Test') { ... }
+        stage('Quality') { ... }
+        stage('Package') { ... }
+        stage('Deploy') { ... }
+    }
+}
+```
+
+### 2. Environment Management
+```groovy
+// Good: Environment-specific configurations
+environment {
+    SPRING_PROFILES_ACTIVE = "${env.BRANCH_NAME == 'main' ? 'prod' : 'dev'}"
+    DATABASE_URL = credentials('database-url')
+}
+```
+
+### 3. Error Handling
+```groovy
+// Good: Proper error handling
+stage('Deploy') {
+    steps {
+        script {
+            try {
+                sh 'deploy.sh'
+            } catch (Exception e) {
+                currentBuild.result = 'FAILURE'
+                sh 'rollback.sh'
+                throw e
+            }
+        }
+    }
+}
+```
+
+### 4. Security
+```groovy
+// Good: Use credentials plugin
+environment {
+    DB_PASSWORD = credentials('database-password')
+    API_KEY = credentials('external-api-key')
+}
+```
+
+### 5. Resource Cleanup
+```groovy
+// Good: Always clean up
+post {
+    always {
+        sh 'docker container prune -f'
+        sh 'docker image prune -f'
+        cleanWs()
+    }
+}
+```
+
+## Jenkins Security Best Practices
+
+### 1. User Management
+- Enable matrix-based security
+- Create role-based access
+- Use LDAP/Active Directory integration
+- Regular password policy updates
+
+### 2. Plugin Security
+- Keep plugins updated
+- Remove unused plugins
+- Review plugin permissions
+- Use security scanning plugins
+
+### 3. Pipeline Security
+```groovy
+// Secure credential usage
+pipeline {
+    agent any
+    environment {
+        SECRET_KEY = credentials('secret-key-id')
+    }
+    stages {
+        stage('Build') {
+            steps {
+                withCredentials([string(credentialsId: 'api-key', variable: 'API_KEY')]) {
+                    sh 'echo "Using API key: $API_KEY"'
+                }
+            }
+        }
+    }
+}
+```
+
+This comprehensive guide provides everything a beginner needs to start using Jenkins effectively with Spring Boot applications, from basic setup to advanced CI/CD pipelines.
