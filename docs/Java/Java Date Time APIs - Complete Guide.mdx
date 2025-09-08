@@ -1,0 +1,413 @@
+# Java Date Time APIs - Complete Guide
+
+## Legacy Date Time APIs (Pre-Java 8)
+
+### java.util.Date
+```java
+Date date = new Date(); // Current time
+Date specificDate = new Date(System.currentTimeMillis());
+long timestamp = date.getTime();
+```
+
+**Issues:**
+- Mutable (not thread-safe)
+- Poor API design
+- Months are 0-indexed
+- No timezone support
+
+### java.util.Calendar
+```java
+Calendar cal = Calendar.getInstance();
+cal.set(2024, Calendar.JANUARY, 15); // Month is 0-indexed
+cal.add(Calendar.DAY_OF_MONTH, 5);
+Date date = cal.getTime();
+```
+
+**Issues:**
+- Complex API
+- Still mutable
+- Error-prone
+
+---
+
+## Modern Date Time API (Java 8+)
+
+### Core Principles
+- **Immutable** - Thread-safe by design
+- **Fluent API** - Method chaining
+- **Type Safety** - Distinct types for different concepts
+- **ISO-8601** - Standard format support
+
+### Key Classes Overview
+
+| Class | Purpose | Example |
+|-------|---------|---------|
+| `LocalDate` | Date without time | `2024-01-15` |
+| `LocalTime` | Time without date | `14:30:25` |
+| `LocalDateTime` | Date + time, no timezone | `2024-01-15T14:30:25` |
+| `ZonedDateTime` | Date + time + timezone | `2024-01-15T14:30:25+05:30[Asia/Kolkata]` |
+| `OffsetDateTime` | Date + time + UTC offset | `2024-01-15T14:30:25+05:30` |
+| `Instant` | UTC timestamp | `2024-01-15T09:00:25Z` |
+
+---
+
+## LocalDate - Date Only
+
+### Creation
+```java
+LocalDate today = LocalDate.now();
+LocalDate specific = LocalDate.of(2024, 1, 15);
+LocalDate parsed = LocalDate.parse("2024-01-15");
+LocalDate fromEpoch = LocalDate.ofEpochDay(19000);
+```
+
+### Common Operations
+```java
+LocalDate date = LocalDate.now();
+
+// Arithmetic
+LocalDate tomorrow = date.plusDays(1);
+LocalDate nextWeek = date.plusWeeks(1);
+LocalDate nextMonth = date.plusMonths(1);
+LocalDate lastYear = date.minusYears(1);
+
+// Queries
+int year = date.getYear();
+Month month = date.getMonth();
+int dayOfMonth = date.getDayOfMonth();
+DayOfWeek dayOfWeek = date.getDayOfWeek();
+
+// Comparisons
+boolean isAfter = date.isAfter(LocalDate.of(2020, 1, 1));
+boolean isBefore = date.isBefore(LocalDate.of(2030, 12, 31));
+```
+
+---
+
+## LocalTime - Time Only
+
+### Creation & Operations
+```java
+LocalTime now = LocalTime.now();
+LocalTime specific = LocalTime.of(14, 30, 25);
+LocalTime parsed = LocalTime.parse("14:30:25");
+
+// Arithmetic
+LocalTime later = now.plusHours(2).plusMinutes(30);
+LocalTime earlier = now.minusMinutes(45);
+
+// Queries
+int hour = now.getHour();
+int minute = now.getMinute();
+int second = now.getSecond();
+```
+
+---
+
+## LocalDateTime - Date + Time
+
+### Creation & Operations
+```java
+LocalDateTime now = LocalDateTime.now();
+LocalDateTime specific = LocalDateTime.of(2024, 1, 15, 14, 30, 25);
+LocalDateTime combined = LocalDate.now().atTime(LocalTime.now());
+LocalDateTime parsed = LocalDateTime.parse("2024-01-15T14:30:25");
+
+// Conversions
+LocalDate date = now.toLocalDate();
+LocalTime time = now.toLocalTime();
+```
+
+---
+
+## ZonedDateTime - With Timezone
+
+### Creation
+```java
+ZonedDateTime now = ZonedDateTime.now();
+ZonedDateTime specific = ZonedDateTime.of(
+    LocalDateTime.of(2024, 1, 15, 14, 30),
+    ZoneId.of("Asia/Kolkata")
+);
+ZonedDateTime utc = ZonedDateTime.now(ZoneId.of("UTC"));
+```
+
+### Timezone Operations
+```java
+ZonedDateTime kolkata = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+ZonedDateTime tokyo = kolkata.withZoneSameInstant(ZoneId.of("Asia/Tokyo"));
+ZonedDateTime sameLocal = kolkata.withZoneSameLocal(ZoneId.of("UTC"));
+
+// Get timezone info
+ZoneId zone = kolkata.getZone();
+ZoneOffset offset = kolkata.getOffset();
+```
+
+---
+
+## Instant - UTC Timestamps
+
+### Usage
+```java
+Instant now = Instant.now();
+Instant fromEpoch = Instant.ofEpochSecond(1642248625);
+Instant fromMilli = Instant.ofEpochMilli(System.currentTimeMillis());
+
+// Conversions
+ZonedDateTime zoned = now.atZone(ZoneId.systemDefault());
+OffsetDateTime offset = now.atOffset(ZoneOffset.UTC);
+long epochSecond = now.getEpochSecond();
+```
+
+---
+
+## Period & Duration
+
+### Period (Date-based)
+```java
+Period period = Period.of(1, 2, 3); // 1 year, 2 months, 3 days
+Period between = Period.between(
+    LocalDate.of(2020, 1, 1),
+    LocalDate.of(2024, 1, 1)
+);
+
+LocalDate future = LocalDate.now().plus(period);
+```
+
+### Duration (Time-based)
+```java
+Duration duration = Duration.ofHours(5).plusMinutes(30);
+Duration between = Duration.between(
+    LocalTime.of(9, 0),
+    LocalTime.of(17, 30)
+);
+
+LocalDateTime later = LocalDateTime.now().plus(duration);
+```
+
+---
+
+## Formatting & Parsing
+
+### DateTimeFormatter
+```java
+DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+String formatted = LocalDate.now().format(formatter);
+LocalDate parsed = LocalDate.parse("15-01-2024", formatter);
+
+// Predefined formatters
+String iso = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+String custom = ZonedDateTime.now().format(
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")
+);
+```
+
+### Common Patterns
+```java
+// Custom formats
+"dd-MM-yyyy"           // 15-01-2024
+"yyyy-MM-dd HH:mm:ss"  // 2024-01-15 14:30:25
+"MMM dd, yyyy"         // Jan 15, 2024
+"EEEE, MMMM dd"        // Monday, January 15
+"HH:mm:ss.SSS"         // 14:30:25.123
+```
+
+---
+
+## Java 9+ Enhancements
+
+### New Methods (Java 9)
+```java
+// LocalDate
+LocalDate date = LocalDate.now();
+Stream<LocalDate> dates = date.datesUntil(date.plusWeeks(2));
+Stream<LocalDate> weekly = date.datesUntil(date.plusMonths(1), Period.ofWeeks(1));
+
+// Duration
+Duration duration = Duration.ofDays(1);
+long days = duration.toDays();
+int nano = duration.toNanosPart(); // Nano part only
+```
+
+---
+
+## Java 14+ Features
+
+### New Locale-Specific Formatting (Java 14)
+```java
+DateTimeFormatter formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+    .withLocale(Locale.GERMAN);
+String german = ZonedDateTime.now().format(formatter);
+```
+
+---
+
+## Java 17+ Features
+
+### Pattern Matching Preparation
+```java
+// Enhanced switch expressions with temporal types
+String describe(TemporalAccessor temporal) {
+    return switch (temporal) {
+        case LocalDate ld -> "Date: " + ld;
+        case LocalTime lt -> "Time: " + lt;
+        case ZonedDateTime zdt -> "Zoned: " + zdt;
+        default -> "Unknown temporal type";
+    };
+}
+```
+
+---
+
+## Java 20+ Enhancements
+
+### Record Patterns with DateTime
+```java
+public record TimeRange(LocalDateTime start, LocalDateTime end) {
+    public Duration duration() {
+        return Duration.between(start, end);
+    }
+}
+
+// Usage
+TimeRange range = new TimeRange(
+    LocalDateTime.now(),
+    LocalDateTime.now().plusHours(8)
+);
+```
+
+---
+
+## Java 24-25 Latest Features
+
+### Enhanced Temporal Operations (Java 24)
+```java
+// Improved temporal adjusters
+LocalDate nextBusinessDay = LocalDate.now()
+    .with(TemporalAdjusters.nextBusinessDay()); // Hypothetical
+
+// Better timezone handling
+ZonedDateTime smartConversion = ZonedDateTime.now()
+    .withZoneRetainFields(ZoneId.of("America/New_York")); // Hypothetical
+```
+
+### Performance Improvements (Java 25)
+- Optimized parsing for common date formats
+- Reduced memory allocation in temporal calculations
+- Enhanced caching for timezone data
+
+---
+
+## Best Practices
+
+### 1. Choose the Right Type
+```java
+// For dates only
+LocalDate birthDate;
+
+// For timestamps
+Instant eventTime;
+
+// For user-displayed times
+ZonedDateTime userTime;
+
+// For scheduling
+OffsetDateTime scheduledTime;
+```
+
+### 2. Handle Timezones Properly
+```java
+// Store in UTC
+Instant stored = Instant.now();
+
+// Display in user timezone
+ZonedDateTime userDisplay = stored.atZone(userTimeZone);
+
+// API responses
+OffsetDateTime apiResponse = OffsetDateTime.now();
+```
+
+### 3. Immutability Benefits
+```java
+// This creates a new object
+LocalDate tomorrow = today.plusDays(1);
+
+// Original remains unchanged
+assert today.equals(LocalDate.now());
+```
+
+### 4. Null Safety
+```java
+Optional<LocalDate> parseDate(String dateStr) {
+    try {
+        return Optional.of(LocalDate.parse(dateStr));
+    } catch (DateTimeParseException e) {
+        return Optional.empty();
+    }
+}
+```
+
+---
+
+## Common Pitfalls
+
+### 1. Timezone Confusion
+```java
+// Wrong - loses timezone info
+LocalDateTime local = zonedDateTime.toLocalDateTime();
+
+// Right - preserves instant
+Instant instant = zonedDateTime.toInstant();
+```
+
+### 2. Mixing Date Types
+```java
+// Wrong - comparing different types
+// localDateTime.isAfter(zonedDateTime); // Compilation error
+
+// Right - convert first
+localDateTime.isAfter(zonedDateTime.toLocalDateTime());
+```
+
+### 3. Legacy Interop
+```java
+// Convert legacy Date to modern
+Date legacyDate = new Date();
+Instant instant = legacyDate.toInstant();
+LocalDateTime modern = instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
+
+// Convert back if needed
+Date backToLegacy = Date.from(instant);
+```
+
+---
+
+## Quick Reference
+
+### Common Patterns
+```java
+// Current time in different formats
+Instant.now()                    // UTC timestamp
+LocalDate.now()                  // Today's date
+LocalTime.now()                  // Current time
+LocalDateTime.now()              // Now (no timezone)
+ZonedDateTime.now()              // Now with system timezone
+
+// Parsing common formats
+LocalDate.parse("2024-01-15")
+LocalTime.parse("14:30:25")
+LocalDateTime.parse("2024-01-15T14:30:25")
+ZonedDateTime.parse("2024-01-15T14:30:25+05:30[Asia/Kolkata]")
+
+// Formatting
+.format(DateTimeFormatter.ISO_LOCAL_DATE)      // 2024-01-15
+.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) // 15/01/2024
+```
+
+### Method Chaining
+```java
+String result = LocalDateTime.now()
+    .plusDays(1)
+    .minusHours(2)
+    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+```
