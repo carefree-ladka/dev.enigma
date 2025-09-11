@@ -1,0 +1,1527 @@
+# Spring Security Complete Notes
+
+## Table of Contents
+- [Introduction to Spring Security](#introduction-to-spring-security)
+- [Core Architecture](#core-architecture)
+- [Authentication vs Authorization](#authentication-vs-authorization)
+- [Password Encoding with BCrypt](#password-encoding-with-bcrypt)
+- [JWT (JSON Web Tokens)](#jwt-json-web-tokens)
+- [Refresh Tokens](#refresh-tokens)
+- [HttpOnly Cookies](#httponly-cookies)
+- [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
+- [Security Configuration](#security-configuration)
+- [Custom Authentication Provider](#custom-authentication-provider)
+- [Method-Level Security](#method-level-security)
+- [CSRF Protection](#csrf-protection)
+- [CORS Configuration](#cors-configuration)
+- [Session Management](#session-management)
+- [OAuth2 Integration](#oauth2-integration)
+- [Security Best Practices](#security-best-practices)
+
+## Introduction to Spring Security
+
+Spring Security is a powerful and highly customizable authentication and access-control framework for Spring applications. It provides comprehensive security services for Java EE-based enterprise software applications.
+
+### Key Features:
+- **Authentication**: Verifying the identity of users
+- **Authorization**: Controlling access to resources
+- **Protection against attacks**: CSRF, session fixation, clickjacking, etc.
+- **Servlet API integration**: Works seamlessly with Spring Boot
+- **Password encoding**: Built-in support for various encoding algorithms
+- **Remember-me authentication**: Persistent login functionality
+
+## Core Architecture
+
+### Security Filter Chain
+Spring Security uses a chain of filters to process security-related tasks:
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/public/**").permitAll()
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .formLogin(form -> form
+                .loginPage("/login")
+                .permitAll()
+            )
+            .logout(logout -> logout.permitAll());
+
+        return http.build();
+    }
+}
+```
+
+### Key Components:
+1. **SecurityContext**: Holds security information about current user
+2. **Authentication**: Represents user credentials and authorities
+3. **AuthenticationManager**: Processes authentication requests
+4. **UserDetailsService**: Loads user-specific data
+5. **PasswordEncoder**: Encodes passwords securely
+
+## Authentication vs Authorization
+
+### Authentication
+Process of verifying who the user is.
+
+```java
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        return org.springframework.security.core.userdetails.User.builder()
+            .username(user.getUsername())
+            .password(user.getPassword())
+            .authorities(user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getName()))
+                .collect(Collectors.toList()))
+            .build();
+    }
+}
+```
+
+### Authorization
+Process of determining what the authenticated user is allowed to do.
+
+```java
+@PreAuthorize("hasRole('ADMIN')")
+@GetMapping("/admin/users")
+public List<User> getAllUsers() {
+    return userService.getAllUsers();
+}
+
+@PreAuthorize("hasRole('USER') and #userId == authentication.principal.id")
+@GetMapping("/user/{userId}/profile")
+public UserProfile getUserProfile(@PathVariable Long userId) {
+    return userService.getUserProfile(userId);
+}
+```
+
+## Password Encoding with BCrypt
+
+BCrypt is a password hashing function designed to be slow and computationally expensive, making it resistant to brute-force attacks.
+
+### Theory:
+- **Salt**: Random data added to password before hashing
+- **Cost Factor**: Controls how slow the algorithm runs
+- **One-way function**: Cannot be reversed to get original password
+
+### Implementation:
+
+```java
+@Configuration
+public class PasswordConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12); // Strength of 12
+    }
+}
+
+@Service
+public class UserService {
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    public void createUser(String username, String rawPassword) {
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        User user = new User(username, encodedPassword);
+        userRepository.save(user);
+    }
+
+    public boolean verifyPassword(String rawPassword, String encodedPassword) {
+        return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+}
+```
+
+### BCrypt Strengths:
+- **10**: 2^10 = 1,024 rounds (fast, for testing)
+- **12**: 2^12 = 4,096 rounds (recommended for production)
+- **15**: 2^15 = 32,768 rounds (very secure, slower)
+
+## JWT (JSON Web Tokens)
+
+JWT is a compact, URL-safe means of representing claims between two parties.
+
+### Structure:
+```
+Header.Payload.Signature
+```
+
+#### Header:
+```json
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+```
+
+#### Payload:
+```json
+{
+  "sub": "user123",
+  "name": "John Doe",
+  "roles": ["USER", "ADMIN"],
+  "exp": 1735689600,
+  "iat": 1735686000
+}
+```
+
+### JWT Implementation:
+
+```java
+@Component
+public class JwtUtil {
+
+    private String secret = "mySecretKey";
+    private int jwtExpiration = 86400000; // 24 hours
+
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
+        claims.put("roles", authorities.stream()
+            .map(GrantedAuthority::getAuthority)
+            .collect(Collectors.toList()));
+
+        return createToken(claims, userDetails.getUsername());
+    }
+
+    private String createToken(Map<String, Object> claims, String subject) {
+        return Jwts.builder()
+            .setClaims(claims)
+            .setSubject(subject)
+            .setIssuedAt(new Date(System.currentTimeMillis()))
+            .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+            .signWith(SignatureAlgorithm.HS256, secret)
+            .compact();
+    }
+
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = getUsernameFromToken(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public String getUsernameFromToken(String token) {
+        return getClaimFromToken(token, Claims::getSubject);
+    }
+
+    public Date getExpirationDateFromToken(String token) {
+        return getClaimFromToken(token, Claims::getExpiration);
+    }
+
+    public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = getAllClaimsFromToken(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims getAllClaimsFromToken(String token) {
+        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+    }
+
+    private Boolean isTokenExpired(String token) {
+        final Date expiration = getExpirationDateFromToken(token);
+        return expiration.before(new Date());
+    }
+}
+```
+
+### JWT Filter:
+
+```java
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain chain) throws ServletException, IOException {
+
+        final String requestTokenHeader = request.getHeader("Authorization");
+
+        String username = null;
+        String jwtToken = null;
+
+        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
+            jwtToken = requestTokenHeader.substring(7);
+            try {
+                username = jwtUtil.getUsernameFromToken(jwtToken);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Unable to get JWT Token");
+            } catch (ExpiredJwtException e) {
+                System.out.println("JWT Token has expired");
+            }
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+            if (jwtUtil.validateToken(jwtToken, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        chain.doFilter(request, response);
+    }
+}
+```
+
+## Refresh Tokens
+
+Refresh tokens provide a secure way to obtain new access tokens without requiring users to re-authenticate.
+
+### Theory:
+- **Access Token**: Short-lived (15-30 minutes)
+- **Refresh Token**: Long-lived (days/weeks), stored securely
+- **Rotation**: Generate new refresh token with each use
+
+### Implementation:
+
+```java
+@Entity
+public class RefreshToken {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String token;
+
+    @Column(nullable = false)
+    private Instant expiryDate;
+
+    @OneToOne
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    private User user;
+
+    // constructors, getters, setters
+}
+
+@Service
+public class RefreshTokenService {
+
+    @Value("${app.jwtRefreshExpirationMs}")
+    private Long refreshTokenDurationMs;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    public RefreshToken createRefreshToken(Long userId) {
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUser(userRepository.findById(userId).get());
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshTokenDurationMs));
+        refreshToken.setToken(UUID.randomUUID().toString());
+
+        refreshToken = refreshTokenRepository.save(refreshToken);
+        return refreshToken;
+    }
+
+    public RefreshToken verifyExpiration(RefreshToken token) {
+        if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
+            refreshTokenRepository.delete(token);
+            throw new TokenRefreshException(token.getToken(),
+                "Refresh token was expired. Please make a new signin request");
+        }
+        return token;
+    }
+
+    @Transactional
+    public int deleteByUserId(Long userId) {
+        return refreshTokenRepository.deleteByUser(userRepository.findById(userId).get());
+    }
+}
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @PostMapping("/refreshtoken")
+    public ResponseEntity<?> refreshtoken(@Valid @RequestBody TokenRefreshRequest request) {
+        String requestRefreshToken = request.getRefreshToken();
+
+        return refreshTokenService.findByToken(requestRefreshToken)
+            .map(refreshTokenService::verifyExpiration)
+            .map(RefreshToken::getUser)
+            .map(user -> {
+                String token = jwtUtils.generateTokenFromUsername(user.getUsername());
+                return ResponseEntity.ok(new TokenRefreshResponse(token, requestRefreshToken));
+            })
+            .orElseThrow(() -> new TokenRefreshException(requestRefreshToken,
+                "Refresh token is not in database!"));
+    }
+}
+```
+
+## HttpOnly Cookies
+
+HttpOnly cookies provide enhanced security by preventing JavaScript access, making them ideal for storing sensitive tokens.
+
+### Theory:
+- **HttpOnly Flag**: Prevents XSS attacks by blocking JavaScript access
+- **Secure Flag**: Ensures transmission only over HTTPS
+- **SameSite**: Controls cross-site request behavior
+
+### Implementation:
+
+```java
+@Service
+public class CookieService {
+
+    public ResponseCookie createAccessTokenCookie(String token, Duration duration) {
+        return ResponseCookie.from("accessToken", token)
+            .maxAge(duration)
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("Strict")
+            .path("/")
+            .build();
+    }
+
+    public ResponseCookie createRefreshTokenCookie(String token, Duration duration) {
+        return ResponseCookie.from("refreshToken", token)
+            .maxAge(duration)
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("Strict")
+            .path("/api/auth")
+            .build();
+    }
+
+    public ResponseCookie deleteAccessTokenCookie() {
+        return ResponseCookie.from("accessToken", "")
+            .maxAge(0)
+            .httpOnly(true)
+            .secure(true)
+            .sameSite("Strict")
+            .path("/")
+            .build();
+    }
+}
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @PostMapping("/signin")
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest,
+                                            HttpServletResponse response) {
+
+        Authentication authentication = authenticationManager
+            .authenticate(new UsernamePasswordAuthenticationToken(
+                loginRequest.getUsername(),
+                loginRequest.getPassword()));
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+        String accessToken = jwtUtils.generateJwtToken(userDetails);
+
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+
+        ResponseCookie accessTokenCookie = cookieService
+            .createAccessTokenCookie(accessToken, Duration.ofMinutes(15));
+        ResponseCookie refreshTokenCookie = cookieService
+            .createRefreshTokenCookie(refreshToken.getToken(), Duration.ofDays(7));
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        return ResponseEntity.ok(new MessageResponse("User signed in successfully!"));
+    }
+
+    @PostMapping("/signout")
+    public ResponseEntity<?> logoutUser(HttpServletResponse response) {
+        SecurityContextHolder.getContext().setAuthentication(null);
+
+        ResponseCookie accessTokenCookie = cookieService.deleteAccessTokenCookie();
+        ResponseCookie refreshTokenCookie = cookieService.deleteRefreshTokenCookie();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        return ResponseEntity.ok(new MessageResponse("You've been signed out!"));
+    }
+}
+```
+
+### Cookie Filter:
+
+```java
+@Component
+public class CookieAuthenticationFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain filterChain) throws ServletException, IOException {
+
+        String jwt = getJwtFromCookies(request);
+
+        if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
+            String username = jwtUtils.getUserNameFromJwtToken(jwt);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String getJwtFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+}
+```
+
+## Role-Based Access Control (RBAC)
+
+RBAC is a method of regulating access based on the roles of individual users within an organization.
+
+### Entity Design:
+
+```java
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true)
+    private String username;
+
+    private String password;
+    private String email;
+    private boolean enabled = true;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
+    // constructors, getters, setters
+}
+
+@Entity
+@Table(name = "roles")
+public class Role {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    private RoleName name;
+
+    @ManyToMany(mappedBy = "roles")
+    private Set<User> users = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "role_permissions",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> permissions = new HashSet<>();
+
+    // constructors, getters, setters
+}
+
+@Entity
+@Table(name = "permissions")
+public class Permission {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String description;
+
+    @ManyToMany(mappedBy = "permissions")
+    private Set<Role> roles = new HashSet<>();
+
+    // constructors, getters, setters
+}
+
+public enum RoleName {
+    ROLE_USER,
+    ROLE_ADMIN,
+    ROLE_MODERATOR
+}
+```
+
+### Method-Level Security:
+
+```java
+@RestController
+@RequestMapping("/api")
+@PreAuthorize("isAuthenticated()")
+public class UserController {
+
+    @GetMapping("/user/profile")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<UserProfile> getUserProfile(Authentication authentication) {
+        return ResponseEntity.ok(userService.getUserProfile(authentication.getName()));
+    }
+
+    @GetMapping("/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<User>> getAllUsers() {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
+    @PostMapping("/admin/users/{userId}/roles")
+    @PreAuthorize("hasRole('ADMIN') and hasAuthority('USER_MANAGEMENT')")
+    public ResponseEntity<?> assignRole(@PathVariable Long userId, @RequestBody RoleRequest request) {
+        userService.assignRole(userId, request.getRoleName());
+        return ResponseEntity.ok(new MessageResponse("Role assigned successfully"));
+    }
+
+    @DeleteMapping("/moderator/posts/{postId}")
+    @PreAuthorize("hasRole('MODERATOR') or (hasRole('USER') and @postService.isOwner(#postId, authentication.name))")
+    public ResponseEntity<?> deletePost(@PathVariable Long postId) {
+        postService.deletePost(postId);
+        return ResponseEntity.ok(new MessageResponse("Post deleted successfully"));
+    }
+}
+```
+
+### Custom Permission Evaluator:
+
+```java
+@Component
+public class CustomPermissionEvaluator implements PermissionEvaluator {
+
+    @Autowired
+    private UserService userService;
+
+    @Override
+    public boolean hasPermission(Authentication auth, Object targetDomainObject, Object permission) {
+        if ((auth == null) || (targetDomainObject == null) || !(permission instanceof String)) {
+            return false;
+        }
+
+        String targetType = targetDomainObject.getClass().getSimpleName().toUpperCase();
+        return hasPrivilege(auth, targetType, permission.toString().toUpperCase());
+    }
+
+    @Override
+    public boolean hasPermission(Authentication auth, Serializable targetId, String targetType, Object permission) {
+        if ((auth == null) || (targetType == null) || !(permission instanceof String)) {
+            return false;
+        }
+        return hasPrivilege(auth, targetType.toUpperCase(), permission.toString().toUpperCase());
+    }
+
+    private boolean hasPrivilege(Authentication auth, String resourceType, String permission) {
+        UserDetailsImpl user = (UserDetailsImpl) auth.getPrincipal();
+        Set<String> userPermissions = userService.getUserPermissions(user.getUsername());
+
+        String requiredPermission = resourceType + "_" + permission;
+        return userPermissions.contains(requiredPermission) || userPermissions.contains("ALL_PERMISSIONS");
+    }
+}
+
+@Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class MethodSecurityConfig extends GlobalMethodSecurityConfiguration {
+
+    @Autowired
+    private CustomPermissionEvaluator permissionEvaluator;
+
+    @Override
+    protected MethodSecurityExpressionHandler createExpressionHandler() {
+        DefaultMethodSecurityExpressionHandler expressionHandler =
+            new DefaultMethodSecurityExpressionHandler();
+        expressionHandler.setPermissionEvaluator(permissionEvaluator);
+        return expressionHandler;
+    }
+}
+```
+
+## Security Configuration
+
+### Complete Security Configuration:
+
+```java
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class WebSecurityConfig {
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Autowired
+    private AuthEntryPointJwt unauthorizedHandler;
+
+    @Bean
+    public JwtAuthenticationFilter authenticationJwtTokenFilter() {
+        return new JwtAuthenticationFilter();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.cors(Customizer.withDefaults())
+            .csrf(csrf -> csrf.disable())
+            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/moderator/**").hasRole("MODERATOR")
+                .anyRequest().authenticated()
+            );
+
+        http.authenticationProvider(authenticationProvider());
+        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
+```
+
+## Custom Authentication Provider
+
+```java
+@Component
+public class CustomAuthenticationProvider implements AuthenticationProvider {
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        String username = authentication.getName();
+        String password = authentication.getCredentials().toString();
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+        if (passwordEncoder.matches(password, userDetails.getPassword())) {
+            // Additional custom validation logic here
+            if (isAccountLocked(username)) {
+                throw new AccountStatusException("Account is locked") {};
+            }
+
+            if (requiresTwoFactorAuth(username) && !isTwoFactorValid(authentication)) {
+                throw new BadCredentialsException("Two-factor authentication required");
+            }
+
+            return new UsernamePasswordAuthenticationToken(
+                userDetails, password, userDetails.getAuthorities());
+        } else {
+            throw new BadCredentialsException("Authentication failed");
+        }
+    }
+
+    @Override
+    public boolean supports(Class<?> authentication) {
+        return authentication.equals(UsernamePasswordAuthenticationToken.class);
+    }
+
+    private boolean isAccountLocked(String username) {
+        // Custom logic to check if account is locked
+        return false;
+    }
+
+    private boolean requiresTwoFactorAuth(String username) {
+        // Custom logic to check if 2FA is required
+        return false;
+    }
+
+    private boolean isTwoFactorValid(Authentication authentication) {
+        // Custom logic to validate 2FA
+        return true;
+    }
+}
+```
+
+## Method-Level Security
+
+```java
+@Service
+public class DocumentService {
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public List<Document> getAllDocuments() {
+        return documentRepository.findAll();
+    }
+
+    @PreAuthorize("#username == authentication.name or hasRole('ADMIN')")
+    public List<Document> getUserDocuments(String username) {
+        return documentRepository.findByUsername(username);
+    }
+
+    @PostAuthorize("returnObject.owner == authentication.name or hasRole('ADMIN')")
+    public Document getDocument(Long id) {
+        return documentRepository.findById(id).orElse(null);
+    }
+
+    @PreFilter("filterObject.owner == authentication.name or hasRole('ADMIN')")
+    public List<Document> processDocuments(List<Document> documents) {
+        // Process only documents that pass the pre-filter
+        return documents.stream()
+            .map(this::processDocument)
+            .collect(Collectors.toList());
+    }
+
+    @PostFilter("filterObject.confidential == false or hasRole('ADMIN')")
+    public List<Document> getFilteredDocuments() {
+        return documentRepository.findAll();
+    }
+}
+```
+
+## CSRF Protection
+
+Cross-Site Request Forgery (CSRF) protection prevents unauthorized actions on behalf of authenticated users.
+
+```java
+@Configuration
+public class CsrfSecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers("/api/public/**")
+                .csrfTokenRequestHandler(new XorCsrfTokenRequestAttributeHandler())
+            )
+            .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
+
+public class CsrfCookieFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        if (csrfToken != null) {
+            // Ensure the token is available to the client
+            csrfToken.getToken();
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+## CORS Configuration
+
+```java
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "X-Total-Count"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}
+```
+
+## Session Management
+
+```java
+@Configuration
+public class SessionConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                .maximumSessions(1)
+                .maxSessionsPreventsLogin(false)
+                .sessionRegistry(sessionRegistry())
+                .and()
+                .sessionFixation().migrateSession()
+                .invalidSessionUrl("/login?expired")
+            )
+            .rememberMe(remember -> remember
+                .key("uniqueAndSecret")
+                .tokenValiditySeconds(86400) // 24 hours
+                .userDetailsService(userDetailsService)
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+}
+```
+
+## OAuth2 Integration
+
+```java
+@Configuration
+@EnableOAuth2Client
+public class OAuth2Config {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(this.oauth2UserService())
+                )
+                .successHandler(oauth2AuthenticationSuccessHandler())
+                .failureHandler(oauth2AuthenticationFailureHandler())
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt
+                    .decoder(jwtDecoder())
+                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                )
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public OAuth2UserService<OAuth2UserRequest, OAuth2User> oauth2UserService() {
+        return new CustomOAuth2UserService();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withJwkSetUri("https://your-auth-server.com/.well-known/jwks.json").build();
+    }
+
+    @Bean
+    public Converter<Jwt, ? extends AbstractAuthenticationToken> jwtAuthenticationConverter() {
+        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
+        jwtConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            Collection<String> authorities = jwt.getClaimAsStringList("authorities");
+            return authorities.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+        });
+        return jwtConverter;
+    }
+}
+
+@Service
+public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Override
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2User oauth2User = super.loadUser(userRequest);
+
+        try {
+            return processOAuth2User(userRequest, oauth2User);
+        } catch (AuthenticationException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new InternalAuthenticationServiceException(ex.getMessage(), ex.getCause());
+        }
+    }
+
+    private OAuth2User processOAuth2User(OAuth2UserRequest userRequest, OAuth2User oauth2User) {
+        OAuth2UserInfo oauth2UserInfo = OAuth2UserInfoFactory
+            .getOAuth2UserInfo(userRequest.getClientRegistration().getRegistrationId(), oauth2User.getAttributes());
+
+        if (StringUtils.isEmpty(oauth2UserInfo.getEmail())) {
+            throw new OAuth2AuthenticationProcessingException("Email not found from OAuth2 provider");
+        }
+
+        Optional<User> userOptional = userRepository.findByEmail(oauth2UserInfo.getEmail());
+        User user;
+        if (userOptional.isPresent()) {
+            user = userOptional.get();
+            if (!user.getProvider().equals(AuthProvider.valueOf(userRequest.getClientRegistration().getRegistrationId()))) {
+                throw new OAuth2AuthenticationProcessingException("Looks like you're signed up with " +
+                    user.getProvider() + " account. Please use your " + user.getProvider() +
+                    " account to login.");
+            }
+            user = updateExistingUser(user, oauth2UserInfo);
+        } else {
+            user = registerNewUser(userRequest, oauth2UserInfo);
+        }
+
+        return UserPrincipal.create(user, oauth2User.getAttributes());
+    }
+
+    private User registerNewUser(OAuth2UserRequest userRequest, OAuth2UserInfo oauth2UserInfo) {
+        User user = new User();
+        user.setProvider(AuthProvider.valueOf(userRequest.getClientRegistration().getRegistrationId()));
+        user.setProviderId(oauth2UserInfo.getId());
+        user.setName(oauth2UserInfo.getName());
+        user.setEmail(oauth2UserInfo.getEmail());
+        user.setImageUrl(oauth2UserInfo.getImageUrl());
+        return userRepository.save(user);
+    }
+
+    private User updateExistingUser(User existingUser, OAuth2UserInfo oauth2UserInfo) {
+        existingUser.setName(oauth2UserInfo.getName());
+        existingUser.setImageUrl(oauth2UserInfo.getImageUrl());
+        return userRepository.save(existingUser);
+    }
+}
+```
+
+## Security Best Practices
+
+### 1. Password Security
+```java
+@Configuration
+public class PasswordPolicyConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        // Use BCrypt with strength 12 for production
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    public PasswordValidator passwordValidator() {
+        return new PasswordValidator(Arrays.asList(
+            new LengthRule(8, 128),
+            new CharacterRule(EnglishCharacterData.UpperCase, 1),
+            new CharacterRule(EnglishCharacterData.LowerCase, 1),
+            new CharacterRule(EnglishCharacterData.Digit, 1),
+            new CharacterRule(EnglishCharacterData.Special, 1),
+            new WhitespaceRule()
+        ));
+    }
+}
+
+@Service
+public class PasswordService {
+
+    @Autowired
+    private PasswordValidator passwordValidator;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private PasswordHistoryRepository passwordHistoryRepository;
+
+    public void validateAndChangePassword(String username, String newPassword) {
+        // Validate password strength
+        RuleResult result = passwordValidator.validate(new PasswordData(newPassword));
+        if (!result.isValid()) {
+            throw new WeakPasswordException(passwordValidator.getMessages(result));
+        }
+
+        // Check password history (prevent reuse of last 5 passwords)
+        List<String> passwordHistory = passwordHistoryRepository.getLastPasswords(username, 5);
+        for (String oldPassword : passwordHistory) {
+            if (passwordEncoder.matches(newPassword, oldPassword)) {
+                throw new PasswordReuseException("Cannot reuse recent passwords");
+            }
+        }
+
+        // Save new password
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        userService.updatePassword(username, encodedPassword);
+
+        // Store in password history
+        passwordHistoryRepository.save(new PasswordHistory(username, encodedPassword));
+    }
+}
+```
+
+### 2. Account Lockout and Rate Limiting
+```java
+@Service
+public class AccountLockoutService {
+
+    private static final int MAX_ATTEMPTS = 5;
+    private static final long LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    public void recordFailedAttempt(String username) {
+        String key = "failed_attempts:" + username;
+        Integer attempts = (Integer) redisTemplate.opsForValue().get(key);
+
+        if (attempts == null) {
+            attempts = 0;
+        }
+
+        attempts++;
+        redisTemplate.opsForValue().set(key, attempts, Duration.ofMinutes(30));
+
+        if (attempts >= MAX_ATTEMPTS) {
+            lockAccount(username);
+        }
+    }
+
+    public void clearFailedAttempts(String username) {
+        redisTemplate.delete("failed_attempts:" + username);
+    }
+
+    public boolean isAccountLocked(String username) {
+        String lockKey = "account_locked:" + username;
+        return redisTemplate.hasKey(lockKey);
+    }
+
+    private void lockAccount(String username) {
+        String lockKey = "account_locked:" + username;
+        redisTemplate.opsForValue().set(lockKey, "locked", Duration.ofMillis(LOCKOUT_DURATION_MS));
+    }
+
+    public int getFailedAttempts(String username) {
+        String key = "failed_attempts:" + username;
+        Integer attempts = (Integer) redisTemplate.opsForValue().get(key);
+        return attempts != null ? attempts : 0;
+    }
+}
+
+@Component
+public class RateLimitingFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private static final int MAX_REQUESTS_PER_MINUTE = 60;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                  HttpServletResponse response,
+                                  FilterChain filterChain) throws ServletException, IOException {
+
+        String clientIp = getClientIP(request);
+        String key = "rate_limit:" + clientIp;
+
+        Integer requests = (Integer) redisTemplate.opsForValue().get(key);
+
+        if (requests == null) {
+            requests = 0;
+        }
+
+        if (requests >= MAX_REQUESTS_PER_MINUTE) {
+            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            response.getWriter().write("Rate limit exceeded");
+            return;
+        }
+
+        redisTemplate.opsForValue().increment(key);
+        redisTemplate.expire(key, Duration.ofMinutes(1));
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String getClientIP(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0];
+    }
+}
+```
+
+### 3. Audit Logging
+```java
+@Entity
+@Table(name = "security_audit_log")
+public class SecurityAuditLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String action;
+    private String details;
+    private String ipAddress;
+    private String userAgent;
+
+    @CreationTimestamp
+    private LocalDateTime timestamp;
+
+    private boolean success;
+
+    // constructors, getters, setters
+}
+
+@Service
+public class SecurityAuditService {
+
+    @Autowired
+    private SecurityAuditLogRepository auditLogRepository;
+
+    @Async
+    public void logSecurityEvent(String username, String action, String details,
+                                HttpServletRequest request, boolean success) {
+        SecurityAuditLog log = new SecurityAuditLog();
+        log.setUsername(username);
+        log.setAction(action);
+        log.setDetails(details);
+        log.setIpAddress(getClientIP(request));
+        log.setUserAgent(request.getHeader("User-Agent"));
+        log.setSuccess(success);
+
+        auditLogRepository.save(log);
+    }
+
+    private String getClientIP(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null) {
+            return request.getRemoteAddr();
+        }
+        return xfHeader.split(",")[0];
+    }
+}
+
+@EventListener
+@Component
+public class SecurityEventListener {
+
+    @Autowired
+    private SecurityAuditService auditService;
+
+    @EventListener
+    public void handleAuthenticationSuccess(AuthenticationSuccessEvent event) {
+        String username = event.getAuthentication().getName();
+        HttpServletRequest request = getCurrentRequest();
+
+        auditService.logSecurityEvent(username, "LOGIN_SUCCESS",
+            "User successfully authenticated", request, true);
+    }
+
+    @EventListener
+    public void handleAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
+        String username = event.getAuthentication().getName();
+        HttpServletRequest request = getCurrentRequest();
+
+        auditService.logSecurityEvent(username, "LOGIN_FAILURE",
+            "Authentication failed: " + event.getException().getMessage(), request, false);
+    }
+
+    private HttpServletRequest getCurrentRequest() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (requestAttributes instanceof ServletRequestAttributes) {
+            return ((ServletRequestAttributes) requestAttributes).getRequest();
+        }
+        return null;
+    }
+}
+```
+
+### 4. Two-Factor Authentication (2FA)
+```java
+@Service
+public class TwoFactorAuthService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    public String generateSecretKey() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[20];
+        random.nextBytes(bytes);
+        return Base32.encode(bytes);
+    }
+
+    public String generateQRCodeImageUri(String username, String secretKey) {
+        return String.format(
+            "otpauth://totp/%s?secret=%s&issuer=MyApp",
+            username, secretKey
+        );
+    }
+
+    public boolean validateTOTP(String username, String code) {
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!user.isTwoFactorEnabled()) {
+            return true; // 2FA not required for this user
+        }
+
+        String secretKey = user.getTwoFactorSecret();
+        long timeStep = System.currentTimeMillis() / 30000;
+
+        // Check current time step and previous/next for clock skew
+        for (int i = -1; i <= 1; i++) {
+            String expectedCode = generateTOTP(secretKey, timeStep + i);
+            if (code.equals(expectedCode)) {
+                // Check if this code was already used (prevent replay attacks)
+                String usedCodeKey = "used_totp:" + username + ":" + code;
+                if (!redisTemplate.hasKey(usedCodeKey)) {
+                    redisTemplate.opsForValue().set(usedCodeKey, "used", Duration.ofMinutes(2));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String generateTOTP(String secretKey, long timeStep) {
+        byte[] data = ByteBuffer.allocate(8).putLong(timeStep).array();
+        byte[] key = Base32.decode(secretKey);
+
+        try {
+            Mac mac = Mac.getInstance("HmacSHA1");
+            mac.init(new SecretKeySpec(key, "HmacSHA1"));
+            byte[] hash = mac.doFinal(data);
+
+            int offset = hash[hash.length - 1] & 0x0f;
+            int code = ((hash[offset] & 0x7f) << 24) |
+                      ((hash[offset + 1] & 0xff) << 16) |
+                      ((hash[offset + 2] & 0xff) << 8) |
+                      (hash[offset + 3] & 0xff);
+
+            return String.format("%06d", code % 1000000);
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating TOTP", e);
+        }
+    }
+}
+```
+
+### 5. Content Security Policy (CSP)
+```java
+@Configuration
+public class SecurityHeadersConfig {
+
+    @Bean
+    public FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilter() {
+        FilterRegistrationBean<SecurityHeadersFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new SecurityHeadersFilter());
+        registration.addUrlPatterns("/*");
+        return registration;
+    }
+}
+
+public class SecurityHeadersFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+        // Content Security Policy
+        httpResponse.setHeader("Content-Security-Policy",
+            "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "img-src 'self' data: https:; " +
+            "font-src 'self' https:; " +
+            "connect-src 'self'; " +
+            "frame-ancestors 'none';");
+
+        // X-Frame-Options
+        httpResponse.setHeader("X-Frame-Options", "DENY");
+
+        // X-Content-Type-Options
+        httpResponse.setHeader("X-Content-Type-Options", "nosniff");
+
+        // X-XSS-Protection
+        httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
+
+        // Strict-Transport-Security (HSTS)
+        httpResponse.setHeader("Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains; preload");
+
+        // Referrer Policy
+        httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+
+        // Feature Policy
+        httpResponse.setHeader("Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=()");
+
+        chain.doFilter(request, response);
+    }
+}
+```
+
+## Common Security Configurations
+
+### Production Application Properties
+```properties
+# Server configuration
+server.port=8443
+server.ssl.enabled=true
+server.ssl.key-store=classpath:keystore.p12
+server.ssl.key-store-password=password
+server.ssl.key-store-type=PKCS12
+server.ssl.key-alias=myapp
+
+# JWT Configuration
+app.jwtSecret=mySecretKey
+app.jwtExpirationMs=900000
+app.jwtRefreshExpirationMs=86400000
+
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/myapp
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+
+# Redis (for session/rate limiting)
+spring.redis.host=localhost
+spring.redis.port=6379
+spring.redis.password=${REDIS_PASSWORD}
+
+# Logging
+logging.level.org.springframework.security=DEBUG
+logging.level.com.myapp.security=DEBUG
+
+# Security headers
+server.servlet.session.cookie.http-only=true
+server.servlet.session.cookie.secure=true
+server.servlet.session.cookie.same-site=strict
+```
+
+### Testing Security Configuration
+```java
+@SpringBootTest
+@AutoConfigureMockMvc
+class SecurityConfigTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void testPublicEndpointAccessible() throws Exception {
+        mockMvc.perform(get("/api/public/test"))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void testProtectedEndpointRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/user/profile"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testUserEndpointWithUserRole() throws Exception {
+        mockMvc.perform(get("/api/user/profile"))
+            .andExpected(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void testAdminEndpointWithAdminRole() throws Exception {
+        mockMvc.perform(get("/api/admin/users"))
+            .andExpected(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void testAdminEndpointWithUserRoleForbidden() throws Exception {
+        mockMvc.perform(get("/api/admin/users"))
+            .andExpected(status().isForbidden());
+    }
+}
+```
+
+## Key Takeaways
+
+### Security Checklist:
+1. **Always use HTTPS** in production
+2. **Encode passwords** with BCrypt (strength ≥ 12)
+3. **Implement proper JWT handling** with refresh tokens
+4. **Use HttpOnly cookies** for sensitive data
+5. **Implement role-based access control** appropriately
+6. **Add security headers** (CSP, HSTS, etc.)
+7. **Enable audit logging** for security events
+8. **Implement rate limiting** and account lockout
+9. **Use 2FA** for sensitive accounts
+10. **Regular security testing** and updates
+
+### Performance Considerations:
+- Cache user details to reduce database calls
+- Use Redis for session management and rate limiting
+- Implement proper connection pooling
+- Monitor JWT token size and claims
+
+### Monitoring and Alerting:
+- Log all authentication failures
+- Monitor for suspicious patterns
+- Set up alerts for multiple failed logins
+- Track privilege escalation attempts
+- Monitor for unusual access patterns
+
+This comprehensive guide covers all major aspects of Spring Security implementation with practical examples and best practices for production applications.
