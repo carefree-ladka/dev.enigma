@@ -1,0 +1,213 @@
+# Back-of-the-Envelope Calculations for System Design
+
+## Requirements Exploration
+
+Before diving into calculations, establish the foundation by asking clarifying questions:
+
+### Key Questions to Ask
+- **User Scale**: How many daily/monthly active users?
+- **Usage Patterns**: How many requests per user per day?
+- **Data Characteristics**: What's the read vs write ratio?
+- **Payload Size**: How much data per request/response?
+- **Geographic Distribution**: Global or regional users?
+- **Peak Traffic Patterns**: When do traffic spikes occur?
+
+### What to Estimate
+- **Traffic/Load**: Requests per second (RPS)
+- **Storage Requirements**: Total data storage needs
+- **Network Bandwidth**: Data transfer requirements
+- **Compute Resources**: Server and memory needs
+- **Database Load**: Read/write operations per second
+
+## Architecture/High-Level Design
+
+### Core BoE Formulas
+
+#### Traffic Calculation
+```javascript
+// Basic RPS calculation
+const totalRequestsPerDay = users * actionsPerUserPerDay;
+const secondsPerDay = 86400; // 24 * 60 * 60
+const baseRPS = totalRequestsPerDay / secondsPerDay;
+const peakRPS = baseRPS * peakFactor; // Usually 2-3x
+```
+
+#### Storage Estimation
+```javascript
+// Storage calculation
+const totalStorage = numberOfItems * sizePerItem;
+const dailyStorage = users * uploadsPerDay * avgFileSize;
+const monthlyStorage = dailyStorage * 30;
+```
+
+#### Network Bandwidth
+```javascript
+// Bandwidth calculation
+const bandwidth = peakRPS * avgResponseSize;
+// Convert to appropriate units (Mbps, Gbps)
+```
+
+### Server Capacity Planning
+
+| Server Type | Request Type | Approx RPS | Use Case |
+|-------------|--------------|------------|----------|
+| **Nginx** | Static content | 10,000 - 50,000 | CDN, reverse proxy |
+| **Node.js** | Simple API reads | 1,000 - 5,000 | Async I/O operations |
+| **Node.js** | DB-heavy operations | 100 - 1,000 | Complex queries, writes |
+| **Spring Boot** | REST API | 200 - 1,000 | Java backend services |
+| **Python/Django** | Web API | 100 - 500 | Traditional web apps |
+| **File Processing** | Upload/processing | 10 - 100 | Image/video handling |
+| **Redis Cache** | Key-value ops | 50,000+ | In-memory caching |
+
+## Data Model
+
+### BoE Estimation Template
+
+| Metric | Formula | Example Values |
+|--------|---------|----------------|
+| **Users (DAU)** | Daily Active Users | 10,000,000 |
+| **Actions/User/Day** | Average requests per user | 10 |
+| **Total Requests/Day** | Users × Actions | 100,000,000 |
+| **Base RPS** | Total requests ÷ 86,400 | ~1,157 |
+| **Peak Factor** | Traffic spike multiplier | 3x |
+| **Peak RPS** | Base RPS × Peak Factor | ~3,471 |
+| **Data/Request** | Payload size | 100 KB |
+| **Bandwidth** | Peak RPS × Data size | ~347 MB/s |
+| **Daily Storage** | Requests × Data size | ~10 TB |
+| **Monthly Storage** | Daily × 30 | ~300 TB |
+
+### Database Scaling Calculations
+
+```javascript
+// Database load estimation
+const readWriteRatio = 100; // 100:1 read to write ratio
+const totalReads = totalRequests * (readWriteRatio / (readWriteRatio + 1));
+const totalWrites = totalRequests / (readWriteRatio + 1);
+
+const readsPerSecond = totalReads / 86400 * peakFactor;
+const writesPerSecond = totalWrites / 86400 * peakFactor;
+```
+
+## Interface Definition (API)
+
+### Server Capacity Planning
+
+```javascript
+// Calculate required servers
+const serverCapacity = 1000; // RPS per server (Spring Boot example)
+const requiredServers = Math.ceil(peakRPS / serverCapacity);
+const bufferedServers = requiredServers * 1.5; // 50% buffer
+```
+
+### Database Sharding Estimation
+
+```javascript
+// Database node calculation
+const storagePerNode = 1000; // GB per database node
+const replicationFactor = 3; // Master + 2 replicas
+const totalNodes = Math.ceil(totalStorage / storagePerNode) * replicationFactor;
+```
+
+## Optimizations and Deep Dives
+
+### Caching Strategy Impact
+
+| Cache Type | RPS Improvement | Use Case |
+|------------|-----------------|----------|
+| **Redis** | 10-100x | Session data, frequently accessed data |
+| **CDN** | 100-1000x | Static assets, images, videos |
+| **Application Cache** | 5-20x | Database query results |
+| **Browser Cache** | Infinite | Static resources |
+
+### Cost Optimization Techniques
+
+```javascript
+// Cost estimation example (AWS pricing model)
+const serverCostPerHour = 0.10; // t3.medium
+const storageCostPerGB = 0.023; // S3 standard
+const bandwidthCostPerGB = 0.09; // Data transfer
+
+const monthlyCosts = {
+  compute: requiredServers * serverCostPerHour * 24 * 30,
+  storage: totalStorageGB * storageCostPerGB,
+  bandwidth: monthlyBandwidthGB * bandwidthCostPerGB
+};
+```
+
+### Mental Math Shortcuts
+
+#### Quick Approximations
+- **Seconds per day**: ~86,400 ≈ 10^5
+- **1 million**: 10^6
+- **1 billion**: 10^9
+- **Powers of 2**: 2^10 = 1,024 ≈ 1,000
+
+#### Conversion Helpers
+```javascript
+// Unit conversions
+const KB = 1024;
+const MB = KB * 1024;
+const GB = MB * 1024;
+const TB = GB * 1024;
+
+// Time conversions
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 3600;
+const SECONDS_PER_DAY = 86400;
+```
+
+## Practical Example: Photo Sharing App
+
+### Requirements
+- **Users**: 10M DAU
+- **Photos per user per day**: 2
+- **Photo size**: 3 MB average
+- **Read/Write ratio**: 100:1
+
+### Calculations
+```javascript
+// Traffic calculation
+const users = 10_000_000;
+const photosPerDay = users * 2; // 20M photos
+const baseRPS = photosPerDay / 86400; // ~231 RPS
+const peakRPS = baseRPS * 3; // ~693 RPS
+
+// Storage calculation
+const dailyStorage = photosPerDay * 3; // 60 GB/day
+const monthlyStorage = dailyStorage * 30; // 1.8 TB/month
+
+// Server requirements
+const uploadsPerSecond = peakRPS;
+const serversNeeded = Math.ceil(uploadsPerSecond / 100); // Assuming 100 RPS for uploads
+// Result: ~7 servers
+
+// Database reads (viewing photos)
+const photoViews = photosPerDay * 100; // 100 views per photo
+const readRPS = (photoViews / 86400) * 3; // ~69,444 RPS
+```
+
+## Interview Best Practices
+
+### Key Tips
+1. **State Assumptions**: Always explain your reasoning
+2. **Round Numbers**: Use approximations for speed
+3. **Show Growth Buffer**: Design for 2-3x peak traffic
+4. **Consider Bottlenecks**: Identify limiting factors
+5. **Think Holistically**: Consider all system components
+
+### Common Assumptions to State
+- "Assuming each Spring Boot server handles ~500 RPS for simple REST APIs"
+- "Assuming 3x peak factor for traffic spikes during events"
+- "Assuming 100:1 read-to-write ratio for social media app"
+- "Assuming average response size of 100KB including metadata"
+
+### Scaling Considerations
+- **Horizontal Scaling**: Add more servers
+- **Vertical Scaling**: Upgrade server specs
+- **Database Scaling**: Sharding, read replicas
+- **Caching Layers**: Redis, CDN, application cache
+- **Load Balancing**: Distribute traffic effectively
+
+---
+
+*Remember: The goal isn't perfect accuracy, but demonstrating systematic thinking and understanding of scale!*
