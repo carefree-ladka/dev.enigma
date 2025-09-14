@@ -1,0 +1,677 @@
+# URL Shortener System Design
+
+## Table of Contents
+- [Requirements (~5 minutes)](#requirements-5-minutes)
+  - [Functional Requirements](#1-functional-requirements)
+  - [Non-functional Requirements](#2-non-functional-requirements)
+  - [Capacity Estimation](#3-capacity-estimation)
+- [Core Entities (~2 minutes)](#core-entities-2-minutes)
+- [API or System Interface (~5 minutes)](#api-or-system-interface-5-minutes)
+- [Data Flow (~5 minutes)](#data-flow-5-minutes)
+- [High Level Design (~10-15 minutes)](#high-level-design-10-15-minutes)
+- [Deep Dives (~10 minutes)](#deep-dives-10-minutes)
+
+---
+
+## Requirements (~5 minutes)
+
+### 1) Functional Requirements
+
+**Key Questions Asked:**
+- Q: What's the expected scale - how many URLs will be shortened daily?
+- A: Target 100M URLs shortened per day with 100:1 read-to-write ratio
+- Q: Do we need custom aliases or just random short URLs?
+- A: Support both - random generation and custom aliases
+- Q: Should we track analytics like click counts and user agents?
+- A: Yes, basic analytics are required for business insights
+- Q: What's the URL expiration policy?
+- A: Default 1 year expiration, but configurable per URL
+- Q: Do we need user accounts or anonymous URL creation?
+- A: Support both - anonymous and registered user creation
+
+**Core Functional Requirements:**
+- [ ] Users should be able to shorten long URLs into compact URLs
+- [ ] Users should be able to redirect from short URLs to original URLs
+- [ ] Users should be able to set custom aliases for short URLs
+- [ ] Users should be able to view click analytics for their URLs
+- [ ] Users should be able to set expiration dates for URLs
+
+> 💡 **Tip:** Focus on URL shortening and redirection as core features, with analytics as supporting functionality.
+
+### 2) Non-functional Requirements
+
+**System Quality Requirements:**
+- [ ] **High Availability:** 99.99% uptime for URL redirections (higher than creation)
+- [ ] **Low Latency:** URL redirection should be < 100ms globally
+- [ ] **Scale:** Handle 100M URL creations/day, 10B redirections/day
+- [ ] **Durability:** URLs should never be lost once created
+- [ ] **Security:** Prevent malicious URLs, spam, and abuse
+
+**Rationale:**
+- **Redirection Priority:** Once a URL is shared, it must always work
+- **Global Performance:** Users expect instant redirects worldwide
+- **Massive Read Scale:** 100:1 read-to-write ratio requires heavy caching
+
+### 3) Capacity Estimation
+
+**Key Calculations That Influence Design:**
+
+**URL Creation:**
+- 100M new URLs/day = 1,157 URLs/second average
+- Peak traffic: 3x average = 3,500 URLs/second
+- *Impact:* Database write optimization and connection pooling needed
+
+**URL Redirections:**
+- 10B redirections/day = 115,740 redirections/second average
+- Peak traffic: 230,000 redirections/second
+- *Impact:* Heavy caching strategy and CDN distribution required
+
+**Storage Requirements:**
+- 100M URLs/day × 500 bytes average = 50GB/day = 18TB/year
+- 5-year retention = 90TB total storage needed
+- *Impact:* Horizontal database sharding required
+
+> These calculations directly influence our caching, CDN, and database partitioning strategies.
+
+---
+
+## Core Entities (~2 minutes)
+
+**Primary Entities:**
+- **URL:** Short code, original URL, creator info, expiration, status
+- **User:** Account information, API keys, usage quotas
+- **Analytics:** Click events, user agents, referrers, timestamps
+- **CustomAlias:** User-defined short codes and their mappings
+
+**Entity Relationships:**
+- User has many URLs (1:N)
+- URL has many Analytics events (1:N)
+- CustomAlias belongs to one URL (1:1)
+- User can create many CustomAliases (1:N)
+
+> These entities support both anonymous and authenticated URL creation with comprehensive tracking.
+
+---
+
+## API or System Interface (~5 minutes)
+
+### Protocol Choice: REST + HTTP Redirects
+**Reasoning:** REST for management operations, HTTP 301/302 redirects for URL redirection. Simple and cacheable.
+
+### Core API Endpoints
+
+**URL Shortening:**
+```java
+// Create short URL
+POST /v1/urls
+{
+  "originalUrl": "https://example.com/very/long/path",
+  "customAlias": "my-link", // Optional
+  "expiresAt": "2024-12-31T23:59:59Z", // Optional
+  "userId": "user123" // Optional for registered users
+}
+-> {
+  "shortCode": "aB3xY9",
+  "shortUrl": "https://short.ly/aB3xY9",
+  "originalUrl": "https://example.com/very/long/path",
+  "expiresAt": "2024-12-31T23:59:59Z"
+}
+```
+
+**URL Redirection:**
+```java
+// Redirect to original URL
+GET /aB3xY9
+-> HTTP 301 Redirect
+Location: https://example.com/very/long/path
+```
+
+**URL Management:**
+```java
+// Get URL details
+GET /v1/urls/:shortCode -> URL
+
+// Update URL (owner only)
+PUT /v1/urls/:shortCode
+{
+  "originalUrl": "https://updated-example.com",
+  "expiresAt": "2025-12-31T23:59:59Z"
+}
+
+// Deactivate URL
+DELETE /v1/urls/:shortCode
+```
+
+**Analytics:**
+```java
+// Get URL analytics
+GET /v1/urls/:shortCode/analytics?period=7d -> {
+  "totalClicks": 1500,
+  "uniqueClicks": 800,
+  "clicksByDay": [...],
+  "topCountries": [...],
+  "topReferrers": [...]
+}
+
+// Get user's URLs
+GET /v1/users/:userId/urls?page=1&limit=20 -> URL[]
+```
+
+**Security Notes:**
+- Rate limiting: 100 URL creations/hour per IP, 1000/hour for authenticated users
+- Malicious URL detection using domain blacklists and content scanning
+- Custom alias validation to prevent reserved words and profanity
+
+---
+
+## Data Flow (~5 minutes)
+
+### URL Shortening Flow
+1. **Request Validation:** Validate original URL format and accessibility
+2. **Duplicate Check:** Check if URL already shortened (optional deduplication)
+3. **Short Code Generation:** Generate unique base62 code or validate custom alias
+4. **Database Storage:** Store URL mapping in primary database
+5. **Cache Preload:** Proactively cache new URL in Redis for fast access
+6. **Response:** Return short URL to client
+7. **Analytics Setup:** Initialize analytics tracking for the new URL
+
+### URL Redirection Flow
+1. **Extract Short Code:** Parse short code from incoming request
+2. **Cache Lookup:** Check Redis cache for URL mapping
+3. **Cache Hit:** Return cached original URL with 301 redirect
+4. **Cache Miss:** Query database for URL mapping
+5. **Validation:** Check if URL is active and not expired
+6. **Update Cache:** Store URL mapping in cache with TTL
+7. **Analytics Logging:** Asynchronously log click event
+8. **Redirect:** Send HTTP 301/302 redirect to original URL
+
+---
+
+## High Level Design (~10-15 minutes)
+
+### Design Approach
+Building the system to handle massive read scale with global distribution:
+
+### System Architecture
+
+```
+[Global Users] -> [CDN (CloudFront)] -> [Geographic Load Balancer]
+                                              |
+                          +-------------------+-------------------+
+                          |                   |                   |
+                    [US-East Region]    [EU Region]        [Asia Region]
+                          |                   |                   |
+                    [Regional LB]       [Regional LB]       [Regional LB]
+                          |                   |                   |
+                    [API Gateway]       [API Gateway]       [API Gateway]
+                          |                   |                   |
+              +-----------+-----------+       |                   |
+              |           |           |       |                   |
+        [URL Service] [Analytics] [Cache]     |                   |
+              |           |           |       |                   |
+        [URL Database] [Metrics DB] [Redis]   |                   |
+         (PostgreSQL)   (ClickHouse)  (Cluster) |                 |
+                          |                   |                   |
+                          +------- Replication --------+
+```
+
+### Detailed Component Design
+
+**1. POST /v1/urls (URL Shortening)**
+- **Client** → **CDN** → **Regional Load Balancer** → **API Gateway** → **URL Service**
+- **URL Service** validates URL and generates/validates short code
+- Store mapping in **URL Database** with replication
+- **Cache Service** preloads URL in **Redis** for fast access
+- **Analytics Service** initializes tracking for new URL
+
+**2. GET /:shortCode (URL Redirection)**
+- **Client** → **CDN** (cache miss) → **Regional Load Balancer** → **URL Service**
+- **URL Service** checks **Redis Cache** first for URL mapping
+- On cache miss: Query **URL Database** and update cache
+- **Analytics Service** asynchronously logs click event
+- Return **HTTP 301 Redirect** to original URL
+
+**3. GET /v1/urls/:shortCode/analytics**
+- **Client** → **API Gateway** → **Analytics Service**
+- **Analytics Service** queries **ClickHouse** for aggregated metrics
+- Apply time-based filtering and return formatted analytics
+
+### Database Schema
+
+**URLs Table:**
+```java
+@Entity
+@Table(name = "urls")
+public class URL {
+    @Id
+    @Column(name = "short_code", length = 10)
+    private String shortCode;
+
+    @Column(name = "original_url", length = 2048, nullable = false)
+    private String originalUrl;
+
+    @Column(name = "user_id", length = 36)
+    private String userId; // Optional for anonymous URLs
+
+    @Column(name = "custom_alias", length = 50)
+    private String customAlias;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @Column(name = "click_count")
+    private Long clickCount = 0L; // Denormalized for performance
+}
+```
+
+**Users Table:**
+```java
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @Column(name = "user_id", length = 36)
+    private String userId;
+
+    @Column(name = "email", length = 255, unique = true)
+    private String email;
+
+    @Column(name = "api_key", length = 64, unique = true)
+    private String apiKey;
+
+    @Column(name = "daily_quota")
+    private Integer dailyQuota = 1000;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+}
+```
+
+**Click Events Table (ClickHouse):**
+```java
+// Optimized for analytics - stored in ClickHouse for fast aggregation
+public class ClickEvent {
+    private String eventId;
+    private String shortCode;
+    private String ipHash; // Hashed for privacy
+    private String userAgent;
+    private String referrer;
+    private String country;
+    private String city;
+    private LocalDateTime timestamp;
+}
+```
+
+**Custom Aliases Table:**
+```java
+@Entity
+@Table(name = "custom_aliases")
+public class CustomAlias {
+    @Id
+    @Column(name = "alias", length = 50)
+    private String alias;
+
+    @Column(name = "short_code", length = 10, nullable = false)
+    private String shortCode;
+
+    @Column(name = "user_id", length = 36, nullable = false)
+    private String userId;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+}
+```
+
+### Technology Stack
+- **Application:** Java Spring Boot microservices
+- **Database:** PostgreSQL for URL storage, ClickHouse for analytics
+- **Cache:** Redis Cluster for distributed caching
+- **Message Queue:** Apache Kafka for analytics events
+- **Storage:** AWS S3 for logs and backups
+- **CDN:** CloudFront for global distribution
+- **Load Balancer:** AWS Application Load Balancer
+
+---
+
+## Deep Dives (~10 minutes)
+
+### 1. Short Code Generation Strategy
+
+**Challenge:** Generate unique, short codes at scale while avoiding collisions.
+
+**Solution: Base62 Encoding with Counter + Random**
+
+```java
+@Service
+public class ShortCodeGenerator {
+    private static final String BASE62_CHARS =
+        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    private static final int BASE = 62;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    public String generateShortCode() {
+        // Strategy 1: Counter-based (predictable but guaranteed unique)
+        Long counter = redisTemplate.opsForValue().increment("url_counter");
+        String counterCode = encodeBase62(counter);
+
+        // Strategy 2: Random + collision detection (unpredictable)
+        String randomCode;
+        do {
+            randomCode = generateRandomCode(7); // 62^7 = 3.5 trillion combinations
+        } while (urlExists(randomCode));
+
+        // Use shorter counter-based for first billion URLs, then random
+        return counter < 1_000_000_000L ? counterCode : randomCode;
+    }
+
+    private String encodeBase62(long value) {
+        if (value == 0) return "0";
+
+        StringBuilder result = new StringBuilder();
+        while (value > 0) {
+            result.append(BASE62_CHARS.charAt((int)(value % BASE)));
+            value /= BASE;
+        }
+        return result.reverse().toString();
+    }
+
+    private String generateRandomCode(int length) {
+        Random random = new SecureRandom();
+        StringBuilder code = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            code.append(BASE62_CHARS.charAt(random.nextInt(BASE)));
+        }
+        return code.toString();
+    }
+}
+```
+
+### 2. Caching Strategy
+
+**Challenge:** Achieve < 100ms redirect latency globally with 230K RPS peak load.
+
+**Multi-tier Caching Strategy:**
+
+**Tier 1: CDN Edge Caching**
+```java
+@RestController
+public class RedirectController {
+
+    @GetMapping("/{shortCode}")
+    public ResponseEntity<Void> redirect(@PathVariable String shortCode) {
+        String originalUrl = urlService.getOriginalUrl(shortCode);
+
+        if (originalUrl == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Set aggressive caching headers for CDN
+        HttpHeaders headers = new HttpHeaders();
+        headers.setLocation(URI.create(originalUrl));
+        headers.setCacheControl(CacheControl.maxAge(Duration.ofHours(24))
+            .mustRevalidate().cachePublic());
+
+        // Log analytics asynchronously
+        analyticsService.logClickAsync(shortCode, request);
+
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
+            .headers(headers).build();
+    }
+}
+```
+
+**Tier 2: Application-level Redis Caching**
+```java
+@Service
+public class URLService {
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    @Cacheable(value = "urls", key = "#shortCode")
+    public String getOriginalUrl(String shortCode) {
+        // Try Redis first
+        String cachedUrl = redisTemplate.opsForValue().get("url:" + shortCode);
+        if (cachedUrl != null) {
+            return cachedUrl;
+        }
+
+        // Fallback to database
+        URL url = urlRepository.findByShortCode(shortCode);
+        if (url != null && url.getIsActive() && !isExpired(url)) {
+            // Cache with TTL
+            redisTemplate.opsForValue().set("url:" + shortCode,
+                url.getOriginalUrl(), Duration.ofHours(1));
+            return url.getOriginalUrl();
+        }
+
+        return null;
+    }
+}
+```
+
+### 3. Database Scaling Strategy
+
+**Challenge:** Handle 90TB of data with high write throughput and read performance.
+
+**Horizontal Sharding by Short Code:**
+
+```java
+@Configuration
+public class DatabaseShardingConfig {
+
+    public String determineShardKey(String shortCode) {
+        // Use first 2 characters for sharding
+        // 62^2 = 3,844 possible shards, use 64 actual shards
+        String shardPrefix = shortCode.substring(0, 2);
+        int shardHash = shardPrefix.hashCode();
+        return "shard_" + (Math.abs(shardHash) % 64);
+    }
+}
+
+@Service
+public class ShardedURLRepository {
+
+    private final Map<String, JdbcTemplate> shardTemplates;
+
+    public URL findByShortCode(String shortCode) {
+        String shardKey = determineShardKey(shortCode);
+        JdbcTemplate template = shardTemplates.get(shardKey);
+
+        return template.queryForObject(
+            "SELECT * FROM urls WHERE short_code = ?",
+            new Object[]{shortCode},
+            new URLRowMapper()
+        );
+    }
+}
+```
+
+### 4. Analytics Processing
+
+**Challenge:** Process billions of click events for real-time analytics.
+
+**Stream Processing with Kafka + ClickHouse:**
+
+```java
+@KafkaListener(topics = "click-events")
+@Service
+public class AnalyticsProcessor {
+
+    @Autowired
+    private ClickHouseJdbcTemplate clickHouseTemplate;
+
+    public void processClickEvent(ClickEventMessage event) {
+        // Enrich event with geo-location data
+        GeoLocation location = geoService.getLocation(event.getIpAddress());
+
+        // Create analytics record
+        ClickEvent clickEvent = ClickEvent.builder()
+            .shortCode(event.getShortCode())
+            .timestamp(event.getTimestamp())
+            .country(location.getCountry())
+            .city(location.getCity())
+            .userAgent(event.getUserAgent())
+            .referrer(event.getReferrer())
+            .build();
+
+        // Batch insert into ClickHouse for performance
+        clickHouseTemplate.batchUpdate(clickEvent);
+
+        // Update real-time counters in Redis
+        redisTemplate.opsForHash().increment(
+            "url_stats:" + event.getShortCode(),
+            "click_count", 1
+        );
+    }
+}
+```
+
+### 5. Security and Abuse Prevention
+
+**Challenge:** Prevent malicious URLs and system abuse.
+
+**Multi-layer Security Strategy:**
+
+```java
+@Service
+public class SecurityService {
+
+    private final Set<String> blockedDomains = Set.of(
+        "malicious-site.com", "spam-domain.net"
+    );
+
+    public boolean validateUrl(String url) {
+        try {
+            URI uri = URI.create(url);
+            String domain = uri.getHost().toLowerCase();
+
+            // Check against blocked domains
+            if (blockedDomains.contains(domain)) {
+                return false;
+            }
+
+            // Check URL reachability
+            HttpURLConnection connection =
+                (HttpURLConnection) uri.toURL().openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setConnectTimeout(5000);
+
+            int responseCode = connection.getResponseCode();
+            return responseCode >= 200 && responseCode < 400;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
+
+@Component
+public class RateLimitingFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response,
+                        FilterChain chain) throws IOException, ServletException {
+
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        String clientIp = getClientIp(httpRequest);
+        String userId = getUserId(httpRequest);
+
+        // Rate limiting logic
+        String key = userId != null ? "user:" + userId : "ip:" + clientIp;
+        Long requests = redisTemplate.opsForValue().increment(key);
+
+        if (requests == 1) {
+            redisTemplate.expire(key, Duration.ofHours(1));
+        }
+
+        int limit = userId != null ? 1000 : 100; // Higher limit for registered users
+
+        if (requests > limit) {
+            ((HttpServletResponse) response).setStatus(429); // Too Many Requests
+            return;
+        }
+
+        chain.doFilter(request, response);
+    }
+}
+```
+
+### 6. Monitoring and Observability
+
+**Key Metrics Tracking:**
+
+```java
+@Component
+public class MetricsCollector {
+
+    private final MeterRegistry meterRegistry;
+    private final Counter urlCreationCounter;
+    private final Counter redirectionCounter;
+    private final Timer redirectionTimer;
+
+    public MetricsCollector(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        this.urlCreationCounter = Counter.builder("urls.created")
+            .description("Number of URLs created")
+            .register(meterRegistry);
+        this.redirectionCounter = Counter.builder("urls.redirected")
+            .description("Number of URL redirections")
+            .register(meterRegistry);
+        this.redirectionTimer = Timer.builder("redirection.duration")
+            .description("Time taken for URL redirection")
+            .register(meterRegistry);
+    }
+
+    public void recordUrlCreation() {
+        urlCreationCounter.increment();
+    }
+
+    public void recordRedirection(Duration duration) {
+        redirectionCounter.increment();
+        redirectionTimer.record(duration);
+    }
+}
+```
+
+**Alerting Configuration:**
+- Redirection latency > 200ms for 5 minutes → Critical alert
+- Error rate > 1% → Warning alert
+- Cache hit rate < 90% → Performance alert
+- Database connection pool exhaustion → Critical alert
+
+---
+
+## Summary
+
+This URL Shortener design successfully handles the core requirements:
+
+✅ **Functional Requirements Met:**
+- Scalable URL shortening with custom aliases
+- Fast global URL redirection (< 100ms)
+- Comprehensive click analytics and reporting
+- Flexible expiration and URL management
+- Support for both anonymous and authenticated users
+
+✅ **Non-functional Requirements Addressed:**
+- **Scale:** Handles 100M URL creations/day and 10B redirections/day
+- **Performance:** Multi-tier caching achieves < 100ms redirect latency
+- **Availability:** Global distribution provides 99.99% uptime
+- **Security:** Multi-layer protection against abuse and malicious content
+
+✅ **Production-Ready Deep Dives:**
+- Efficient short code generation with collision avoidance
+- Multi-tier caching strategy for global performance
+- Horizontal database sharding for massive scale
+- Real-time analytics processing with stream computing
+- Comprehensive security and rate limiting
+
+The design scales from thousands to billions of URLs by leveraging distributed caching, database sharding, and global CDN distribution while maintaining the simplicity and reliability that users expect from a URL shortener.

@@ -1,0 +1,668 @@
+# Rate Limiter System Design
+
+## Table of Contents
+- [Requirements (~5 minutes)](#requirements-5-minutes)
+  - [Functional Requirements](#1-functional-requirements)
+  - [Non-functional Requirements](#2-non-functional-requirements)
+  - [Capacity Estimation](#3-capacity-estimation)
+- [Core Entities (~2 minutes)](#core-entities-2-minutes)
+- [API or System Interface (~5 minutes)](#api-or-system-interface-5-minutes)
+- [Data Flow (~5 minutes)](#data-flow-5-minutes)
+- [High Level Design (~10-15 minutes)](#high-level-design-10-15-minutes)
+- [Deep Dives (~10 minutes)](#deep-dives-10-minutes)
+
+---
+
+## Requirements (~5 minutes)
+
+### 1) Functional Requirements
+
+**Key Questions Asked:**
+- Q: What types of rate limiting do we need to support?
+- A: User-based, IP-based, and API key-based rate limiting
+- Q: Should it be a standalone service or library?
+- A: Standalone service that other services can call
+- Q: Do we need different rate limits for different endpoints?
+- A: Yes, different APIs may have different limits
+- Q: What happens when rate limit is exceeded?
+- A: Return HTTP 429 (Too Many Requests) with retry information
+
+**Core Functional Requirements:**
+- [ ] System should allow rate limiting by different identifiers (user_id, IP, API key)
+- [ ] System should support different rate limiting algorithms (fixed window, sliding window, token bucket)
+- [ ] System should allow configurable rate limits per API endpoint
+- [ ] System should return appropriate HTTP status codes and retry information when limits are exceeded
+- [ ] System should provide real-time rate limit status to clients
+
+> 💡 **Tip:** These 5 requirements cover the essential functionality while keeping scope manageable.
+
+### 2) Non-functional Requirements
+
+**System Quality Requirements:**
+- [ ] **Ultra-Low Latency:** Rate limit checks should add < 1ms latency to API calls
+- [ ] **High Availability:** 99.99% uptime - rate limiter failure shouldn't bring down services
+- [ ] **High Throughput:** Handle 10M+ rate limit checks per second
+- [ ] **Accuracy:** Rate limiting should be precise with minimal false positives/negatives
+- [ ] **Scalability:** Horizontally scalable to support growing API traffic
+- [ ] **Fault Tolerance:** Fail-open (allow requests) when rate limiter is unavailable
+
+**Rationale:**
+- **Ultra-low latency:** Rate limiting is on the critical path of every API call
+- **High availability:** More critical than accuracy - better to allow some requests than block all
+- **Fail-open:** Ensures service availability over perfect rate limiting
+
+### 3) Capacity Estimation
+
+**Key Calculations That Influence Design:**
+
+**Throughput Requirements:**
+- 10M rate limit checks/second at peak
+- Assuming 80/20 rule: 8M reads, 2M writes per second
+- *Impact:* Need in-memory caching and optimized data structures
+
+**Memory Requirements per Algorithm:**
+```
+Token Bucket: ~100 bytes per user (bucket state)
+Sliding Window: ~1KB per user (request timestamps)
+Fixed Window: ~50 bytes per user (counter + timestamp)
+
+For 100M active users with token bucket:
+100M × 100 bytes = 10GB memory per rate limiter node
+```
+*Impact:* Memory-efficient algorithms and data partitioning required
+
+**Network Overhead:**
+- Each check: ~200 bytes request/response
+- 10M checks/sec × 200 bytes = 2GB/s network traffic
+- *Impact:* Need local caching and efficient serialization
+
+> These calculations drive our choice of algorithms, caching strategy, and node sizing.
+
+---
+
+## Core Entities (~2 minutes)
+
+**Primary Entities:**
+- **RateLimit:** Configuration for rate limiting rules (endpoint, limit, window, algorithm)
+- **RateLimitBucket:** Current state of rate limiting for a specific identifier (counter, last_reset, tokens)
+- **RateLimitRequest:** Information needed to check rate limit (identifier, endpoint, timestamp)
+- **RateLimitResponse:** Result of rate limit check (allowed, remaining, reset_time)
+
+**Entity Relationships:**
+- RateLimit defines rules (1:N with RateLimitBucket)
+- RateLimitBucket tracks state per identifier
+- RateLimitRequest triggers check against RateLimitBucket
+- RateLimitResponse provides decision and metadata
+
+**Key Identifiers:**
+- **user_id:** For user-specific rate limiting
+- **ip_address:** For IP-based protection against abuse
+- **api_key:** For client application rate limiting
+- **endpoint:** For per-API rate limiting
+
+---
+
+## API or System Interface (~5 minutes)
+
+### Protocol Choice: gRPC
+**Reasoning:** Ultra-low latency requirement makes gRPC ideal due to HTTP/2 multiplexing, binary protocol, and connection reuse. Also supports both synchronous and async calls.
+
+### Core API Endpoints
+
+**Rate Limit Check (Primary API):**
+```protobuf
+service RateLimiter {
+  rpc CheckRateLimit(RateLimitRequest) returns (RateLimitResponse);
+  rpc CheckRateLimitBatch(BatchRateLimitRequest) returns (BatchRateLimitResponse);
+}
+
+message RateLimitRequest {
+  string identifier = 1;        // user_id, ip, api_key
+  string identifier_type = 2;   // "user", "ip", "api_key"
+  string endpoint = 3;          // "/api/v1/posts"
+  int32 tokens_requested = 4;   // default: 1
+  int64 timestamp = 5;          // current timestamp
+}
+
+message RateLimitResponse {
+  bool allowed = 1;             // whether request should be allowed
+  int32 remaining_tokens = 2;   // tokens left in current window
+  int64 reset_time = 3;         // when the limit resets (unix timestamp)
+  int32 retry_after_seconds = 4; // how long to wait before retry
+}
+```
+
+**Configuration Management:**
+```protobuf
+service RateLimiterConfig {
+  rpc CreateRateLimit(CreateRateLimitRequest) returns (RateLimit);
+  rpc UpdateRateLimit(UpdateRateLimitRequest) returns (RateLimit);
+  rpc DeleteRateLimit(DeleteRateLimitRequest) returns (Empty);
+  rpc ListRateLimits(ListRateLimitsRequest) returns (ListRateLimitsResponse);
+}
+
+message RateLimit {
+  string id = 1;
+  string endpoint = 2;          // "/api/v1/posts" or "*" for global
+  string identifier_type = 3;   // "user", "ip", "api_key"
+  int32 limit = 4;             // requests allowed per window
+  int32 window_seconds = 5;     // time window in seconds
+  string algorithm = 6;         // "token_bucket", "sliding_window", "fixed_window"
+  bool enabled = 7;
+}
+```
+
+**Monitoring & Health:**
+```protobuf
+service RateLimiterHealth {
+  rpc GetHealthStatus(Empty) returns (HealthResponse);
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+  rpc ResetRateLimit(ResetRequest) returns (Empty);  // For testing/admin
+}
+```
+
+**Client Integration Example:**
+```python
+# How services would integrate
+rate_limiter = RateLimiterClient("rate-limiter.internal:9090")
+
+def api_handler(user_id, request):
+    # Check rate limit before processing
+    check_request = RateLimitRequest(
+        identifier=user_id,
+        identifier_type="user",
+        endpoint="/api/v1/posts",
+        tokens_requested=1
+    )
+
+    response = rate_limiter.CheckRateLimit(check_request)
+
+    if not response.allowed:
+        return HTTP_429_TOO_MANY_REQUESTS, {
+            "error": "Rate limit exceeded",
+            "retry_after": response.retry_after_seconds
+        }
+
+    # Process actual API request
+    return handle_api_request(request)
+```
+
+---
+
+## Data Flow (~5 minutes)
+
+### Rate Limit Check Flow
+1. **API Request:** Client makes request to API service (e.g., POST /api/v1/posts)
+2. **Rate Limit Check:** API service calls Rate Limiter with (user_id, endpoint, timestamp)
+3. **Cache Lookup:** Rate Limiter checks local cache for user's bucket state
+4. **Algorithm Execution:** Apply rate limiting algorithm (token bucket/sliding window)
+5. **Decision:** Determine if request should be allowed based on current state
+6. **State Update:** Update bucket state (decrement tokens, update timestamps)
+7. **Response:** Return decision with remaining quota and reset time
+8. **API Processing:** API service either processes request or returns 429 error
+
+### Configuration Update Flow
+1. **Config Change:** Admin updates rate limit via configuration API
+2. **Validation:** Validate new configuration (positive limits, valid algorithms)
+3. **Database Update:** Store new configuration in persistent storage
+4. **Cache Invalidation:** Invalidate relevant cached configurations
+5. **Node Broadcast:** Notify all rate limiter nodes of configuration change
+6. **Hot Reload:** Nodes reload configuration without restart
+
+### Bucket State Synchronization Flow (Distributed)
+1. **State Update:** Local node updates bucket state
+2. **Async Replication:** Broadcast state changes to other nodes (eventual consistency)
+3. **Conflict Resolution:** Use timestamp-based resolution for conflicts
+4. **Periodic Sync:** Background job synchronizes states across nodes
+
+---
+
+## High Level Design (~10-15 minutes)
+
+### Design Approach
+Building the system to handle the primary use case first (single rate limit check), then expanding to support batch operations and distributed scenarios.
+
+### System Architecture
+
+```
+[API Services] -> [gRPC] -> [Load Balancer] -> [Rate Limiter Cluster]
+                                                      |
+                                                [Rate Limiter Nodes]
+                                                      |
+                        +-----------------------------+-----------------------------+
+                        |                             |                             |
+                [Local Cache]                [Configuration Store]           [Metrics Store]
+                 (In-Memory)                   (PostgreSQL)                 (Prometheus)
+                        |                             |
+                [State Sync]                 [Admin Dashboard]
+                 (Redis/Gossip)
+```
+
+### Detailed Component Design
+
+**Rate Limiter Node Architecture:**
+```
+┌─────────────────────────────────────────────┐
+│               Rate Limiter Node             │
+├─────────────────────────────────────────────┤
+│  gRPC Server (Port 9090)                   │
+├─────────────────────────────────────────────┤
+│  Algorithm Engine                           │
+│  ├─ Token Bucket Implementation             │
+│  ├─ Sliding Window Implementation           │
+│  └─ Fixed Window Implementation             │
+├─────────────────────────────────────────────┤
+│  Local Cache (In-Memory)                    │
+│  ├─ Configuration Cache                     │
+│  ├─ Bucket State Cache (LRU)               │
+│  └─ Hot Data (Last 5 min activity)         │
+├─────────────────────────────────────────────┤
+│  State Synchronization                      │
+│  ├─ Redis Publisher/Subscriber              │
+│  └─ Background Sync Jobs                    │
+├─────────────────────────────────────────────┤
+│  Metrics & Monitoring                       │
+│  ├─ Request Counters                        │
+│  ├─ Latency Histograms                      │
+│  └─ Health Checks                           │
+└─────────────────────────────────────────────┘
+```
+
+### Algorithm Implementations
+
+**1. Token Bucket Algorithm (Recommended):**
+```python
+class TokenBucket:
+    def __init__(self, capacity, refill_rate):
+        self.capacity = capacity          # Maximum tokens
+        self.tokens = capacity           # Current tokens
+        self.refill_rate = refill_rate   # Tokens per second
+        self.last_refill = time.time()
+
+    def consume(self, tokens=1):
+        now = time.time()
+        # Add tokens based on time elapsed
+        time_elapsed = now - self.last_refill
+        self.tokens = min(self.capacity,
+                         self.tokens + time_elapsed * self.refill_rate)
+        self.last_refill = now
+
+        if self.tokens >= tokens:
+            self.tokens -= tokens
+            return True
+        return False
+
+    def get_retry_after(self):
+        if self.tokens >= 1:
+            return 0
+        return (1 - self.tokens) / self.refill_rate
+```
+
+**2. Sliding Window Log:**
+```python
+class SlidingWindowLog:
+    def __init__(self, limit, window_seconds):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.requests = []  # List of timestamps
+
+    def is_allowed(self, timestamp):
+        # Remove old requests outside window
+        cutoff = timestamp - self.window_seconds
+        self.requests = [req for req in self.requests if req > cutoff]
+
+        if len(self.requests) < self.limit:
+            self.requests.append(timestamp)
+            return True
+        return False
+```
+
+### Database Schema
+
+**Rate Limit Configurations:**
+```sql
+CREATE TABLE rate_limits (
+    id UUID PRIMARY KEY,
+    endpoint VARCHAR(255) NOT NULL,
+    identifier_type VARCHAR(50) NOT NULL, -- 'user', 'ip', 'api_key'
+    limit_value INTEGER NOT NULL,
+    window_seconds INTEGER NOT NULL,
+    algorithm VARCHAR(50) NOT NULL, -- 'token_bucket', 'sliding_window', 'fixed_window'
+    enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(endpoint, identifier_type)
+);
+
+-- Index for fast lookups
+CREATE INDEX idx_rate_limits_endpoint_type ON rate_limits(endpoint, identifier_type);
+```
+
+**Rate Limit State (Redis/In-Memory):**
+```python
+# Redis key structure
+bucket_key = f"bucket:{identifier_type}:{identifier}:{endpoint}"
+bucket_data = {
+    "tokens": 10,              # Current tokens (token bucket)
+    "last_refill": 1640995200, # Last refill timestamp
+    "requests": [timestamps],   # Request log (sliding window)
+    "window_start": 1640995200, # Window start (fixed window)
+    "request_count": 5         # Requests in current window
+}
+```
+
+### Technology Stack
+- **Application:** Go/Java for high-performance gRPC services
+- **Cache:** Redis for distributed state + local in-memory cache
+- **Database:** PostgreSQL for configuration storage
+- **Load Balancer:** Envoy proxy with gRPC load balancing
+- **Monitoring:** Prometheus + Grafana for metrics
+- **Service Mesh:** Istio for service-to-service communication
+
+---
+
+## Deep Dives (~10 minutes)
+
+### 1. Algorithm Comparison and Selection
+
+**Token Bucket (Recommended):**
+- **Pros:** Allows burst traffic, memory efficient, smooth rate limiting
+- **Cons:** Slightly more complex implementation
+- **Use Case:** General purpose, handles traffic bursts well
+- **Memory:** ~100 bytes per bucket (tokens, last_refill, capacity)
+
+**Sliding Window Log:**
+- **Pros:** Most accurate, prevents burst at window boundaries
+- **Cons:** High memory usage, complex cleanup
+- **Use Case:** When precision is critical
+- **Memory:** ~1KB per bucket (timestamp array)
+
+**Fixed Window Counter:**
+- **Pros:** Simple, memory efficient
+- **Cons:** Allows 2x burst at window boundaries
+- **Use Case:** Simple rate limiting with acceptable burst
+- **Memory:** ~50 bytes per bucket (counter, window_start)
+
+**Decision Matrix:**
+```
+Requirement    | Token Bucket | Sliding Window | Fixed Window
+---------------|--------------|----------------|-------------
+Memory Usage   | Medium       | High           | Low
+Accuracy       | High         | Highest        | Medium
+Burst Handling | Excellent    | Good           | Poor
+Implementation | Medium       | Complex        | Simple
+Performance    | Excellent    | Good           | Excellent
+```
+
+**Recommendation:** Token Bucket for general use, Sliding Window for critical APIs needing precision.
+
+### 2. Distributed State Management
+
+**Challenge:** Maintaining consistent rate limit state across multiple nodes while achieving < 1ms latency.
+
+**Solution: Multi-Tier Caching with Eventual Consistency**
+
+**Local Node Cache (L1):**
+```python
+class LocalRateLimitCache:
+    def __init__(self, max_size=1000000):
+        self.cache = LRUCache(max_size)  # In-memory LRU cache
+        self.hit_ratio_target = 0.95     # 95% cache hit rate
+
+    def get_bucket(self, key):
+        bucket = self.cache.get(key)
+        if bucket is None:
+            # Cache miss - fetch from Redis
+            bucket = self.fetch_from_redis(key)
+            self.cache.set(key, bucket, ttl=300)  # 5-minute TTL
+        return bucket
+
+    def update_bucket(self, key, bucket):
+        self.cache.set(key, bucket)
+        # Async update to Redis for other nodes
+        self.async_update_redis(key, bucket)
+```
+
+**Redis Shared State (L2):**
+```python
+class RedisStateManager:
+    def __init__(self):
+        self.redis_client = redis.Redis(host='redis-cluster')
+        self.local_updates = Queue()  # Buffer for batch updates
+
+    def update_bucket_state(self, key, bucket_state):
+        # Use Redis pipelines for batched updates
+        pipeline = self.redis_client.pipeline()
+        pipeline.hset(key, "tokens", bucket_state.tokens)
+        pipeline.hset(key, "last_refill", bucket_state.last_refill)
+        pipeline.expire(key, 3600)  # 1-hour TTL
+        pipeline.execute()
+
+    def sync_states_batch(self):
+        # Background job to sync local changes to Redis
+        while not self.local_updates.empty():
+            updates = []
+            for _ in range(min(100, self.local_updates.size())):
+                updates.append(self.local_updates.get())
+            self.batch_update_redis(updates)
+```
+
+**Conflict Resolution Strategy:**
+```python
+def resolve_bucket_conflict(local_bucket, redis_bucket):
+    # Use latest timestamp as source of truth
+    if local_bucket.last_refill > redis_bucket.last_refill:
+        return local_bucket
+    else:
+        # Merge states: take more restrictive values
+        return BucketState(
+            tokens=min(local_bucket.tokens, redis_bucket.tokens),
+            last_refill=redis_bucket.last_refill
+        )
+```
+
+### 3. High Availability and Fault Tolerance
+
+**Fail-Open Strategy:**
+```python
+class RateLimiterService:
+    def __init__(self):
+        self.circuit_breaker = CircuitBreaker(
+            failure_threshold=5,
+            recovery_timeout=30,
+            expected_exception=RedisConnectionError
+        )
+
+    def check_rate_limit(self, request):
+        try:
+            with self.circuit_breaker:
+                return self._perform_rate_limit_check(request)
+        except CircuitBreakerOpenException:
+            # Circuit breaker open - fail open
+            self.metrics.increment("rate_limiter.fail_open")
+            return RateLimitResponse(
+                allowed=True,
+                remaining_tokens=1,
+                reset_time=time.time() + 60
+            )
+        except Exception as e:
+            # Unexpected error - log and fail open
+            self.logger.error(f"Rate limiter error: {e}")
+            return RateLimitResponse(allowed=True, remaining_tokens=1)
+```
+
+**Health Monitoring:**
+```python
+class HealthChecker:
+    def check_health(self):
+        health_status = {
+            "redis_connection": self.check_redis_connectivity(),
+            "local_cache_hit_ratio": self.get_cache_hit_ratio(),
+            "average_latency_ms": self.get_avg_latency(),
+            "error_rate": self.get_error_rate()
+        }
+
+        # Overall health based on critical metrics
+        if (health_status["redis_connection"] and
+            health_status["local_cache_hit_ratio"] > 0.90 and
+            health_status["average_latency_ms"] < 2.0 and
+            health_status["error_rate"] < 0.01):
+            return HealthStatus.HEALTHY
+        else:
+            return HealthStatus.DEGRADED
+```
+
+### 4. Performance Optimizations
+
+**Batched Rate Limit Checks:**
+```python
+def check_rate_limit_batch(self, requests):
+    """Check multiple rate limits in a single call"""
+    results = []
+
+    # Group requests by identifier for cache efficiency
+    grouped_requests = self.group_by_identifier(requests)
+
+    for identifier, reqs in grouped_requests.items():
+        bucket = self.get_bucket(identifier)
+        for req in reqs:
+            result = bucket.consume(req.tokens_requested)
+            results.append(result)
+
+    return results
+```
+
+**Connection Pooling and Multiplexing:**
+```python
+# gRPC connection pooling
+class RateLimiterClient:
+    def __init__(self, server_addresses):
+        self.channels = [
+            grpc.insecure_channel(addr, options=[
+                ('grpc.keepalive_time_ms', 10000),
+                ('grpc.max_receive_message_length', 4 * 1024 * 1024),
+                ('grpc.max_send_message_length', 4 * 1024 * 1024),
+            ]) for addr in server_addresses
+        ]
+        self.current_channel = 0
+
+    def get_next_channel(self):
+        # Round-robin across channels
+        channel = self.channels[self.current_channel]
+        self.current_channel = (self.current_channel + 1) % len(self.channels)
+        return channel
+```
+
+### 5. Monitoring and Observability
+
+**Key Metrics:**
+```python
+class RateLimiterMetrics:
+    def __init__(self):
+        # Business metrics
+        self.requests_allowed = Counter('rate_limiter_requests_allowed_total')
+        self.requests_blocked = Counter('rate_limiter_requests_blocked_total')
+        self.false_positives = Counter('rate_limiter_false_positives_total')
+
+        # Performance metrics
+        self.check_latency = Histogram('rate_limiter_check_latency_seconds')
+        self.cache_hit_ratio = Gauge('rate_limiter_cache_hit_ratio')
+        self.active_buckets = Gauge('rate_limiter_active_buckets')
+
+        # System metrics
+        self.redis_connection_errors = Counter('rate_limiter_redis_errors_total')
+        self.memory_usage = Gauge('rate_limiter_memory_usage_bytes')
+```
+
+**Alerting Rules:**
+```yaml
+# Prometheus alerting rules
+groups:
+  - name: rate_limiter
+    rules:
+      - alert: RateLimiterHighLatency
+        expr: histogram_quantile(0.95, rate_limiter_check_latency_seconds) > 0.002
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limiter latency is high"
+
+      - alert: RateLimiterCacheMissRate
+        expr: rate_limiter_cache_hit_ratio < 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limiter cache hit rate is low"
+
+      - alert: RateLimiterRedisDown
+        expr: up{job="rate-limiter-redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Rate limiter Redis is down"
+```
+
+### 6. Configuration Management
+
+**Dynamic Configuration Updates:**
+```python
+class ConfigurationManager:
+    def __init__(self):
+        self.config_cache = {}
+        self.config_version = 0
+        self.subscribers = []
+
+    def update_rate_limit_config(self, config):
+        # Validate configuration
+        self.validate_config(config)
+
+        # Store in database
+        self.db.save_rate_limit_config(config)
+
+        # Update local cache
+        self.config_cache[config.key] = config
+        self.config_version += 1
+
+        # Notify all nodes
+        self.broadcast_config_update(config)
+
+    def validate_config(self, config):
+        if config.limit <= 0:
+            raise ValueError("Rate limit must be positive")
+        if config.window_seconds <= 0:
+            raise ValueError("Window must be positive")
+        if config.algorithm not in SUPPORTED_ALGORITHMS:
+            raise ValueError(f"Unsupported algorithm: {config.algorithm}")
+```
+
+---
+
+## Summary
+
+This Rate Limiter design successfully handles the core requirements:
+
+✅ **Functional Requirements Met:**
+- Multi-identifier support (user, IP, API key)
+- Multiple algorithm implementations (token bucket, sliding window, fixed window)
+- Configurable per-endpoint limits
+- Proper HTTP responses with retry information
+- Real-time rate limit status
+
+✅ **Non-functional Requirements Addressed:**
+- **Ultra-low latency:** < 1ms through multi-tier caching and in-memory algorithms
+- **High availability:** 99.99% uptime with fail-open strategy and circuit breakers
+- **High throughput:** 10M+ checks/second via horizontal scaling and connection pooling
+- **Accuracy:** Token bucket algorithm provides precise rate limiting with burst handling
+- **Fault tolerance:** Graceful degradation when dependencies fail
+
+✅ **Production-Ready Features:**
+- Distributed state management with eventual consistency
+- Comprehensive monitoring and alerting
+- Dynamic configuration updates without restarts
+- Batched operations for efficiency
+- Circuit breaker pattern for reliability
+
+The design scales from thousands to millions of requests per second while maintaining sub-millisecond response times. The fail-open approach ensures that rate limiter issues don't cause cascading failures across dependent services, making it suitable for critical production environments.
