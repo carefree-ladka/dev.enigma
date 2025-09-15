@@ -1,0 +1,1001 @@
+# System Design Concepts
+
+## Table of Contents
+1. [DNS (Domain Name System)](#dns-domain-name-system)
+2. [API Gateway](#api-gateway)
+3. [Load Balancer](#load-balancer)
+4. [Proxy (Reverse & Forward)](#proxy-reverse--forward)
+5. [Vertical Scaling](#vertical-scaling)
+6. [Horizontal Scaling](#horizontal-scaling)
+7. [Vertical DB Scaling](#vertical-db-scaling)
+8. [Horizontal DB Scaling](#horizontal-db-scaling)
+9. [Master-Slave (Primary-Replica) DB](#master-slave-primary-replica-db)
+10. [Consistent Hashing](#consistent-hashing)
+11. [Caching](#caching)
+12. [CDN (Content Delivery Network)](#cdn-content-delivery-network)
+13. [Database Index](#database-index)
+14. [CAP Theorem](#cap-theorem)
+15. [Long Polling vs WebSockets](#long-polling-vs-websockets)
+16. [Decision Matrix: When to Use What](#decision-matrix-when-to-use-what)
+
+---
+
+## DNS (Domain Name System)
+
+### What is DNS?
+DNS translates human-readable domain names (like `google.com`) into IP addresses that computers use to identify each other.
+
+### Why DNS?
+- **Human-friendly**: Easy to remember domain names vs IP addresses
+- **Flexibility**: Change server IPs without affecting users
+- **Load distribution**: Route traffic to different servers
+
+### How DNS Works?
+1. User types `example.com`
+2. Browser checks local cache
+3. Queries DNS resolver (ISP)
+4. Resolver queries root nameserver
+5. Directed to TLD nameserver (.com)
+6. Finally queries authoritative nameserver
+7. Returns IP address
+
+### Where to Use?
+- **Essential for all web applications**
+- **Microservices**: Service discovery
+- **Global applications**: Geo-based routing
+
+### When to Optimize?
+- High traffic applications
+- Global user base
+- Multiple data centers
+
+---
+
+## API Gateway
+
+### What is API Gateway?
+A single entry point that manages all client requests and routes them to appropriate microservices.
+
+### Why API Gateway?
+- **Single entry point**: Centralized access control
+- **Cross-cutting concerns**: Authentication, logging, rate limiting
+- **Protocol translation**: REST to GraphQL, HTTP to gRPC
+- **Request/Response transformation**
+
+### How API Gateway Works?
+```
+Client → API Gateway → Authentication → Rate Limiting → Load Balancer → Microservice
+```
+
+### Key Features:
+- **Authentication & Authorization**
+- **Rate limiting & Throttling**
+- **Request/Response caching**
+- **Load balancing**
+- **Monitoring & Analytics**
+
+### Where to Use?
+- **Microservices architecture**
+- **Mobile applications**: Single endpoint for multiple services
+- **Third-party API management**
+
+### When to Implement?
+- Multiple microservices (3+)
+- Need centralized security
+- Complex routing requirements
+
+---
+
+## Load Balancer
+
+### What is Load Balancer?
+Distributes incoming requests across multiple servers to ensure no single server gets overwhelmed.
+
+### Why Load Balancer?
+- **High availability**: No single point of failure
+- **Performance**: Distribute load evenly
+- **Scalability**: Add/remove servers easily
+- **Health monitoring**: Route away from failed servers
+
+### Types of Load Balancing:
+
+#### Layer 4 (Transport Layer)
+- Routes based on IP and port
+- **Faster**: No content inspection
+- **Examples**: TCP/UDP load balancing
+
+#### Layer 7 (Application Layer)
+- Routes based on HTTP content
+- **Smarter**: Content-based routing
+- **Examples**: Route `/api/users` to user service
+
+### Load Balancing Algorithms:
+- **Round Robin**: Requests distributed sequentially
+- **Weighted Round Robin**: Servers get requests based on capacity
+- **Least Connections**: Route to server with fewest active connections
+- **IP Hash**: Route based on client IP hash
+
+### Where to Use?
+- **Web applications**: Multiple app servers
+- **Databases**: Read replicas
+- **Microservices**: Service-to-service communication
+
+### When to Implement?
+- Traffic > single server capacity
+- Need high availability (99.9%+)
+- Predictable traffic spikes
+
+---
+
+## Proxy (Reverse & Forward)
+
+### Forward Proxy
+**Client → Forward Proxy → Internet → Server**
+
+#### Why Forward Proxy?
+- **Privacy**: Hide client identity
+- **Security**: Filter malicious content
+- **Caching**: Reduce bandwidth usage
+- **Access control**: Block certain websites
+
+#### Where to Use?
+- **Corporate networks**: Internet access control
+- **Privacy**: VPN services
+- **Performance**: Caching frequently accessed content
+
+### Reverse Proxy
+**Client → Internet → Reverse Proxy → Server**
+
+#### Why Reverse Proxy?
+- **Load balancing**: Distribute requests
+- **SSL termination**: Handle encryption/decryption
+- **Caching**: Store responses
+- **Security**: Hide server details
+
+#### Where to Use?
+- **Web servers**: Nginx, Apache as reverse proxy
+- **API servers**: Hide internal architecture
+- **CDN**: Edge servers act as reverse proxies
+
+### When to Use Each?
+- **Forward Proxy**: Client-side control needed
+- **Reverse Proxy**: Server-side optimization needed
+
+---
+
+## Vertical Scaling
+
+### What is Vertical Scaling?
+**Scale Up**: Adding more power (CPU, RAM, Storage) to existing machine.
+
+### Why Vertical Scaling?
+- **Simple**: No architectural changes needed
+- **ACID compliance**: Single database maintains consistency
+- **No complexity**: Existing code works as-is
+
+### Limitations:
+- **Hardware limits**: Physical constraints
+- **Cost**: Exponentially expensive
+- **Single point of failure**
+- **Downtime**: Requires server restart
+
+### Where to Use?
+- **Traditional databases**: PostgreSQL, MySQL
+- **Legacy applications**: Cannot be distributed
+- **Small to medium applications**
+
+### When to Choose?
+- **Early stage**: Simple solution
+- **ACID requirements**: Strong consistency needed
+- **Budget constraints**: Initially cheaper
+
+---
+
+## Horizontal Scaling
+
+### What is Horizontal Scaling?
+**Scale Out**: Adding more machines to handle increased load.
+
+### Why Horizontal Scaling?
+- **No limits**: Can add infinite machines
+- **Cost-effective**: Use commodity hardware
+- **High availability**: No single point of failure
+- **Fault tolerance**: System continues if servers fail
+
+### Challenges:
+- **Complexity**: Distributed system challenges
+- **Data consistency**: CAP theorem limitations
+- **Network latency**: Inter-service communication
+- **State management**: Sessions, caching
+
+### Where to Use?
+- **Web applications**: Stateless app servers
+- **NoSQL databases**: MongoDB, Cassandra
+- **Microservices**: Independent scaling
+
+### When to Choose?
+- **High traffic**: Millions of users
+- **Growth expectations**: Rapid scaling needed
+- **Global presence**: Multiple regions
+
+---
+
+## Vertical DB Scaling
+
+### What is Vertical DB Scaling?
+**Upgrade database machine** → Add more CPU, RAM, faster storage to single database server.
+
+### Why Vertical DB Scaling?
+- **Simple**: No code changes required
+- **ACID compliance**: Maintains database consistency
+- **Immediate**: Quick performance improvement
+
+### Limitations:
+- **Hardware ceiling**: Physical limits
+- **Expensive**: High-end hardware costs
+- **Single point of failure**
+- **Downtime**: Requires maintenance window
+
+### Where to Use?
+- **OLTP systems**: Heavy transaction processing
+- **Legacy applications**: Cannot modify architecture
+- **Compliance requirements**: Single database needed
+
+### When to Choose?
+- **Quick fix needed**
+- **Strong consistency required**
+- **Limited development resources**
+
+---
+
+## Horizontal DB Scaling
+
+### What is Horizontal DB Scaling?
+**Distribute database across multiple machines** using replication and sharding.
+
+### Two Main Approaches:
+
+#### Replication (Read Scaling)
+- **Master-Slave**: One write node, multiple read nodes
+- **Master-Master**: Multiple write nodes (complex)
+
+#### Sharding (Write Scaling)
+- **Partition data**: Split across multiple databases
+- **Shard key**: Determines data distribution
+
+### Why Horizontal DB Scaling?
+- **No hardware limits**: Add more machines
+- **Cost-effective**: Commodity hardware
+- **High availability**: No single point of failure
+
+### Challenges:
+- **Complexity**: Distributed queries
+- **Data consistency**: Eventual consistency
+- **Cross-shard operations**: JOINs across shards
+
+### Where to Use?
+- **Large datasets**: TBs of data
+- **High write loads**: Social media, IoT
+- **Global applications**: Regional data distribution
+
+### When to Choose?
+- **Vertical scaling exhausted**
+- **High read/write demands**
+- **Cost optimization needed**
+
+---
+
+## Master-Slave (Primary-Replica) DB
+
+### What is Master-Slave?
+**Master**: Handles **all writes** (INSERT, UPDATE, DELETE)
+**Slave**: Handles **reads** (SELECT) - replicates data from master
+
+### Why Master-Slave?
+- **Read scalability**: Multiple slaves for read queries
+- **High availability**: Slave can become master if primary fails
+- **Backup**: Slaves serve as live backups
+- **Geographic distribution**: Slaves in different regions
+
+### How Replication Works?
+1. **Write** comes to Master
+2. Master **logs** the change
+3. **Asynchronous/Synchronous** replication to slaves
+4. **Reads** distributed among slaves
+
+### Replication Types:
+
+#### Synchronous Replication
+- **Pros**: Strong consistency, no data loss
+- **Cons**: Higher latency, availability impact
+
+#### Asynchronous Replication
+- **Pros**: Low latency, high availability
+- **Cons**: Potential data loss, eventual consistency
+
+### Where to Use?
+- **Read-heavy applications**: Social media feeds
+- **Reporting systems**: Analytics on read replicas
+- **Geographic distribution**: Regional read replicas
+
+### When to Implement?
+- **Read traffic >> Write traffic**
+- **Need high availability**
+- **Global user base**
+
+---
+
+## Consistent Hashing
+
+### What is Consistent Hashing?
+A distributed hashing technique that minimizes data movement when nodes are added/removed.
+
+### Why Consistent Hashing?
+**Traditional Hashing Problem**:
+```
+server = hash(key) % number_of_servers
+```
+When servers change, **most keys** need redistribution.
+
+**Consistent Hashing Solution**:
+- **Hash ring**: Servers and keys mapped to ring
+- **Minimal redistribution**: Only affected keys move
+
+### How Consistent Hashing Works?
+1. **Hash ring**: 0 to 2^32-1
+2. **Map servers**: Hash server IDs to ring positions
+3. **Map keys**: Hash keys to ring positions
+4. **Key assignment**: Clockwise to next server
+5. **Virtual nodes**: Multiple positions per server for better distribution
+
+### Benefits:
+- **Minimal redistribution**: Only 1/N keys move when adding server
+- **Load balancing**: Virtual nodes ensure even distribution
+- **Fault tolerance**: System continues with node failures
+
+### Where to Use?
+- **Distributed caches**: Redis Cluster, Memcached
+- **Distributed databases**: Cassandra, DynamoDB
+- **Load balancers**: Consistent server assignment
+- **CDN**: Content distribution
+
+### When to Implement?
+- **Dynamic scaling**: Frequent server changes
+- **Large distributed systems**
+- **Need predictable redistribution**
+
+---
+
+## Caching
+
+### What is Caching?
+**Temporary storage** of frequently accessed data in faster storage medium.
+
+### Why Caching?
+- **Performance**: Sub-millisecond response times
+- **Cost reduction**: Fewer database queries
+- **Scalability**: Handle more concurrent users
+- **User experience**: Faster page loads
+
+### Cache Levels:
+
+#### Browser Cache
+- **Client-side**: Images, CSS, JS files
+- **Control**: Cache-Control headers
+
+#### CDN Cache
+- **Edge locations**: Geographically distributed
+- **Content**: Static assets, API responses
+
+#### Application Cache
+- **In-memory**: Redis, Memcached
+- **Content**: Database query results, computed values
+
+#### Database Cache
+- **Query cache**: Cached query results
+- **Buffer pool**: Frequently accessed pages
+
+### Caching Strategies:
+
+#### Cache-Aside (Lazy Loading)
+```
+1. Check cache
+2. If miss → Query DB → Update cache
+3. If hit → Return from cache
+```
+
+#### Write-Through
+```
+1. Write to cache
+2. Write to database
+3. Return success
+```
+
+#### Write-Behind (Write-Back)
+```
+1. Write to cache
+2. Return success
+3. Asynchronously write to database
+```
+
+#### Refresh-Ahead
+```
+1. Refresh cache before expiration
+2. Always serve from cache
+```
+
+### Cache Eviction Policies:
+- **LRU**: Least Recently Used
+- **LFU**: Least Frequently Used
+- **TTL**: Time To Live
+- **FIFO**: First In, First Out
+
+### Where to Use?
+- **Web applications**: Session data, user profiles
+- **APIs**: Response caching
+- **Databases**: Query result caching
+- **Static content**: Images, videos, documents
+
+### When to Implement?
+- **Repetitive queries**: Same data accessed frequently
+- **Expensive computations**: Complex calculations
+- **External API calls**: Third-party service responses
+
+---
+
+## CDN (Content Delivery Network)
+
+### What is CDN?
+**Geographically distributed servers** that cache and serve content from locations closest to users.
+
+### Why CDN?
+- **Reduced latency**: Serve from nearest location
+- **Bandwidth optimization**: Reduce origin server load
+- **High availability**: Multiple edge locations
+- **DDoS protection**: Absorb malicious traffic
+
+### How CDN Works?
+1. **User requests** content
+2. **DNS resolution** points to nearest edge server
+3. **Edge server checks** local cache
+4. **Cache hit**: Serve from edge
+5. **Cache miss**: Fetch from origin, cache, then serve
+
+### CDN Types:
+
+#### Push CDN
+- **Manual upload**: Content pushed to CDN
+- **Control**: Full control over caching
+- **Use case**: Less frequent updates
+
+#### Pull CDN
+- **Automatic caching**: CDN pulls on first request
+- **Convenience**: No manual intervention
+- **Use case**: Frequent content updates
+
+### Content Types:
+- **Static assets**: Images, CSS, JS, fonts
+- **Dynamic content**: API responses (with proper headers)
+- **Video streaming**: Adaptive bitrate streaming
+- **Software downloads**: Large files
+
+### Where to Use?
+- **Global applications**: Users worldwide
+- **Media-heavy sites**: Images, videos
+- **E-commerce**: Product images, catalogs
+- **APIs**: Cacheable responses
+
+### When to Implement?
+- **Global user base**
+- **Large static assets**
+- **High traffic volumes**
+- **Need 99.9%+ availability**
+
+---
+
+## Database Index
+
+### What is Database Index?
+**Data structure** that improves query performance by creating shortcuts to find data quickly.
+
+### Why Database Index?
+- **Query performance**: O(log n) vs O(n) lookup
+- **Faster JOINs**: Efficient table joining
+- **Ordering**: Quick ORDER BY operations
+- **Uniqueness**: Enforce unique constraints
+
+### How Index Works?
+**Without Index**: Sequential scan through all rows
+**With Index**: Tree structure points directly to data
+
+### Index Types:
+
+#### Primary Index
+- **Clustered**: Data physically ordered by index key
+- **One per table**: Usually on primary key
+
+#### Secondary Index
+- **Non-clustered**: Separate structure pointing to data
+- **Multiple allowed**: On any column
+
+#### Composite Index
+- **Multiple columns**: Index on (col1, col2, col3)
+- **Column order matters**: Use leftmost columns first
+
+#### Unique Index
+- **Uniqueness enforcement**: No duplicate values
+- **Performance**: Same as regular index
+
+### Index Structures:
+
+#### B-Tree Index
+- **Balanced tree**: Equal path length to all leaves
+- **Range queries**: Efficient for >, <, BETWEEN
+- **Most common**: Default in most databases
+
+#### Hash Index
+- **Hash function**: Direct key-to-location mapping
+- **Equality queries**: Only = operations
+- **Fast lookups**: O(1) access time
+
+#### Bitmap Index
+- **Bit arrays**: Each bit represents row presence
+- **Low cardinality**: Gender, status fields
+- **Data warehousing**: OLAP systems
+
+### Where to Use?
+- **Frequently queried columns**: WHERE clause columns
+- **JOIN columns**: Foreign key relationships
+- **ORDER BY columns**: Sorting operations
+- **GROUP BY columns**: Aggregation queries
+
+### Index Trade-offs:
+**Benefits**:
+- Faster SELECT queries
+- Faster JOINs and sorting
+- Unique constraint enforcement
+
+**Costs**:
+- Storage overhead (10-15% of table size)
+- Slower INSERT/UPDATE/DELETE
+- Index maintenance overhead
+
+### When to Create Index?
+- **Query frequency**: Column used in many queries
+- **Query performance**: Slow queries on large tables
+- **Cardinality**: High selectivity (many unique values)
+
+### When NOT to Create Index?
+- **Frequently updated columns**: High write overhead
+- **Small tables**: Sequential scan is faster
+- **Low selectivity**: Few unique values
+
+---
+
+## CAP Theorem
+
+### What is CAP Theorem?
+**Impossible** to guarantee all three properties simultaneously in a distributed system:
+- **C**onsistency
+- **A**vailability
+- **P**artition tolerance
+
+### The Three Properties:
+
+#### Consistency (C)
+**All nodes see the same data simultaneously**
+- **Strong consistency**: All reads return most recent write
+- **Eventual consistency**: System will become consistent over time
+- **Weak consistency**: No guarantees about when consistency occurs
+
+#### Availability (A)
+**System remains operational 100% of the time**
+- **High availability**: System responds to requests
+- **Fault tolerance**: Continues operating despite failures
+- **No single point of failure**
+
+#### Partition Tolerance (P)
+**System continues operating despite network failures**
+- **Network splits**: Nodes cannot communicate
+- **Message loss**: Packets dropped or delayed
+- **Distributed reality**: Network failures are inevitable
+
+### CAP Combinations:
+
+#### CP Systems (Consistency + Partition Tolerance)
+**Sacrifice Availability**: System may become unavailable during partitions
+- **Examples**: MongoDB, Redis Cluster, HBase
+- **Use case**: Banking systems, inventory management
+- **Behavior**: Block operations until consistency restored
+
+#### AP Systems (Availability + Partition Tolerance)
+**Sacrifice Consistency**: Accept temporary inconsistency for availability
+- **Examples**: Cassandra, DynamoDB, CouchDB
+- **Use case**: Social media, content delivery
+- **Behavior**: Continue serving potentially stale data
+
+#### CA Systems (Consistency + Availability)
+**Not partition tolerant**: Only work in single node or perfect network
+- **Examples**: Traditional RDBMS in single node
+- **Reality**: Not feasible in distributed systems
+- **Note**: Network partitions will occur
+
+### Real-World Examples:
+
+#### Banking System (CP)
+```
+Scenario: Transfer $100 from Account A to Account B
+Choice: Ensure both accounts updated correctly OR system available
+Decision: Block operation until consistency guaranteed
+```
+
+#### Social Media Feed (AP)
+```
+Scenario: User posts update, friends should see it
+Choice: All friends see update immediately OR system stays responsive
+Decision: Some friends may see stale feed temporarily
+```
+
+### PACELC Theorem
+**Extension of CAP**: Even without partitions, trade-off between Latency and Consistency
+
+**PAC**: During partition, choose A or C
+**ELC**: Else (normal operation), choose L (Latency) or C (Consistency)
+
+### Where to Apply?
+- **System design decisions**: Choose database based on requirements
+- **Architecture planning**: Understand trade-offs upfront
+- **Incident response**: Know which property to sacrifice
+
+### When to Choose What?
+
+#### Choose CP when:
+- **Financial systems**: Money transfers, trading
+- **Inventory management**: Stock levels
+- **Configuration systems**: Feature flags
+- **Strong consistency required**
+
+#### Choose AP when:
+- **Social networks**: Posts, comments, likes
+- **Content delivery**: News, articles
+- **User-generated content**: Reviews, ratings
+- **User experience priority**
+
+---
+
+## Long Polling vs WebSockets
+
+### The Real-Time Communication Problem
+**Challenge**: HTTP is request-response, but we need server-to-client communication.
+
+### Long Polling
+
+#### What is Long Polling?
+**Client sends request → Server holds request open → Sends response when data available**
+
+#### How Long Polling Works?
+```
+1. Client sends HTTP request
+2. Server holds connection open (30-60 seconds)
+3. When data available: Send response + close connection
+4. Client immediately sends new request
+5. Repeat cycle
+```
+
+#### Why Long Polling?
+- **HTTP compatible**: Works with existing infrastructure
+- **Simple**: Easy to implement and debug
+- **Fallback friendly**: Graceful degradation
+- **Firewall friendly**: Uses standard HTTP
+
+#### Long Polling Limitations:
+- **Resource intensive**: One connection per client
+- **Latency**: Still request-response cycle
+- **Proxy issues**: Some proxies timeout connections
+- **Scalability**: Thread-per-connection model
+
+### WebSockets
+
+#### What are WebSockets?
+**Full-duplex communication** over single TCP connection - both client and server can send data anytime.
+
+#### How WebSockets Work?
+```
+1. HTTP handshake: Upgrade to WebSocket protocol
+2. Persistent connection: TCP connection stays open
+3. Bidirectional: Both sides can send messages
+4. Low overhead: Minimal frame overhead
+5. Close connection: Either side can close
+```
+
+#### Why WebSockets?
+- **Real-time**: Instant bidirectional communication
+- **Low latency**: No HTTP overhead per message
+- **Efficient**: Single connection, minimal overhead
+- **Stateful**: Connection maintains context
+
+#### WebSocket Limitations:
+- **Complexity**: More complex than HTTP
+- **Infrastructure**: Proxy/firewall configuration needed
+- **Connection management**: Handle disconnections, reconnections
+- **Scaling**: Sticky sessions or sophisticated load balancing
+
+### Feature Comparison
+
+| Feature | Long Polling | WebSockets |
+|---------|--------------|------------|
+| **Latency** | Medium (HTTP overhead) | Low (minimal overhead) |
+| **Scalability** | Limited (connection per client) | Better (efficient connections) |
+| **Infrastructure** | HTTP compatible | Requires WebSocket support |
+| **Bidirectional** | No (request-response only) | Yes (both directions) |
+| **Implementation** | Simple | More complex |
+| **Debugging** | Easy (standard HTTP tools) | Harder (specialized tools) |
+| **Resource Usage** | High (server resources) | Low (efficient protocol) |
+
+### When to Use Long Polling?
+
+#### Use Cases:
+- **Simple notifications**: Order status updates
+- **Infrequent updates**: News alerts, system notifications
+- **Legacy systems**: Cannot modify infrastructure
+- **Simple requirements**: Basic real-time features
+
+#### Ideal Scenarios:
+- **Low message frequency**: Few messages per minute
+- **Simple infrastructure**: Standard HTTP stack
+- **Development speed**: Quick implementation needed
+- **Fallback mechanism**: For WebSocket failures
+
+### When to Use WebSockets?
+
+#### Use Cases:
+- **Real-time collaboration**: Google Docs, Figma
+- **Gaming**: Multiplayer games, real-time updates
+- **Trading platforms**: Live price updates
+- **Chat applications**: Instant messaging
+- **Live streaming**: Real-time comments, reactions
+
+#### Ideal Scenarios:
+- **High frequency**: Many messages per second
+- **Bidirectional**: Both client and server send data
+- **Low latency**: Millisecond response times needed
+- **Rich interactions**: Complex real-time features
+
+### Implementation Examples:
+
+#### Long Polling Pattern:
+```javascript
+// Client-side
+async function longPoll() {
+  while (true) {
+    try {
+      const response = await fetch('/poll', {
+        timeout: 30000  // 30 second timeout
+      });
+      const data = await response.json();
+      handleUpdate(data);
+    } catch (error) {
+      await sleep(5000);  // Wait before retrying
+    }
+  }
+}
+```
+
+#### WebSocket Pattern:
+```javascript
+// Client-side
+const ws = new WebSocket('ws://localhost:8080');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  handleUpdate(data);
+};
+
+ws.send(JSON.stringify({ type: 'subscribe', channel: 'updates' }));
+```
+
+### Hybrid Approaches:
+- **Start with Long Polling**: Upgrade to WebSockets when needed
+- **Graceful degradation**: WebSockets with Long Polling fallback
+- **Server-Sent Events (SSE)**: Server-to-client only, simpler than WebSockets
+
+---
+
+## Decision Matrix: When to Use What
+
+### Application Scale Classifications
+
+#### Small Scale (< 10K users)
+- **Simple architecture**: Monolith preferred
+- **Single database**: Vertical scaling sufficient
+- **Basic infrastructure**: Standard hosting
+- **Quick development**: Time to market priority
+
+#### Medium Scale (10K - 100K users)
+- **Modular monolith**: Some service separation
+- **Database optimization**: Indexes, caching
+- **Load balancing**: Multiple app servers
+- **Performance monitoring**: Identify bottlenecks
+
+#### Large Scale (100K - 1M users)
+- **Microservices**: Domain-driven separation
+- **Database scaling**: Read replicas, caching layers
+- **Distributed systems**: Multiple data centers
+- **Advanced monitoring**: APM, distributed tracing
+
+#### Massive Scale (1M+ users)
+- **Global distribution**: Multiple regions
+- **Sharding**: Horizontal database partitioning
+- **Advanced caching**: Multi-layer cache hierarchy
+- **Specialized systems**: Search engines, message queues
+
+### Decision Framework by Application Type
+
+#### E-commerce Platform
+
+**Small Scale**:
+- **Architecture**: Monolithic application
+- **Database**: Single PostgreSQL with indexes
+- **Caching**: Application-level caching (Redis)
+- **CDN**: Basic CDN for images
+- **Real-time**: Long polling for order updates
+
+**Medium Scale**:
+- **Architecture**: Modular services (User, Order, Payment, Inventory)
+- **Database**: Master-slave PostgreSQL + Redis
+- **Load Balancer**: nginx with multiple app servers
+- **Caching**: Multi-layer (Redis + Application cache)
+- **CDN**: Global CDN with API caching
+
+**Large Scale**:
+- **Architecture**: Full microservices with API Gateway
+- **Database**: Sharded databases + Read replicas
+- **Scaling**: Horizontal scaling with container orchestration
+- **Caching**: Distributed caching with consistent hashing
+- **Real-time**: WebSockets for live inventory updates
+
+#### Social Media Platform
+
+**Small Scale**:
+- **Architecture**: Monolithic with separate media service
+- **Database**: Single database with heavy indexing
+- **Caching**: User session and feed caching
+- **Storage**: Cloud storage for media
+- **Real-time**: Long polling for notifications
+
+**Medium Scale**:
+- **Architecture**: Service separation (User, Post, Media, Notification)
+- **Database**: Master-slave with dedicated read replicas for feeds
+- **Caching**: Feed caching + Content caching
+- **CDN**: Global CDN for media delivery
+- **Search**: Elasticsearch for content search
+
+**Large Scale**:
+- **Architecture**: Event-driven microservices
+- **Database**: Multiple specialized databases (Graph for social, Time-series for analytics)
+- **Scaling**: Auto-scaling with message queues
+- **Caching**: Multi-layer with edge caching
+- **Real-time**: WebSockets for live features
+- **Consistency**: AP system (eventual consistency)
+
+#### Financial Trading Platform
+
+**Any Scale**:
+- **Consistency**: CP system (strong consistency required)
+- **Database**: ACID-compliant database with immediate consistency
+- **Caching**: Limited caching (data freshness critical)
+- **Real-time**: WebSockets with ultra-low latency
+- **Architecture**: Highly optimized, minimal network hops
+- **Monitoring**: Real-time monitoring with strict SLAs
+
+#### Gaming Platform
+
+**Small Scale**:
+- **Architecture**: Game servers + matchmaking service
+- **Database**: In-memory state + persistent storage for player data
+- **Real-time**: WebSockets for game state
+- **Caching**: Player profile caching
+
+**Large Scale**:
+- **Architecture**: Distributed game servers with load balancing
+- **Database**: Sharded player data + leaderboard systems
+- **Scaling**: Auto-scaling based on player count
+- **CDN**: Global CDN for game assets
+- **Real-time**: Optimized WebSocket connections with connection pooling
+
+### Technology Selection Guide
+
+#### When to Choose Each Database Pattern:
+
+**Single Database**:
+- User count: < 10K
+- Data size: < 100GB
+- Query complexity: Complex joins needed
+- Consistency: Strong ACID requirements
+
+**Master-Slave Replication**:
+- Read/Write ratio: 80/20 or higher
+- User count: 10K - 100K
+- Geographic distribution: Multiple regions
+- Availability: High availability needed
+
+**Horizontal Sharding**:
+- User count: 100K+
+- Data size: 1TB+
+- Write-heavy: High write throughput
+- Growth: Rapid scaling needed
+
+#### When to Choose Each Caching Strategy:
+
+**Application Cache Only**:
+- Small scale: < 10K users
+- Simple data: User sessions, configurations
+- Budget: Minimal infrastructure cost
+
+**Redis/Memcached**:
+- Medium scale: 10K - 100K users
+- Structured caching: Complex data structures
+- Persistence: Optional data persistence
+
+**Multi-layer Caching**:
+- Large scale: 100K+ users
+- Global: Multiple data centers
+- Performance: Sub-millisecond requirements
+
+#### When to Choose Each Real-time Solution:
+
+**No Real-time**:
+- Batch processing: Reporting, analytics
+- Simple apps: Basic CRUD operations
+- Cost-sensitive: Minimal infrastructure
+
+**Long Polling**:
+- Low frequency: < 1 message/minute per user
+- Simple infrastructure: Standard HTTP stack
+- Legacy systems: Cannot modify existing infrastructure
+
+**WebSockets**:
+- High frequency: > 1 message/second per user
+- Bidirectional: Client and server both send
+- Low latency: Real-time collaboration needed
+
+### Common Anti-patterns to Avoid
+
+#### Premature Optimization
+- **Don't**: Start with microservices for small applications
+- **Do**: Begin with monolith, extract services when needed
+
+#### Over-engineering
+- **Don't**: Implement every pattern from day one
+- **Do**: Add complexity as scale demands
+
+#### Wrong Consistency Model
+- **Don't**: Use eventual consistency for financial data
+- **Do**: Match consistency requirements to business needs
+
+#### Cache Everything
+- **Don't**: Cache data that changes frequently
+- **Do**: Cache based on access patterns and staleness tolerance
+
+### Migration Paths
+
+#### Monolith → Microservices
+1. **Identify bounded contexts**: Domain-driven design
+2. **Extract services gradually**: Strangler fig pattern
+3. **Data migration**: Separate databases last
+4. **API Gateway**: Add centralized routing
+5. **Monitoring**: Distributed tracing and logging
+
+#### Single Database → Distributed
+1. **Add read replicas**: Scale read operations
+2. **Implement caching**: Reduce database load
+3. **Vertical scaling**: Upgrade hardware first
+4. **Horizontal sharding**: Last resort for write scaling
+
+#### Synchronous → Event-driven
+1. **Identify async operations**: Background processing
+2. **Add message queues**: Decouple services
+3. **Implement event sourcing**: Audit trails and replay
+4. **Handle eventual consistency**: Update application logic
+
+This decision matrix should guide your architecture choices based on current scale and growth projections. Remember: **start simple, scale as needed, and always measure before optimizing**.

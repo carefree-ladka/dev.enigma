@@ -1,0 +1,1165 @@
+# Complete System Design Study Guide
+
+## Table of Contents
+
+1. [Fundamentals](#fundamentals)
+2. [Networking Basics](#networking-basics)
+3. [Data Storage & Databases](#data-storage--databases)
+4. [Caching Strategies](#caching-strategies)
+5. [System Architecture Patterns](#system-architecture-patterns)
+6. [Communication Patterns](#communication-patterns)
+7. [Scalability & Performance](#scalability--performance)
+8. [Distributed Systems](#distributed-systems)
+9. [Microservices Architecture](#microservices-architecture)
+10. [Big Data Processing](#big-data-processing)
+11. [Security](#security)
+12. [Observability](#observability)
+13. [Cloud & Infrastructure](#cloud--infrastructure)
+14. [Trade-offs & Decision Making](#trade-offs--decision-making)
+15. [Interview Preparation](#interview-preparation)
+
+---
+
+## Fundamentals
+
+### What is System Design?
+
+System design is the process of defining the architecture, components, modules, interfaces, and data flow of a system to meet specific requirements. It's the blueprint before building.
+
+**Key Questions System Design Answers:**
+- How will the system handle scale (millions of users, huge datasets)?
+- How will it ensure availability (always up, fault-tolerant)?
+- How will it ensure consistency (data correctness, ordering)?
+- How will the different parts communicate (APIs, queues, databases)?
+- How will it evolve and adapt to new requirements?
+
+**Design Levels:**
+- **High-Level Design (HLD)**: Architecture, components, interactions
+- **Low-Level Design (LLD)**: Internal class diagrams, detailed logic, DB schemas
+
+### Why System Design Matters
+
+**Core Benefits:**
+1. **Scalability**: Handle growth from 100 to 1 million users
+2. **Performance**: Optimize resource usage and reduce latency
+3. **Reliability**: Minimize downtime with fault tolerance
+4. **Maintainability**: Easy to add features and fix bugs
+5. **Security**: Built-in authentication, authorization, encryption
+6. **Cost-effectiveness**: Balance performance vs. cost
+7. **Team Collaboration**: Shared blueprint for all teams
+
+### Key System Characteristics
+
+| Characteristic | Description | Techniques |
+|----------------|-------------|------------|
+| **Scalability** | Handle increasing load gracefully | Horizontal/vertical scaling, load balancing |
+| **Availability** | System uptime (99.9%, 99.99%) | Redundancy, failover, replication |
+| **Consistency** | All nodes see same data | ACID, eventual consistency, consensus |
+| **Partition Tolerance** | Function despite network failures | Distributed design, replication |
+| **Performance** | Low latency, high throughput | Caching, CDN, optimization |
+| **Reliability** | System works as expected | Testing, monitoring, fault tolerance |
+| **Security** | Protect against threats | Authentication, authorization, encryption |
+
+---
+
+## Networking Basics
+
+### Client-Server Architecture
+
+**Definition**: A model where clients (browsers, mobile apps) request services from servers.
+
+```
+Client (Browser) → HTTP Request → Server → Database → Response → Client
+```
+
+**Components:**
+- **Client**: Handles UI and user interaction
+- **Server**: Handles business logic and data processing
+- **Network**: Communication medium (HTTP/HTTPS)
+
+### IP Addresses
+
+**IPv4 vs IPv6:**
+- **IPv4**: 32-bit (192.168.1.1) - Limited addresses (~4.3B)
+- **IPv6**: 128-bit (2001:db8::1) - Huge address space
+
+**Types:**
+- **Public**: Routable on internet
+- **Private**: Internal network use (192.168.x.x, 10.x.x.x)
+- **Static**: Fixed IP address
+- **Dynamic**: Assigned by DHCP
+
+### OSI Model
+
+Seven layers of network communication:
+
+| Layer | Name | Function | Examples |
+|-------|------|----------|----------|
+| 7 | Application | User interface | HTTP, HTTPS, FTP |
+| 6 | Presentation | Data formatting | SSL/TLS, JSON, XML |
+| 5 | Session | Connection management | NetBIOS, RPC |
+| 4 | Transport | End-to-end delivery | TCP, UDP |
+| 3 | Network | Routing | IP, ICMP |
+| 2 | Data Link | Local delivery | Ethernet, WiFi |
+| 1 | Physical | Electrical signals | Cables, radio waves |
+
+### TCP vs UDP
+
+| Feature | TCP | UDP |
+|---------|-----|-----|
+| **Connection** | Connection-oriented | Connectionless |
+| **Reliability** | Guaranteed delivery | Best effort |
+| **Ordering** | Ordered packets | No ordering |
+| **Speed** | Slower (overhead) | Faster |
+| **Use Cases** | Web pages, email, file transfer | Video streaming, gaming, DNS |
+
+### DNS (Domain Name System)
+
+**Purpose**: Translate domain names to IP addresses
+
+**DNS Resolution Process:**
+1. User types `google.com`
+2. Browser checks local cache
+3. Queries local DNS resolver
+4. Resolver queries root servers
+5. Queries TLD servers (.com)
+6. Queries authoritative servers
+7. Returns IP address
+8. Browser connects to IP
+
+**DNS Record Types:**
+- **A**: Maps domain to IPv4
+- **AAAA**: Maps domain to IPv6
+- **CNAME**: Alias to another domain
+- **MX**: Mail server
+- **TXT**: Text records (verification, SPF)
+
+### HTTP/HTTPS
+
+**HTTP**: Stateless protocol for web communication
+- Methods: GET, POST, PUT, DELETE, PATCH
+- Status Codes: 2xx (success), 3xx (redirect), 4xx (client error), 5xx (server error)
+
+**HTTPS**: HTTP over TLS/SSL
+- Encrypted communication
+- Certificate-based authentication
+- Port 443 (vs HTTP port 80)
+
+### WebSockets
+
+**Definition**: Full-duplex communication over single TCP connection
+
+**Use Cases:**
+- Real-time chat applications
+- Live notifications
+- Online gaming
+- Collaborative editing
+- Stock price tickers
+
+**WebSocket Handshake:**
+```
+GET /chat HTTP/1.1
+Host: server.example.com
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+```
+
+---
+
+## Data Storage & Databases
+
+### Database Fundamentals
+
+**Database**: Organized collection of structured data
+**DBMS**: Software that manages database operations (MySQL, PostgreSQL, MongoDB)
+
+**DBMS Responsibilities:**
+- Data storage & retrieval
+- Concurrency control
+- Transaction management
+- Security (authentication, authorization)
+- Backup & recovery
+
+### SQL vs NoSQL Databases
+
+| Aspect | SQL | NoSQL |
+|--------|-----|--------|
+| **Structure** | Tables with fixed schema | Flexible schema |
+| **Scaling** | Vertical (mainly) | Horizontal |
+| **Consistency** | ACID transactions | Eventual consistency |
+| **Query Language** | SQL | Various (MongoDB Query, etc.) |
+| **Use Cases** | Financial systems, inventory | Social media, IoT, analytics |
+| **Examples** | MySQL, PostgreSQL | MongoDB, Cassandra, Redis |
+
+### NoSQL Database Types
+
+1. **Document Stores**: JSON-like documents
+   - Examples: MongoDB, CouchDB
+   - Use: Content management, catalogs
+
+2. **Key-Value Stores**: Simple key-value pairs
+   - Examples: Redis, DynamoDB
+   - Use: Caching, session storage
+
+3. **Column-Family**: Wide column storage
+   - Examples: Cassandra, HBase
+   - Use: Analytics, time-series data
+
+4. **Graph Databases**: Nodes and relationships
+   - Examples: Neo4j, Amazon Neptune
+   - Use: Social networks, recommendation engines
+
+### ACID Properties
+
+**Atomicity**: All or nothing - transaction fully completes or fully fails
+**Consistency**: Data integrity maintained across all constraints
+**Isolation**: Concurrent transactions don't interfere
+**Durability**: Committed data survives system failures
+
+**Example**: Bank Transfer
+```
+BEGIN TRANSACTION
+  UPDATE accounts SET balance = balance - 100 WHERE id = 'A';
+  UPDATE accounts SET balance = balance + 100 WHERE id = 'B';
+COMMIT; -- Both succeed or both fail
+```
+
+### Database Replication
+
+**Master-Slave Replication:**
+- Master handles writes
+- Slaves handle reads
+- Asynchronous or synchronous replication
+
+**Master-Master Replication:**
+- Multiple masters handle both reads and writes
+- Requires conflict resolution
+- Higher complexity but better availability
+
+**Benefits:**
+- High availability
+- Load distribution
+- Disaster recovery
+- Geographic distribution
+
+### Database Sharding
+
+**Definition**: Horizontally partitioning data across multiple databases
+
+**Sharding Strategies:**
+1. **Range-based**: Partition by value ranges (A-M, N-Z)
+2. **Hash-based**: Use hash function on key
+3. **Directory-based**: Lookup service maintains shard mapping
+
+**Challenges:**
+- Cross-shard joins are expensive
+- Rebalancing when adding/removing shards
+- Hotspots if sharding key is not well-distributed
+
+### Indexing
+
+**Purpose**: Speed up database queries by creating shortcuts to data
+
+**Index Types:**
+- **B-Tree**: Balanced tree, good for range queries
+- **Hash**: Fast equality lookups
+- **Bitmap**: Good for low-cardinality data
+- **Full-text**: Search within text content
+
+**Trade-offs:**
+- ✅ Faster reads (O(log n) vs O(n))
+- ❌ Slower writes (must update index)
+- ❌ Additional storage overhead
+
+### Normalization vs Denormalization
+
+**Normalization**: Organize data to reduce redundancy
+- 1NF, 2NF, 3NF forms
+- Reduces storage, maintains data integrity
+- May require joins for complex queries
+
+**Denormalization**: Add redundant data for performance
+- Faster reads (avoid joins)
+- More storage required
+- Risk of data inconsistency
+
+### Consistency Models
+
+**Strong Consistency**: All reads receive most recent write
+- Examples: Traditional RDBMS, HBase
+- Higher latency but guaranteed correctness
+
+**Eventual Consistency**: System becomes consistent over time
+- Examples: DynamoDB, Cassandra
+- Better performance and availability
+
+**Causal Consistency**: Causally related operations are seen in order
+- Example: Comments appear after the post they reply to
+
+---
+
+## Caching Strategies
+
+### What is Caching?
+
+Caching stores frequently accessed data in faster storage to reduce latency and database load.
+
+**Cache Hierarchy:**
+1. **Browser Cache**: Static assets (CSS, JS, images)
+2. **CDN Cache**: Global content delivery
+3. **Application Cache**: In-memory (Redis, Memcached)
+4. **Database Cache**: Query result caching
+
+### Caching Patterns
+
+**1. Cache-Aside (Lazy Loading)**
+```
+if data not in cache:
+    data = fetch_from_database()
+    cache.set(key, data)
+return data
+```
+
+**2. Write-Through**
+```
+cache.set(key, data)
+database.save(data)
+```
+
+**3. Write-Behind (Write-Back)**
+```
+cache.set(key, data)
+# Asynchronously write to database later
+```
+
+**4. Refresh-Ahead**
+```
+if cache_expiry_soon:
+    background_refresh_cache()
+```
+
+### Cache Eviction Policies
+
+**LRU (Least Recently Used)**: Remove least recently accessed items
+**LFU (Least Frequently Used)**: Remove least frequently accessed items
+**FIFO (First In, First Out)**: Remove oldest items
+**TTL (Time To Live)**: Remove after fixed time period
+
+### Distributed Caching
+
+**Need**: Single cache can't handle large-scale applications
+
+**Features:**
+- Data partitioning across multiple nodes
+- Replication for availability
+- Consistent hashing for even distribution
+
+**Examples:**
+- Redis Cluster
+- Memcached with client-side sharding
+
+### Content Delivery Network (CDN)
+
+**Purpose**: Deliver content from servers closest to users
+
+**Benefits:**
+- Reduced latency
+- Reduced origin server load
+- Better user experience globally
+- DDoS protection
+
+**CDN Types:**
+- **Push CDN**: Upload content to CDN servers
+- **Pull CDN**: CDN fetches content on first request
+
+---
+
+## System Architecture Patterns
+
+### Monolithic Architecture
+
+**Characteristics:**
+- Single deployable unit
+- Shared database
+- Internal function calls
+
+**Pros:**
+- Simple to develop and deploy initially
+- Easy to test
+- Good performance (no network calls)
+
+**Cons:**
+- Hard to scale individual components
+- Technology lock-in
+- Large teams coordination issues
+
+### Microservices Architecture
+
+**Characteristics:**
+- Small, independent services
+- Each service owns its data
+- Communication via APIs
+
+**Pros:**
+- Independent scaling and deployment
+- Technology diversity
+- Team autonomy
+- Fault isolation
+
+**Cons:**
+- Distributed system complexity
+- Network latency
+- Data consistency challenges
+- Monitoring complexity
+
+### Service-Oriented Architecture (SOA)
+
+**Definition**: Services communicate through well-defined interfaces
+
+**Key Concepts:**
+- Service contracts
+- Service registry and discovery
+- Enterprise Service Bus (ESB)
+
+### Event-Driven Architecture
+
+**Characteristics:**
+- Components communicate via events
+- Asynchronous processing
+- Loose coupling
+
+**Components:**
+- **Event Producers**: Generate events
+- **Event Channels**: Transport events
+- **Event Consumers**: Process events
+
+**Benefits:**
+- High scalability
+- Loose coupling
+- Real-time processing capability
+
+### Serverless Architecture
+
+**Characteristics:**
+- Functions as a Service (FaaS)
+- Event-triggered execution
+- Auto-scaling
+- Pay-per-execution
+
+**Pros:**
+- No server management
+- Cost-effective for variable workloads
+- Automatic scaling
+
+**Cons:**
+- Cold start latency
+- Vendor lock-in
+- Limited runtime environment
+
+---
+
+## Communication Patterns
+
+### API Design
+
+**REST (Representational State Transfer)**
+- Resource-based URLs
+- HTTP methods (GET, POST, PUT, DELETE)
+- Stateless communication
+- JSON payloads
+
+**GraphQL**
+- Single endpoint
+- Client specifies required data
+- Strong type system
+- Reduces over-fetching
+
+**gRPC**
+- HTTP/2 based
+- Protocol Buffers
+- Bi-directional streaming
+- High performance
+
+### Message Queues
+
+**Purpose**: Asynchronous communication between services
+
+**Benefits:**
+- Decoupling of services
+- Load leveling
+- Reliability (message persistence)
+- Scalability
+
+**Queue Types:**
+- **Point-to-Point**: One consumer per message
+- **Publish-Subscribe**: Multiple consumers per message
+
+**Popular Systems:**
+- RabbitMQ
+- Apache Kafka
+- Amazon SQS
+
+### Publish-Subscribe Pattern
+
+**Components:**
+- **Publishers**: Send messages to topics
+- **Topics**: Named channels for messages
+- **Subscribers**: Receive messages from topics
+- **Message Broker**: Routes messages
+
+**Use Cases:**
+- Event notifications
+- Real-time updates
+- Microservices communication
+
+### Long Polling vs WebSockets vs Server-Sent Events
+
+| Pattern | Description | Use Case |
+|---------|-------------|----------|
+| **Long Polling** | Client polls server, server holds request until data available | Simple real-time updates |
+| **WebSockets** | Full-duplex communication over single connection | Chat apps, gaming |
+| **Server-Sent Events** | Server pushes events to client over HTTP | Live notifications, feeds |
+
+### API Gateway
+
+**Purpose**: Single entry point for all client requests
+
+**Responsibilities:**
+- Request routing
+- Authentication and authorization
+- Rate limiting and throttling
+- Request/response transformation
+- Monitoring and analytics
+
+**Benefits:**
+- Centralized cross-cutting concerns
+- Protocol translation
+- Simplified client implementation
+
+---
+
+## Scalability & Performance
+
+### Scaling Strategies
+
+**Vertical Scaling (Scale Up)**
+- Add more power to existing machine
+- CPU, RAM, Storage upgrades
+- **Pros**: Simple, no code changes
+- **Cons**: Hardware limits, single point of failure
+
+**Horizontal Scaling (Scale Out)**
+- Add more machines to pool
+- Distribute load across instances
+- **Pros**: No hardware limits, fault tolerance
+- **Cons**: Complexity, data consistency challenges
+
+### Load Balancing
+
+**Purpose**: Distribute incoming requests across multiple servers
+
+**Load Balancing Algorithms:**
+- **Round Robin**: Sequential distribution
+- **Least Connections**: Route to server with fewest active connections
+- **Weighted**: Distribute based on server capacity
+- **IP Hash**: Route based on client IP (session stickiness)
+
+**Load Balancer Types:**
+- **Layer 4**: Works at transport layer (TCP/UDP)
+- **Layer 7**: Works at application layer (HTTP)
+
+### Performance Optimization
+
+**Database Optimization:**
+- Proper indexing
+- Query optimization
+- Connection pooling
+- Read replicas
+
+**Application Optimization:**
+- Code profiling
+- Memory management
+- Asynchronous processing
+- Connection reuse
+
+**Network Optimization:**
+- CDN usage
+- Compression (gzip, brotli)
+- HTTP/2
+- Keep-alive connections
+
+---
+
+## Distributed Systems
+
+### CAP Theorem
+
+**Consistency**: All nodes see same data simultaneously
+**Availability**: System remains operational
+**Partition Tolerance**: System continues despite network failures
+
+**Key Insight**: Can only guarantee 2 out of 3 in a distributed system
+
+**Examples:**
+- **CP**: HBase (Consistency + Partition Tolerance)
+- **AP**: DynamoDB (Availability + Partition Tolerance)
+- **CA**: Traditional RDBMS (not truly distributed)
+
+### PACELC Theorem
+
+**Extension of CAP**: If Partition → choose between Availability and Consistency
+**Else**: Choose between Latency and Consistency
+
+### Consensus Algorithms
+
+**Purpose**: Achieve agreement among distributed nodes
+
+**Raft Algorithm:**
+- Leader election
+- Log replication
+- Safety properties
+- Used in etcd, Consul
+
+**Paxos Algorithm:**
+- Complex but proven correct
+- Used in Google's Chubby
+
+### Distributed Transactions
+
+**Two-Phase Commit (2PC):**
+1. **Prepare Phase**: Coordinator asks participants to prepare
+2. **Commit Phase**: If all agree, commit; otherwise, abort
+
+**Challenges:**
+- Blocking protocol
+- Coordinator single point of failure
+
+**Three-Phase Commit (3PC):**
+- Adds "pre-commit" phase
+- Non-blocking under certain failure conditions
+
+### Handling Failures
+
+**Failure Types:**
+- Node crashes
+- Network partitions
+- Byzantine failures (malicious nodes)
+
+**Mitigation Strategies:**
+- Replication
+- Circuit breakers
+- Retry with exponential backoff
+- Timeout mechanisms
+- Health checks
+
+---
+
+## Microservices Architecture
+
+### Service Decomposition
+
+**Decomposition Strategies:**
+- By business capability
+- By data ownership
+- By team structure (Conway's Law)
+
+### Inter-Service Communication
+
+**Synchronous:**
+- REST APIs
+- gRPC
+- GraphQL Federation
+
+**Asynchronous:**
+- Message queues
+- Event streaming
+- Publish-subscribe
+
+### Service Discovery
+
+**Purpose**: Services dynamically find each other
+
+**Approaches:**
+- **Client-side**: Client queries service registry
+- **Server-side**: Load balancer handles discovery
+
+**Service Registry Examples:**
+- Netflix Eureka
+- Consul
+- etcd
+
+### Microservices Patterns
+
+**Circuit Breaker Pattern:**
+- Prevents cascading failures
+- States: Closed, Open, Half-Open
+
+**Bulkhead Pattern:**
+- Isolate resources to prevent failures from spreading
+
+**Saga Pattern:**
+- Manage distributed transactions
+- Choreography vs Orchestration approaches
+
+**Sidecar Pattern:**
+- Auxiliary services alongside main service
+- Examples: Logging, monitoring, proxying
+
+### Service Mesh
+
+**Purpose**: Infrastructure layer for service-to-service communication
+
+**Features:**
+- Traffic management
+- Security (mTLS)
+- Observability
+- Policy enforcement
+
+**Components:**
+- **Data Plane**: Sidecar proxies (Envoy)
+- **Control Plane**: Management and configuration
+
+**Popular Service Meshes:**
+- Istio
+- Linkerd
+- Consul Connect
+
+---
+
+## Big Data Processing
+
+### Batch vs Stream Processing
+
+| Aspect | Batch Processing | Stream Processing |
+|--------|------------------|-------------------|
+| **Latency** | High (hours/days) | Low (seconds/minutes) |
+| **Throughput** | High | Medium |
+| **Complexity** | Lower | Higher |
+| **Use Cases** | ETL, reports, analytics | Real-time monitoring, fraud detection |
+| **Examples** | Hadoop MapReduce, Spark | Kafka Streams, Apache Flink |
+
+### ETL Pipelines
+
+**Extract, Transform, Load Process:**
+
+1. **Extract**: Pull data from various sources
+   - Databases, APIs, files, logs
+   - Handle different formats and protocols
+
+2. **Transform**: Clean and process data
+   - Data validation and cleansing
+   - Format conversion
+   - Aggregations and calculations
+
+3. **Load**: Store in target system
+   - Data warehouse
+   - Data lake
+   - Operational systems
+
+**ETL Tools:**
+- Apache Airflow
+- Apache NiFi
+- Talend
+- AWS Glue
+
+### MapReduce
+
+**Programming Model**: Process large datasets in parallel
+
+**Phases:**
+1. **Map**: Process input data and emit key-value pairs
+2. **Shuffle**: Group by keys
+3. **Reduce**: Process grouped data and output results
+
+**Example - Word Count:**
+```
+Map: (word, 1) for each word
+Reduce: Sum counts for each word
+```
+
+### Data Lakes vs Data Warehouses
+
+| Feature | Data Lake | Data Warehouse |
+|---------|-----------|----------------|
+| **Data Types** | All types (structured, unstructured) | Structured |
+| **Schema** | Schema-on-read | Schema-on-write |
+| **Cost** | Lower | Higher |
+| **Query Performance** | Variable | High |
+| **Use Cases** | Machine learning, exploration | Business intelligence, reporting |
+
+---
+
+## Security
+
+### Authentication vs Authorization
+
+**Authentication**: Verify who the user is
+- Username/password
+- Multi-factor authentication
+- Biometrics
+- Single Sign-On (SSO)
+
+**Authorization**: Determine what user can do
+- Role-Based Access Control (RBAC)
+- Attribute-Based Access Control (ABAC)
+- Access Control Lists (ACLs)
+
+### OAuth 2.0 and OpenID Connect
+
+**OAuth 2.0**: Authorization framework
+- Allows third-party access without sharing credentials
+- Grant types: Authorization Code, Client Credentials, Implicit
+
+**OpenID Connect (OIDC)**: Authentication layer on OAuth 2.0
+- Returns ID tokens for user identity verification
+- Used for "Login with Google/Facebook"
+
+### JWT (JSON Web Tokens)
+
+**Structure**: Header.Payload.Signature
+- **Header**: Algorithm and token type
+- **Payload**: Claims (user info, permissions)
+- **Signature**: Verify token integrity
+
+**Benefits:**
+- Stateless
+- Self-contained
+- Cross-domain authentication
+
+### SSL/TLS and mTLS
+
+**SSL/TLS**: Secure communication protocols
+- Encryption of data in transit
+- Server authentication via certificates
+- TLS 1.3 is current standard
+
+**mTLS (Mutual TLS)**: Both client and server authenticate
+- Common in microservices communication
+- Zero-trust network security
+
+### Role-Based Access Control (RBAC)
+
+**Components:**
+- **Users**: People or systems
+- **Roles**: Job functions (Admin, Editor, Viewer)
+- **Permissions**: Specific actions
+- **Resources**: What's being accessed
+
+**Benefits:**
+- Simplified access management
+- Principle of least privilege
+- Scalable permission model
+
+---
+
+## Observability
+
+### The Three Pillars of Observability
+
+**1. Logging**
+- Record of what happened
+- Structured vs unstructured logs
+- Log levels: DEBUG, INFO, WARN, ERROR
+- Centralized logging (ELK Stack, Splunk)
+
+**2. Monitoring**
+- Metrics and time-series data
+- System metrics: CPU, memory, disk
+- Application metrics: response time, error rate
+- Business metrics: conversions, revenue
+
+**3. Tracing**
+- Track requests across distributed systems
+- Understand service dependencies
+- Identify bottlenecks
+- Tools: Jaeger, Zipkin, AWS X-Ray
+
+### Monitoring Best Practices
+
+**SLI (Service Level Indicators)**: Metrics that matter
+- Latency, error rate, throughput
+
+**SLO (Service Level Objectives)**: Target values
+- 99.9% uptime, <100ms response time
+
+**SLA (Service Level Agreements)**: Contracts with users
+- Penalties for not meeting SLOs
+
+**Alerting Guidelines:**
+- Alert on symptoms, not causes
+- Avoid alert fatigue
+- Include runbooks for common issues
+
+### Chaos Engineering
+
+**Purpose**: Test system resilience by deliberately introducing failures
+
+**Principles:**
+1. Define steady state
+2. Hypothesize steady state continues
+3. Introduce variables (failures)
+4. Disprove hypothesis
+
+**Chaos Engineering Tools:**
+- Chaos Monkey (Netflix)
+- Gremlin
+- Litmus
+
+---
+
+## Cloud & Infrastructure
+
+### Virtual Machines vs Containers
+
+| Feature | Virtual Machines | Containers |
+|---------|------------------|------------|
+| **Virtualization** | Hardware | OS-level |
+| **Resource Usage** | Heavy | Lightweight |
+| **Startup Time** | Minutes | Seconds |
+| **Isolation** | Strong | Process-level |
+| **Use Case** | Full OS environments | Microservices, CI/CD |
+
+### Container Orchestration
+
+**Kubernetes Features:**
+- Pod management
+- Service discovery
+- Load balancing
+- Auto-scaling
+- Rolling updates
+- Health checks
+
+**Key Concepts:**
+- **Pods**: Smallest deployable units
+- **Services**: Stable network endpoints
+- **Deployments**: Manage replica sets
+- **ConfigMaps/Secrets**: Configuration management
+
+### Infrastructure as Code (IaC)
+
+**Benefits:**
+- Version control for infrastructure
+- Reproducible deployments
+- Automated provisioning
+- Disaster recovery
+
+**Tools:**
+- Terraform
+- AWS CloudFormation
+- Ansible
+- Pulumi
+
+---
+
+## Trade-offs & Decision Making
+
+### Common Trade-offs in System Design
+
+**1. Consistency vs Availability**
+- Strong consistency → Higher latency, lower availability
+- Eventual consistency → Better performance, temporary inconsistency
+
+**2. Latency vs Throughput**
+- Optimizing for low latency may reduce throughput
+- Batching improves throughput but increases latency
+
+**3. Space vs Time**
+- Caching uses more memory for faster access
+- Denormalization uses more storage for faster queries
+
+**4. Complexity vs Performance**
+- Simple solutions easier to maintain
+- Complex optimizations may provide better performance
+
+### Decision Framework
+
+**1. Understand Requirements**
+- Functional requirements (features)
+- Non-functional requirements (performance, scalability)
+- Constraints (budget, timeline, team expertise)
+
+**2. Identify Key Metrics**
+- What matters most: latency, throughput, consistency?
+- What are acceptable trade-offs?
+
+**3. Consider Alternatives**
+- Multiple solutions for each component
+- Prototype critical components if uncertain
+
+**4. Plan for Evolution**
+- How will requirements change?
+- What's the migration strategy?
+
+---
+
+## Interview Preparation
+
+### System Design Interview Process
+
+**1. Requirements Gathering (10 minutes)**
+- Clarify functional requirements
+- Estimate scale (users, requests/sec, data size)
+- Identify constraints and assumptions
+
+**2. High-Level Design (15 minutes)**
+- Draw major components
+- Show data flow
+- Identify key services
+
+**3. Deep Dive (15 minutes)**
+- Focus on 1-2 critical components
+- Discuss data models
+- Address scalability concerns
+
+**4. Scale and Optimize (10 minutes)**
+- Identify bottlenecks
+- Discuss scaling strategies
+- Consider trade-offs
+
+### Common System Design Questions
+
+**1. Social Media Feed (Twitter, Instagram)**
+- User posts and follows
+- Timeline generation
+- Media storage and delivery
+
+**2. Chat System (WhatsApp, Slack)**
+- Real-time messaging
+- User presence
+- Message history
+
+**3. URL Shortener (bit.ly, TinyURL)**
+- Generate short URLs
+- Redirect to original URLs
+- Analytics and tracking
+
+**4. Video Streaming (YouTube, Netflix)**
+- Video upload and processing
+- Content delivery network
+- Recommendation system
+
+**5. Ride-Sharing (Uber, Lyft)**
+- Real-time location tracking
+- Driver-rider matching
+- Trip management
+
+### Interview Tips
+
+**1. Ask Clarifying Questions**
+- Don't assume requirements
+- Understand the scale and constraints
+- Clarify expected features
+
+**2. Start High-Level**
+- Draw overall architecture first
+- Add details progressively
+- Keep diagrams simple and clear
+
+**3. Think Out Loud**
+- Explain your thought process
+- Discuss trade-offs
+- Show different options
+
+**4. Consider Non-Functional Requirements**
+- Scalability, availability, consistency
+- Security and privacy
+- Performance and latency
+
+**5. Be Prepared for Follow-ups**
+- "What if we had 10x more users?"
+- "How would you monitor this system?"
+- "What happens if this component fails?"
+
+### Capacity Estimation
+
+**Back-of-the-envelope Calculations:**
+
+**Storage:**
+- Daily active users × average data per user × retention period
+- Consider growth rate and replication factor
+
+**Bandwidth:**
+- Peak QPS × average request/response size
+- Consider read/write ratio
+
+**Memory (Cache):**
+- 20% of daily requests (80/20 rule)
+- Hot data size × cache hit ratio
+
+**Example - URL Shortener:**
+```
+Assumptions:
+- 100M URLs created per day
+- 100:1 read/write ratio
+- 5-year retention
+- Average URL size: 500 bytes
+
+Storage: 100M × 500 bytes × 365 × 5 = ~91TB
+Read QPS: 100M × 100 / 86400 = ~116K
+Write QPS: 100M / 86400 = ~1.16K
+Cache: 20% of daily reads = 20M × 500 bytes = ~10GB
+```
+
+---
+
+## Quick Reference
+
+### Technology Stack Decision Matrix
+
+| Use Case | Database | Cache | Queue | API |
+|----------|----------|-------|--------|-----|
+| **E-commerce** | PostgreSQL | Redis | RabbitMQ | REST |
+| **Social Media** | Cassandra | Redis | Kafka | GraphQL |
+| **Analytics** | BigQuery | Redis | Kafka | REST |
+| **IoT** | InfluxDB | Redis | MQTT | gRPC |
+| **Gaming** | MongoDB | Redis | WebSocket | WebSocket |
+
+### Performance Benchmarks
+
+**Latency Numbers Every Programmer Should Know:**
+- L1 cache reference: 0.5 ns
+- Branch mispredict: 5 ns
+- L2 cache reference: 7 ns
+- Mutex lock/unlock: 25 ns
+- Main memory reference: 100 ns
+- SSD random read: 150,000 ns
+- Read 1 MB from SSD: 1,000,000 ns
+- Disk seek: 10,000,000 ns
+- Network round trip (same datacenter): 500,000 ns
+
+### Scaling Milestones
+
+**Application Growth Stages:**
+1. **Single Server**: 1-1000 users
+2. **Database Separation**: 1K-10K users
+3. **Load Balancer + Multiple Servers**: 10K-100K users
+4. **Database Replication**: 100K-1M users
+5. **CDN + Caching**: 1M-10M users
+6. **Database Sharding**: 10M+ users
+7. **Microservices**: Complex feature requirements
+
+### Common Patterns Summary
+
+**Caching**: Cache-aside, Write-through, Write-behind
+**Communication**: Synchronous (REST, gRPC), Asynchronous (Queues, Pub/Sub)
+**Data**: Master-slave replication, Sharding, Consistent hashing
+**Reliability**: Circuit breaker, Retry with backoff, Bulkhead
+**Scalability**: Load balancing, Auto-scaling, CDN
+**Consistency**: Strong, Eventual, Causal
+
+---
+
+## Conclusion
+
+System design is about making informed trade-offs based on requirements, constraints, and expected scale. There's rarely a single "correct" solution - the best design depends on the specific context and priorities of your system.
+
+Key principles to remember:
+1. **Understand the problem** before jumping to solutions
+2. **Start simple** and evolve as needed
+3. **Consider trade-offs** explicitly
+4. **Plan for failure** - everything will eventually fail
+5. **Monitor and measure** - you can't improve what you don't measure
+6. **Document decisions** - future you will thank present you
+
+The field of system design continues to evolve with new technologies, patterns, and practices. Stay curious, keep learning
