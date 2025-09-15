@@ -1,0 +1,540 @@
+# Apache Kafka - System Design Interview Guide
+
+## Table of Contents
+
+- [What is Apache Kafka](#what-is-apache-kafka)
+- [Why Use Kafka](#why-use-kafka)
+- [Core Components](#core-components)
+- [Kafka Architecture](#kafka-architecture)
+- [Role in Distributed Systems](#role-in-distributed-systems)
+- [System Design Patterns](#system-design-patterns)
+- [Performance Characteristics](#performance-characteristics)
+- [Use Cases](#use-cases)
+- [Trade-offs and Limitations](#trade-offs-and-limitations)
+- [Interview Questions](#interview-questions)
+
+---
+
+## What is Apache Kafka
+
+Apache Kafka is a **distributed event streaming platform** designed for high-throughput, low-latency data streaming. Originally developed by LinkedIn and later open-sourced, Kafka acts as a distributed commit log that can handle millions of events per second.
+
+### Core Concepts
+
+- **Event Streaming**: Continuous flow of data records (events) between systems
+- **Distributed**: Runs as a cluster across multiple servers for fault tolerance
+- **Persistent**: Events are stored on disk and replicated across brokers
+- **Pub-Sub Model**: Publishers send messages to topics, consumers subscribe to topics
+- **Immutable Log**: Events are append-only and immutable once written
+
+### Key Characteristics
+
+- **High Throughput**: Millions of messages per second
+- **Low Latency**: Sub-millisecond message delivery
+- **Horizontal Scalability**: Add more brokers to handle increased load
+- **Durability**: Messages persisted to disk with configurable retention
+- **Fault Tolerance**: Data replicated across multiple brokers
+- **Ordering Guarantees**: Messages ordered within partitions
+
+---
+
+## Why Use Kafka
+
+### Traditional Messaging Problems
+
+**Point-to-Point Systems**:
+- Tight coupling between producers and consumers
+- Difficult to add new consumers
+- Single point of failure
+- Limited scalability
+
+**Traditional Message Queues**:
+- Messages deleted after consumption
+- Limited replay capability
+- Difficulty handling high throughput
+- Complex routing logic
+
+### Kafka Solutions
+
+1. **Decoupling**: Producers and consumers don't need to know about each other
+2. **Scalability**: Horizontal scaling through partitioning
+3. **Durability**: Messages stored for configurable time periods
+4. **Replay**: Consumers can replay messages from any point
+5. **Multi-Consumer**: Multiple consumer groups can read same data
+6. **Ordering**: Maintains message order within partitions
+7. **Fault Tolerance**: No single point of failure
+
+### Business Benefits
+
+- **Real-time Processing**: Enable real-time analytics and responses
+- **System Integration**: Connect disparate systems seamlessly
+- **Event Sourcing**: Build event-driven architectures
+- **Data Pipeline**: Create reliable data pipelines
+- **Microservices Communication**: Async communication between services
+
+---
+
+## Core Components
+
+### 1. Topics
+
+**Definition**: Named streams of records where events are published
+
+```
+Topic: "user-events"
+├── Partition 0: [event1, event2, event3, ...]
+├── Partition 1: [event4, event5, event6, ...]
+└── Partition 2: [event7, event8, event9, ...]
+```
+
+**Characteristics**:
+- Logical grouping of related events
+- Split into multiple partitions for parallelism
+- Immutable append-only logs
+- Configurable retention period
+
+### 2. Partitions
+
+**Purpose**: Enable parallelism and scalability
+
+**Key Features**:
+- **Ordering**: Messages ordered within each partition
+- **Parallelism**: Different partitions can be processed in parallel
+- **Distribution**: Partitions distributed across brokers
+- **Key-based Routing**: Messages with same key go to same partition
+
+**Partition Assignment**:
+```
+Message Key → Hash Function → Partition Number
+```
+
+### 3. Brokers
+
+**Definition**: Kafka servers that store and serve data
+
+**Responsibilities**:
+- Store partition data on disk
+- Handle producer and consumer requests
+- Replicate data to other brokers
+- Manage partition leadership
+
+**Cluster Configuration**:
+```
+Kafka Cluster
+├── Broker 1 (Leader for Partition 0)
+├── Broker 2 (Leader for Partition 1)
+└── Broker 3 (Leader for Partition 2)
+```
+
+### 4. Producers
+
+**Role**: Applications that publish events to Kafka topics
+
+**Key Features**:
+- **Batching**: Group multiple messages for efficiency
+- **Partitioning Strategy**: Determine which partition to send messages
+- **Acknowledgment Modes**: Configure delivery guarantees
+- **Compression**: Reduce network overhead
+
+**Producer Configurations**:
+- `acks=0`: Fire and forget (fastest, least reliable)
+- `acks=1`: Wait for leader acknowledgment
+- `acks=all`: Wait for all replicas (slowest, most reliable)
+
+### 5. Consumers
+
+**Role**: Applications that read events from Kafka topics
+
+**Consumer Groups**:
+- Multiple consumers working together
+- Each partition assigned to only one consumer in group
+- Automatic rebalancing when consumers join/leave
+
+**Offset Management**:
+- Track position in each partition
+- Enable replay from specific points
+- Stored in special Kafka topic `__consumer_offsets`
+
+### 6. ZooKeeper (Legacy) / KRaft (New)
+
+**ZooKeeper (Legacy)**:
+- Manages cluster metadata
+- Handles leader election
+- Stores configuration information
+- Being phased out in newer versions
+
+**KRaft (Kafka Raft)**:
+- New consensus protocol
+- Eliminates ZooKeeper dependency
+- Simplifies deployment and operations
+- Better scalability and performance
+
+---
+
+## Kafka Architecture
+
+### Cluster Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Kafka Cluster                        │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
+│  │ Broker 1 │  │ Broker 2 │  │ Broker 3 │              │
+│  │          │  │          │  │          │              │
+│  │ Topic A  │  │ Topic A  │  │ Topic A  │              │
+│  │   P0(L)  │  │   P1(L)  │  │   P0(F)  │              │
+│  │   P1(F)  │  │   P0(F)  │  │   P1(F)  │              │
+│  └──────────┘  └──────────┘  └──────────┘              │
+└─────────────────────────────────────────────────────────┘
+    ↑                                           ↓
+┌──────────┐                               ┌──────────┐
+│Producer 1│                               │Consumer 1│
+│Producer 2│                               │Consumer 2│
+└──────────┘                               └──────────┘
+```
+
+**Legend**: P0(L) = Partition 0 Leader, P0(F) = Partition 0 Follower
+
+### Replication Strategy
+
+**Leader-Follower Model**:
+- Each partition has one leader and multiple followers
+- Producers/consumers interact only with leaders
+- Followers replicate data from leaders
+- Automatic failover if leader fails
+
+**In-Sync Replicas (ISR)**:
+- Replicas that are caught up with leader
+- Used for leader election
+- Ensures data consistency
+
+### Message Flow
+
+1. **Producer** sends message to topic partition
+2. **Leader broker** appends message to log
+3. **Follower brokers** replicate the message
+4. **Acknowledgment** sent back to producer
+5. **Consumers** read messages from partitions
+6. **Offset** updated after successful processing
+
+---
+
+## Role in Distributed Systems
+
+### 1. Event-Driven Architecture
+
+**Traditional Request-Response**:
+```
+Service A → Direct Call → Service B → Direct Call → Service C
+```
+
+**Event-Driven with Kafka**:
+```
+Service A → Event → Kafka → Service B
+                        ↓
+                    Service C
+```
+
+**Benefits**:
+- Loose coupling between services
+- Asynchronous processing
+- Better fault tolerance
+- Easier to add new consumers
+
+### 2. Data Pipeline
+
+**ETL/ELT Processes**:
+```
+Data Sources → Kafka → Stream Processing → Data Stores
+    ↓              ↓           ↓              ↓
+  APIs         Topics     Kafka Streams    Databases
+Databases                   Apache Flink   Data Lakes
+Files                      Apache Storm    Warehouses
+```
+
+### 3. Microservices Communication
+
+**Service Mesh with Kafka**:
+- **Command Events**: Trigger actions in other services
+- **Domain Events**: Notify about business state changes
+- **Integration Events**: Share data between bounded contexts
+
+### 4. CQRS and Event Sourcing
+
+**Command Query Responsibility Segregation**:
+- Commands → Kafka → Command Handlers
+- Events → Kafka → Read Model Updates
+
+**Event Sourcing**:
+- Store events instead of current state
+- Kafka as event store
+- Replay events to rebuild state
+
+---
+
+## System Design Patterns
+
+### 1. Saga Pattern
+
+**Distributed Transactions**:
+```
+Order Service → Kafka → Payment Service
+      ↓                        ↓
+  OrderCreated              PaymentProcessed
+      ↓                        ↓
+Inventory Service ←  Kafka  ← Notification Service
+```
+
+### 2. Outbox Pattern
+
+**Transactional Outbox**:
+```
+Application → Database Transaction → Outbox Table
+                                         ↓
+                                    CDC → Kafka
+```
+
+**Benefits**:
+- Ensures message delivery
+- Maintains data consistency
+- Handles dual-write problem
+
+### 3. Change Data Capture (CDC)
+
+**Database Changes → Kafka**:
+```
+Database → Kafka Connect → Kafka → Downstream Systems
+(Binlog)   (Debezium)      Topics   (Real-time views)
+```
+
+### 4. Stream Processing
+
+**Real-time Analytics**:
+```
+Raw Events → Kafka → Stream Processor → Aggregated Events
+                         ↓
+                    Kafka Streams
+                   Apache Flink
+```
+
+---
+
+## Performance Characteristics
+
+### Throughput
+
+**Write Performance**:
+- Sequential disk writes
+- Batch processing
+- Compression
+- Zero-copy transfers
+
+**Typical Numbers**:
+- 100K+ messages/second per broker
+- Millions of messages/second per cluster
+- Sub-millisecond latency
+
+### Scalability
+
+**Horizontal Scaling**:
+- Add more brokers to cluster
+- Increase partition count
+- Consumer group parallelism
+
+**Partition Strategy**:
+```
+High Throughput Topic:
+├── 50 Partitions
+├── 50 Consumer Instances
+└── Parallel Processing
+```
+
+### Optimization Strategies
+
+1. **Producer Optimization**:
+   - Increase batch size
+   - Enable compression (snappy, lz4)
+   - Tune buffer memory
+   - Optimize partitioning strategy
+
+2. **Consumer Optimization**:
+   - Increase fetch size
+   - Parallel processing
+   - Optimize commit strategy
+   - Use consumer groups effectively
+
+3. **Broker Optimization**:
+   - Fast SSD storage
+   - Adequate RAM for page cache
+   - Network optimization
+   - JVM tuning
+
+---
+
+## Use Cases
+
+### 1. Real-time Analytics
+
+**Example**: E-commerce Platform
+```
+User Actions → Kafka → Stream Processing → Dashboards
+(clicks, views)        (Kafka Streams)     (Real-time metrics)
+```
+
+**Benefits**:
+- Real-time business intelligence
+- Fraud detection
+- Recommendation engines
+- A/B testing analytics
+
+### 2. Log Aggregation
+
+**Example**: Microservices Logging
+```
+Service Logs → Kafka → Log Processing → Search/Analytics
+                       (ELK Stack)      (Elasticsearch)
+```
+
+### 3. IoT Data Ingestion
+
+**Example**: Sensor Data Processing
+```
+IoT Devices → Kafka → Stream Processing → Time Series DB
+(millions)             (anomaly detection)  (monitoring)
+```
+
+### 4. Activity Tracking
+
+**Example**: User Behavior Analytics
+```
+Web/Mobile → Kafka → Real-time Processing → Personalization
+  Apps        Topics   (user segments)       (recommendations)
+```
+
+### 5. System Integration
+
+**Example**: Legacy System Modernization
+```
+Legacy System → Kafka → Modern Services
+                 ↓
+            Event Bus
+                 ↓
+           Multiple Consumers
+```
+
+---
+
+## Trade-offs and Limitations
+
+### Advantages
+
+✅ **High Throughput**: Handle millions of events per second
+✅ **Durability**: Messages persisted and replicated
+✅ **Scalability**: Horizontal scaling through partitioning
+✅ **Fault Tolerance**: No single point of failure
+✅ **Flexibility**: Multiple consumers per topic
+✅ **Replay Capability**: Re-process historical data
+✅ **Ordering**: Maintains order within partitions
+
+### Limitations
+
+❌ **Complexity**: Requires understanding of distributed systems
+❌ **Resource Intensive**: High memory and disk usage
+❌ **No Cross-Partition Ordering**: Only ordered within partitions
+❌ **Rebalancing Overhead**: Consumer group rebalancing can cause delays
+❌ **Storage Costs**: Retaining messages for long periods
+❌ **Learning Curve**: Complex configuration and tuning
+❌ **Over-engineering**: May be overkill for simple use cases
+
+### When NOT to Use Kafka
+
+- Simple request-response patterns
+- Low-volume messaging
+- Immediate consistency required
+- Small teams without ops expertise
+- Cost-sensitive projects
+- Synchronous processing needs
+
+---
+
+## Interview Questions
+
+### 1. "Explain Kafka's architecture and how it ensures fault tolerance"
+
+**Answer Framework**:
+- Describe broker cluster setup
+- Explain partition replication (leader/follower)
+- Discuss ISR (In-Sync Replicas)
+- Cover automatic leader election
+- Mention ZooKeeper/KRaft role
+
+### 2. "How does Kafka guarantee message ordering?"
+
+**Key Points**:
+- Ordering guaranteed within partitions only
+- Use partition keys for related messages
+- Single partition = total ordering (limited scalability)
+- Multiple partitions = parallel processing but no global ordering
+
+### 3. "How would you design a system to handle 1 million events per second?"
+
+**Design Considerations**:
+- Multiple brokers in cluster
+- High partition count for parallelism
+- Proper producer batching and compression
+- Consumer groups for parallel processing
+- Monitoring and alerting setup
+
+### 4. "What are the different delivery semantics in Kafka?"
+
+**Delivery Guarantees**:
+- **At-most-once**: Messages may be lost, never duplicated
+- **At-least-once**: Messages never lost, may be duplicated
+- **Exactly-once**: Messages delivered exactly once (complex to achieve)
+
+### 5. "How do you handle consumer lag in Kafka?"
+
+**Solutions**:
+- Scale out consumer groups
+- Optimize consumer processing logic
+- Increase partition count
+- Monitor lag metrics
+- Implement alerting
+- Consider parallel processing strategies
+
+### 6. "Compare Kafka with traditional message queues like RabbitMQ"
+
+**Kafka vs RabbitMQ**:
+
+| Aspect | Kafka | RabbitMQ |
+|--------|-------|----------|
+| **Model** | Log-based | Queue-based |
+| **Persistence** | Always persisted | Optional |
+| **Throughput** | Very high | Moderate |
+| **Message Replay** | Yes | No |
+| **Routing** | Topic-based | Flexible routing |
+| **Use Case** | Event streaming | Traditional messaging |
+
+### 7. "How would you implement exactly-once semantics?"
+
+**Implementation Strategy**:
+- Idempotent producers
+- Transactional producers
+- Consumer-side deduplication
+- Database transactions with offsets
+- Use of transactional outbox pattern
+
+### 8. "Design a real-time recommendation system using Kafka"
+
+**Architecture**:
+```
+User Events → Kafka → Stream Processing → ML Models → Kafka → API Gateway
+                      (feature extraction)              (recommendations)
+```
+
+**Components**:
+- Event ingestion from web/mobile
+- Real-time feature engineering
+- Model serving infrastructure
+- Recommendation delivery system
+- Feedback loop for model improvement

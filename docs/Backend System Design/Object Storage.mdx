@@ -1,0 +1,603 @@
+# Object Storage
+
+## Table of Contents
+
+- [What is Object Storage](#what-is-object-storage)
+- [Why Not Traditional Databases](#why-not-traditional-databases)
+- [How Object Storage Works](#how-object-storage-works)
+- [Key Design Principles](#key-design-principles)
+- [System Design Best Practices](#system-design-best-practices)
+- [Pre-signed URLs](#pre-signed-urls)
+- [Multi-part Upload](#multi-part-upload)
+- [Popular Object Storage Services](#popular-object-storage-services)
+- [Use Cases](#use-cases)
+- [Interview Questions](#interview-questions)
+
+---
+
+## What is Object Storage
+
+### Definition
+
+Object Storage is a **specialized storage architecture** designed for managing large files, commonly referred to as **Binary Large Objects (BLOBs)**. While not technically a database, it functions as a database specifically optimized for storing and retrieving large, static files.
+
+### What Qualifies as a BLOB?
+
+- **Images and Photos**: Profile pictures, product images, thumbnails
+- **Videos**: User-generated content, streaming media, recorded sessions
+- **Audio Files**: Music, podcasts, voice recordings
+- **Documents**: PDFs, presentations, large text files
+- **Data Files**: JSON exports, CSV files, log files
+- **Static Assets**: CSS, JavaScript, fonts, icons
+
+### Core Characteristics
+
+- **File-based Storage**: Stores complete files as atomic units
+- **Flat Namespace**: No hierarchical folder structure (despite UI appearances)
+- **Immutable**: Files cannot be modified, only replaced or versioned
+- **Highly Durable**: 99.999999999% (11 9's) durability through redundancy
+- **Scalable**: Handles petabytes of data across distributed infrastructure
+- **Cost-Effective**: Optimized for storage costs rather than compute
+
+---
+
+## Why Not Traditional Databases
+
+### The Problem with Storing BLOBs in Relational Databases
+
+**Storage Inefficiency**:
+```
+PostgreSQL Example:
+- Packs data into 8KB pages
+- 4MB image = 500 pages
+- Massive overhead for simple queries
+```
+
+### Performance Impact
+
+**Query Performance Degradation**:
+```sql
+-- Simple query becomes expensive
+SELECT TOP 50 users
+FROM users;
+-- Database must manage megabytes of image data
+-- Even when you only need user metadata
+```
+
+**Issues Created**:
+- **Memory Pressure**: Large files consume excessive RAM
+- **Slow Queries**: Simple operations become resource-intensive
+- **Cache Pollution**: BLOBs fill up database cache inefficiently
+
+### Replication Problems
+
+**Bandwidth Consumption**:
+- 4MB image replicated to 3 database replicas = 12MB per write
+- Massive bandwidth usage
+- Increased replication lag
+- Higher infrastructure costs
+
+### Backup and Recovery Issues
+
+**Backup Bloat**:
+- Database backups include all BLOB data
+- What should be minutes becomes hours
+- Recovery time dramatically increased
+- Storage costs for backups skyrocket
+
+**Real-World Scenario**:
+```
+Without Object Storage:
+Database backup: 500GB (400GB are images)
+Restore time: 8 hours
+
+With Object Storage:
+Database backup: 100GB (metadata only)
+Restore time: 30 minutes
+```
+
+---
+
+## How Object Storage Works
+
+### High-Level Architecture
+
+```
+Client Request → Metadata Service → Storage Nodes → Stream Response
+     ↓               ↓                    ↓              ↓
+   "Get file1"    Index Lookup        Server A      Direct streaming
+                     ↓
+                 "File1 on Server A"
+```
+
+### Core Components
+
+#### 1. Storage Nodes
+- **Cheap commodity servers** storing files on disk
+- Distributed across multiple racks and data centers
+- Optimized for throughput rather than low latency
+
+#### 2. Metadata Service
+- **Central index** mapping file identifiers to storage locations
+- Fast lookup service (usually in-memory)
+- Handles routing and load balancing
+
+#### 3. Redundancy Layer
+- Files stored on **multiple servers** (typically 3+ copies)
+- **Erasure coding** or **full replication**
+- Automatic healing when nodes fail
+- Cross-datacenter replication for disaster recovery
+
+### Request Flow
+
+1. **Client requests file** by unique identifier
+2. **Metadata service** performs index lookup
+3. **Storage location** identified (e.g., Server A)
+4. **Direct streaming** from storage node to client
+5. **Redundancy** ensures availability if primary fails
+
+---
+
+## Key Design Principles
+
+### 1. Flat Namespace
+
+**Traditional File System**:
+```
+/users/photos/2024/january/profile_pics/user123.jpg
+```
+
+**Object Storage**:
+```
+user-photos-2024-01-user123.jpg
+```
+
+**Benefits**:
+- **Direct lookup** without tree traversal
+- **Faster access** - O(1) instead of O(log n)
+- **Simpler implementation** and maintenance
+- **UI sugar** can simulate folders for user experience
+
+### 2. Immutable Writes
+
+**Traditional Database**: Update existing records
+```sql
+UPDATE users SET profile_image = 'new_image.jpg' WHERE id = 123;
+```
+
+**Object Storage**: Create new versions or overwrite
+```
+PUT /bucket/user123-profile-v2.jpg
+```
+
+**Advantages**:
+- **No locks required** - eliminates race conditions
+- **Simpler concurrency** model
+- **Version control** capabilities
+- **Better performance** without locking overhead
+
+### 3. Redundancy and Durability
+
+**Replication Strategy**:
+```
+File "user123.jpg" exists on:
+- Server A (Primary)
+- Server B (Replica 1)
+- Server C (Replica 2)
+- Server D (Cross-DC replica)
+```
+
+**Durability Guarantees**:
+- **11 9's durability**: 99.999999999%
+- **Automatic failure recovery**
+- **Cross-datacenter redundancy**
+- **Background data integrity checks**
+
+---
+
+## System Design Best Practices
+
+### 1. Hybrid Storage Pattern
+
+**Correct Approach**:
+```
+Database (PostgreSQL/MySQL):
+├── User metadata (ID, name, email, created_at)
+├── Post metadata (ID, title, text, user_id)
+└── File references (file_url, file_size, file_type)
+
+Object Storage (S3):
+├── Profile images
+├── Post photos/videos
+└── User uploads
+```
+
+**Example Schema**:
+```sql
+-- Store metadata in database
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER,
+    title VARCHAR(255),
+    content TEXT,
+    image_url VARCHAR(500), -- Reference to S3
+    created_at TIMESTAMP
+);
+
+-- Files stored in S3: s3://bucket/posts/user123/post456.jpg
+```
+
+### 2. Common Architecture Pattern
+
+```
+Client → API Server → Database (metadata)
+   ↓                      ↓
+   └── Object Storage ← File URL
+```
+
+**Flow Example**:
+1. Client requests social media feed
+2. API server queries database for posts metadata
+3. Database returns post data with S3 URLs
+4. Client downloads images directly from S3
+
+### 3. Metadata vs File Storage
+
+**Store in Database**:
+- File metadata (size, type, upload date)
+- User permissions and access controls
+- File relationships and associations
+- Search indices and tags
+
+**Store in Object Storage**:
+- Actual file bytes
+- Multiple file versions
+- Thumbnails and processed variants
+- Archive and backup copies
+
+---
+
+## Pre-signed URLs
+
+### The Problem
+
+**Inefficient File Upload**:
+```
+Client → Server → Object Storage
+  4MB      4MB        4MB
+  ↑         ↑          ↑
+Bandwidth  Server     Final
+consumed   load       destination
+```
+
+### The Solution
+
+**Direct Upload with Pre-signed URLs**:
+```
+1. Client requests upload permission
+   Client → Server: "I want to upload user123.jpg"
+
+2. Server requests pre-signed URL
+   Server → S3: "Give me upload URL for user123.jpg, valid 1 hour"
+
+3. S3 returns pre-signed URL
+   S3 → Server: "https://bucket.s3.amazonaws.com/user123.jpg?signature=..."
+
+4. Client uploads directly
+   Client → S3: Direct upload using pre-signed URL
+```
+
+### Implementation Example
+
+**Server-side (generating pre-signed URL)**:
+```python
+# Python example
+def generate_upload_url(filename, file_type):
+    presigned_url = s3_client.generate_presigned_url(
+        'put_object',
+        Params={
+            'Bucket': 'my-bucket',
+            'Key': filename,
+            'ContentType': file_type
+        },
+        ExpiresIn=3600  # 1 hour
+    )
+    return presigned_url
+```
+
+**Client-side (using pre-signed URL)**:
+```javascript
+// JavaScript example
+const uploadFile = async (file, presignedUrl) => {
+    const response = await fetch(presignedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+            'Content-Type': file.type
+        }
+    });
+    return response.ok;
+};
+```
+
+### Benefits
+
+- **Reduced server bandwidth** - no proxy through application server
+- **Better scalability** - server doesn't handle large file processing
+- **Faster uploads** - direct connection to object storage
+- **Security** - temporary, scoped permissions
+- **Cost savings** - reduced data transfer costs
+
+---
+
+## Multi-part Upload
+
+### The Problem
+
+**File Size Limitations**:
+- HTTP POST/PUT limits (typically 5MB for S3)
+- Browser upload limits
+- Gateway and proxy limitations
+- Network timeout constraints for large files
+
+### The Solution
+
+**Chunked Upload Process**:
+```
+Large File (1GB)
+    ↓
+Split into chunks (5MB each)
+    ↓
+Upload chunks in parallel
+    ↓
+Object storage reassembles
+```
+
+### Multi-part Upload Flow
+
+1. **Initiate Upload**:
+   ```
+   Client → S3: "I want to upload 1GB file"
+   S3 → Client: "Upload ID: abc123, use 5MB chunks"
+   ```
+
+2. **Upload Chunks**:
+   ```
+   Chunk 1 (5MB) → S3 → Part 1 ETag
+   Chunk 2 (5MB) → S3 → Part 2 ETag
+   Chunk 3 (5MB) → S3 → Part 3 ETag
+   ... (parallel uploads)
+   Chunk 200 (5MB) → S3 → Part 200 ETag
+   ```
+
+3. **Complete Upload**:
+   ```
+   Client → S3: "Complete upload abc123 with parts [ETag1, ETag2, ...]"
+   S3 → Client: "Upload complete, file assembled"
+   ```
+
+### Implementation Benefits
+
+- **Parallel uploads** - faster overall transfer
+- **Resumable uploads** - retry individual chunks on failure
+- **Better reliability** - smaller chunks less likely to fail
+- **Progress tracking** - granular upload progress
+- **Bandwidth optimization** - can adjust chunk size
+
+### Example Architecture
+
+```
+Client Application
+├── File chunking logic
+├── Parallel upload management
+├── Progress tracking
+└── Error retry mechanism
+    ↓
+Object Storage
+├── Multi-part upload API
+├── Chunk validation
+├── Assembly service
+└── Cleanup of incomplete uploads
+```
+
+---
+
+## Popular Object Storage Services
+
+### Amazon S3 (Simple Storage Service)
+
+**Market Leader**:
+- Most widely used and documented
+- **Default choice** for system design interviews
+- Extensive feature set and integrations
+- Global availability
+
+**Key Features**:
+- Pre-signed URLs for secure access
+- Multi-part upload (5MB chunk limit)
+- Storage classes for cost optimization
+- Cross-region replication
+- Event notifications
+
+### Google Cloud Storage
+
+**Google's Offering**:
+- Similar features to S3
+- Strong integration with Google Cloud Platform
+- Competitive pricing
+- Multi-regional storage options
+
+### Azure Blob Storage
+
+**Microsoft's Solution**:
+- Integrated with Azure ecosystem
+- Hot, cool, and archive storage tiers
+- Strong enterprise adoption
+- Similar API patterns to competitors
+
+### Common Features Across All
+
+- **Pre-signed/Signed URLs** for secure access
+- **Multi-part upload** capabilities
+- **Versioning** and lifecycle management
+- **Encryption** at rest and in transit
+- **Access controls** and permissions
+- **CDN integration** for global distribution
+
+---
+
+## Use Cases
+
+### 1. Social Media and Content Platforms
+
+**Architecture Example**:
+```
+User Posts → Metadata in Database → Photos/Videos in S3
+         ↓                      ↓
+    Post feed API         Direct download URLs
+```
+
+**Components**:
+- User-generated content (photos, videos)
+- Profile images and cover photos
+- Story content and highlights
+- Live streaming archives
+
+### 2. Collaborative Tools and File Sharing
+
+**Examples**:
+- **Dropbox-like services**: File storage and synchronization
+- **Design tools**: Large design files and assets
+- **Document management**: PDFs, presentations, spreadsheets
+
+**Pattern**:
+```
+File Upload → Pre-signed URL → Direct S3 Upload
+File Sharing → Signed URL → Direct S3 Download
+```
+
+### 3. Web Application Assets
+
+**Static Content Delivery**:
+- CSS and JavaScript files
+- Images and icons
+- Fonts and media assets
+- Usually fronted by CDN for global distribution
+
+**Architecture**:
+```
+Web App → CDN → Object Storage
+             ↓
+        Global edge locations
+```
+
+### 4. Data Processing and Analytics
+
+**Big Data Storage**:
+- **Log files**: Application logs, server logs, audit trails
+- **ML training data**: Large datasets for machine learning
+- **Data exports**: Database dumps, report files
+- **Backup archives**: System backups and snapshots
+
+### 5. Media and Entertainment
+
+**Content Storage**:
+- Video streaming libraries
+- Music catalogs
+- Podcast archives
+- Image galleries
+- 360-degree content and VR assets
+
+---
+
+## Interview Questions
+
+### 1. "Why would you use object storage instead of a traditional database for storing images?"
+
+**Answer Framework**:
+- **Performance**: Traditional databases aren't optimized for large files
+- **Scalability**: Object storage scales horizontally with lower costs
+- **Efficiency**: Reduces database backup size and replication overhead
+- **Specialization**: Purpose-built for file storage with features like pre-signed URLs
+
+### 2. "How would you design a photo-sharing application's storage architecture?"
+
+**System Design Approach**:
+```
+Users upload photos:
+1. Client gets pre-signed URL from API server
+2. Client uploads directly to S3
+3. API server stores metadata in database
+4. Feed requests return metadata + S3 URLs
+5. Client downloads images directly from S3
+```
+
+**Key Components**:
+- Database for post metadata and user data
+- S3 for actual image storage
+- CDN for global image delivery
+- Image processing service for thumbnails
+
+### 3. "What are pre-signed URLs and when would you use them?"
+
+**Explanation**:
+- **Temporary URLs** with embedded authentication
+- **Use cases**: Secure uploads, private file access, reducing server load
+- **Benefits**: Direct client-to-storage communication, better performance
+- **Security**: Time-limited, scope-limited permissions
+
+### 4. "How do you handle uploading very large files (>1GB)?"
+
+**Multi-part Upload Strategy**:
+- Split large files into chunks (typically 5MB)
+- Upload chunks in parallel for better performance
+- Handle chunk failures independently
+- Reassemble on object storage side
+- Provide progress tracking and resumability
+
+### 5. "Compare object storage with a traditional file system"
+
+**Key Differences**:
+
+| Aspect | Object Storage | Traditional File System |
+|--------|---------------|------------------------|
+| **Namespace** | Flat | Hierarchical |
+| **Scalability** | Horizontal | Vertical |
+| **Durability** | 11 9's with replication | Depends on RAID setup |
+| **Access** | HTTP REST API | File system calls |
+| **Consistency** | Eventually consistent | Strongly consistent |
+| **Cost** | Pay per GB stored | Fixed infrastructure |
+
+### 6. "How would you implement a file upload feature for a web application?"
+
+**Implementation Steps**:
+1. **Client requests upload**: Send file metadata to server
+2. **Server validation**: Check file type, size, permissions
+3. **Generate pre-signed URL**: Request from S3 with expiration
+4. **Direct upload**: Client uploads to S3 using pre-signed URL
+5. **Metadata storage**: Server stores file reference in database
+6. **Confirmation**: Return success response with file URL
+
+### 7. "What are the trade-offs of using object storage?"
+
+**Advantages**:
+- Massive scalability and durability
+- Cost-effective for large files
+- Built-in redundancy
+- Global accessibility
+
+**Disadvantages**:
+- Eventually consistent (in some cases)
+- No file modification capabilities
+- API overhead for small operations
+- Network dependency for access
+
+### 8. "Design a system to handle 1 million image uploads per day"
+
+**Architecture Considerations**:
+- **Load balancing**: Distribute pre-signed URL requests
+- **Horizontal scaling**: Multiple API servers
+- **Database optimization**: Efficient metadata storage
+- **Monitoring**: Track upload success rates and performance
+- **Error handling**: Retry mechanisms and cleanup processes
+- **Security**: Rate limiting and access controls
