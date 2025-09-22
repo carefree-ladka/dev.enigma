@@ -1,0 +1,514 @@
+# Low Level Design (LLD)
+
+## Table of Contents
+1. [Introduction to LLD](#introduction-to-lld)
+2. [UML Class Diagrams](#uml-class-diagrams)
+3. [UML Sequence Diagrams](#uml-sequence-diagrams)
+4. [UML Use Case Diagrams](#uml-use-case-diagrams)
+5. [Design Patterns in LLD](#design-patterns-in-lld)
+6. [Common LLD Interview Questions](#common-lld-interview-questions)
+7. [Best Practices](#best-practices)
+
+## Introduction to LLD
+
+### What is Low Level Design?
+Low Level Design (LLD) is the detailed design of system components, focusing on:
+- **Class structure and relationships**
+- **Method signatures and interactions**
+- **Data flow between components**
+- **Implementation details**
+
+### Key Principles
+- **Single Responsibility Principle (SRP)**
+- **Open/Closed Principle (OCP)**
+- **Liskov Substitution Principle (LSP)**
+- **Interface Segregation Principle (ISP)**
+- **Dependency Inversion Principle (DIP)**
+
+---
+
+## UML Class Diagrams
+
+### Components of a Class Diagram
+
+#### 1. Class Representation
+```
+┌─────────────────┐
+│   ClassName     │
+├─────────────────┤
+│ - attribute1    │
+│ + attribute2    │
+│ # attribute3    │
+├─────────────────┤
+│ + method1()     │
+│ - method2()     │
+│ # method3()     │
+└─────────────────┘
+```
+
+**Visibility Modifiers:**
+- `+` Public
+- `-` Private
+- `#` Protected
+- `~` Package/Default
+
+#### 2. Attributes
+```
+visibility name : type [multiplicity] = defaultValue
+```
+**Examples:**
+- `- balance : double = 0.0`
+- `+ accounts : List<Account> [*]`
+- `# status : AccountStatus`
+
+#### 3. Methods
+```
+visibility name(parameters) : returnType
+```
+**Examples:**
+- `+ deposit(amount: double) : boolean`
+- `- validateAccount() : void`
+- `+ getBalance() : double`
+
+### Relationships in Class Diagrams
+
+#### 1. Association
+**Definition:** "Uses a" or "Has a" relationship
+```
+Customer ────────> Account
+    1           0..*
+```
+- Customer uses Account
+- One customer can have multiple accounts
+
+#### 2. Aggregation (Hollow Diamond)
+**Definition:** "Has a" relationship where child can exist without parent
+```
+Department ◇────── Employee
+     1           0..*
+```
+- Department has employees
+- Employees can exist without department
+
+#### 3. Composition (Filled Diamond)
+**Definition:** "Owns a" relationship where child cannot exist without parent
+```
+House ♦────── Room
+  1        1..*
+```
+- House owns rooms
+- Rooms cannot exist without house
+
+#### 4. Inheritance (Generalization)
+**Definition:** "Is a" relationship
+```
+    Animal
+      △
+      │
+   ───┴───
+   │     │
+  Dog   Cat
+```
+- Dog is an Animal
+- Cat is an Animal
+
+#### 5. Realization/Implementation
+**Definition:** Class implements an interface
+```
+<<interface>>
+  Drawable
+     △
+     │ (dashed line)
+     │
+   Circle
+```
+- Circle implements Drawable interface
+
+#### 6. Dependency
+**Definition:** One class depends on another
+```
+OrderService ┄┄┄> PaymentGateway
+```
+- OrderService depends on PaymentGateway
+
+### Multiplicity Notations
+- `1` - Exactly one
+- `0..1` - Zero or one
+- `0..*` or `*` - Zero or more
+- `1..*` - One or more
+- `2..5` - Between 2 and 5
+
+### Example: Banking System Class Diagram
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│    Customer     │    │     Account     │    │  Transaction    │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ - customerId    │    │ - accountNumber │    │ - transactionId │
+│ - name          │    │ - balance       │    │ - amount        │
+│ - email         │    │ - accountType   │    │ - timestamp     │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ + addAccount()  │    │ + deposit()     │    │ + execute()     │
+│ + getAccounts() │    │ + withdraw()    │    │ + getDetails()  │
+└─────────────────┘    │ + getBalance()  │    └─────────────────┘
+         │              └─────────────────┘             │
+         │1                       │1                    │
+         │                        │                     │
+         │              ┌─────────┴─────────┐          │
+         │              │                   │          │
+         │              │0..*               │1..*      │
+         │              │                   │          │
+         └──────────────▷│                  │◁─────────┘
+                 owns    │                  │  contains
+                         │                  │
+            ┌─────────────────┐    ┌─────────────────┐
+            │ SavingsAccount  │    │ CheckingAccount │
+            ├─────────────────┤    ├─────────────────┤
+            │ - interestRate  │    │ - overdraftLimit│
+            ├─────────────────┤    ├─────────────────┤
+            │ + calculateInt()│    │ + checkOverdraft│
+            └─────────────────┘    └─────────────────┘
+```
+
+---
+
+## UML Sequence Diagrams
+
+### Components of Sequence Diagrams
+
+#### 1. Actors and Objects
+- **Actor:** External entity (user, system)
+- **Object:** Instance of a class
+- **Lifeline:** Vertical dashed line representing object's existence
+
+#### 2. Messages
+- **Synchronous Call:** Solid arrow `────>`
+- **Asynchronous Call:** Open arrow `───▷`
+- **Return Message:** Dashed arrow `┄┄┄>`
+- **Self Call:** Loop back to same lifeline
+
+#### 3. Activation Boxes
+- Rectangular boxes on lifelines showing when object is active
+
+### Example: ATM Withdrawal Sequence Diagram
+
+```
+Customer    ATM        Bank        Account     Database
+   │         │          │           │            │
+   │─insert card──>│     │           │            │
+   │         │─validate─>│           │            │
+   │         │          │─get account─>│          │
+   │         │          │           │─query────>│
+   │         │          │           │<──result───│
+   │         │<─card valid──────────│           │
+   │<──show menu───│     │           │            │
+   │─enter PIN───>│      │           │            │
+   │         │─verify PIN─>│         │            │
+   │         │<──PIN valid──│        │            │
+   │─select withdrawal─>│  │         │            │
+   │         │─withdraw──>│           │            │
+   │         │          │─check balance─>│        │
+   │         │          │           │─query────>│
+   │         │          │           │<─balance───│
+   │         │          │<─sufficient──│          │
+   │         │          │─debit amount─>│         │
+   │         │          │           │─update───>│
+   │         │          │           │<─success───│
+   │         │<─dispense cash───────│            │
+   │<──take cash───│     │           │            │
+```
+
+### Key Elements Explained
+- **Synchronous Messages:** Wait for response before continuing
+- **Activation Periods:** Show when object is processing
+- **Return Messages:** Optional, can be implied
+- **Guards:** Conditions in square brackets `[balance > amount]`
+
+---
+
+## UML Use Case Diagrams
+
+### Components of Use Case Diagrams
+
+#### 1. Actors
+- **Primary Actor:** Initiates the use case
+- **Secondary Actor:** Participates but doesn't initiate
+- Represented as stick figures
+
+#### 2. Use Cases
+- Represented as ovals
+- Describe system functionality
+- Named with verb phrases
+
+#### 3. System Boundary
+- Rectangle containing use cases
+- Defines system scope
+
+#### 4. Relationships
+
+##### Include Relationship
+```
+Use Case A ────include────> Use Case B
+```
+- Use Case A always includes Use Case B
+- Mandatory relationship
+
+##### Extend Relationship
+```
+Use Case A <────extend──── Use Case B
+```
+- Use Case B optionally extends Use Case A
+- Conditional relationship
+
+##### Generalization
+```
+    General Use Case
+           △
+           │
+    Specific Use Case
+```
+
+### Example: Online Shopping System Use Case Diagram
+
+```
+                    ┌─────────────────────────────────────┐
+                    │          Shopping System            │
+     Customer       │                                     │    Payment Gateway
+        │           │    ┌─────────────┐                 │           │
+        │───────────│───▷│Browse Items │                 │           │
+        │           │    └─────────────┘                 │           │
+        │           │           │                        │           │
+        │           │           │include                 │           │
+        │           │           ▼                        │           │
+        │           │    ┌─────────────┐                 │           │
+        │───────────│───▷│Search Items │                 │           │
+        │           │    └─────────────┘                 │           │
+        │           │                                     │           │
+        │           │    ┌─────────────┐                 │           │
+        │───────────│───▷│Add to Cart  │                 │           │
+        │           │    └─────────────┘                 │           │
+        │           │           │                        │           │
+        │           │           │include                 │           │
+        │           │           ▼                        │           │
+        │           │    ┌─────────────┐                 │           │
+        │───────────│───▷│   Checkout  │◁────────────────│───────────│
+        │           │    └─────────────┘                 │           │
+        │           │           │                        │           │
+        │           │           │include                 │           │
+        │           │           ▼                        │           │
+        │           │    ┌─────────────┐                 │           │
+        │           │    │Make Payment │                 │           │
+        │           │    └─────────────┘                 │           │
+        │           │           │                        │           │
+        │           │    ┌─────────────┐extend           │           │
+        │           │    │Apply Coupon │─────────────────│           │
+        │           │    └─────────────┘                 │           │
+                    │                                     │
+      Admin         │    ┌─────────────┐                 │
+        │───────────│───▷│Manage Items │                 │
+        │           │    └─────────────┘                 │
+        │           │                                     │
+        │           │    ┌─────────────┐                 │
+        │───────────│───▷│View Reports │                 │
+        │           │    └─────────────┘                 │
+                    └─────────────────────────────────────┘
+```
+
+---
+
+## Design Patterns in LLD
+
+### 1. Singleton Pattern
+**Use Case:** Ensure only one instance exists
+```java
+public class Database {
+    private static Database instance;
+
+    private Database() {}
+
+    public static Database getInstance() {
+        if (instance == null) {
+            instance = new Database();
+        }
+        return instance;
+    }
+}
+```
+
+### 2. Factory Pattern
+**Use Case:** Create objects without specifying exact classes
+```java
+public interface Vehicle {
+    void start();
+}
+
+public class VehicleFactory {
+    public static Vehicle createVehicle(String type) {
+        switch (type) {
+            case "car": return new Car();
+            case "bike": return new Bike();
+            default: throw new IllegalArgumentException();
+        }
+    }
+}
+```
+
+### 3. Observer Pattern
+**Use Case:** Notify multiple objects about state changes
+```java
+public interface Observer {
+    void update(String message);
+}
+
+public class Subject {
+    private List<Observer> observers = new ArrayList<>();
+
+    public void addObserver(Observer observer) {
+        observers.add(observer);
+    }
+
+    public void notifyObservers(String message) {
+        for (Observer observer : observers) {
+            observer.update(message);
+        }
+    }
+}
+```
+
+### 4. Strategy Pattern
+**Use Case:** Select algorithm at runtime
+```java
+public interface PaymentStrategy {
+    void pay(double amount);
+}
+
+public class PaymentContext {
+    private PaymentStrategy strategy;
+
+    public void setStrategy(PaymentStrategy strategy) {
+        this.strategy = strategy;
+    }
+
+    public void executePayment(double amount) {
+        strategy.pay(amount);
+    }
+}
+```
+
+---
+
+## Common LLD Interview Questions
+
+### 1. Design a Library Management System
+
+**Key Components:**
+- **Book, Member, Librarian**
+- **BookItem, BookReservation, BookLending**
+- **Library, Catalog**
+
+**Key Relationships:**
+- Member can borrow multiple books
+- Book can have multiple copies (BookItem)
+- Reservation system for popular books
+
+### 2. Design a Parking Lot System
+
+**Key Components:**
+- **ParkingLot, ParkingSpot, Vehicle**
+- **ParkingTicket, Payment**
+- **DisplayBoard**
+
+**Key Features:**
+- Different spot sizes (compact, large, motorcycle)
+- Payment processing
+- Availability tracking
+
+### 3. Design an Elevator System
+
+**Key Components:**
+- **Elevator, ElevatorController**
+- **Floor, Button, Request**
+- **Direction (enum)**
+
+**Key Algorithms:**
+- Request scheduling
+- Direction optimization
+- Load balancing
+
+### 4. Design a Chess Game
+
+**Key Components:**
+- **Board, Piece, Player**
+- **Move, Game, GameStatus**
+- **Specific pieces (King, Queen, etc.)**
+
+**Key Features:**
+- Move validation
+- Check/checkmate detection
+- Game state management
+
+---
+
+## Best Practices
+
+### 1. Design Principles
+- **Keep classes focused and cohesive**
+- **Minimize coupling between classes**
+- **Use interfaces for flexibility**
+- **Apply SOLID principles**
+
+### 2. UML Diagram Guidelines
+- **Keep diagrams simple and readable**
+- **Show only relevant details**
+- **Use consistent notation**
+- **Include multiplicity and visibility**
+
+### 3. Interview Approach
+1. **Clarify requirements**
+2. **Identify main entities**
+3. **Define relationships**
+4. **Draw class diagram**
+5. **Show key interactions with sequence diagrams**
+6. **Discuss design patterns**
+7. **Handle edge cases**
+
+### 4. Common Mistakes to Avoid
+- **Over-designing initially**
+- **Ignoring SOLID principles**
+- **Missing edge cases**
+- **Poor class responsibilities**
+- **Tight coupling**
+
+### 5. Time Management
+- **Requirements clarification: 5-10 minutes**
+- **High-level design: 15-20 minutes**
+- **Detailed class diagram: 20-25 minutes**
+- **Discussion and refinement: 10-15 minutes**
+
+---
+
+## Quick Reference Checklist
+
+### Before Starting
+- [ ] Understand functional requirements
+- [ ] Identify non-functional requirements
+- [ ] Clarify assumptions
+- [ ] Define scope
+
+### During Design
+- [ ] Identify main entities
+- [ ] Define attributes and methods
+- [ ] Establish relationships
+- [ ] Apply design patterns where appropriate
+- [ ] Ensure SOLID principles compliance
+
+### Review Phase
+- [ ] Check for missing use cases
+- [ ] Validate relationships
+- [ ] Ensure scalability
+- [ ] Consider performance implications
+- [ ] Review error handling
+
+---
+
+**Remember:** LLD interviews focus on your ability to translate requirements into well-structured, maintainable code. Practice drawing diagrams by hand and explaining your thought process clearly.

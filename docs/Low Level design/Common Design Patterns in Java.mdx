@@ -1,0 +1,2534 @@
+# Common Design Patterns in Java
+
+## Table of Contents
+1. [Introduction to Design Patterns](#introduction-to-design-patterns)
+2. [Creational Patterns](#creational-patterns)
+3. [Structural Patterns](#structural-patterns)
+4. [Behavioral Patterns](#behavioral-patterns)
+5. [Pattern Relationships](#pattern-relationships)
+6. [When to Use Which Pattern](#when-to-use-which-pattern)
+7. [Interview Questions](#interview-questions)
+8. [Best Practices](#best-practices)
+
+---
+
+## Introduction to Design Patterns
+
+### What are Design Patterns?
+Design patterns are **reusable solutions to commonly occurring problems** in software design. They represent best practices and provide a common vocabulary for developers.
+
+### Benefits
+- **Reusability** - Proven solutions
+- **Communication** - Common vocabulary
+- **Best Practices** - Time-tested approaches
+- **Maintainability** - Well-structured code
+
+### Categories
+1. **Creational** - Object creation mechanisms
+2. **Structural** - Object composition
+3. **Behavioral** - Object interaction and responsibilities
+
+---
+
+## Creational Patterns
+
+### 1. Singleton Pattern
+
+**Intent:** Ensure a class has only one instance and provide global access to it.
+
+**When to Use:**
+- Database connections
+- Logger instances
+- Configuration settings
+- Thread pools
+
+#### Thread-Safe Singleton Implementation
+
+```java
+public class DatabaseConnection {
+    // Volatile ensures visibility across threads
+    private static volatile DatabaseConnection instance;
+    private Connection connection;
+
+    // Private constructor prevents instantiation
+    private DatabaseConnection() {
+        // Initialize database connection
+        this.connection = createConnection();
+    }
+
+    // Double-checked locking for thread safety
+    public static DatabaseConnection getInstance() {
+        if (instance == null) {
+            synchronized (DatabaseConnection.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnection();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    private Connection createConnection() {
+        // Database connection logic
+        return DriverManager.getConnection("jdbc:mysql://localhost/db");
+    }
+}
+```
+
+#### Enum Singleton (Recommended)
+
+```java
+public enum Logger {
+    INSTANCE;
+
+    public void log(String message) {
+        System.out.println(new Date() + ": " + message);
+    }
+
+    public void error(String message) {
+        System.err.println(new Date() + " ERROR: " + message);
+    }
+}
+
+// Usage
+Logger.INSTANCE.log("Application started");
+```
+
+**Pros:** Thread-safe, simple, prevents reflection attacks
+**Cons:** Cannot be extended, difficult to unit test
+
+---
+
+### 2. Factory Method Pattern
+
+**Intent:** Create objects without specifying their exact classes.
+
+**When to Use:**
+- When you don't know the exact types beforehand
+- When you want to delegate object creation
+- When you need to extend object creation logic
+
+```java
+// Product interface
+interface Vehicle {
+    void start();
+    void stop();
+    int getMaxSpeed();
+}
+
+// Concrete products
+class Car implements Vehicle {
+    @Override
+    public void start() {
+        System.out.println("Car engine started");
+    }
+
+    @Override
+    public void stop() {
+        System.out.println("Car engine stopped");
+    }
+
+    @Override
+    public int getMaxSpeed() {
+        return 200;
+    }
+}
+
+class Motorcycle implements Vehicle {
+    @Override
+    public void start() {
+        System.out.println("Motorcycle engine started");
+    }
+
+    @Override
+    public void stop() {
+        System.out.println("Motorcycle engine stopped");
+    }
+
+    @Override
+    public int getMaxSpeed() {
+        return 180;
+    }
+}
+
+class Truck implements Vehicle {
+    @Override
+    public void start() {
+        System.out.println("Truck engine started");
+    }
+
+    @Override
+    public void stop() {
+        System.out.println("Truck engine stopped");
+    }
+
+    @Override
+    public int getMaxSpeed() {
+        return 120;
+    }
+}
+
+// Factory class
+class VehicleFactory {
+    public static Vehicle createVehicle(String type) {
+        switch (type.toLowerCase()) {
+            case "car":
+                return new Car();
+            case "motorcycle":
+                return new Motorcycle();
+            case "truck":
+                return new Truck();
+            default:
+                throw new IllegalArgumentException("Unknown vehicle type: " + type);
+        }
+    }
+
+    // Alternative factory method with enum
+    public enum VehicleType {
+        CAR, MOTORCYCLE, TRUCK
+    }
+
+    public static Vehicle createVehicle(VehicleType type) {
+        switch (type) {
+            case CAR:
+                return new Car();
+            case MOTORCYCLE:
+                return new Motorcycle();
+            case TRUCK:
+                return new Truck();
+            default:
+                throw new IllegalArgumentException("Unknown vehicle type");
+        }
+    }
+}
+
+// Usage
+public class FactoryExample {
+    public static void main(String[] args) {
+        Vehicle car = VehicleFactory.createVehicle("car");
+        car.start();
+        System.out.println("Max speed: " + car.getMaxSpeed());
+        car.stop();
+
+        Vehicle truck = VehicleFactory.createVehicle(VehicleType.TRUCK);
+        truck.start();
+        truck.stop();
+    }
+}
+```
+
+---
+
+### 3. Abstract Factory Pattern
+
+**Intent:** Create families of related objects without specifying their concrete classes.
+
+**When to Use:**
+- When you need to create families of related objects
+- When you want to ensure objects from a family work together
+- When you want to switch between different product families
+
+```java
+// Abstract products
+interface Button {
+    void click();
+    void render();
+}
+
+interface Checkbox {
+    void check();
+    void render();
+}
+
+// Concrete products for Windows
+class WindowsButton implements Button {
+    @Override
+    public void click() {
+        System.out.println("Windows button clicked");
+    }
+
+    @Override
+    public void render() {
+        System.out.println("Rendering Windows-style button");
+    }
+}
+
+class WindowsCheckbox implements Checkbox {
+    @Override
+    public void check() {
+        System.out.println("Windows checkbox checked");
+    }
+
+    @Override
+    public void render() {
+        System.out.println("Rendering Windows-style checkbox");
+    }
+}
+
+// Concrete products for Mac
+class MacButton implements Button {
+    @Override
+    public void click() {
+        System.out.println("Mac button clicked");
+    }
+
+    @Override
+    public void render() {
+        System.out.println("Rendering Mac-style button");
+    }
+}
+
+class MacCheckbox implements Checkbox {
+    @Override
+    public void check() {
+        System.out.println("Mac checkbox checked");
+    }
+
+    @Override
+    public void render() {
+        System.out.println("Rendering Mac-style checkbox");
+    }
+}
+
+// Abstract factory
+interface GUIFactory {
+    Button createButton();
+    Checkbox createCheckbox();
+}
+
+// Concrete factories
+class WindowsFactory implements GUIFactory {
+    @Override
+    public Button createButton() {
+        return new WindowsButton();
+    }
+
+    @Override
+    public Checkbox createCheckbox() {
+        return new WindowsCheckbox();
+    }
+}
+
+class MacFactory implements GUIFactory {
+    @Override
+    public Button createButton() {
+        return new MacButton();
+    }
+
+    @Override
+    public Checkbox createCheckbox() {
+        return new MacCheckbox();
+    }
+}
+
+// Client code
+class Application {
+    private Button button;
+    private Checkbox checkbox;
+
+    public Application(GUIFactory factory) {
+        button = factory.createButton();
+        checkbox = factory.createCheckbox();
+    }
+
+    public void render() {
+        button.render();
+        checkbox.render();
+    }
+
+    public void interact() {
+        button.click();
+        checkbox.check();
+    }
+}
+
+// Usage
+public class AbstractFactoryExample {
+    public static void main(String[] args) {
+        String osName = System.getProperty("os.name").toLowerCase();
+        GUIFactory factory;
+
+        if (osName.contains("windows")) {
+            factory = new WindowsFactory();
+        } else if (osName.contains("mac")) {
+            factory = new MacFactory();
+        } else {
+            factory = new WindowsFactory(); // Default
+        }
+
+        Application app = new Application(factory);
+        app.render();
+        app.interact();
+    }
+}
+```
+
+---
+
+### 4. Builder Pattern
+
+**Intent:** Construct complex objects step by step.
+
+**When to Use:**
+- Objects with many optional parameters
+- Objects requiring complex construction logic
+- When you want to create different representations
+
+```java
+// Product class
+class Computer {
+    private String CPU;
+    private String RAM;
+    private String storage;
+    private String GPU;
+    private String motherboard;
+    private boolean isBluetoothEnabled;
+    private boolean isWifiEnabled;
+
+    // Private constructor - only builder can create
+    private Computer(ComputerBuilder builder) {
+        this.CPU = builder.CPU;
+        this.RAM = builder.RAM;
+        this.storage = builder.storage;
+        this.GPU = builder.GPU;
+        this.motherboard = builder.motherboard;
+        this.isBluetoothEnabled = builder.isBluetoothEnabled;
+        this.isWifiEnabled = builder.isWifiEnabled;
+    }
+
+    // Getters
+    public String getCPU() { return CPU; }
+    public String getRAM() { return RAM; }
+    public String getStorage() { return storage; }
+    public String getGPU() { return GPU; }
+    public String getMotherboard() { return motherboard; }
+    public boolean isBluetoothEnabled() { return isBluetoothEnabled; }
+    public boolean isWifiEnabled() { return isWifiEnabled; }
+
+    @Override
+    public String toString() {
+        return "Computer{" +
+                "CPU='" + CPU + '\'' +
+                ", RAM='" + RAM + '\'' +
+                ", storage='" + storage + '\'' +
+                ", GPU='" + GPU + '\'' +
+                ", motherboard='" + motherboard + '\'' +
+                ", isBluetoothEnabled=" + isBluetoothEnabled +
+                ", isWifiEnabled=" + isWifiEnabled +
+                '}';
+    }
+
+    // Builder class
+    public static class ComputerBuilder {
+        // Required parameters
+        private String CPU;
+        private String RAM;
+
+        // Optional parameters - initialized to default values
+        private String storage = "500GB HDD";
+        private String GPU = "Integrated";
+        private String motherboard = "Standard";
+        private boolean isBluetoothEnabled = false;
+        private boolean isWifiEnabled = true;
+
+        // Constructor with required parameters
+        public ComputerBuilder(String CPU, String RAM) {
+            this.CPU = CPU;
+            this.RAM = RAM;
+        }
+
+        // Setter methods for optional parameters - return builder for chaining
+        public ComputerBuilder setStorage(String storage) {
+            this.storage = storage;
+            return this;
+        }
+
+        public ComputerBuilder setGPU(String GPU) {
+            this.GPU = GPU;
+            return this;
+        }
+
+        public ComputerBuilder setMotherboard(String motherboard) {
+            this.motherboard = motherboard;
+            return this;
+        }
+
+        public ComputerBuilder setBluetoothEnabled(boolean bluetoothEnabled) {
+            isBluetoothEnabled = bluetoothEnabled;
+            return this;
+        }
+
+        public ComputerBuilder setWifiEnabled(boolean wifiEnabled) {
+            isWifiEnabled = wifiEnabled;
+            return this;
+        }
+
+        // Build method to create the final object
+        public Computer build() {
+            return new Computer(this);
+        }
+    }
+}
+
+// Usage
+public class BuilderExample {
+    public static void main(String[] args) {
+        // Creating a basic computer
+        Computer basicComputer = new Computer.ComputerBuilder("Intel i5", "8GB")
+                .build();
+
+        // Creating a gaming computer
+        Computer gamingComputer = new Computer.ComputerBuilder("Intel i9", "32GB")
+                .setStorage("1TB SSD")
+                .setGPU("NVIDIA RTX 4090")
+                .setMotherboard("ASUS ROG")
+                .setBluetoothEnabled(true)
+                .setWifiEnabled(true)
+                .build();
+
+        // Creating a server computer
+        Computer server = new Computer.ComputerBuilder("AMD Ryzen 9", "64GB")
+                .setStorage("2TB SSD")
+                .setMotherboard("Server Grade")
+                .setWifiEnabled(false)
+                .build();
+
+        System.out.println("Basic Computer: " + basicComputer);
+        System.out.println("Gaming Computer: " + gamingComputer);
+        System.out.println("Server: " + server);
+    }
+}
+```
+
+---
+
+## Structural Patterns
+
+### 5. Adapter Pattern
+
+**Intent:** Allow incompatible interfaces to work together.
+
+**When to Use:**
+- When you want to use an existing class with incompatible interface
+- When you want to create reusable class that cooperates with unrelated classes
+- Legacy code integration
+
+```java
+// Target interface that client expects
+interface MediaPlayer {
+    void play(String audioType, String fileName);
+}
+
+// Adaptee classes with incompatible interfaces
+class Mp3Player {
+    public void playMp3(String fileName) {
+        System.out.println("Playing mp3 file: " + fileName);
+    }
+}
+
+class Mp4Player {
+    public void playMp4(String fileName) {
+        System.out.println("Playing mp4 file: " + fileName);
+    }
+}
+
+class VlcPlayer {
+    public void playVlc(String fileName) {
+        System.out.println("Playing vlc file: " + fileName);
+    }
+}
+
+// Adapter interface
+interface AdvancedMediaPlayer {
+    void playVlc(String fileName);
+    void playMp4(String fileName);
+}
+
+// Adapter class
+class MediaAdapter implements AdvancedMediaPlayer {
+    private Mp4Player mp4Player;
+    private VlcPlayer vlcPlayer;
+
+    public MediaAdapter(String audioType) {
+        if (audioType.equalsIgnoreCase("vlc")) {
+            vlcPlayer = new VlcPlayer();
+        } else if (audioType.equalsIgnoreCase("mp4")) {
+            mp4Player = new Mp4Player();
+        }
+    }
+
+    @Override
+    public void playVlc(String fileName) {
+        vlcPlayer.playVlc(fileName);
+    }
+
+    @Override
+    public void playMp4(String fileName) {
+        mp4Player.playMp4(fileName);
+    }
+}
+
+// Concrete implementation of target interface
+class AudioPlayer implements MediaPlayer {
+    private MediaAdapter mediaAdapter;
+    private Mp3Player mp3Player;
+
+    public AudioPlayer() {
+        mp3Player = new Mp3Player();
+    }
+
+    @Override
+    public void play(String audioType, String fileName) {
+        // Built-in support for mp3
+        if (audioType.equalsIgnoreCase("mp3")) {
+            mp3Player.playMp3(fileName);
+        }
+        // Using adapter for other formats
+        else if (audioType.equalsIgnoreCase("vlc") ||
+                 audioType.equalsIgnoreCase("mp4")) {
+            mediaAdapter = new MediaAdapter(audioType);
+            if (audioType.equalsIgnoreCase("vlc")) {
+                mediaAdapter.playVlc(fileName);
+            } else if (audioType.equalsIgnoreCase("mp4")) {
+                mediaAdapter.playMp4(fileName);
+            }
+        } else {
+            System.out.println("Invalid media. " + audioType + " format not supported");
+        }
+    }
+}
+
+// Usage
+public class AdapterExample {
+    public static void main(String[] args) {
+        AudioPlayer audioPlayer = new AudioPlayer();
+
+        audioPlayer.play("mp3", "beyond_the_horizon.mp3");
+        audioPlayer.play("mp4", "alone.mp4");
+        audioPlayer.play("vlc", "far_far_away.vlc");
+        audioPlayer.play("avi", "mind_me.avi");
+    }
+}
+```
+
+---
+
+### 6. Decorator Pattern
+
+**Intent:** Add new functionality to objects dynamically without altering their structure.
+
+**When to Use:**
+- When you want to add responsibilities to objects dynamically
+- When extension by subclassing is impractical
+- When you need to add features that can be withdrawn
+
+```java
+// Component interface
+interface Coffee {
+    String getDescription();
+    double getCost();
+}
+
+// Concrete component
+class SimpleCoffee implements Coffee {
+    @Override
+    public String getDescription() {
+        return "Simple Coffee";
+    }
+
+    @Override
+    public double getCost() {
+        return 2.0;
+    }
+}
+
+// Abstract decorator
+abstract class CoffeeDecorator implements Coffee {
+    protected Coffee decoratedCoffee;
+
+    public CoffeeDecorator(Coffee coffee) {
+        this.decoratedCoffee = coffee;
+    }
+
+    @Override
+    public String getDescription() {
+        return decoratedCoffee.getDescription();
+    }
+
+    @Override
+    public double getCost() {
+        return decoratedCoffee.getCost();
+    }
+}
+
+// Concrete decorators
+class MilkDecorator extends CoffeeDecorator {
+    public MilkDecorator(Coffee coffee) {
+        super(coffee);
+    }
+
+    @Override
+    public String getDescription() {
+        return decoratedCoffee.getDescription() + ", Milk";
+    }
+
+    @Override
+    public double getCost() {
+        return decoratedCoffee.getCost() + 0.5;
+    }
+}
+
+class SugarDecorator extends CoffeeDecorator {
+    public SugarDecorator(Coffee coffee) {
+        super(coffee);
+    }
+
+    @Override
+    public String getDescription() {
+        return decoratedCoffee.getDescription() + ", Sugar";
+    }
+
+    @Override
+    public double getCost() {
+        return decoratedCoffee.getCost() + 0.3;
+    }
+}
+
+class WhipDecorator extends CoffeeDecorator {
+    public WhipDecorator(Coffee coffee) {
+        super(coffee);
+    }
+
+    @Override
+    public String getDescription() {
+        return decoratedCoffee.getDescription() + ", Whip";
+    }
+
+    @Override
+    public double getCost() {
+        return decoratedCoffee.getCost() + 0.7;
+    }
+}
+
+class VanillaDecorator extends CoffeeDecorator {
+    public VanillaDecorator(Coffee coffee) {
+        super(coffee);
+    }
+
+    @Override
+    public String getDescription() {
+        return decoratedCoffee.getDescription() + ", Vanilla";
+    }
+
+    @Override
+    public double getCost() {
+        return decoratedCoffee.getCost() + 0.6;
+    }
+}
+
+// Usage
+public class DecoratorExample {
+    public static void main(String[] args) {
+        // Simple coffee
+        Coffee coffee = new SimpleCoffee();
+        System.out.println(coffee.getDescription() + " - $" + coffee.getCost());
+
+        // Coffee with milk
+        coffee = new MilkDecorator(coffee);
+        System.out.println(coffee.getDescription() + " - $" + coffee.getCost());
+
+        // Coffee with milk and sugar
+        coffee = new SugarDecorator(coffee);
+        System.out.println(coffee.getDescription() + " - $" + coffee.getCost());
+
+        // Coffee with milk, sugar, and whip
+        coffee = new WhipDecorator(coffee);
+        System.out.println(coffee.getDescription() + " - $" + coffee.getCost());
+
+        // Ultimate coffee
+        Coffee ultimateCoffee = new VanillaDecorator(
+                new WhipDecorator(
+                    new SugarDecorator(
+                        new MilkDecorator(
+                            new SimpleCoffee()))));
+
+        System.out.println("\nUltimate: " + ultimateCoffee.getDescription() +
+                          " - $" + ultimateCoffee.getCost());
+    }
+}
+```
+
+---
+
+### 7. Facade Pattern
+
+**Intent:** Provide a simplified interface to a complex subsystem.
+
+**When to Use:**
+- When you want to hide complexity of subsystems
+- When you want to layer your subsystems
+- When there are many dependencies between clients and implementation classes
+
+```java
+// Complex subsystem classes
+class CPU {
+    public void freeze() {
+        System.out.println("CPU: Freezing processor");
+    }
+
+    public void jump(long position) {
+        System.out.println("CPU: Jumping to position " + position);
+    }
+
+    public void execute() {
+        System.out.println("CPU: Executing instructions");
+    }
+}
+
+class Memory {
+    public void load(long position, byte[] data) {
+        System.out.println("Memory: Loading data at position " + position);
+    }
+}
+
+class HardDrive {
+    public byte[] read(long lba, int size) {
+        System.out.println("HardDrive: Reading " + size + " bytes from LBA " + lba);
+        return new byte[size];
+    }
+}
+
+class NetworkInterface {
+    public void connect(String address) {
+        System.out.println("Network: Connecting to " + address);
+    }
+
+    public void disconnect() {
+        System.out.println("Network: Disconnecting");
+    }
+}
+
+class GraphicsCard {
+    public void initialize() {
+        System.out.println("Graphics: Initializing graphics card");
+    }
+
+    public void render() {
+        System.out.println("Graphics: Rendering display");
+    }
+}
+
+// Facade class
+class ComputerFacade {
+    private CPU cpu;
+    private Memory memory;
+    private HardDrive hardDrive;
+    private NetworkInterface networkInterface;
+    private GraphicsCard graphicsCard;
+
+    public ComputerFacade() {
+        this.cpu = new CPU();
+        this.memory = new Memory();
+        this.hardDrive = new HardDrive();
+        this.networkInterface = new NetworkInterface();
+        this.graphicsCard = new GraphicsCard();
+    }
+
+    public void startComputer() {
+        System.out.println("Starting computer...");
+        cpu.freeze();
+        memory.load(0, hardDrive.read(0, 1024));
+        cpu.jump(0);
+        graphicsCard.initialize();
+        cpu.execute();
+        graphicsCard.render();
+        System.out.println("Computer started successfully!\n");
+    }
+
+    public void shutdownComputer() {
+        System.out.println("Shutting down computer...");
+        System.out.println("Saving work...");
+        System.out.println("Closing applications...");
+        networkInterface.disconnect();
+        System.out.println("Computer shutdown complete!\n");
+    }
+
+    public void connectToInternet(String address) {
+        System.out.println("Connecting to internet...");
+        networkInterface.connect(address);
+        System.out.println("Connected to internet!\n");
+    }
+
+    public void restartComputer() {
+        System.out.println("Restarting computer...");
+        shutdownComputer();
+        startComputer();
+    }
+}
+
+// Usage
+public class FacadeExample {
+    public static void main(String[] args) {
+        ComputerFacade computer = new ComputerFacade();
+
+        // Simple operations hide complex subsystem interactions
+        computer.startComputer();
+        computer.connectToInternet("www.example.com");
+        computer.restartComputer();
+        computer.shutdownComputer();
+    }
+}
+```
+
+---
+
+## Behavioral Patterns
+
+### 8. Observer Pattern
+
+**Intent:** Define a one-to-many dependency between objects so that when one object changes state, all dependents are notified.
+
+**When to Use:**
+- When changes to one object require changing many objects
+- When an object should notify other objects without knowing who they are
+- Event handling systems
+
+```java
+import java.util.*;
+
+// Observer interface
+interface Observer {
+    void update(String message);
+}
+
+// Subject interface
+interface Subject {
+    void registerObserver(Observer observer);
+    void removeObserver(Observer observer);
+    void notifyObservers();
+}
+
+// Concrete Subject
+class NewsAgency implements Subject {
+    private List<Observer> observers;
+    private String latestNews;
+
+    public NewsAgency() {
+        this.observers = new ArrayList<>();
+    }
+
+    @Override
+    public void registerObserver(Observer observer) {
+        observers.add(observer);
+        System.out.println("Observer registered: " + observer.getClass().getSimpleName());
+    }
+
+    @Override
+    public void removeObserver(Observer observer) {
+        observers.remove(observer);
+        System.out.println("Observer removed: " + observer.getClass().getSimpleName());
+    }
+
+    @Override
+    public void notifyObservers() {
+        System.out.println("\n--- Broadcasting News ---");
+        for (Observer observer : observers) {
+            observer.update(latestNews);
+        }
+        System.out.println("--- End Broadcast ---\n");
+    }
+
+    public void setNews(String news) {
+        this.latestNews = news;
+        notifyObservers();
+    }
+
+    public String getLatestNews() {
+        return latestNews;
+    }
+}
+
+// Concrete Observers
+class NewsChannel implements Observer {
+    private String channelName;
+    private String news;
+
+    public NewsChannel(String channelName) {
+        this.channelName = channelName;
+    }
+
+    @Override
+    public void update(String message) {
+        this.news = message;
+        System.out.println(channelName + " received news: " + news);
+    }
+
+    public String getNews() {
+        return news;
+    }
+}
+
+class NewspaperAgency implements Observer {
+    private String agencyName;
+    private String news;
+
+    public NewspaperAgency(String agencyName) {
+        this.agencyName = agencyName;
+    }
+
+    @Override
+    public void update(String message) {
+        this.news = message;
+        System.out.println(agencyName + " printing news: " + news);
+    }
+}
+
+class MobileApp implements Observer {
+    private String appName;
+    private List<String> notifications;
+
+    public MobileApp(String appName) {
+        this.appName = appName;
+        this.notifications = new ArrayList<>();
+    }
+
+    @Override
+    public void update(String message) {
+        notifications.add(message);
+        System.out.println(appName + " push notification: " + message);
+    }
+
+    public List<String> getNotifications() {
+        return notifications;
+    }
+}
+
+// Usage
+public class ObserverExample {
+    public static void main(String[] args) {
+        // Create subject
+        NewsAgency newsAgency = new NewsAgency();
+
+        // Create observers
+        NewsChannel cnn = new NewsChannel("CNN");
+        NewsChannel bbc = new NewsChannel("BBC");
+        NewspaperAgency nytimes = new NewspaperAgency("New York Times");
+        MobileApp newsApp = new MobileApp("NewsApp");
+
+        // Register observers
+        newsAgency.registerObserver(cnn);
+        newsAgency.registerObserver(bbc);
+        newsAgency.registerObserver(nytimes);
+        newsAgency.registerObserver(newsApp);
+
+        // Publish news
+        newsAgency.setNews("Breaking: New technology breakthrough announced!");
+
+        // Remove an observer
+        newsAgency.removeObserver(bbc);
+
+        // Publish more news
+        newsAgency.setNews("Update: Stock market reaches all-time high!");
+
+        // Show mobile app notifications
+        System.out.println("\nMobile app notifications:");
+        for (String notification : newsApp.getNotifications()) {
+            System.out.println("- " + notification);
+        }
+    }
+}
+```
+
+---
+
+### 9. Strategy Pattern
+
+**Intent:** Define a family of algorithms, encapsulate each one, and make them interchangeable.
+
+**When to Use:**
+- When you have multiple ways to perform a task
+- When you want to avoid conditional statements
+- When algorithms should be selected at runtime
+
+```java
+// Strategy interface
+interface PaymentStrategy {
+    void pay(double amount);
+    boolean validate();
+}
+
+// Concrete strategies
+class CreditCardPayment implements PaymentStrategy {
+    private String cardNumber;
+    private String cvv;
+    private String expiryDate;
+
+    public CreditCardPayment(String cardNumber, String cvv, String expiryDate) {
+        this.cardNumber = cardNumber;
+        this.cvv = cvv;
+        this.expiryDate = expiryDate;
+    }
+
+    @Override
+    public boolean validate() {
+        // Validate credit card details
+        if (cardNumber.length() != 16) {
+            System.out.println("Invalid card number");
+            return false;
+        }
+        if (cvv.length() != 3) {
+            System.out.println("Invalid CVV");
+            return false;
+        }
+        System.out.println("Credit card validation successful");
+        return true;
+    }
+
+    @Override
+    public void pay(double amount) {
+        if (validate()) {
+            System.out.println("Paid $" + amount + " using Credit Card ending in " +
+                             cardNumber.substring(12));
+        }
+    }
+}
+
+class PayPalPayment implements PaymentStrategy {
+    private String email;
+    private String password;
+
+    public PayPalPayment(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
+    @Override
+    public boolean validate() {
+        // Validate PayPal credentials
+        if (!email.contains("@")) {
+            System.out.println("Invalid email address");
+            return false;
+        }
+        if (password.length() < 8) {
+            System.out.println("Password too short");
+            return false;
+        }
+        System.out.println("PayPal validation successful");
+        return true;
+    }
+
+    @Override
+    public void pay(double amount) {
+        if (validate()) {
+            System.out.println("Paid $" + amount + " using PayPal account: " + email);
+        }
+    }
+}
+
+class BankTransferPayment implements PaymentStrategy {
+    private String accountNumber;
+    private String routingNumber;
+
+    public BankTransferPayment(String accountNumber, String routingNumber) {
+        this.accountNumber = accountNumber;
+        this.routingNumber = routingNumber;
+    }
+
+    @Override
+    public boolean validate() {
+        // Validate bank details
+        if (accountNumber.length() < 8) {
+            System.out.println("Invalid account number");
+            return false;
+        }
+        if (routingNumber.length() != 9) {
+            System.out.println("Invalid routing number");
+            return false;
+        }
+        System.out.println("Bank transfer validation successful");
+        return true;
+    }
+
+    @Override
+    public void pay(double amount) {
+        if (validate()) {
+            System.out.println("Paid $" + amount + " via Bank Transfer from account: " +
+                             accountNumber);
+        }
+    }
+}
+
+class CryptocurrencyPayment implements PaymentStrategy {
+    private String walletAddress;
+    private String privateKey;
+
+    public CryptocurrencyPayment(String walletAddress, String privateKey) {
+        this.walletAddress = walletAddress;
+        this.privateKey = privateKey;
+    }
+
+    @Override
+    public boolean validate() {
+        // Validate cryptocurrency wallet
+        if (walletAddress.length() < 26) {
+            System.out.println("Invalid wallet address");
+            return false;
+        }
+        if (privateKey.length() < 51) {
+            System.out.println("Invalid private key");
+            return false;
+        }
+        System.out.println("Cryptocurrency wallet validation successful");
+        return true;
+    }
+
+    @Override
+    public void pay(double amount) {
+        if (validate()) {
+            System.out.println("Paid $" + amount + " using Cryptocurrency from wallet: " +
+                             walletAddress.substring(0, 10) + "...");
+        }
+    }
+}
+
+// Context class
+class PaymentContext {
+    private PaymentStrategy paymentStrategy;
+
+    public void setPaymentStrategy(PaymentStrategy paymentStrategy) {
+        this.paymentStrategy = paymentStrategy;
+    }
+
+    public void processPayment(double amount) {
+        if (paymentStrategy == null) {
+            System.out.println("No payment method selected");
+            return;
+        }
+        paymentStrategy.pay(amount);
+    }
+}
+
+// Usage
+public class StrategyExample {
+    public static void main(String[] args) {
+        PaymentContext paymentContext = new PaymentContext();
+
+        // Pay with credit card
+        PaymentStrategy creditCard = new CreditCardPayment("1234567890123456", "123", "12/25");
+        paymentContext.setPaymentStrategy(creditCard);
+        paymentContext.processPayment(100.0);
+
+        System.out.println();
+
+        // Pay with PayPal
+        PaymentStrategy paypal = new PayPalPayment("user@example.com", "password123");
+        paymentContext.setPaymentStrategy(paypal);
+        paymentContext.processPayment(75.5);
+
+        System.out.println();
+
+        // Pay with Bank Transfer
+        PaymentStrategy bankTransfer = new BankTransferPayment("12345678", "123456789");
+        paymentContext.setPaymentStrategy(bankTransfer);
+        paymentContext.processPayment(200.0);
+
+        System.out.println();
+
+        // Pay with Cryptocurrency
+        PaymentStrategy crypto = new CryptocurrencyPayment("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+                "5HueCGU8rMjxEXxiPuD5BDku4MkFqeZyd4dZ1jvhTVqvbTLvyTJ");
+        paymentContext.setPaymentStrategy(crypto);
+        paymentContext.processPayment(50.0);
+    }
+}
+```
+
+---
+
+### 10. Command Pattern
+
+**Intent:** Encapsulate a request as an object, allowing you to parameterize clients with different requests, queue operations, and support undo.
+
+**When to Use:**
+- When you want to parameterize objects with operations
+- When you want to queue operations, schedule operations, or support undo
+- When you want to structure a system around high-level operations built on primitive operations
+
+```java
+// Command interface
+interface Command {
+    void execute();
+    void undo();
+}
+
+// Receiver classes
+class Light {
+    private String location;
+    private boolean isOn;
+
+    public Light(String location) {
+        this.location = location;
+        this.isOn = false;
+    }
+
+    public void turnOn() {
+        isOn = true;
+        System.out.println(location + " light is ON");
+    }
+
+    public void turnOff() {
+        isOn = false;
+        System.out.println(location + " light is OFF");
+    }
+
+    public boolean isOn() {
+        return isOn;
+    }
+}
+
+class Fan {
+    private String location;
+    private int speed; // 0 = off, 1 = low, 2 = medium, 3 = high
+
+    public Fan(String location) {
+        this.location = location;
+        this.speed = 0;
+    }
+
+    public void turnOn() {
+        speed = 1;
+        System.out.println(location + " fan is ON (Low speed)");
+    }
+
+    public void turnOff() {
+        speed = 0;
+        System.out.println(location + " fan is OFF");
+    }
+
+    public void increaseSpeed() {
+        if (speed < 3) {
+            speed++;
+            String[] speedNames = {"OFF", "Low", "Medium", "High"};
+            System.out.println(location + " fan speed: " + speedNames[speed]);
+        }
+    }
+
+    public void decreaseSpeed() {
+        if (speed > 0) {
+            speed--;
+            String[] speedNames = {"OFF", "Low", "Medium", "High"};
+            System.out.println(location + " fan speed: " + speedNames[speed]);
+        }
+    }
+
+    public int getSpeed() {
+        return speed;
+    }
+}
+
+class Stereo {
+    private String location;
+    private boolean isOn;
+    private int volume;
+
+    public Stereo(String location) {
+        this.location = location;
+        this.isOn = false;
+        this.volume = 0;
+    }
+
+    public void turnOn() {
+        isOn = true;
+        System.out.println(location + " stereo is ON");
+    }
+
+    public void turnOff() {
+        isOn = false;
+        volume = 0;
+        System.out.println(location + " stereo is OFF");
+    }
+
+    public void setVolume(int volume) {
+        this.volume = volume;
+        System.out.println(location + " stereo volume set to " + volume);
+    }
+
+    public int getVolume() {
+        return volume;
+    }
+
+    public boolean isOn() {
+        return isOn;
+    }
+}
+
+// Concrete Commands
+class LightOnCommand implements Command {
+    private Light light;
+
+    public LightOnCommand(Light light) {
+        this.light = light;
+    }
+
+    @Override
+    public void execute() {
+        light.turnOn();
+    }
+
+    @Override
+    public void undo() {
+        light.turnOff();
+    }
+}
+
+class LightOffCommand implements Command {
+    private Light light;
+
+    public LightOffCommand(Light light) {
+        this.light = light;
+    }
+
+    @Override
+    public void execute() {
+        light.turnOff();
+    }
+
+    @Override
+    public void undo() {
+        light.turnOn();
+    }
+}
+
+class FanOnCommand implements Command {
+    private Fan fan;
+
+    public FanOnCommand(Fan fan) {
+        this.fan = fan;
+    }
+
+    @Override
+    public void execute() {
+        fan.turnOn();
+    }
+
+    @Override
+    public void undo() {
+        fan.turnOff();
+    }
+}
+
+class FanOffCommand implements Command {
+    private Fan fan;
+
+    public FanOffCommand(Fan fan) {
+        this.fan = fan;
+    }
+
+    @Override
+    public void execute() {
+        fan.turnOff();
+    }
+
+    @Override
+    public void undo() {
+        fan.turnOn();
+    }
+}
+
+class StereoOnWithVolumeCommand implements Command {
+    private Stereo stereo;
+    private int previousVolume;
+
+    public StereoOnWithVolumeCommand(Stereo stereo) {
+        this.stereo = stereo;
+    }
+
+    @Override
+    public void execute() {
+        previousVolume = stereo.getVolume();
+        stereo.turnOn();
+        stereo.setVolume(11);
+    }
+
+    @Override
+    public void undo() {
+        stereo.turnOff();
+    }
+}
+
+// No Operation Command (Null Object Pattern)
+class NoCommand implements Command {
+    @Override
+    public void execute() {
+        // Do nothing
+    }
+
+    @Override
+    public void undo() {
+        // Do nothing
+    }
+}
+
+// Macro Command - executes multiple commands
+class MacroCommand implements Command {
+    private Command[] commands;
+
+    public MacroCommand(Command[] commands) {
+        this.commands = commands;
+    }
+
+    @Override
+    public void execute() {
+        for (Command command : commands) {
+            command.execute();
+        }
+    }
+
+    @Override
+    public void undo() {
+        // Undo in reverse order
+        for (int i = commands.length - 1; i >= 0; i--) {
+            commands[i].undo();
+        }
+    }
+}
+
+// Invoker - Remote Control
+class RemoteControl {
+    private Command[] onCommands;
+    private Command[] offCommands;
+    private Command undoCommand;
+
+    public RemoteControl() {
+        onCommands = new Command[7];
+        offCommands = new Command[7];
+
+        Command noCommand = new NoCommand();
+        for (int i = 0; i < 7; i++) {
+            onCommands[i] = noCommand;
+            offCommands[i] = noCommand;
+        }
+        undoCommand = noCommand;
+    }
+
+    public void setCommand(int slot, Command onCommand, Command offCommand) {
+        onCommands[slot] = onCommand;
+        offCommands[slot] = offCommand;
+    }
+
+    public void onButtonPressed(int slot) {
+        if (slot >= 0 && slot < onCommands.length) {
+            onCommands[slot].execute();
+            undoCommand = onCommands[slot];
+        }
+    }
+
+    public void offButtonPressed(int slot) {
+        if (slot >= 0 && slot < offCommands.length) {
+            offCommands[slot].execute();
+            undoCommand = offCommands[slot];
+        }
+    }
+
+    public void undoButtonPressed() {
+        undoCommand.undo();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n------ Remote Control ------\n");
+        for (int i = 0; i < onCommands.length; i++) {
+            sb.append("[slot ").append(i).append("] ")
+              .append(onCommands[i].getClass().getSimpleName())
+              .append("    ")
+              .append(offCommands[i].getClass().getSimpleName()).append("\n");
+        }
+        sb.append("[undo] ").append(undoCommand.getClass().getSimpleName()).append("\n");
+        return sb.toString();
+    }
+}
+
+// Usage
+public class CommandExample {
+    public static void main(String[] args) {
+        // Create remote control
+        RemoteControl remote = new RemoteControl();
+
+        // Create devices
+        Light livingRoomLight = new Light("Living Room");
+        Light kitchenLight = new Light("Kitchen");
+        Fan bedroomFan = new Fan("Bedroom");
+        Stereo livingRoomStereo = new Stereo("Living Room");
+
+        // Create commands
+        LightOnCommand livingRoomLightOn = new LightOnCommand(livingRoomLight);
+        LightOffCommand livingRoomLightOff = new LightOffCommand(livingRoomLight);
+
+        LightOnCommand kitchenLightOn = new LightOnCommand(kitchenLight);
+        LightOffCommand kitchenLightOff = new LightOffCommand(kitchenLight);
+
+        FanOnCommand bedroomFanOn = new FanOnCommand(bedroomFan);
+        FanOffCommand bedroomFanOff = new FanOffCommand(bedroomFan);
+
+        StereoOnWithVolumeCommand stereoOnWithVolume = new StereoOnWithVolumeCommand(livingRoomStereo);
+
+        // Set commands to remote
+        remote.setCommand(0, livingRoomLightOn, livingRoomLightOff);
+        remote.setCommand(1, kitchenLightOn, kitchenLightOff);
+        remote.setCommand(2, bedroomFanOn, bedroomFanOff);
+        remote.setCommand(3, stereoOnWithVolume, new NoCommand());
+
+        // Create macro command for party mode
+        Command[] partyOn = {livingRoomLightOn, stereoOnWithVolume, bedroomFanOn};
+        Command[] partyOff = {livingRoomLightOff, new NoCommand(), bedroomFanOff};
+
+        MacroCommand partyOnMacro = new MacroCommand(partyOn);
+        MacroCommand partyOffMacro = new MacroCommand(partyOff);
+
+        remote.setCommand(4, partyOnMacro, partyOffMacro);
+
+        System.out.println(remote);
+
+        // Test individual commands
+        System.out.println("--- Testing Individual Commands ---");
+        remote.onButtonPressed(0);  // Living room light on
+        remote.offButtonPressed(0); // Living room light off
+        remote.undoButtonPressed(); // Undo (light back on)
+
+        System.out.println();
+        remote.onButtonPressed(2);  // Bedroom fan on
+        remote.undoButtonPressed(); // Undo (fan off)
+
+        // Test macro command
+        System.out.println("\n--- Testing Macro Command (Party Mode) ---");
+        remote.onButtonPressed(4);  // Party mode on
+        System.out.println("\nParty's over...");
+        remote.offButtonPressed(4); // Party mode off
+        remote.undoButtonPressed(); // Undo party off (party back on)
+    }
+}
+```
+
+---
+
+### 11. Template Method Pattern
+
+**Intent:** Define the skeleton of an algorithm in a base class, letting subclasses override specific steps without changing the algorithm's structure.
+
+**When to Use:**
+- When you have an algorithm with invariant parts and variant parts
+- When you want to avoid code duplication in similar algorithms
+- When you want to control which parts of an algorithm can be extended
+
+```java
+// Abstract class defining template method
+abstract class DataProcessor {
+
+    // Template method - defines the algorithm skeleton
+    public final void processData() {
+        readData();
+        processDataSpecific();
+        if (shouldValidate()) {
+            validateData();
+        }
+        saveData();
+        if (shouldNotify()) {
+            sendNotification();
+        }
+    }
+
+    // Common step - same for all implementations
+    private void readData() {
+        System.out.println("Reading data from source...");
+    }
+
+    // Abstract method - must be implemented by subclasses
+    protected abstract void processDataSpecific();
+
+    // Hook method - optional override
+    protected boolean shouldValidate() {
+        return true; // Default behavior
+    }
+
+    // Abstract method
+    protected abstract void validateData();
+
+    // Common step
+    private void saveData() {
+        System.out.println("Saving processed data...");
+    }
+
+    // Hook method - optional override
+    protected boolean shouldNotify() {
+        return false; // Default behavior
+    }
+
+    // Hook method with default implementation
+    protected void sendNotification() {
+        System.out.println("Sending notification...");
+    }
+}
+
+// Concrete implementations
+class CSVDataProcessor extends DataProcessor {
+
+    @Override
+    protected void processDataSpecific() {
+        System.out.println("Processing CSV data:");
+        System.out.println("- Parsing CSV format");
+        System.out.println("- Converting to internal format");
+        System.out.println("- Handling CSV-specific rules");
+    }
+
+    @Override
+    protected void validateData() {
+        System.out.println("Validating CSV data:");
+        System.out.println("- Checking column count");
+        System.out.println("- Validating data types");
+        System.out.println("- Checking for required fields");
+    }
+
+    @Override
+    protected boolean shouldNotify() {
+        return true; // CSV processing should send notifications
+    }
+
+    @Override
+    protected void sendNotification() {
+        System.out.println("Sending CSV processing completion email...");
+    }
+}
+
+class JSONDataProcessor extends DataProcessor {
+
+    @Override
+    protected void processDataSpecific() {
+        System.out.println("Processing JSON data:");
+        System.out.println("- Parsing JSON format");
+        System.out.println("- Extracting nested objects");
+        System.out.println("- Handling JSON arrays");
+    }
+
+    @Override
+    protected void validateData() {
+        System.out.println("Validating JSON data:");
+        System.out.println("- Checking JSON schema");
+        System.out.println("- Validating required properties");
+        System.out.println("- Checking data constraints");
+    }
+}
+
+class XMLDataProcessor extends DataProcessor {
+
+    @Override
+    protected void processDataSpecific() {
+        System.out.println("Processing XML data:");
+        System.out.println("- Parsing XML structure");
+        System.out.println("- Processing XML attributes");
+        System.out.println("- Handling XML namespaces");
+    }
+
+    @Override
+    protected void validateData() {
+        System.out.println("Validating XML data:");
+        System.out.println("- Checking XML schema (XSD)");
+        System.out.println("- Validating XML structure");
+        System.out.println("- Checking element constraints");
+    }
+
+    @Override
+    protected boolean shouldValidate() {
+        return false; // Skip validation for XML (handled by XSD)
+    }
+
+    @Override
+    protected boolean shouldNotify() {
+        return true;
+    }
+
+    @Override
+    protected void sendNotification() {
+        System.out.println("Sending XML processing status to monitoring system...");
+    }
+}
+
+// Usage
+public class TemplateMethodExample {
+    public static void main(String[] args) {
+        System.out.println("=== Processing CSV Data ===");
+        DataProcessor csvProcessor = new CSVDataProcessor();
+        csvProcessor.processData();
+
+        System.out.println("\n=== Processing JSON Data ===");
+        DataProcessor jsonProcessor = new JSONDataProcessor();
+        jsonProcessor.processData();
+
+        System.out.println("\n=== Processing XML Data ===");
+        DataProcessor xmlProcessor = new XMLDataProcessor();
+        xmlProcessor.processData();
+    }
+}
+```
+
+---
+
+### 12. State Pattern
+
+**Intent:** Allow an object to alter its behavior when its internal state changes.
+
+**When to Use:**
+- When an object's behavior changes based on its state
+- When you have complex conditional statements based on object state
+- When state transitions are well-defined
+
+```java
+// State interface
+interface VendingMachineState {
+    void insertCoin(VendingMachine machine);
+    void pressButton(VendingMachine machine);
+    void dispense(VendingMachine machine);
+    void refund(VendingMachine machine);
+}
+
+// Context class
+class VendingMachine {
+    private VendingMachineState currentState;
+    private VendingMachineState readyState;
+    private VendingMachineState coinInsertedState;
+    private VendingMachineState itemDispensedState;
+    private VendingMachineState outOfStockState;
+
+    private int coinCount;
+    private int itemCount;
+
+    public VendingMachine(int itemCount) {
+        this.itemCount = itemCount;
+        this.coinCount = 0;
+
+        // Initialize states
+        readyState = new ReadyState();
+        coinInsertedState = new CoinInsertedState();
+        itemDispensedState = new ItemDispensedState();
+        outOfStockState = new OutOfStockState();
+
+        // Set initial state
+        if (itemCount > 0) {
+            currentState = readyState;
+        } else {
+            currentState = outOfStockState;
+        }
+    }
+
+    // State transition methods
+    public void setState(VendingMachineState state) {
+        this.currentState = state;
+    }
+
+    // Delegate to current state
+    public void insertCoin() {
+        currentState.insertCoin(this);
+    }
+
+    public void pressButton() {
+        currentState.pressButton(this);
+    }
+
+    public void dispense() {
+        currentState.dispense(this);
+    }
+
+    public void refund() {
+        currentState.refund(this);
+    }
+
+    // Getters for states
+    public VendingMachineState getReadyState() { return readyState; }
+    public VendingMachineState getCoinInsertedState() { return coinInsertedState; }
+    public VendingMachineState getItemDispensedState() { return itemDispensedState; }
+    public VendingMachineState getOutOfStockState() { return outOfStockState; }
+
+    // Getters and setters
+    public int getCoinCount() { return coinCount; }
+    public void setCoinCount(int coinCount) { this.coinCount = coinCount; }
+    public int getItemCount() { return itemCount; }
+    public void setItemCount(int itemCount) { this.itemCount = itemCount; }
+
+    public void addCoin() { coinCount++; }
+    public void removeCoin() { if (coinCount > 0) coinCount--; }
+    public void removeItem() { if (itemCount > 0) itemCount--; }
+
+    public String getCurrentStateName() {
+        return currentState.getClass().getSimpleName();
+    }
+
+    public void displayStatus() {
+        System.out.println("--- Vending Machine Status ---");
+        System.out.println("Current State: " + getCurrentStateName());
+        System.out.println("Coins: " + coinCount);
+        System.out.println("Items: " + itemCount);
+        System.out.println("-----------------------------");
+    }
+}
+
+// Concrete states
+class ReadyState implements VendingMachineState {
+    @Override
+    public void insertCoin(VendingMachine machine) {
+        System.out.println("Coin inserted. Ready to make selection.");
+        machine.addCoin();
+        machine.setState(machine.getCoinInsertedState());
+    }
+
+    @Override
+    public void pressButton(VendingMachine machine) {
+        System.out.println("Please insert coin first.");
+    }
+
+    @Override
+    public void dispense(VendingMachine machine) {
+        System.out.println("Please insert coin and press button first.");
+    }
+
+    @Override
+    public void refund(VendingMachine machine) {
+        System.out.println("No coins to refund.");
+    }
+}
+
+class CoinInsertedState implements VendingMachineState {
+    @Override
+    public void insertCoin(VendingMachine machine) {
+        System.out.println("Coin already inserted. Press button to select item.");
+        machine.addCoin();
+    }
+
+    @Override
+    public void pressButton(VendingMachine machine) {
+        System.out.println("Button pressed. Dispensing item...");
+        machine.setState(machine.getItemDispensedState());
+        machine.dispense(); // Trigger dispense
+    }
+
+    @Override
+    public void dispense(VendingMachine machine) {
+        System.out.println("Press button first.");
+    }
+
+    @Override
+    public void refund(VendingMachine machine) {
+        System.out.println("Coin refunded.");
+        machine.removeCoin();
+        if (machine.getItemCount() > 0) {
+            machine.setState(machine.getReadyState());
+        } else {
+            machine.setState(machine.getOutOfStockState());
+        }
+    }
+}
+
+class ItemDispensedState implements VendingMachineState {
+    @Override
+    public void insertCoin(VendingMachine machine) {
+        System.out.println("Please wait, dispensing in progress.");
+    }
+
+    @Override
+    public void pressButton(VendingMachine machine) {
+        System.out.println("Please wait, dispensing in progress.");
+    }
+
+    @Override
+    public void dispense(VendingMachine machine) {
+        System.out.println("Item dispensed! Enjoy your purchase.");
+        machine.removeItem();
+        machine.removeCoin();
+
+        if (machine.getItemCount() > 0) {
+            machine.setState(machine.getReadyState());
+        } else {
+            System.out.println("Machine is now out of stock.");
+            machine.setState(machine.getOutOfStockState());
+        }
+    }
+
+    @Override
+    public void refund(VendingMachine machine) {
+        System.out.println("Cannot refund. Item is being dispensed.");
+    }
+}
+
+class OutOfStockState implements VendingMachineState {
+    @Override
+    public void insertCoin(VendingMachine machine) {
+        System.out.println("Machine is out of stock. Coin returned.");
+    }
+
+    @Override
+    public void pressButton(VendingMachine machine) {
+        System.out.println("Machine is out of stock.");
+    }
+
+    @Override
+    public void dispense(VendingMachine machine) {
+        System.out.println("Machine is out of stock.");
+    }
+
+    @Override
+    public void refund(VendingMachine machine) {
+        if (machine.getCoinCount() > 0) {
+            System.out.println("Refunding coins due to out of stock.");
+            machine.setCoinCount(0);
+        } else {
+            System.out.println("No coins to refund.");
+        }
+    }
+}
+
+// Usage
+public class StateExample {
+    public static void main(String[] args) {
+        System.out.println("=== Vending Machine State Pattern Demo ===\n");
+
+        VendingMachine machine = new VendingMachine(2);
+        machine.displayStatus();
+
+        // Normal purchase flow
+        System.out.println("\n--- Normal Purchase Flow ---");
+        machine.insertCoin();
+        machine.displayStatus();
+
+        machine.pressButton();
+        machine.displayStatus();
+
+        // Second purchase
+        System.out.println("\n--- Second Purchase ---");
+        machine.insertCoin();
+        machine.pressButton();
+        machine.displayStatus();
+
+        // Try to purchase when out of stock
+        System.out.println("\n--- Out of Stock Scenario ---");
+        machine.insertCoin();
+        machine.pressButton();
+        machine.displayStatus();
+
+        // Test refund functionality
+        System.out.println("\n--- Testing Refund ---");
+        VendingMachine machine2 = new VendingMachine(5);
+        machine2.insertCoin();
+        machine2.insertCoin(); // Insert multiple coins
+        machine2.displayStatus();
+
+        machine2.refund();
+        machine2.displayStatus();
+    }
+}
+```
+
+---
+
+## Pattern Relationships
+
+### Pattern Combinations
+
+#### 1. Observer + Command
+```java
+// Commands that can be observed
+abstract class ObservableCommand implements Command {
+    private List<CommandObserver> observers = new ArrayList<>();
+
+    public void addObserver(CommandObserver observer) {
+        observers.add(observer);
+    }
+
+    protected void notifyExecution(String commandName) {
+        for (CommandObserver observer : observers) {
+            observer.onCommandExecuted(commandName);
+        }
+    }
+}
+
+interface CommandObserver {
+    void onCommandExecuted(String commandName);
+}
+```
+
+#### 2. Factory + Singleton
+```java
+class DatabaseConnectionFactory {
+    private static DatabaseConnectionFactory instance;
+    private Map<String, Connection> connections;
+
+    private DatabaseConnectionFactory() {
+        connections = new HashMap<>();
+    }
+
+    public static DatabaseConnectionFactory getInstance() {
+        if (instance == null) {
+            synchronized (DatabaseConnectionFactory.class) {
+                if (instance == null) {
+                    instance = new DatabaseConnectionFactory();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public Connection getConnection(String dbType) {
+        return connections.computeIfAbsent(dbType, this::createConnection);
+    }
+
+    private Connection createConnection(String dbType) {
+        // Factory logic to create different database connections
+        switch (dbType) {
+            case "mysql": return new MySQLConnection();
+            case "postgres": return new PostgreSQLConnection();
+            default: throw new IllegalArgumentException("Unknown database type");
+        }
+    }
+}
+```
+
+#### 3. "Design a payment processing system"
+```java
+// Use Strategy + Factory patterns
+class PaymentProcessor {
+    private PaymentStrategyFactory factory;
+
+    public void processPayment(PaymentRequest request) {
+        PaymentStrategy strategy = factory.createStrategy(request.getPaymentType());
+        strategy.pay(request.getAmount());
+    }
+}
+```
+
+#### 4. "How would you implement undo functionality?"
+```java
+// Use Command pattern with history
+class CommandManager {
+    private Stack<Command> history = new Stack<>();
+
+    public void execute(Command command) {
+        command.execute();
+        history.push(command);
+    }
+
+    public void undo() {
+        if (!history.isEmpty()) {
+            Command command = history.pop();
+            command.undo();
+        }
+    }
+}
+```
+
+#### 5. "Design a file processing system for different formats"
+```java
+// Use Template Method + Strategy
+abstract class FileProcessor {
+    public final void processFile(String filename) {
+        File file = readFile(filename);
+        ProcessingStrategy strategy = getStrategy(getFileExtension(filename));
+        ProcessedData data = strategy.process(file);
+        saveProcessedData(data);
+    }
+
+    protected abstract ProcessingStrategy getStrategy(String extension);
+}
+```
+
+### Pattern Identification Questions
+
+#### Question: "What patterns can you identify in this code?"
+
+```java
+public class DatabaseManager {
+    private static DatabaseManager instance;
+    private ConnectionFactory factory;
+    private List<ConnectionObserver> observers = new ArrayList<>();
+
+    private DatabaseManager() {
+        factory = new ConnectionFactory();
+    }
+
+    public static DatabaseManager getInstance() {
+        if (instance == null) {
+            synchronized (DatabaseManager.class) {
+                if (instance == null) {
+                    instance = new DatabaseManager();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public Connection getConnection(String type) {
+        Connection conn = factory.createConnection(type);
+        notifyObservers("Connection created: " + type);
+        return conn;
+    }
+
+    public void addObserver(ConnectionObserver observer) {
+        observers.add(observer);
+    }
+
+    private void notifyObservers(String message) {
+        for (ConnectionObserver observer : observers) {
+            observer.update(message);
+        }
+    }
+}
+```
+
+**Answer:**
+- **Singleton Pattern**: `getInstance()` method with double-checked locking
+- **Factory Pattern**: `ConnectionFactory` creating different connection types
+- **Observer Pattern**: `observers` list and `notifyObservers()` method
+
+---
+
+## Best Practices
+
+### 1. Pattern Selection Guidelines
+
+#### Do Use Patterns When:
+- **Problem fits naturally**: Don't force patterns
+- **Code becomes simpler**: Pattern reduces complexity
+- **Future flexibility needed**: Anticipating changes
+- **Team understands pattern**: Common vocabulary
+
+#### Don't Use Patterns When:
+- **Over-engineering**: Simple problems don't need complex solutions
+- **Performance critical**: Some patterns add overhead
+- **Team unfamiliar**: Learning curve affects productivity
+
+### 2. Implementation Best Practices
+
+#### Singleton Pattern
+```java
+// ✅ GOOD - Enum singleton
+public enum ConfigManager {
+    INSTANCE;
+
+    private Properties config;
+
+    ConfigManager() {
+        loadConfig();
+    }
+
+    public String getProperty(String key) {
+        return config.getProperty(key);
+    }
+}
+
+// ❌ BAD - Not thread-safe
+public class ConfigManager {
+    private static ConfigManager instance;
+
+    public static ConfigManager getInstance() {
+        if (instance == null) {
+            instance = new ConfigManager(); // Race condition!
+        }
+        return instance;
+    }
+}
+```
+
+#### Factory Pattern
+```java
+// ✅ GOOD - Extensible design
+public class ShapeFactory {
+    private static final Map<String, Supplier<Shape>> shapeMap = new HashMap<>();
+
+    static {
+        shapeMap.put("circle", Circle::new);
+        shapeMap.put("square", Square::new);
+        shapeMap.put("triangle", Triangle::new);
+    }
+
+    public static Shape createShape(String type) {
+        Supplier<Shape> supplier = shapeMap.get(type.toLowerCase());
+        if (supplier != null) {
+            return supplier.get();
+        }
+        throw new IllegalArgumentException("Unknown shape type: " + type);
+    }
+
+    // Easy to add new shapes
+    public static void registerShape(String type, Supplier<Shape> supplier) {
+        shapeMap.put(type, supplier);
+    }
+}
+
+// ❌ BAD - Hard to extend
+public class ShapeFactory {
+    public static Shape createShape(String type) {
+        if ("circle".equals(type)) {
+            return new Circle();
+        } else if ("square".equals(type)) {
+            return new Square();
+        }
+        // Need to modify this method for new shapes
+        return null;
+    }
+}
+```
+
+#### Observer Pattern
+```java
+// ✅ GOOD - Generic and type-safe
+public class EventPublisher<T> {
+    private final List<EventListener<T>> listeners = new CopyOnWriteArrayList<>();
+
+    public void subscribe(EventListener<T> listener) {
+        listeners.add(listener);
+    }
+
+    public void unsubscribe(EventListener<T> listener) {
+        listeners.remove(listener);
+    }
+
+    public void publish(T event) {
+        for (EventListener<T> listener : listeners) {
+            try {
+                listener.onEvent(event);
+            } catch (Exception e) {
+                // Log error but don't stop other listeners
+                System.err.println("Error in listener: " + e.getMessage());
+            }
+        }
+    }
+}
+
+@FunctionalInterface
+public interface EventListener<T> {
+    void onEvent(T event);
+}
+
+// ❌ BAD - Not thread-safe, no error handling
+public class EventPublisher {
+    private List<Observer> observers = new ArrayList<>(); // Not thread-safe!
+
+    public void notifyObservers(Object event) {
+        for (Observer observer : observers) {
+            observer.update(event); // If one fails, all fail
+        }
+    }
+}
+```
+
+### 3. Performance Considerations
+
+#### Memory Usage
+```java
+// ✅ GOOD - Flyweight pattern for memory efficiency
+public class CharacterFactory {
+    private static final Map<Character, CharacterFlyweight> flyweights = new HashMap<>();
+
+    public static CharacterFlyweight getCharacter(char c) {
+        return flyweights.computeIfAbsent(c, CharacterFlyweight::new);
+    }
+}
+
+// Context contains extrinsic state
+public class TextDocument {
+    private List<CharacterContext> characters = new ArrayList<>();
+
+    public void addCharacter(char c, Font font, Color color, int position) {
+        CharacterFlyweight flyweight = CharacterFactory.getCharacter(c);
+        characters.add(new CharacterContext(flyweight, font, color, position));
+    }
+}
+```
+
+#### Lazy Initialization
+```java
+// ✅ GOOD - Lazy loading with caching
+public class ExpensiveResourceFactory {
+    private static final Map<String, ExpensiveResource> cache = new ConcurrentHashMap<>();
+
+    public static ExpensiveResource getResource(String key) {
+        return cache.computeIfAbsent(key, k -> {
+            System.out.println("Creating expensive resource for: " + k);
+            return new ExpensiveResource(k);
+        });
+    }
+}
+```
+
+### 4. Testing Patterns
+
+#### Dependency Injection for Testability
+```java
+// ✅ GOOD - Testable design
+public class OrderService {
+    private final PaymentProcessor paymentProcessor;
+    private final InventoryService inventoryService;
+    private final NotificationService notificationService;
+
+    public OrderService(PaymentProcessor paymentProcessor,
+                       InventoryService inventoryService,
+                       NotificationService notificationService) {
+        this.paymentProcessor = paymentProcessor;
+        this.inventoryService = inventoryService;
+        this.notificationService = notificationService;
+    }
+
+    public void processOrder(Order order) {
+        inventoryService.reserve(order.getItems());
+        paymentProcessor.processPayment(order.getPayment());
+        notificationService.sendConfirmation(order);
+    }
+}
+
+// Easy to test with mocks
+@Test
+public void testOrderProcessing() {
+    PaymentProcessor mockPayment = mock(PaymentProcessor.class);
+    InventoryService mockInventory = mock(InventoryService.class);
+    NotificationService mockNotification = mock(NotificationService.class);
+
+    OrderService service = new OrderService(mockPayment, mockInventory, mockNotification);
+
+    Order order = new Order(/* ... */);
+    service.processOrder(order);
+
+    verify(mockPayment).processPayment(order.getPayment());
+    verify(mockInventory).reserve(order.getItems());
+    verify(mockNotification).sendConfirmation(order);
+}
+```
+
+### 5. Common Mistakes
+
+#### Mistake 1: Overusing Singleton
+```java
+// ❌ BAD - Everything as singleton
+public class UserSingleton {
+    private static UserSingleton instance;
+    // User should be a regular object, not singleton
+}
+
+// ✅ GOOD - Use singleton only when needed
+public class ApplicationConfig {
+    // Config should be singleton - shared application state
+}
+
+public class User {
+    // Regular object - multiple instances needed
+}
+```
+
+#### Mistake 2: Not Following SOLID Principles
+```java
+// ❌ BAD - Violates Open/Closed Principle
+public class DiscountCalculator {
+    public double calculate(Customer customer, double amount) {
+        if (customer.getType().equals("REGULAR")) {
+            return amount * 0.95;
+        } else if (customer.getType().equals("PREMIUM")) {
+            return amount * 0.90;
+        } else if (customer.getType().equals("VIP")) {
+            return amount * 0.85;
+        }
+        return amount; // Need to modify for new customer types
+    }
+}
+
+// ✅ GOOD - Strategy pattern following Open/Closed
+public interface DiscountStrategy {
+    double calculate(double amount);
+}
+
+public class RegularCustomerDiscount implements DiscountStrategy {
+    public double calculate(double amount) { return amount * 0.95; }
+}
+
+public class DiscountCalculator {
+    public double calculate(DiscountStrategy strategy, double amount) {
+        return strategy.calculate(amount);
+    }
+}
+```
+
+#### Mistake 3: Ignoring Thread Safety
+```java
+// ❌ BAD - Not thread-safe
+public class CounterSingleton {
+    private static CounterSingleton instance;
+    private int count = 0;
+
+    public static CounterSingleton getInstance() {
+        if (instance == null) {
+            instance = new CounterSingleton(); // Race condition
+        }
+        return instance;
+    }
+
+    public void increment() {
+        count++; // Race condition
+    }
+}
+
+// ✅ GOOD - Thread-safe
+public enum CounterSingleton {
+    INSTANCE;
+
+    private final AtomicInteger count = new AtomicInteger(0);
+
+    public void increment() {
+        count.incrementAndGet();
+    }
+
+    public int getCount() {
+        return count.get();
+    }
+}
+```
+
+---
+
+## Summary
+
+### Key Takeaways
+
+1. **Design patterns are tools, not rules** - Use them when they solve real problems
+2. **Understand the intent** - Don't just memorize implementations
+3. **Consider trade-offs** - Every pattern has costs and benefits
+4. **Start simple** - Add patterns when complexity justifies them
+5. **Team knowledge matters** - Use patterns the team understands
+
+### Pattern Categories Quick Reference
+
+#### Creational (Object Creation)
+- **Singleton**: One instance only
+- **Factory Method**: Create objects without specifying exact classes
+- **Abstract Factory**: Create families of related objects
+- **Builder**: Construct complex objects step by step
+
+#### Structural (Object Composition)
+- **Adapter**: Make incompatible interfaces work together
+- **Decorator**: Add behavior dynamically
+- **Facade**: Simplify complex subsystems
+
+#### Behavioral (Object Interaction)
+- **Observer**: Notify multiple objects of changes
+- **Strategy**: Select algorithms at runtime
+- **Command**: Encapsulate requests as objects
+- **Template Method**: Define algorithm skeleton
+- **State**: Change behavior based on internal state
+
+### Interview Preparation Tips
+
+1. **Practice implementation** - Write code, don't just read
+2. **Understand when to use** - Know the problems each pattern solves
+3. **Know alternatives** - Understand trade-offs between patterns
+4. **Real-world examples** - Think of examples from actual systems
+5. **Combination patterns** - Understand how patterns work together
+
+Remember: The goal is not to use every pattern, but to use the right pattern for the right problem. Focus on writing clean, maintainable code that solves real problems effectively.. Strategy + Template Method
