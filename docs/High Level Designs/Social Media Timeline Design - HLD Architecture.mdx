@@ -1,0 +1,694 @@
+# Social Media Timeline Design - HLD Architecture 📰
+
+## Core Problem Statement
+
+**Challenge**: Generate personalized timelines for billions of users in real-time while handling celebrity posts that can reach millions of followers instantly.
+
+**Scale Requirements**:
+- **Reads**: 100:1 read-to-write ratio (users scroll more than they post)
+- **Latency**: `<200ms` timeline load time
+- **Throughput**: Millions of timeline requests per second
+- **Storage**: Billions of posts with complex relationships
+
+---
+
+## 1. Timeline Generation Strategies
+
+### Three Core Approaches
+
+#### 1.1 Pull Model (Fan-out on Read)
+```
+Timeline Request Flow:
+User Request → Timeline Service → Query Following List → Fetch Recent Posts → Rank & Merge → Return Timeline
+
+Characteristics:
+├── Real-time content (always fresh)
+├── Low storage overhead
+├── High compute cost per read
+└── Slow response times (complex queries)
+
+Best For:
+├── Celebrity accounts (millions of followers)
+├── Less active users
+├── Systems prioritizing storage efficiency
+└── Users following many inactive accounts
+```
+
+#### 1.2 Push Model (Fan-out on Write)
+```
+Post Creation Flow:
+New Post → Get Followers List → Push to All Follower Timelines → Store in Timeline Cache
+
+Timeline Request Flow:
+User Request → Timeline Service → Fetch Pre-computed Timeline → Return Results
+
+Characteristics:
+├── Ultra-fast reads (pre-computed)
+├── High storage cost (duplicate data)
+├── Expensive writes for popular users
+└── Potential stale data during high activity
+
+Best For:
+├── Regular users (<10K followers)
+├── Active users who read frequently
+├── Real-time systems prioritizing read speed
+└── Mobile apps needing fast loading
+```
+
+#### 1.3 Hybrid Model (Mixed Strategy)
+```
+Decision Logic:
+if (user.followers_count > CELEBRITY_THRESHOLD) {
+    use PULL_MODEL
+} else {
+    use PUSH_MODEL
+}
+
+Timeline Assembly:
+├── Pull celebrity posts on-demand
+├── Merge with pre-computed timeline cache
+├── Apply personalization ranking
+└── Return unified timeline
+
+Characteristics:
+├── Balanced performance and cost
+├── Complex implementation
+├── Optimal for mixed user bases
+└── Scalable across user segments
+```
+
+---
+
+## 2. Celebrity Problem Deep Dive
+
+### The Celebrity Challenge
+**Problem**: When a celebrity with 50M followers posts, the fan-out on write approach would:
+- Create 50M timeline entries instantly
+- Overwhelm the write system
+- Cause massive storage overhead
+- Delay post visibility due to processing time
+
+### Celebrity Handling Strategies
+
+#### 2.1 Celebrity Detection
+```
+Celebrity Classification:
+├── Static Thresholds
+│   ├── >1M followers = Celebrity
+│   ├── >100K followers = Influencer
+│   ├── <100K followers = Regular user
+│   └── Verified accounts = Celebrity
+├── Dynamic Classification
+│   ├── Follower growth rate
+│   ├── Engagement velocity
+│   ├── Post reach metrics
+│   └── Media mentions
+└── Manual Override
+    ├── News organizations
+    ├── Government accounts
+    ├── Brand accounts
+    └── Emergency services
+```
+
+#### 2.2 Celebrity Timeline Architecture
+```
+Celebrity Post Flow:
+1. Celebrity posts content
+2. Store in Celebrity Content Service
+3. Mark as "celebrity post" in metadata
+4. Skip fan-out process initially
+5. Index for real-time retrieval
+
+User Timeline Request (with celebrity content):
+1. Fetch pre-computed timeline (regular follows)
+2. Query Celebrity Content Service for followed celebrities
+3. Merge celebrity content with regular timeline
+4. Apply ranking algorithm
+5. Return unified timeline
+```
+
+#### 2.3 Celebrity Content Optimization
+```
+Multi-Tier Celebrity Handling:
+├── Tier 1: Mega-celebrities (>10M followers)
+│   ├── Never fan-out on write
+│   ├── Always pull on read
+│   ├── Dedicated celebrity content servers
+│   └── Special caching strategies
+├── Tier 2: Large influencers (1M-10M followers)
+│   ├── Selective fan-out to active followers only
+│   ├── Lazy loading for inactive followers
+│   ├── Time-delayed fan-out processing
+│   └── Batch processing optimizations
+└── Tier 3: Medium influencers (100K-1M followers)
+    ├── Standard fan-out with rate limiting
+    ├── Async processing of fan-out
+    ├── Priority queuing for processing
+    └── Fallback to pull model during spikes
+```
+
+---
+
+## 3. Platform-Specific Timeline Designs
+
+### 3.1 Twitter Timeline Architecture
+
+#### Home Timeline Design
+```
+Twitter Hybrid Approach:
+├── Regular Users (<50K followers)
+│   ├── Fan-out on write to all followers
+│   ├── Store in Redis timeline cache
+│   ├── TTL-based expiration (7 days)
+│   └── Async processing for non-active users
+├── Popular Users (>50K followers)
+│   ├── Skip fan-out completely
+│   ├── Pull model for timeline generation
+│   ├── Cache popular user content separately
+│   └── Merge during timeline assembly
+└── Mixed Timeline Assembly
+    ├── Base timeline from cache (fan-out users)
+    ├── Pull celebrity content on-demand
+    ├── Merge and rank by recency/relevance
+    └── Apply user-specific filters
+```
+
+#### Tweet Ranking Factors
+```
+Twitter Timeline Ranking:
+├── Temporal Score (40%)
+│   ├── Tweet timestamp (recent = higher score)
+│   ├── Engagement velocity (trending boost)
+│   └── Real-time event correlation
+├── Social Score (30%)
+│   ├── Retweets and quote tweets
+│   ├── Likes and replies ratio
+│   ├── Author credibility score
+│   └── Network engagement (friends' interactions)
+├── Relevance Score (20%)
+│   ├── User interest alignment
+│   ├── Topic/hashtag preferences
+│   ├── Historical engagement patterns
+│   └── Language and geographic relevance
+└── Quality Score (10%)
+    ├── Spam/bot detection
+    ├── Content authenticity
+    ├── Media quality indicators
+    └── Advertiser-friendly content
+```
+
+### 3.2 Facebook News Feed Design
+
+#### EdgeRank Algorithm Evolution
+```
+Facebook Timeline Generation:
+├── Relationship Scoring
+│   ├── Interaction frequency with content creator
+│   ├── Profile visits and photo tags
+│   ├── Message exchange history
+│   └── Mutual friend connections
+├── Content Type Weighting
+│   ├── Video content (highest priority)
+│   ├── Photo posts (high priority)
+│   ├── Link shares (medium priority)
+│   ├── Text status (lower priority)
+│   └── Live video (temporary boost)
+├── Recency Decay Function
+│   ├── Exponential decay over time
+│   ├── Slower decay for high-engagement posts
+│   ├── Boost for "evergreen" content
+│   └── Time zone adjustment for users
+└── Personalization Layer
+    ├── Individual user behavior patterns
+    ├── Content category preferences
+    ├── Device and platform optimization
+    └── A/B testing variations
+```
+
+#### Facebook Celebrity Handling
+```
+Facebook Page Posts (Celebrity/Brand):
+├── Page Post Creation
+│   ├── Store in Page Content Database
+│   ├── Skip immediate fan-out to all followers
+│   ├── Analyze content for viral potential
+│   └── Queue for selective distribution
+├── Smart Distribution Strategy
+│   ├── Initial distribution to top 1% engaged followers
+│   ├── Monitor engagement rate in first hour
+│   ├── Expand distribution if high engagement
+│   ├── Throttle distribution if low engagement
+│   └── Paid promotion integration for reach
+└── Timeline Integration
+    ├── Pull page content during feed generation
+    ├── Compete with organic content for feed slots
+    ├── Apply page-specific ranking adjustments
+    └── Balance organic vs promotional content
+```
+
+### 3.3 Instagram Timeline Design
+
+#### Instagram Feed Architecture
+```
+Instagram Hybrid Timeline:
+├── Following Feed (Chronological + Algorithmic)
+│   ├── Recent posts from followed accounts
+│   ├── Story highlights integration
+│   ├── Suggested posts insertion
+│   └── Ad placement optimization
+├── Discover Feed (Algorithm-driven)
+│   ├── Content from non-followed accounts
+│   ├── Hashtag and location-based discovery
+│   ├── Influencer content promotion
+│   └── Shopping integration
+└── Stories Timeline (Ephemeral)
+    ├── 24-hour TTL content
+    ├── Chronological ordering by posting time
+    ├── Close friends priority
+    └── Interactive elements (polls, questions)
+```
+
+#### Instagram Celebrity Strategy
+```
+Instagram Influencer Architecture:
+├── Creator Account Classification
+│   ├── Regular users: Standard fan-out
+│   ├── Creators (>10K): Selective fan-out
+│   ├── Verified accounts: Pull model
+│   └── Business accounts: Paid reach model
+├── Content Distribution Tiers
+│   ├── Tier 1: Immediate delivery to close connections
+│   ├── Tier 2: Gradual rollout to engaged followers
+│   ├── Tier 3: Algorithmic distribution to broader audience
+│   └── Tier 4: Explore page featuring for viral content
+└── Engagement-based Amplification
+    ├── Monitor early engagement signals
+    ├── Boost high-performing content
+    ├── Reduce reach for low-engagement posts
+    └── Creator bonus programs for viral content
+```
+
+### 3.4 LinkedIn Feed Design
+
+#### Professional Content Timeline
+```
+LinkedIn Feed Architecture:
+├── Professional Relevance Scoring
+│   ├── Industry and job function alignment
+│   ├── Skill overlap with user profile
+│   ├── Company and educational connections
+│   └── Professional level matching
+├── Content Type Prioritization
+│   ├── Original long-form articles (highest)
+│   ├── Industry insights and analysis
+│   ├── Career updates and achievements
+│   ├── Professional networking posts
+│   └── Job postings and opportunities
+├── Network Amplification
+│   ├── 1st degree connections (highest visibility)
+│   ├── 2nd degree mutual connections
+│   ├── Industry leader content
+│   ├── Company page updates
+│   └── LinkedIn Learning integration
+└── Time-sensitive Professional Content
+    ├── Breaking industry news
+    ├── Job application deadlines
+    ├── Networking event announcements
+    └── Professional milestone celebrations
+```
+
+---
+
+## 4. Timeline Storage Architecture
+
+### 4.1 Storage Patterns
+
+#### Push Model Storage
+```
+Timeline Cache Structure:
+User Timeline Table:
+├── user_id (partition key)
+├── post_id (sort key)
+├── timestamp
+├── post_content_summary
+├── author_info
+├── ranking_score
+└── ttl (expiration time)
+
+Characteristics:
+├── High storage cost (duplicated data)
+├── Fast read performance
+├── Complex write operations
+├── Storage grows with user connections
+```
+
+#### Pull Model Storage
+```
+Post Storage:
+User Posts Table:
+├── author_id (partition key)
+├── post_id (sort key)
+├── timestamp
+├── content
+├── metadata
+└── engagement_metrics
+
+User Connections Table:
+├── user_id (partition key)
+├── following_user_id (sort key)
+├── connection_type
+├── connection_timestamp
+└── relationship_strength
+
+Characteristics:
+├── Low storage overhead
+├── Single source of truth
+├── Complex read queries
+├── Real-time data consistency
+```
+
+### 4.2 Hybrid Storage Strategy
+```
+Mixed Storage Approach:
+├── Hot Timeline Cache (Redis)
+│   ├── Last 100 posts per user
+│   ├── TTL: 24-48 hours
+│   ├── Fast read access
+│   └── Memory-optimized
+├── Warm Timeline Storage (Cassandra)
+│   ├── Last 1000 posts per user
+│   ├── TTL: 30 days
+│   ├── SSD-based storage
+│   └── Moderate read performance
+├── Cold Post Archive (S3/HBase)
+│   ├── All historical posts
+│   ├── Permanent storage
+│   ├── Slow access (batch queries)
+│   └── Cost-optimized storage
+└── Celebrity Content Cache
+    ├── Dedicated celebrity post storage
+    ├── Global replication
+    ├── High availability
+    └── Specialized indexing
+```
+
+---
+
+## 5. Real-Time Timeline Updates
+
+### 5.1 Live Update Architecture
+```
+Real-Time Update Flow:
+New Post/Interaction → Message Queue → Timeline Update Service → Push to Active Users
+
+Components:
+├── WebSocket Connections
+│   ├── Persistent connections for active users
+│   ├── Real-time post delivery
+│   ├── Typing indicators and live reactions
+│   └── Connection management and scaling
+├── Server-Sent Events (SSE)
+│   ├── One-way real-time updates
+│   ├── Timeline refresh notifications
+│   ├── New post availability alerts
+│   └── Trending content notifications
+├── Push Notifications
+│   ├── Mobile app notifications
+│   ├── Personalized content alerts
+│   ├── Social interaction notifications
+│   └── Breaking news and viral content
+└── Polling Fallback
+    ├── Legacy client support
+    ├── Network connectivity issues
+    ├── Battery optimization
+    └── Graceful degradation
+```
+
+### 5.2 Event-Driven Updates
+```
+Timeline Update Events:
+├── Content Events
+│   ├── New post created
+│   ├── Post edited/updated
+│   ├── Post deleted/hidden
+│   └── Content moderation actions
+├── Social Events
+│   ├── New follower/connection
+│   ├── User mention in post
+│   ├── Post likes/reactions
+│   ├── Comments and replies
+│   └── Shares and reposts
+├── System Events
+│   ├── Algorithm updates
+│   ├── Trending content identification
+│   ├── Spam/abuse detection
+│   └── Performance optimization triggers
+└── External Events
+    ├── Breaking news integration
+    ├── Sports scores and results
+    ├── Stock market updates
+    └── Weather and emergency alerts
+```
+
+---
+
+## 6. Timeline Ranking & Personalization
+
+### 6.1 Machine Learning Pipeline
+```
+ML-Driven Timeline Ranking:
+├── Feature Engineering
+│   ├── User behavior features (clicks, time spent, shares)
+│   ├── Content features (type, length, media quality)
+│   ├── Social features (author credibility, network engagement)
+│   ├── Contextual features (time, location, device)
+│   └── Historical features (past interactions, preferences)
+├── Model Training
+│   ├── Training data from user interactions
+│   ├── Multiple objective optimization (CTR, engagement, time spent)
+│   ├── A/B testing framework integration
+│   ├── Real-time model updates
+│   └── Bias detection and mitigation
+├── Inference Pipeline
+│   ├── Real-time scoring during timeline generation
+│   ├── Batch processing for pre-computation
+│   ├── Model serving infrastructure
+│   ├── Feature store integration
+│   └── Performance monitoring
+└── Feedback Loop
+    ├── User interaction tracking
+    ├── Model performance analysis
+    ├── Automated model retraining
+    └── Human feedback integration
+```
+
+### 6.2 Personalization Strategies
+```
+Individual Timeline Customization:
+├── Interest Profiling
+│   ├── Topic modeling from user interactions
+│   ├── Hashtag and keyword preferences
+│   ├── Content category weighting
+│   └── Temporal interest evolution
+├── Social Graph Analysis
+│   ├── Close friend identification
+│   ├── Interest community detection
+│   ├── Influence network mapping
+│   └── Echo chamber prevention
+├── Behavioral Adaptation
+│   ├── Optimal posting time detection
+│   ├── Content format preferences
+│   ├── Engagement pattern analysis
+│   └── Attention span optimization
+└── Context Awareness
+    ├── Device-specific optimization
+    ├── Location-based content
+    ├── Time-sensitive personalization
+    └── Mood and sentiment adaptation
+```
+
+---
+
+## 7. Performance Optimization
+
+### 7.1 Caching Strategy
+```
+Multi-Layer Caching:
+├── Browser Cache
+│   ├── Static assets (images, CSS, JS)
+│   ├── Recently viewed content
+│   ├── User session data
+│   └── Offline content access
+├── CDN Cache
+│   ├── Media files (photos, videos)
+│   ├── Popular content
+│   ├── Geographic distribution
+│   └── Edge server optimization
+├── Application Cache
+│   ├── User timeline cache (Redis)
+│   ├── Celebrity content cache
+│   ├── Trending topics cache
+│   └── Search results cache
+├── Database Cache
+│   ├── Query result caching
+│   ├── Connection pooling
+│   ├── Read replica caching
+│   └── Index optimization
+└── Smart Cache Invalidation
+    ├── Event-driven cache updates
+    ├── TTL-based expiration
+    ├── User activity-based invalidation
+    └── A/B testing cache isolation
+```
+
+### 7.2 Database Optimization
+```
+Timeline Database Design:
+├── Partitioning Strategy
+│   ├── User-based partitioning for timelines
+│   ├── Time-based partitioning for posts
+│   ├── Geographic partitioning for global scale
+│   └── Celebrity-specific partitioning
+├── Indexing Strategy
+│   ├── Composite indexes for timeline queries
+│   ├── Sparse indexes for inactive users
+│   ├── Full-text search indexes
+│   └── Geospatial indexes for location
+├── Replication Strategy
+│   ├── Master-slave for read scaling
+│   ├── Multi-master for global writes
+│   ├── Cross-region replication
+│   └── Consistency level tuning
+└── Query Optimization
+    ├── Query plan analysis
+    ├── Batch query processing
+    ├── Async query execution
+    └── Connection pooling
+```
+
+---
+
+## 8. Scalability Patterns
+
+### 8.1 Horizontal Scaling
+```
+Timeline Service Scaling:
+├── Service Decomposition
+│   ├── Timeline generation service
+│   ├── Content ranking service
+│   ├── User graph service
+│   ├── Celebrity content service
+│   └── Real-time update service
+├── Load Distribution
+│   ├── User-based sharding
+│   ├── Geographic load balancing
+│   ├── Service mesh architecture
+│   └── Auto-scaling policies
+├── Data Partitioning
+│   ├── Consistent hashing for timelines
+│   ├── Range partitioning for posts
+│   ├── Celebrity data isolation
+│   └── Cross-partition query optimization
+└── Failure Handling
+    ├── Circuit breaker patterns
+    ├── Graceful service degradation
+    ├── Fallback timeline strategies
+    └── Data consistency recovery
+```
+
+### 8.2 Global Distribution
+```
+Multi-Region Timeline Architecture:
+├── Regional Data Centers
+│   ├── User data locality
+│   ├── Content delivery optimization
+│   ├── Regulatory compliance
+│   └── Disaster recovery
+├── Content Replication
+│   ├── Celebrity content global replication
+│   ├── Viral content rapid distribution
+│   ├── Regional content preferences
+│   └── Language-specific content
+├── Cross-Region Consistency
+│   ├── Eventually consistent timelines
+│   ├── Strong consistency for critical operations
+│   ├── Conflict resolution strategies
+│   └── Data synchronization optimization
+└── Network Optimization
+    ├── Edge server placement
+    ├── Content delivery networks
+    ├── Protocol optimization (HTTP/2, QUIC)
+    └── Mobile network adaptation
+```
+
+---
+
+## 9. Analytics & Monitoring
+
+### 9.1 Timeline Performance Metrics
+```
+Key Performance Indicators:
+├── User Experience Metrics
+│   ├── Timeline load time (<200ms target)
+│   ├── Content freshness (time to see new posts)
+│   ├── Scroll performance (60fps target)
+│   └── Engagement rates (clicks, shares, time spent)
+├── System Performance Metrics
+│   ├── Timeline generation throughput
+│   ├── Database query performance
+│   ├── Cache hit/miss ratios
+│   ├── API response times
+│   └── Error rates and availability
+├── Business Metrics
+│   ├── Daily active users
+│   ├── Session duration
+│   ├── Content consumption rates
+│   ├── Ad placement effectiveness
+│   └── Revenue per user
+└── Infrastructure Metrics
+    ├── Server resource utilization
+    ├── Database connection pools
+    ├── Network bandwidth usage
+    ├── Storage costs and efficiency
+    └── Auto-scaling trigger events
+```
+
+### 9.2 A/B Testing Framework
+```
+Timeline Algorithm Testing:
+├── Experiment Design
+│   ├── Control vs treatment groups
+│   ├── Statistical significance requirements
+│   ├── Business metric targets
+│   └── Risk mitigation strategies
+├── Implementation
+│   ├── User bucketing strategies
+│   ├── Feature flag systems
+│   ├── Gradual rollout mechanisms
+│   └── Real-time monitoring
+├── Analysis
+│   ├── Statistical significance testing
+│   ├── Multi-variate analysis
+│   ├── Cohort behavior analysis
+│   └── Long-term impact assessment
+└── Decision Making
+    ├── Business impact evaluation
+    ├── Technical debt assessment
+    ├── User experience impact
+    └── Rollback procedures
+```
+
+---
+
+## Key Timeline Design Principles
+
+✅ **Hybrid Approach**: Combine push/pull models based on user characteristics
+✅ **Celebrity Problem Solution**: Separate handling for high-follower accounts
+✅ **Real-Time Updates**: Event-driven architecture for live content
+✅ **ML-Driven Personalization**: Algorithm-based content ranking
+✅ **Multi-Layer Caching**: Optimize for read-heavy workloads
+✅ **Horizontal Scalability**: Handle billions of users and posts
+✅ **Global Distribution**: Low-latency access worldwide
+✅ **Performance Monitoring**: Data-driven optimization and A/B testing
+
+**Bottom Line**: Timeline design is the heart of social media platforms, requiring sophisticated algorithms to balance real-time updates, personalization, scalability, and user engagement while solving the unique challenges posed by celebrity accounts and viral content distribution.

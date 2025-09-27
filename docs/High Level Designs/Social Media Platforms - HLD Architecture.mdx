@@ -1,0 +1,493 @@
+# Social Media Platforms - HLD Architecture 📱
+
+## Core Concept
+
+**Key Insight**: Social media platforms are **content distribution systems** at massive scale, optimized for **real-time engagement**, **personalized feeds**, and **viral content propagation** while handling billions of users and posts.
+
+---
+
+## 1. Common Social Media Challenges
+
+### The Scale Problem
+```
+Daily Active Users:
+├── Facebook: 2+ billion
+├── Instagram: 1+ billion
+├── Twitter: 400+ million
+├── LinkedIn: 300+ million
+└── TikTok: 1+ billion
+
+Content Volume:
+├── 95 million photos/day (Instagram)
+├── 500 million tweets/day (Twitter)
+├── 4+ billion posts/day (Facebook)
+└── 1 billion videos/day (TikTok)
+```
+
+### Core Technical Challenges
+| Challenge | Impact | Complexity |
+|-----------|---------|------------|
+| **Feed Generation** | Personalized content for billions | O(users × content) scaling |
+| **Real-time Updates** | Instant notifications/reactions | WebSocket connections at scale |
+| **Content Storage** | Petabytes of media files | CDN + blob storage optimization |
+| **Search & Discovery** | Find relevant content/people | Distributed search indexing |
+| **Viral Content Handling** | Traffic spikes during trending | Auto-scaling + load balancing |
+
+---
+
+## 2. Instagram Architecture
+
+### Core Components
+```
+Instagram HLD:
+├── User Service (profiles, authentication)
+├── Media Service (photo/video upload & processing)
+├── Feed Service (timeline generation)
+├── Activity Service (likes, comments, shares)
+├── Discovery Service (explore, hashtags)
+├── Messaging Service (direct messages)
+└── Notification Service (push notifications)
+```
+
+### Feed Generation Strategy
+**Problem**: Generate personalized feeds for 1B+ users in real-time
+
+**Solution - Hybrid Approach**:
+```
+1. Pull Model (Timeline Service)
+   ├── User requests feed
+   ├── Query followed users' recent posts
+   ├── Rank by engagement algorithm
+   └── Return top N posts
+
+2. Push Model (Fanout Service)
+   ├── User posts new content
+   ├── Push to all followers' timelines
+   ├── Pre-compute timelines for active users
+   └── Store in timeline cache
+
+3. Hybrid Model (Best of Both)
+   ├── Push for users with <1M followers
+   ├── Pull for celebrities/influencers
+   ├── Machine learning ranking
+   └── Real-time personalization
+```
+
+### Content Delivery Architecture
+```
+Media Upload Flow:
+User App → CDN Edge → Media Processing → Multiple Resolutions → Global CDN
+
+Processing Pipeline:
+├── Image: Generate thumbnails (150x150, 320x320, 640x640, 1080x1080)
+├── Video: Transcode to multiple bitrates (240p, 480p, 720p, 1080p)
+├── Compression: Optimize file sizes without quality loss
+└── Storage: Distribute across geographic regions
+```
+
+### Key Design Decisions
+- **Photo-First Architecture**: Optimized for visual content
+- **Chronological + Algorithmic Feed**: Balance recency with engagement
+- **Stories Feature**: Ephemeral content reduces storage costs
+- **Reels Integration**: Short-form video competition with TikTok
+
+---
+
+## 3. LinkedIn Architecture
+
+### Professional Network Focus
+```
+LinkedIn HLD:
+├── Profile Service (professional profiles, skills)
+├── Connection Service (professional networking)
+├── Feed Service (professional content timeline)
+├── Job Service (job postings, applications)
+├── Messaging Service (professional communication)
+├── Learning Service (courses, certifications)
+├── Sales Navigator (B2B lead generation)
+└── Analytics Service (profile views, post metrics)
+```
+
+### LinkedIn Feed Algorithm
+**Goal**: Surface professionally relevant content
+
+**Ranking Factors**:
+```
+Content Scoring:
+├── Professional Relevance (40%)
+│   ├── Industry alignment
+│   ├── Job function similarity
+│   ├── Skill overlap
+│   └── Company connections
+├── Engagement Signals (30%)
+│   ├── Comments > Likes > Views
+│   ├── Share rate and viral coefficient
+│   ├── Time spent reading
+│   └── Click-through rates
+├── Recency & Freshness (20%)
+│   ├── Post timestamp
+│   ├── Trending topics in network
+│   └── Real-time engagement velocity
+└── Personal Connection (10%)
+    ├── 1st/2nd/3rd degree connections
+    ├── Direct message history
+    └── Profile interaction frequency
+```
+
+### Professional Graph Architecture
+```
+Relationship Mapping:
+├── 1st Degree: Direct connections (mutual acceptance)
+├── 2nd Degree: Friends of friends (network expansion)
+├── 3rd Degree: Extended network reach
+├── Company Connections: Current/former colleagues
+├── Educational Connections: Alumni networks
+└── Industry Connections: Professional similarity
+```
+
+### Key Differentiators
+- **B2B Focus**: Professional content prioritization
+- **Skill-Based Matching**: Expertise and endorsements
+- **Job Marketplace Integration**: Recruitment platform
+- **Long-Form Content**: Articles and professional insights
+
+---
+
+## 4. Twitter/X Architecture
+
+### Real-Time Information Network
+```
+Twitter HLD:
+├── Tweet Service (compose, publish, retrieve)
+├── Timeline Service (home, mentions, lists)
+├── Trend Service (hashtags, viral content)
+├── Search Service (real-time tweet search)
+├── Notification Service (mentions, likes, retweets)
+├── Direct Message Service (private messaging)
+├── Media Service (photos, videos, GIFs)
+└── Advertising Service (promoted tweets/accounts)
+```
+
+### Timeline Generation - Fan-out Architecture
+**Challenge**: Deliver tweets to millions of followers instantly
+
+**Fan-out Strategies**:
+```
+1. Fan-out on Write (Push)
+   ├── User tweets → Push to all followers' timelines
+   ├── Pros: Fast read times, pre-computed timelines
+   ├── Cons: Expensive for users with millions of followers
+   └── Used for: Regular users (<10K followers)
+
+2. Fan-out on Read (Pull)
+   ├── User requests timeline → Pull from followed accounts
+   ├── Pros: Efficient for high-follower accounts
+   ├── Cons: Slower read times, compute on demand
+   └── Used for: Celebrities, verified accounts
+
+3. Hybrid Approach
+   ├── Most users: Fan-out on write
+   ├── Celebrities: Fan-out on read
+   ├── Mixed timelines: Merge cached + real-time content
+   └── Smart caching based on user activity patterns
+```
+
+### Real-Time Features
+```
+Live Updates Architecture:
+├── WebSocket connections for active users
+├── Server-Sent Events for timeline updates
+├── Push notifications for mobile apps
+├── Real-time trending algorithm updates
+└── Live event integration (sports, news, politics)
+```
+
+### Trending Algorithm
+**Objective**: Identify viral content and emerging topics in real-time
+
+**Factors**:
+- Tweet volume velocity (mentions per minute)
+- Engagement rate acceleration
+- Geographic distribution of mentions
+- Influencer participation
+- Breaking news detection
+
+---
+
+## 5. Facebook Architecture
+
+### Multi-Service Platform
+```
+Facebook HLD:
+├── User Service (profiles, friends, family)
+├── News Feed Service (algorithmic timeline)
+├── Post Service (status, photos, videos, stories)
+├── Reaction Service (likes, reactions, comments)
+├── Group Service (communities, discussions)
+├── Page Service (business pages, fan engagement)
+├── Event Service (social events, RSVP)
+├── Marketplace Service (local commerce)
+├── Messenger Service (chat, voice, video calls)
+├── Gaming Service (social games, streaming)
+└── Advertising Service (targeted ads, business tools)
+```
+
+### News Feed Ranking Algorithm
+**Goal**: Maximize user engagement and time spent on platform
+
+**EdgeRank Algorithm Evolution**:
+```
+Modern Feed Ranking (2024):
+├── Relationship Score (35%)
+│   ├── Interaction frequency with poster
+│   ├── Message history and mutual friends
+│   ├── Profile visits and photo tags
+│   └── Real-world relationship indicators
+├── Content Type Performance (25%)
+│   ├── Video content prioritization
+│   ├── Live video boost during broadcast
+│   ├── Image posts vs text-only content
+│   └── Link click-through rates
+├── Recency & Timeliness (20%)
+│   ├── Post timestamp and decay function
+│   ├── Trending topics and viral content
+│   ├── Breaking news and real-time events
+│   └── User's active hours optimization
+└── Individual Preferences (20%)
+    ├── Content category preferences
+    ├── Historical engagement patterns
+    ├── Hiding/unfollowing behavior
+    └── Time spent per content type
+```
+
+### Social Graph Storage
+```
+Friend Network Architecture:
+├── Adjacency Lists: User connections storage
+├── Graph Databases: Neo4j for complex relationship queries
+├── Caching Layer: Redis for frequent friend lookups
+├── Sharding Strategy: Geographic and social cluster-based
+└── Privacy Controls: Granular visibility and sharing settings
+```
+
+---
+
+## 6. Common Architectural Patterns
+
+### Feed Generation Patterns
+
+| Pattern | Use Case | Pros | Cons |
+|---------|----------|------|------|
+| **Push (Fan-out on Write)** | Regular users | Fast reads | Expensive writes for influencers |
+| **Pull (Fan-out on Read)** | Celebrities | Efficient writes | Slower reads |
+| **Hybrid** | Mixed user base | Balanced performance | Complex implementation |
+
+### Content Storage Architecture
+```
+Media Storage Strategy:
+├── Hot Storage (Recent, popular content)
+│   ├── SSD-based storage for fast access
+│   ├── Multiple CDN regions
+│   └── High replication factor
+├── Warm Storage (Older, moderate access)
+│   ├── HDD-based storage
+│   ├── Regional CDN caching
+│   └── Reduced replication
+└── Cold Storage (Archive, rare access)
+    ├── Glacier/tape storage
+    ├── Single region backup
+    └── Minimal replication
+```
+
+### Notification System Design
+```
+Push Notification Architecture:
+├── Event Triggers (likes, comments, mentions, messages)
+├── User Preference Engine (notification settings)
+├── Delivery Channels (iOS/Android push, email, SMS, web)
+├── Rate Limiting (prevent notification spam)
+├── Personalization (send time optimization)
+└── Analytics (delivery rates, engagement metrics)
+```
+
+---
+
+## 7. Search & Discovery Systems
+
+### Search Architecture
+```
+Social Media Search Components:
+├── Real-time Indexing (new posts/profiles)
+├── Full-text Search (Elasticsearch/Solr)
+├── People Search (fuzzy matching, social graph)
+├── Hashtag/Trend Search (real-time aggregation)
+├── Semantic Search (ML-based content understanding)
+└── Personalized Results (user context and history)
+```
+
+### Recommendation Engines
+**Content Discovery Strategies**:
+- **Collaborative Filtering**: "Users like you also liked..."
+- **Content-Based Filtering**: Similar content to user's interests
+- **Social Signals**: Friends' activities and recommendations
+- **Trending Content**: Viral and popular posts
+- **Geographic Relevance**: Location-based content
+- **Temporal Patterns**: Time-sensitive content optimization
+
+---
+
+## 8. Scalability & Performance Patterns
+
+### Database Architecture
+```
+Social Media Data Patterns:
+├── User Data (RDBMS)
+│   ├── MySQL/PostgreSQL for ACID compliance
+│   ├── User profiles, settings, relationships
+│   └── Master-slave replication
+├── Content Data (NoSQL)
+│   ├── MongoDB/Cassandra for horizontal scaling
+│   ├── Posts, comments, reactions
+│   └── Eventually consistent
+├── Timeline Data (Cache)
+│   ├── Redis/Memcached for speed
+│   ├── Pre-computed user timelines
+│   └── TTL-based expiration
+└── Media Files (Object Storage)
+    ├── S3/GCS for blob storage
+    ├── CDN distribution
+    └── Geographic replication
+```
+
+### Caching Strategies
+**Multi-Layer Caching**:
+- **Browser Cache**: Static assets (CSS, JS, images)
+- **CDN Cache**: Media files and popular content
+- **Application Cache**: User sessions, frequent queries
+- **Database Cache**: Query result caching
+- **Timeline Cache**: Pre-computed user feeds
+
+### Load Balancing
+```
+Traffic Distribution:
+├── DNS Load Balancing (geographic routing)
+├── Layer 7 Load Balancing (application-aware)
+├── API Gateway (rate limiting, authentication)
+├── Microservice Mesh (service-to-service)
+└── Database Load Balancing (read/write separation)
+```
+
+---
+
+## 9. Real-Time Features
+
+### Live Updates Architecture
+```
+Real-Time Communication:
+├── WebSocket Servers (persistent connections)
+├── Server-Sent Events (one-way updates)
+├── Message Queues (Kafka, RabbitMQ)
+├── Pub/Sub Systems (Redis, Apache Pulsar)
+└── Push Notification Services (FCM, APNS)
+```
+
+### Event-Driven Architecture
+**Key Events**:
+- User actions (post, like, comment, share)
+- System events (trending detection, spam filtering)
+- External events (breaking news, sports scores)
+- Scheduled events (content cleanup, analytics)
+
+---
+
+## 10. Content Moderation & Safety
+
+### Automated Content Moderation
+```
+Multi-Layer Moderation:
+├── Upload Filters
+│   ├── Image recognition (inappropriate content)
+│   ├── Text analysis (hate speech, spam)
+│   ├── Video content scanning
+│   └── Audio content analysis
+├── Post-Upload Monitoring
+│   ├── User reporting systems
+│   ├── Automated flagging algorithms
+│   ├── Community-based moderation
+│   └── Expert human review
+├── Behavioral Analysis
+│   ├── Bot detection algorithms
+│   ├── Fake account identification
+│   ├── Coordinated inauthentic behavior
+│   └── Spam pattern recognition
+└── Global Policy Enforcement
+    ├── Regional content compliance
+    ├── Age-appropriate content filtering
+    ├── Misinformation detection
+    └── Violence and extremism prevention
+```
+
+---
+
+## 11. Analytics & Machine Learning
+
+### User Behavior Analytics
+```
+Data Collection:
+├── User Interactions (clicks, scrolls, time spent)
+├── Content Performance (engagement rates, reach)
+├── Social Graph Analysis (connection patterns)
+├── Device and Platform Usage
+└── Geographic and Temporal Patterns
+
+ML Applications:
+├── Feed Ranking Algorithms
+├── Content Recommendation Systems
+├── Ad Targeting and Optimization
+├── Spam and Abuse Detection
+├── Trend Prediction and Analysis
+└── User Lifetime Value Prediction
+```
+
+---
+
+## 12. Platform-Specific Innovations
+
+### Instagram
+- **Stories Architecture**: Ephemeral content with 24-hour TTL
+- **Reels System**: Short-form video with music integration
+- **Shopping Integration**: E-commerce within social posts
+- **AR Filters**: Real-time face tracking and augmentation
+
+### LinkedIn
+- **Professional Graph**: Skill-based connections and endorsements
+- **Content Quality Filters**: Professional relevance scoring
+- **Job Matching Engine**: AI-powered recruitment platform
+- **Learning Platform Integration**: Course completion tracking
+
+### Twitter/X
+- **Real-Time Trending**: Sub-minute trend detection
+- **Character Limit Optimization**: Concise content prioritization
+- **Thread Architecture**: Connected tweet sequences
+- **Spaces Integration**: Live audio conversation platform
+
+### Facebook
+- **Multi-App Integration**: WhatsApp, Instagram, Messenger sync
+- **VR/AR Integration**: Metaverse platform development
+- **Marketplace Platform**: Local commerce integration
+- **Gaming Ecosystem**: Social gaming and streaming
+
+---
+
+## Key Architecture Principles
+
+✅ **Event-Driven Design**: Real-time updates and notifications
+✅ **Microservices Architecture**: Independent service scaling
+✅ **Content-First Storage**: Optimize for media-heavy workloads
+✅ **Feed Personalization**: ML-driven content ranking
+✅ **Global CDN Strategy**: Low-latency content delivery
+✅ **Horizontal Scalability**: Handle traffic spikes and growth
+✅ **Real-Time Processing**: Live updates and trending detection
+✅ **Privacy by Design**: User data protection and control
+
+**Bottom Line**: Social media platforms are complex distributed systems that must balance personalization, real-time interaction, content discovery, and safety at unprecedented scale while maintaining sub-second response times for billions of daily active users.
