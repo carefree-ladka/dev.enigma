@@ -3,8 +3,8 @@ import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'JSEnigma',
-  tagline: 'JS beyond your imagination',
+  title: 'DevEnigma',
+  tagline: 'Code beyond boundaries',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -72,7 +72,7 @@ const config: Config = {
           title: 'Community',
           items: [
             { label: 'Instagram', href: 'https://www.instagram.com/carefree_ladka/' },
-            { label: 'LeetCode', href: 'https://leetcode.com/u/UP41Guy/' },
+            { label: 'LeetCode', href: 'https://leetcode.com/u/Asyncy99/' },
             { label: 'LinkedIn', href: 'https://www.linkedin.com/in/kumpawan/' },
           ],
         },
@@ -86,7 +86,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['java'], 
+      additionalLanguages: ['java'],
     },
   } satisfies Preset.ThemeConfig,
 };
