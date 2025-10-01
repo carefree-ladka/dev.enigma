@@ -1,0 +1,213 @@
+# Caching Strategies for System Design
+
+## Overview Comparison
+
+| Pattern | Writes Go To | DB Consistency | Read Freshness | Write Latency | Data Loss Risk | Best For |
+|---------|--------------|----------------|----------------|---------------|----------------|----------|
+| **Write-through** | Cache → DB (sync) | Strong | Always fresh | Higher | Low | Banking, orders, inventory |
+| **Write-back** | Cache → DB (async) | Eventual | Fresh (cache), Stale (DB) | Low | High (cache crash) | Social media likes, analytics |
+| **Write-around** | DB only (cache on read) | Strong | May be stale | Normal | Low | IoT logs, cold data |
+
+---
+
+## 1. Write-through Caching
+
+### Definition
+Every write operation first goes to the cache, then **synchronously** writes to the database. Cache and DB are always in sync.
+
+### How It Works
+```
+User Request → Update Cache → Update DB (sync) → Response
+```
+
+### Pros
+- ✅ Strong consistency between cache and DB
+- ✅ No data loss risk on cache eviction/crash
+- ✅ Reads are always fresh
+- ✅ Simplified failure recovery
+
+### Cons
+- ❌ Higher write latency (extra step to DB)
+- ❌ Increased DB load (every write propagates immediately)
+- ❌ Wasted writes for rarely-read data
+
+### When to Use
+- Systems requiring **strong consistency**
+- Financial transactions
+- Inventory management
+- Booking systems (flights, hotels, tickets)
+- E-commerce checkout
+- Shopping cart synchronization
+
+### Real-World Example: E-Commerce Inventory
+```
+User buys product
+  ↓
+Update cache (quantity: 100 → 99)
+  ↓
+Update DB synchronously
+  ↓
+Return success to user
+```
+
+---
+
+## 2. Write-back (Write-behind) Caching
+
+### Definition
+Writes go to the cache **only**. The cache asynchronously flushes data to the DB later (batched or scheduled).
+
+### How It Works
+```
+User Request → Update Cache → Response (fast)
+                      ↓
+              Async batch write to DB (later)
+```
+
+### Pros
+- ✅ Low write latency (fast response)
+- ✅ Can batch updates → fewer DB writes
+- ✅ Better throughput for high-write workloads
+- ✅ Reduced DB load
+
+### Cons
+- ❌ Risk of data loss if cache crashes before flush
+- ❌ DB may be eventually consistent
+- ❌ Harder failure recovery
+- ❌ Reads from DB can be stale
+
+### When to Use
+- Systems where **performance > strict consistency**
+- Analytics and metrics
+- Logging systems
+- Recommendation engines
+- Social media counters (likes, views, shares)
+- High write volume with tolerable persistence lag
+
+### Real-World Example: Product View Counter
+```
+User views product
+  ↓
+Increment counter in cache (fast)
+  ↓
+Return response immediately
+  ↓
+Flush to DB every 5 minutes (batched)
+```
+
+---
+
+## 3. Write-around Caching
+
+### Definition
+Writes go **directly to the DB**, bypassing the cache. Cache is populated only when data is read later (lazy loading).
+
+### How It Works
+```
+Write: User Request → Update DB only → Response
+Read:  User Request → Check Cache → Miss → Read DB → Populate Cache
+```
+
+### Pros
+- ✅ Reduces cache pollution
+- ✅ Cache stores only frequently read data
+- ✅ Good when writes are rarely followed by reads
+- ✅ Efficient cache utilization
+
+### Cons
+- ❌ First read after write = cache miss → higher latency
+- ❌ Cache may remain stale until next read
+- ❌ Higher DB read load initially
+
+### When to Use
+- Write-heavy data that's **rarely read**
+- Large datasets where caching everything isn't practical
+- IoT sensor data / telemetry
+- Historical logs and archives
+- Cold storage scenarios
+
+### Real-World Example: Product Reviews
+```
+User submits review
+  ↓
+Write directly to DB
+  ↓
+Cache not updated
+  ↓
+When someone reads reviews → Cache miss → Load from DB → Cache it
+```
+
+---
+
+## Decision Matrix
+
+| Requirement | Recommended Pattern |
+|-------------|---------------------|
+| Strong consistency needed | **Write-through** |
+| High write performance needed | **Write-back** |
+| Avoid cache pollution | **Write-around** |
+| Financial transactions | **Write-through** |
+| Analytics/metrics | **Write-back** |
+| Cold/historical data | **Write-around** |
+
+---
+
+## E-Commerce System: Hybrid Approach
+
+| Component | Strategy | Reason |
+|-----------|----------|--------|
+| **Product Inventory** | Write-through | Strong consistency required |
+| **Order Status** | Write-through | Critical transactional data |
+| **Shopping Cart** | Write-through | Multi-device consistency |
+| **Product Views** | Write-back | High volume, eventual consistency OK |
+| **User Activity Logs** | Write-back | Performance over consistency |
+| **Recommendation Data** | Write-back | Can tolerate lag |
+| **Old Reviews** | Write-around | Rarely accessed |
+| **Archived Orders** | Write-around | Cold data |
+| **Historical Sales** | Write-around | Low read frequency |
+
+---
+
+## Interview Talking Points
+
+### Quick Rule of Thumb
+- **Write-through** → Consistency matters most
+- **Write-back** → Performance matters most
+- **Write-around** → Avoid cache pollution
+
+### Strong Answer Template
+> "I'd use **write-through** for critical transactional data like orders and payments where consistency is paramount. For high-throughput non-critical updates like view counts and metrics, I'd use **write-back** to optimize performance. Finally, **write-around** would handle data that's written frequently but rarely read, such as logs or cold storage. Often, a **hybrid strategy** is employed based on access patterns and consistency requirements."
+
+---
+
+## Key Tradeoffs Summary
+
+| Criteria | Write-through | Write-back | Write-around |
+|----------|---------------|------------|--------------|
+| **Consistency** | Strong | Eventual | Strong |
+| **Write Speed** | Slower | Faster | Normal |
+| **Read Speed** | Fast | Fast | Slow (first read) |
+| **Cache Freshness** | Always | Always | On-demand |
+| **Data Loss Risk** | Low | High | Low |
+| **DB Load** | High | Low | Medium |
+| **Complexity** | Low | High | Low |
+
+---
+
+## Additional Considerations
+
+### Failure Scenarios
+
+**Write-through**: If cache fails, writes still reach DB (durable)
+
+**Write-back**: If cache fails before flush, data is lost (requires backup strategies)
+
+**Write-around**: If DB fails, writes fail (but no cache inconsistency)
+
+### Scalability
+
+**Write-through**: DB becomes bottleneck under high write load
+
+**Write-back**: Scales well for writes, requires robust async processing
+
+**Write-around**: Scales based on read patterns, cache stays lean
