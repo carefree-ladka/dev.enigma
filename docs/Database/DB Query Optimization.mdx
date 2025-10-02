@@ -1,0 +1,642 @@
+# SQL Query Optimization Guide
+
+## 🎯 Core Principles
+
+1. **Index First**: Optimize indexes before anything else
+2. **Query Second**: Rewrite inefficient queries
+3. **Scale Last**: Consider caching, partitioning, and sharding for large datasets
+4. **Always Measure**: Use `EXPLAIN` to verify improvements
+
+---
+
+## 1. Indexing Strategies
+
+### Types of Indexes
+
+| Index Type | Best For | Example |
+|------------|----------|---------|
+| **B-Tree** | Range queries, sorting | `WHERE age > 25` |
+| **Hash** | Exact matches | `WHERE id = 123` |
+| **Composite** | Multiple columns | `WHERE user_id = 1 AND status = 'active'` |
+| **Covering** | Query entirely from index | Index includes all SELECT columns |
+| **Partial** | Filtered subset | `WHERE status = 'active' AND deleted_at IS NULL` |
+
+### Creating Effective Indexes
+
+```sql
+-- Single column index
+CREATE INDEX idx_users_email ON users(email);
+
+-- Composite index (order matters!)
+CREATE INDEX idx_orders_user_status ON orders(user_id, status, created_at);
+
+-- Covering index
+CREATE INDEX idx_users_covering ON users(id, name, email, status);
+
+-- Partial index (PostgreSQL)
+CREATE INDEX idx_active_users ON users(email) WHERE status = 'active';
+```
+
+### Index Best Practices
+
+✅ **DO:**
+- Index columns used in `WHERE`, `JOIN`, `ORDER BY`, `GROUP BY`
+- Use composite indexes for queries with multiple filters
+- Put most selective column first in composite indexes
+- Use covering indexes for frequent queries
+
+❌ **DON'T:**
+- Over-index (slows down writes)
+- Index low-cardinality columns (e.g., boolean fields)
+- Index small tables (< 1000 rows)
+- Create redundant indexes
+
+---
+
+## 2. Query Refactoring
+
+### Select Only Required Columns
+
+```sql
+-- ❌ Bad: Fetches unnecessary data
+SELECT * FROM users WHERE status = 'active';
+
+-- ✅ Good: Fetch only what you need
+SELECT id, name, email FROM users WHERE status = 'active';
+```
+
+### Avoid Functions on Indexed Columns
+
+```sql
+-- ❌ Bad: Index can't be used
+SELECT * FROM orders WHERE DATE(created_at) = '2025-10-02';
+SELECT * FROM users WHERE LOWER(email) = 'test@example.com';
+
+-- ✅ Good: Index is utilized
+SELECT * FROM orders
+WHERE created_at >= '2025-10-02 00:00:00'
+  AND created_at < '2025-10-03 00:00:00';
+
+SELECT * FROM users WHERE email = 'test@example.com';
+```
+
+### Replace Subqueries with Joins
+
+```sql
+-- ❌ Bad: Subquery executes separately
+SELECT name FROM users
+WHERE id IN (SELECT user_id FROM orders WHERE total > 100);
+
+-- ✅ Good: Join is more efficient
+SELECT DISTINCT u.name
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id
+WHERE o.total > 100;
+```
+
+### Use EXISTS for Existence Checks
+
+```sql
+-- ❌ Bad: IN loads entire result set
+SELECT name FROM users
+WHERE id IN (SELECT user_id FROM orders);
+
+-- ✅ Good: EXISTS stops at first match
+SELECT name FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+```
+
+### Optimize OR Conditions
+
+```sql
+-- ❌ Bad: May not use indexes efficiently
+SELECT * FROM users
+WHERE status = 'active' OR status = 'pending';
+
+-- ✅ Good: Better index utilization
+SELECT * FROM users
+WHERE status IN ('active', 'pending');
+
+-- ✅ Alternative: UNION for different columns
+SELECT * FROM users WHERE status = 'active'
+UNION ALL
+SELECT * FROM users WHERE role = 'admin';
+```
+
+---
+
+## 3. Join Optimization
+
+### Join Order Matters
+
+```sql
+-- ✅ Join smaller table first
+SELECT o.id, u.name, p.title
+FROM products p  -- Largest table
+INNER JOIN orders o ON p.id = o.product_id  -- Medium table
+INNER JOIN users u ON o.user_id = u.id;  -- Smallest table
+```
+
+### Ensure Joined Columns Are Indexed
+
+```sql
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_product_id ON orders(product_id);
+```
+
+### Choose the Right Join Type
+
+```sql
+-- INNER JOIN: Only matching rows
+SELECT * FROM users u
+INNER JOIN orders o ON u.id = o.user_id;
+
+-- LEFT JOIN: All users, even without orders
+SELECT * FROM users u
+LEFT JOIN orders o ON u.id = o.user_id;
+
+-- Prefer INNER JOIN when possible (faster)
+```
+
+---
+
+## 4. Limiting and Pagination
+
+### Use LIMIT/TOP
+
+```sql
+-- Fetch only required rows
+SELECT id, name FROM products
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+### Efficient Pagination
+
+```sql
+-- ❌ Bad: Slow with large offsets
+SELECT * FROM products
+ORDER BY id
+LIMIT 20 OFFSET 10000;
+
+-- ✅ Good: Keyset pagination
+SELECT * FROM products
+WHERE id > 10020
+ORDER BY id
+LIMIT 20;
+```
+
+---
+
+## 5. Aggregation Optimization
+
+### Precompute Aggregates
+
+```sql
+-- Create summary table
+CREATE TABLE user_stats AS
+SELECT
+    user_id,
+    COUNT(*) as order_count,
+    SUM(total) as total_spent,
+    MAX(created_at) as last_order_date
+FROM orders
+GROUP BY user_id;
+
+-- Update incrementally with triggers or scheduled jobs
+```
+
+### Use Materialized Views
+
+```sql
+-- PostgreSQL
+CREATE MATERIALIZED VIEW top_customers AS
+SELECT
+    u.id,
+    u.name,
+    COUNT(o.id) as order_count,
+    SUM(o.total) as total_spent
+FROM users u
+JOIN orders o ON u.id = o.user_id
+GROUP BY u.id, u.name;
+
+-- Refresh periodically
+REFRESH MATERIALIZED VIEW top_customers;
+```
+
+### Filter Before Aggregating
+
+```sql
+-- ❌ Bad: Aggregates then filters
+SELECT user_id, SUM(total)
+FROM orders
+GROUP BY user_id
+HAVING SUM(total) > 1000;
+
+-- ✅ Good: Filter early when possible
+SELECT user_id, SUM(total)
+FROM orders
+WHERE created_at >= '2025-01-01'
+GROUP BY user_id
+HAVING SUM(total) > 1000;
+```
+
+---
+
+## 6. Data Types & Schema Design
+
+### Use Appropriate Data Types
+
+```sql
+-- ❌ Bad: Wastes space
+CREATE TABLE orders (
+    id BIGINT,  -- If max is < 2 billion, use INT
+    status VARCHAR(255),  -- If max length is 20
+    price DOUBLE  -- Use DECIMAL for money
+);
+
+-- ✅ Good: Optimal types
+CREATE TABLE orders (
+    id INT,
+    status VARCHAR(20),
+    price DECIMAL(10,2)
+);
+```
+
+### Avoid Nullable Columns When Possible
+
+```sql
+-- Nullable columns may prevent index usage in some DBs
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active'
+);
+```
+
+---
+
+## 7. Partitioning & Sharding
+
+### Table Partitioning
+
+```sql
+-- Range partition by date (MySQL/PostgreSQL)
+CREATE TABLE orders (
+    id INT,
+    user_id INT,
+    created_at DATE,
+    total DECIMAL(10,2)
+)
+PARTITION BY RANGE (YEAR(created_at)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026)
+);
+
+-- Query automatically scans only relevant partition
+SELECT * FROM orders
+WHERE created_at BETWEEN '2025-01-01' AND '2025-12-31';
+```
+
+### When to Partition
+
+- Tables > 50GB
+- Time-series data
+- Clear partition key (date, region, category)
+- Queries frequently filter by partition key
+
+---
+
+## 8. Batch Operations
+
+### Bulk Inserts
+
+```sql
+-- ❌ Bad: Multiple round trips
+INSERT INTO users (name, email) VALUES ('Alice', 'a@x.com');
+INSERT INTO users (name, email) VALUES ('Bob', 'b@x.com');
+INSERT INTO users (name, email) VALUES ('Charlie', 'c@x.com');
+
+-- ✅ Good: Single transaction
+INSERT INTO users (name, email) VALUES
+    ('Alice', 'a@x.com'),
+    ('Bob', 'b@x.com'),
+    ('Charlie', 'c@x.com');
+```
+
+### Batch Updates
+
+```sql
+-- ❌ Bad: Row-by-row updates
+UPDATE users SET status = 'inactive' WHERE id = 1;
+UPDATE users SET status = 'inactive' WHERE id = 2;
+
+-- ✅ Good: Batch update
+UPDATE users
+SET status = 'inactive'
+WHERE id IN (1, 2, 3, 4, 5);
+
+-- ✅ Better: Conditional update
+UPDATE users
+SET status = 'inactive'
+WHERE last_login < '2024-01-01';
+```
+
+---
+
+## 9. Caching Strategies
+
+### Application-Level Caching
+
+```sql
+-- Cache frequent queries in Redis/Memcached
+-- TTL: 5 minutes for user profile
+GET user:123:profile
+
+-- If miss, query DB and cache
+SELECT id, name, email FROM users WHERE id = 123;
+SET user:123:profile "{...}" EX 300
+```
+
+### Database Query Cache
+
+```sql
+-- MySQL (older versions)
+SET GLOBAL query_cache_size = 268435456;  -- 256MB
+
+-- Note: MySQL 8.0+ removed query cache
+-- Use application-level caching instead
+```
+
+---
+
+## 10. Denormalization
+
+### When to Denormalize
+
+- Read-heavy workloads
+- Expensive joins on large tables
+- Aggregations computed frequently
+
+```sql
+-- Instead of joining every time:
+SELECT u.name, COUNT(o.id) as order_count
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id;
+
+-- Denormalize:
+ALTER TABLE users ADD COLUMN order_count INT DEFAULT 0;
+
+-- Update with trigger or batch job
+UPDATE users u
+SET order_count = (SELECT COUNT(*) FROM orders WHERE user_id = u.id);
+```
+
+---
+
+## 11. Query Execution Analysis
+
+### Using EXPLAIN
+
+```sql
+-- MySQL/PostgreSQL
+EXPLAIN SELECT * FROM users WHERE email = 'test@example.com';
+
+-- PostgreSQL with costs
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+
+-- MySQL with JSON format
+EXPLAIN FORMAT=JSON SELECT * FROM users WHERE email = 'test@example.com';
+```
+
+### Key Metrics to Watch
+
+| Metric | What It Means | Action |
+|--------|---------------|--------|
+| **Seq Scan / ALL** | Full table scan | Add index |
+| **rows examined** | Rows scanned | Reduce with WHERE/index |
+| **Using filesort** | Expensive sort | Add index on ORDER BY |
+| **Using temporary** | Temp table created | Optimize JOIN/GROUP BY |
+| **Using index** | Good! Index-only scan | Keep it |
+
+---
+
+## 12. Monitoring & Profiling
+
+### MySQL Slow Query Log
+
+```sql
+-- Enable slow query log
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 1;  -- Log queries > 1 second
+SET GLOBAL log_queries_not_using_indexes = 'ON';
+
+-- View slow queries
+SELECT * FROM mysql.slow_log
+ORDER BY query_time DESC
+LIMIT 10;
+```
+
+### PostgreSQL Query Statistics
+
+```sql
+-- Enable pg_stat_statements
+CREATE EXTENSION pg_stat_statements;
+
+-- Find slowest queries
+SELECT
+    query,
+    calls,
+    total_exec_time,
+    mean_exec_time,
+    max_exec_time
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
+```
+
+---
+
+## 13. Advanced Techniques
+
+### Window Functions vs Subqueries
+
+```sql
+-- ❌ Slower: Correlated subquery
+SELECT
+    e.name,
+    e.salary,
+    (SELECT AVG(salary) FROM employees WHERE dept_id = e.dept_id) as avg_salary
+FROM employees e;
+
+-- ✅ Faster: Window function
+SELECT
+    name,
+    salary,
+    AVG(salary) OVER (PARTITION BY dept_id) as avg_salary
+FROM employees;
+```
+
+### Common Table Expressions (CTEs)
+
+```sql
+-- Improve readability and sometimes performance
+WITH high_value_customers AS (
+    SELECT user_id, SUM(total) as lifetime_value
+    FROM orders
+    GROUP BY user_id
+    HAVING SUM(total) > 10000
+)
+SELECT u.name, hvc.lifetime_value
+FROM users u
+JOIN high_value_customers hvc ON u.id = hvc.user_id;
+```
+
+### Index Hints (Use Sparingly)
+
+```sql
+-- Force index usage (MySQL)
+SELECT * FROM users USE INDEX (idx_email) WHERE email = 'test@example.com';
+
+-- Ignore index (for testing)
+SELECT * FROM users IGNORE INDEX (idx_email) WHERE email = 'test@example.com';
+```
+
+---
+
+## 14. Transaction Optimization
+
+### Keep Transactions Short
+
+```sql
+-- ❌ Bad: Long-running transaction
+BEGIN;
+SELECT * FROM large_table WHERE ...;  -- Expensive query
+-- ... other operations ...
+UPDATE users SET status = 'active';
+COMMIT;
+
+-- ✅ Good: Separate read from transaction
+SELECT * FROM large_table WHERE ...;  -- Outside transaction
+
+BEGIN;
+UPDATE users SET status = 'active';
+COMMIT;
+```
+
+### Use Appropriate Isolation Levels
+
+```sql
+-- Read uncommitted (fastest, least safe)
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+-- Read committed (good balance)
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- Repeatable read (default in MySQL)
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Serializable (slowest, most safe)
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+```
+
+---
+
+## 15. Connection Pooling
+
+```sql
+-- Application-level connection pooling
+-- Prevents connection overhead
+
+-- Example config (not SQL):
+pool_size: 20
+max_overflow: 10
+pool_timeout: 30
+pool_recycle: 3600
+```
+
+---
+
+## 🎯 Quick Reference Checklist
+
+### Before Deploying a Query
+
+- [ ] Used `EXPLAIN` to check execution plan
+- [ ] Selected only required columns (no `SELECT *`)
+- [ ] Added indexes on WHERE/JOIN/ORDER BY columns
+- [ ] Avoided functions on indexed columns
+- [ ] Used `LIMIT` when full result not needed
+- [ ] Tested with production-like data volume
+- [ ] Checked for N+1 query problems
+- [ ] Validated appropriate data types
+- [ ] Considered caching for frequent queries
+
+### Performance Degradation Troubleshooting
+
+1. Check slow query logs
+2. Run `EXPLAIN` on slow queries
+3. Look for missing indexes
+4. Check for table bloat/fragmentation
+5. Verify statistics are up to date (`ANALYZE TABLE`)
+6. Check for blocking/locking issues
+7. Monitor connection pool exhaustion
+8. Review recent schema changes
+
+---
+
+## 📊 Optimization Decision Tree
+
+```
+Is query slow?
+├─ Yes: Run EXPLAIN
+│  ├─ Full table scan? → Add index
+│  ├─ Using filesort? → Add index on ORDER BY
+│  ├─ Using temporary? → Optimize GROUP BY/JOIN
+│  ├─ High rows examined? → Add WHERE filters
+│  └─ Many joins? → Consider denormalization
+└─ No: Monitor and maintain
+```
+
+---
+
+## 🚀 Performance Gains Summary
+
+| Technique | Expected Improvement | Effort |
+|-----------|---------------------|--------|
+| Add missing index | 10-100x | Low |
+| Remove SELECT * | 2-5x | Low |
+| Replace subquery with JOIN | 2-10x | Low |
+| Batch inserts | 5-50x | Low |
+| Partition large table | 5-20x | Medium |
+| Materialized views | 10-100x | Medium |
+| Denormalization | 5-50x | High |
+| Sharding | 10-100x | High |
+
+---
+
+## 💡 Pro Tips
+
+1. **Measure Everything**: Always benchmark before and after optimization
+2. **Premature Optimization**: Don't optimize until you have a performance problem
+3. **Index Maintenance**: Rebuild fragmented indexes periodically
+4. **Statistics**: Keep table statistics updated (`ANALYZE TABLE`)
+5. **Read Replicas**: Offload read queries to replicas
+6. **Archive Old Data**: Move historical data to separate tables/databases
+7. **Query Complexity**: Sometimes multiple simple queries beat one complex query
+8. **Application-Level**: Consider solving problems in application code (caching, async processing)
+
+---
+
+## 📚 Additional Resources
+
+- MySQL Performance Schema
+- PostgreSQL pg_stat_* views
+- Database-specific EXPLAIN documentation
+- Query optimization tools (EverSQL, pt-query-digest)
+- APM tools (DataDog, New Relic, AppDynamics)
+
+---
+
+**Remember**: The best optimization is the one that solves your specific bottleneck. Always profile first! 🎯
