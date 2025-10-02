@@ -1,0 +1,448 @@
+# REST API Design Best Practices
+
+A comprehensive guide to designing production-ready REST APIs.
+
+---
+
+## 1. Resource Naming & URL Structure
+
+### Use Nouns, Not Verbs
+
+Resources should be nouns representing entities, not actions.
+
+**✅ Good**
+```
+GET /users/123/orders
+GET /products/456
+POST /invoices
+```
+
+**❌ Bad**
+```
+GET /getUserOrders
+POST /createInvoice
+GET /fetchProducts
+```
+
+### Use Plural Nouns for Collections
+
+```
+GET /users          → List all users
+GET /users/123      → Get specific user
+POST /users         → Create new user
+```
+
+### Hierarchical Relationships
+
+Express parent-child relationships in URLs.
+
+```
+GET /users/{userId}/orders/{orderId}
+GET /companies/{companyId}/employees/{employeeId}
+GET /posts/{postId}/comments
+```
+
+### Naming Convention
+
+Use **kebab-case** or **snake_case** for URLs (avoid camelCase).
+
+**✅ Recommended**
+```
+/user-profiles
+/order-items
+/payment-methods
+
+OR
+
+/user_profiles
+/order_items
+/payment_methods
+```
+
+**❌ Avoid**
+```
+/userProfiles
+/orderItems
+```
+
+---
+
+## 2. HTTP Methods (CRUD Operations)
+
+| Method | Purpose | Example |
+|--------|---------|---------|
+| **GET** | Retrieve resources | `GET /users/123` |
+| **POST** | Create new resource | `POST /users` |
+| **PUT** | Replace entire resource | `PUT /users/123` |
+| **PATCH** | Partial update | `PATCH /users/123` |
+| **DELETE** | Remove resource | `DELETE /users/123` |
+
+### Examples
+
+```http
+POST /users
+Body: { "name": "John", "email": "john@example.com" }
+→ Creates a new user
+
+GET /users/123
+→ Retrieves user with ID 123
+
+PATCH /users/123
+Body: { "email": "newemail@example.com" }
+→ Updates only the email field
+
+DELETE /users/123
+→ Deletes user with ID 123
+```
+
+---
+
+## 3. HTTP Status Codes
+
+Use standard HTTP status codes consistently.
+
+### Success Codes
+- **200 OK** - Successful GET, PUT, PATCH, or DELETE
+- **201 Created** - Resource successfully created (POST)
+- **204 No Content** - Success with no response body (often DELETE)
+
+### Client Error Codes
+- **400 Bad Request** - Invalid input/validation error
+- **401 Unauthorized** - Authentication required
+- **403 Forbidden** - Authenticated but not authorized
+- **404 Not Found** - Resource doesn't exist
+- **409 Conflict** - Duplicate resource or conflicting state
+
+### Server Error Codes
+- **500 Internal Server Error** - Unexpected server failure
+- **503 Service Unavailable** - Temporary server issue
+
+---
+
+## 4. Query Parameters & Filtering
+
+### Filtering and Search
+
+```http
+GET /products?category=electronics&brand=sony
+GET /users?role=admin&status=active
+```
+
+### Sorting
+
+```http
+GET /products?sort=price          → Ascending
+GET /products?sort=-price         → Descending
+GET /products?sort=name,price     → Multiple fields
+```
+
+### Pagination
+
+**Option 1: Page-based**
+```http
+GET /products?page=2&limit=20
+```
+
+**Option 2: Offset-based**
+```http
+GET /products?offset=40&limit=20
+```
+
+### Combined Example
+
+```http
+GET /products?category=shoes&sort=-price&page=2&limit=20
+```
+
+---
+
+## 5. Request & Response Format
+
+### Use JSON as Default
+
+```json
+{
+  "data": {
+    "id": 123,
+    "name": "Product Name",
+    "price": 99.99
+  },
+  "meta": {
+    "timestamp": "2025-10-02T10:30:00Z"
+  }
+}
+```
+
+### Consistent Structure
+
+**For Collections**
+```json
+{
+  "data": [
+    { "id": 1, "name": "Item 1" },
+    { "id": 2, "name": "Item 2" }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+```
+
+### Naming Convention in JSON
+
+Choose **camelCase** (JavaScript) or **snake_case** (Python) and be consistent.
+
+**camelCase** (common in JS ecosystems)
+```json
+{
+  "userId": 123,
+  "firstName": "John",
+  "createdAt": "2025-10-02"
+}
+```
+
+**snake_case**
+```json
+{
+  "user_id": 123,
+  "first_name": "John",
+  "created_at": "2025-10-02"
+}
+```
+
+---
+
+## 6. API Versioning
+
+Prevent breaking changes by versioning your API.
+
+### URL Path Versioning (Recommended)
+
+```http
+GET /api/v1/users
+GET /api/v2/users
+```
+
+### Header Versioning (Alternative)
+
+```http
+GET /api/users
+Header: Accept: application/vnd.company.v1+json
+```
+
+**Best Practice:** Use URL path versioning for simplicity and clarity.
+
+---
+
+## 7. Security Best Practices
+
+### Always Use HTTPS
+
+Never transmit sensitive data over HTTP.
+
+### Authentication
+
+**OAuth 2.0 / JWT**
+```http
+GET /api/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**API Keys**
+```http
+GET /api/users
+X-API-Key: your-api-key-here
+```
+
+### Never Expose Sensitive Data in URLs
+
+**❌ Bad**
+```
+GET /login?username=john&password=secret123
+```
+
+**✅ Good**
+```
+POST /login
+Body: { "username": "john", "password": "secret123" }
+```
+
+---
+
+## 8. Error Handling
+
+### Structured Error Response
+
+```json
+{
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "The user with id 123 does not exist",
+    "field": "userId",
+    "details": {}
+  }
+}
+```
+
+### Validation Errors
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email format"
+      },
+      {
+        "field": "age",
+        "message": "Must be at least 18"
+      }
+    ]
+  }
+}
+```
+
+**Avoid generic messages** like "Something went wrong" unless it's truly an unexpected error.
+
+---
+
+## 9. HATEOAS (Optional)
+
+**HATEOAS** = Hypermedia As The Engine Of Application State
+
+The server provides links to possible next actions, making the API self-discoverable.
+
+### Without HATEOAS
+
+```json
+{
+  "id": 123,
+  "name": "Nike Shoes",
+  "price": 99.99
+}
+```
+
+Client must know from documentation:
+- `/products/123/reviews` for reviews
+- `/products/123` with PATCH to update
+
+### With HATEOAS
+
+```json
+{
+  "id": 123,
+  "name": "Nike Shoes",
+  "price": 99.99,
+  "links": {
+    "self": "/products/123",
+    "reviews": "/products/123/reviews",
+    "update": {
+      "href": "/products/123",
+      "method": "PATCH"
+    }
+  }
+}
+```
+
+### Real-World Example: GitHub API
+
+```json
+{
+  "id": 1296269,
+  "name": "Hello-World",
+  "url": "https://api.github.com/repos/octocat/Hello-World",
+  "forks_url": "https://api.github.com/repos/octocat/Hello-World/forks",
+  "issues_url": "https://api.github.com/repos/octocat/Hello-World/issues"
+}
+```
+
+### When to Use HATEOAS
+
+**✅ Use when:**
+- APIs have complex, dynamic workflows
+- You want to decouple clients from hardcoded URLs
+- Building long-lived, evolving APIs
+
+**❌ Skip when:**
+- Simple CRUD operations
+- High-performance requirements (extra payload)
+- Team prefers traditional documentation
+
+---
+
+## 10. Documentation & Developer Experience
+
+### Use OpenAPI/Swagger
+
+Document your API with OpenAPI specification:
+
+```yaml
+openapi: 3.0.0
+info:
+  title: Products API
+  version: 1.0.0
+paths:
+  /products:
+    get:
+      summary: List all products
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+```
+
+### Provide Examples
+
+Every endpoint should have:
+- Request examples
+- Response examples
+- Error response examples
+
+### Tools for Documentation
+- **Swagger UI** - Interactive API documentation
+- **Postman Collections** - Easy testing and sharing
+- **ReDoc** - Clean, customizable docs
+
+---
+
+## Golden Rules
+
+> **APIs are contracts** — they must be:
+> - **Consistent** in naming, structure, and responses
+> - **Predictable** in behavior and error handling
+> - **Versioned** to prevent breaking changes
+> - **Well-documented** for developer experience
+
+---
+
+## Quick Reference Checklist
+
+- [ ] Use nouns for resources, plural for collections
+- [ ] Use kebab-case or snake_case in URLs
+- [ ] Implement proper HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- [ ] Return appropriate HTTP status codes
+- [ ] Support filtering, sorting, and pagination via query params
+- [ ] Use JSON for requests/responses
+- [ ] Version your API (e.g., `/api/v1/`)
+- [ ] Always use HTTPS
+- [ ] Implement proper authentication (OAuth2/JWT)
+- [ ] Return structured error responses
+- [ ] Document with OpenAPI/Swagger
+- [ ] Provide clear examples for all endpoints
+
+---
+
+## Additional Resources
+
+- [REST API Tutorial](https://restfulapi.net/)
+- [OpenAPI Specification](https://swagger.io/specification/)
+- [HTTP Status Codes](https://httpstatuses.com/)
+- [GitHub API Documentation](https://docs.github.com/en/rest)
+- [Stripe API Documentation](https://stripe.com/docs/api)
