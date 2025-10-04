@@ -1,0 +1,4703 @@
+# Prefix Sum
+
+## Table of Contents
+1. [Prefix Sum Fundamentals](#prefix-sum-fundamentals)
+2. [Pattern 1: Basic Prefix Sum](#pattern-1-basic-prefix-sum)
+3. [Pattern 2: Prefix Sum with HashMap](#pattern-2-prefix-sum-with-hashmap)
+4. [Pattern 3: Subarray Sum Problems](#pattern-3-subarray-sum-problems)
+5. [Pattern 4: Range Query Problems](#pattern-4-range-query-problems)
+6. [Pattern 5: 2D Prefix Sum](#pattern-5-2d-prefix-sum)
+7. [Pattern 6: Prefix Sum with Modular Arithmetic](#pattern-6-prefix-sum-with-modular-arithmetic)
+8. [Pattern 7: Difference Array Techniques](#pattern-7-difference-array-techniques)
+9. [Pattern 8: Maximum/Minimum Subarray Problems](#pattern-8-maximumminimum-subarray-problems)
+10. [Pattern 9: Binary Indexed Tree (Fenwick Tree)](#pattern-9-binary-indexed-tree-fenwick-tree)
+11. [Pattern 10: Segment Tree for Range Queries](#pattern-10-segment-tree-for-range-queries)
+12. [Pattern 11: Advanced Prefix Sum Applications](#pattern-11-advanced-prefix-sum-applications)
+13. [Pattern 12: Optimization Techniques](#pattern-12-optimization-techniques)
+
+***
+
+## Prefix Sum Fundamentals
+
+### Core Concepts and Implementation
+
+```java
+// Basic Prefix Sum Implementation
+public class PrefixSumFundamentals {
+
+    // Simple prefix sum array construction
+    public static int[] buildPrefixSum(int[] arr) {
+        if (arr == null || arr.length == 0) return new int[0];
+
+        int n = arr.length;
+        int[] prefixSum = new int[n];
+        prefixSum[0] = arr[0];
+
+        for (int i = 1; i < n; i++) {
+            prefixSum[i] = prefixSum[i - 1] + arr[i];
+        }
+
+        return prefixSum;
+    }
+
+    // Alternative: prefix sum with 0-indexed base
+    public static int[] buildPrefixSumWithZero(int[] arr) {
+        if (arr == null || arr.length == 0) return new int[1];
+
+        int n = arr.length;
+        int[] prefixSum = new int[n + 1]; // Extra space for 0-index
+        prefixSum[0] = 0; // Base case
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + arr[i];
+        }
+
+        return prefixSum;
+    }
+
+    // Range sum query using prefix sum
+    public static int rangeSum(int[] prefixSum, int left, int right) {
+        // Assuming 0-indexed prefix sum with base
+        return prefixSum[right + 1] - prefixSum[left];
+    }
+
+    // Range sum query for 1-indexed prefix sum
+    public static int rangeSumSimple(int[] prefixSum, int left, int right) {
+        if (left == 0) return prefixSum[right];
+        return prefixSum[right] - prefixSum[left - 1];
+    }
+
+    // Running sum of 1D array (in-place)
+    public static int[] runningSum(int[] nums) {
+        for (int i = 1; i < nums.length; i++) {
+            nums[i] += nums[i - 1];
+        }
+        return nums;
+    }
+
+    // Utility class for range sum queries
+    public static class RangeSumQuery {
+        private int[] prefixSum;
+
+        public RangeSumQuery(int[] nums) {
+            if (nums == null || nums.length == 0) {
+                prefixSum = new int[1];
+                return;
+            }
+
+            prefixSum = new int[nums.length + 1];
+            for (int i = 0; i < nums.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + nums[i];
+            }
+        }
+
+        public int sumRange(int left, int right) {
+            return prefixSum[right + 1] - prefixSum[left];
+        }
+    }
+
+    // Advanced prefix sum with lazy propagation support
+    public static class AdvancedPrefixSum {
+        private long[] prefixSum;
+        private int[] original;
+
+        public AdvancedPrefixSum(int[] nums) {
+            if (nums == null || nums.length == 0) {
+                prefixSum = new long[1];
+                original = new int[0];
+                return;
+            }
+
+            original = nums.clone();
+            prefixSum = new long[nums.length + 1];
+            buildPrefixSum();
+        }
+
+        private void buildPrefixSum() {
+            for (int i = 0; i < original.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + original[i];
+            }
+        }
+
+        public long sumRange(int left, int right) {
+            return prefixSum[right + 1] - prefixSum[left];
+        }
+
+        public void update(int index, int val) {
+            int diff = val - original[index];
+            original[index] = val;
+
+            // Update prefix sum array
+            for (int i = index + 1; i < prefixSum.length; i++) {
+                prefixSum[i] += diff;
+            }
+        }
+
+        public double averageRange(int left, int right) {
+            long sum = sumRange(left, right);
+            return (double) sum / (right - left + 1);
+        }
+    }
+
+    // Prefix sum for different data types
+    public static class TypedPrefixSum {
+
+        // Long prefix sum for large numbers
+        public static long[] buildLongPrefixSum(long[] arr) {
+            if (arr == null || arr.length == 0) return new long[1];
+
+            long[] prefixSum = new long[arr.length + 1];
+            for (int i = 0; i < arr.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + arr[i];
+            }
+            return prefixSum;
+        }
+
+        // Double prefix sum for floating point numbers
+        public static double[] buildDoublePrefixSum(double[] arr) {
+            if (arr == null || arr.length == 0) return new double[1];
+
+            double[] prefixSum = new double[arr.length + 1];
+            for (int i = 0; i < arr.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + arr[i];
+            }
+            return prefixSum;
+        }
+
+        // Boolean prefix sum (count of true values)
+        public static int[] buildBooleanPrefixSum(boolean[] arr) {
+            if (arr == null || arr.length == 0) return new int[1];
+
+            int[] prefixSum = new int[arr.length + 1];
+            for (int i = 0; i < arr.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + (arr[i] ? 1 : 0);
+            }
+            return prefixSum;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Basic Prefix Sum
+
+### 1.1 Running Sum and Cumulative Operations
+
+```java
+// Basic prefix sum operations and applications
+public class BasicPrefixSumOperations {
+
+    // Running sum of 1D array
+    public int[] runningSum(int[] nums) {
+        int[] result = new int[nums.length];
+        result[0] = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            result[i] = result[i - 1] + nums[i];
+        }
+
+        return result;
+    }
+
+    // In-place running sum
+    public int[] runningSumInPlace(int[] nums) {
+        for (int i = 1; i < nums.length; i++) {
+            nums[i] += nums[i - 1];
+        }
+        return nums;
+    }
+
+    // Prefix sum with different operations
+    public static class OperationPrefixSum {
+
+        // Prefix product
+        public static long[] prefixProduct(int[] arr) {
+            if (arr.length == 0) return new long[0];
+
+            long[] result = new long[arr.length];
+            result[0] = arr[0];
+
+            for (int i = 1; i < arr.length; i++) {
+                result[i] = result[i - 1] * arr[i];
+            }
+
+            return result;
+        }
+
+        // Prefix XOR
+        public static int[] prefixXOR(int[] arr) {
+            if (arr.length == 0) return new int[0];
+
+            int[] result = new int[arr.length];
+            result[0] = arr[0];
+
+            for (int i = 1; i < arr.length; i++) {
+                result[i] = result[i - 1] ^ arr[i];
+            }
+
+            return result;
+        }
+
+        // Prefix max
+        public static int[] prefixMax(int[] arr) {
+            if (arr.length == 0) return new int[0];
+
+            int[] result = new int[arr.length];
+            result[0] = arr[0];
+
+            for (int i = 1; i < arr.length; i++) {
+                result[i] = Math.max(result[i - 1], arr[i]);
+            }
+
+            return result;
+        }
+
+        // Prefix min
+        public static int[] prefixMin(int[] arr) {
+            if (arr.length == 0) return new int[0];
+
+            int[] result = new int[arr.length];
+            result[0] = arr[0];
+
+            for (int i = 1; i < arr.length; i++) {
+                result[i] = Math.min(result[i - 1], arr[i]);
+            }
+
+            return result;
+        }
+    }
+
+    // Find pivot index using prefix sum
+    public int pivotIndex(int[] nums) {
+        int totalSum = 0;
+        for (int num : nums) {
+            totalSum += num;
+        }
+
+        int leftSum = 0;
+        for (int i = 0; i < nums.length; i++) {
+            int rightSum = totalSum - leftSum - nums[i];
+
+            if (leftSum == rightSum) {
+                return i;
+            }
+
+            leftSum += nums[i];
+        }
+
+        return -1;
+    }
+
+    // Range sum queries with immutable array
+    public static class NumArray {
+        private int[] prefixSum;
+
+        public NumArray(int[] nums) {
+            prefixSum = new int[nums.length + 1];
+            for (int i = 0; i < nums.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + nums[i];
+            }
+        }
+
+        public int sumRange(int left, int right) {
+            return prefixSum[right + 1] - prefixSum[left];
+        }
+    }
+
+    // Check if array can be split into three equal sum parts
+    public boolean canThreePartsEqualSum(int[] arr) {
+        int totalSum = 0;
+        for (int num : arr) {
+            totalSum += num;
+        }
+
+        if (totalSum % 3 != 0) return false;
+
+        int targetSum = totalSum / 3;
+        int count = 0;
+        int prefixSum = 0;
+
+        // Need at least 2 partition points (leaving 3 parts)
+        for (int i = 0; i < arr.length - 1; i++) {
+            prefixSum += arr[i];
+
+            if (prefixSum == targetSum * (count + 1)) {
+                count++;
+                if (count == 2) return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Find equilibrium point in array
+    public int findEquilibriumPoint(int[] arr) {
+        int n = arr.length;
+        if (n == 1) return 0;
+
+        int totalSum = 0;
+        for (int num : arr) {
+            totalSum += num;
+        }
+
+        int leftSum = 0;
+        for (int i = 0; i < n; i++) {
+            int rightSum = totalSum - leftSum - arr[i];
+
+            if (leftSum == rightSum) {
+                return i;
+            }
+
+            leftSum += arr[i];
+        }
+
+        return -1;
+    }
+
+    // Maximum average subarray
+    public double findMaxAverage(int[] nums, int k) {
+        // Build prefix sum
+        int[] prefixSum = new int[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        double maxAverage = Double.NEGATIVE_INFINITY;
+
+        // Check all subarrays of length k
+        for (int i = 0; i <= nums.length - k; i++) {
+            int sum = prefixSum[i + k] - prefixSum[i];
+            double average = (double) sum / k;
+            maxAverage = Math.max(maxAverage, average);
+        }
+
+        return maxAverage;
+    }
+}
+```
+
+
+### 1.2 Prefix Sum with Constraints
+
+```java
+// Prefix sum problems with specific constraints
+public class ConstrainedPrefixSum {
+
+    // Minimum size subarray sum >= target
+    public int minSubArrayLen(int target, int[] nums) {
+        int n = nums.length;
+        int[] prefixSum = new int[n + 1];
+
+        // Build prefix sum
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        int minLength = Integer.MAX_VALUE;
+
+        // Use two pointers
+        for (int i = 0; i < n; i++) {
+            for (int j = i; j < n; j++) {
+                int sum = prefixSum[j + 1] - prefixSum[i];
+                if (sum >= target) {
+                    minLength = Math.min(minLength, j - i + 1);
+                    break; // Found minimum for this starting point
+                }
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? 0 : minLength;
+    }
+
+    // Optimized version using binary search
+    public int minSubArrayLenOptimized(int target, int[] nums) {
+        int n = nums.length;
+        int[] prefixSum = new int[n + 1];
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        int minLength = Integer.MAX_VALUE;
+
+        for (int i = 0; i < n; i++) {
+            int targetSum = prefixSum[i] + target;
+            int bound = binarySearch(prefixSum, targetSum);
+
+            if (bound != prefixSum.length) {
+                minLength = Math.min(minLength, bound - i);
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? 0 : minLength;
+    }
+
+    private int binarySearch(int[] arr, int target) {
+        int left = 0, right = arr.length - 1;
+        int result = arr.length;
+
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+
+            if (arr[mid] >= target) {
+                result = mid;
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+
+        return result;
+    }
+
+    // Maximum sum circular subarray
+    public int maxSubarraySumCircular(int[] arr) {
+        int totalSum = 0;
+        for (int num : arr) {
+            totalSum += num;
+        }
+
+        // Case 1: Maximum subarray is non-circular
+        int maxKadane = kadaneMax(arr);
+
+        // Case 2: Maximum subarray is circular
+        // Find minimum subarray and subtract from total
+        int minKadane = kadaneMin(arr);
+        int maxCircular = totalSum - minKadane;
+
+        // If all elements are negative, maxCircular will be 0
+        if (maxCircular == 0) return maxKadane;
+
+        return Math.max(maxKadane, maxCircular);
+    }
+
+    private int kadaneMax(int[] arr) {
+        int maxSoFar = arr[0];
+        int maxEndingHere = arr[0];
+
+        for (int i = 1; i < arr.length; i++) {
+            maxEndingHere = Math.max(arr[i], maxEndingHere + arr[i]);
+            maxSoFar = Math.max(maxSoFar, maxEndingHere);
+        }
+
+        return maxSoFar;
+    }
+
+    private int kadaneMin(int[] arr) {
+        int minSoFar = arr[0];
+        int minEndingHere = arr[0];
+
+        for (int i = 1; i < arr.length; i++) {
+            minEndingHere = Math.min(arr[i], minEndingHere + arr[i]);
+            minSoFar = Math.min(minSoFar, minEndingHere);
+        }
+
+        return minSoFar;
+    }
+
+    // Maximum product subarray using prefix approach
+    public int maxProduct(int[] nums) {
+        int n = nums.length;
+        int[] maxProduct = new int[n];
+        int[] minProduct = new int[n];
+
+        maxProduct[0] = minProduct[0] = nums[0];
+        int result = nums[0];
+
+        for (int i = 1; i < n; i++) {
+            if (nums[i] >= 0) {
+                maxProduct[i] = Math.max(nums[i], maxProduct[i - 1] * nums[i]);
+                minProduct[i] = Math.min(nums[i], minProduct[i - 1] * nums[i]);
+            } else {
+                maxProduct[i] = Math.max(nums[i], minProduct[i - 1] * nums[i]);
+                minProduct[i] = Math.min(nums[i], maxProduct[i - 1] * nums[i]);
+            }
+
+            result = Math.max(result, maxProduct[i]);
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 2: Prefix Sum with HashMap
+
+### 2.1 Subarray Sum Equals K
+
+```java
+// Prefix sum with HashMap for efficient lookups
+public class PrefixSumHashMap {
+
+    // Subarray Sum Equals K - Core pattern
+    public int subarraySum(int[] nums, int k) {
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        prefixSumCount.put(0, 1); // Empty subarray has sum 0
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Check if there exists a prefix sum such that
+            // current_prefix - previous_prefix = k
+            int target = prefixSum - k;
+            if (prefixSumCount.containsKey(target)) {
+                count += prefixSumCount.get(target);
+            }
+
+            // Add current prefix sum to map
+            prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Maximum size subarray sum equals k
+    public int maxSubArrayLen(int[] nums, int k) {
+        Map<Integer, Integer> prefixSumIndex = new HashMap<>();
+        prefixSumIndex.put(0, -1); // Empty subarray
+
+        int maxLength = 0;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+
+            int target = prefixSum - k;
+            if (prefixSumIndex.containsKey(target)) {
+                maxLength = Math.max(maxLength, i - prefixSumIndex.get(target));
+            }
+
+            // Only store first occurrence to maximize length
+            if (!prefixSumIndex.containsKey(prefixSum)) {
+                prefixSumIndex.put(prefixSum, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Find if subarray with sum k exists
+    public boolean checkSubarraySum(int[] nums, int k) {
+        Map<Integer, Integer> prefixSumIndex = new HashMap<>();
+        prefixSumIndex.put(0, -1);
+
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+
+            if (prefixSumIndex.containsKey(prefixSum - k)) {
+                return true;
+            }
+
+            if (!prefixSumIndex.containsKey(prefixSum)) {
+                prefixSumIndex.put(prefixSum, i);
+            }
+        }
+
+        return false;
+    }
+
+    // Count subarrays with sum divisible by k
+    public int subarraysDivByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1); // Empty subarray
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Handle negative remainders
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderCount.containsKey(remainder)) {
+                count += remainderCount.get(remainder);
+            }
+
+            remainderCount.put(remainder, remainderCount.getOrDefault(remainder, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Continuous subarray sum (multiple of k with length >= 2)
+    public boolean checkSubarraySumMultiple(int[] nums, int k) {
+        Map<Integer, Integer> remainderIndex = new HashMap<>();
+        remainderIndex.put(0, -1);
+
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = prefixSum % k;
+
+            if (remainderIndex.containsKey(remainder)) {
+                // Check if subarray length is at least 2
+                if (i - remainderIndex.get(remainder) > 1) {
+                    return true;
+                }
+            } else {
+                remainderIndex.put(remainder, i);
+            }
+        }
+
+        return false;
+    }
+
+    // Binary subarrays with sum
+    public int numSubarraysWithSum(int[] nums, int goal) {
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        prefixSumCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            int target = prefixSum - goal;
+            if (prefixSumCount.containsKey(target)) {
+                count += prefixSumCount.get(target);
+            }
+
+            prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Subarray sums to zero
+    public boolean hasSubarrayWithZeroSum(int[] nums) {
+        Set<Integer> prefixSums = new HashSet<>();
+        prefixSums.add(0);
+
+        int prefixSum = 0;
+        for (int num : nums) {
+            prefixSum += num;
+
+            if (prefixSums.contains(prefixSum)) {
+                return true;
+            }
+
+            prefixSums.add(prefixSum);
+        }
+
+        return false;
+    }
+
+    // Generic template for prefix sum + HashMap problems
+    public static class PrefixSumTemplate {
+
+        // Count subarrays matching condition
+        public static int countSubarraysWithCondition(int[] nums,
+                                                     java.util.function.Predicate<Integer> condition) {
+            Map<Integer, Integer> prefixSumCount = new HashMap<>();
+            prefixSumCount.put(0, 1);
+
+            int count = 0;
+            int prefixSum = 0;
+
+            for (int num : nums) {
+                prefixSum += num;
+
+                // Check condition for different target values
+                for (Map.Entry<Integer, Integer> entry : prefixSumCount.entrySet()) {
+                    int previousSum = entry.getKey();
+                    int subarraySum = prefixSum - previousSum;
+
+                    if (condition.test(subarraySum)) {
+                        count += entry.getValue();
+                    }
+                }
+
+                prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+            }
+
+            return count;
+        }
+
+        // Find max length subarray matching condition
+        public static int maxLengthSubarrayWithCondition(int[] nums,
+                                                        java.util.function.Predicate<Integer> condition) {
+            Map<Integer, Integer> prefixSumIndex = new HashMap<>();
+            prefixSumIndex.put(0, -1);
+
+            int maxLength = 0;
+            int prefixSum = 0;
+
+            for (int i = 0; i < nums.length; i++) {
+                prefixSum += nums[i];
+
+                for (Map.Entry<Integer, Integer> entry : prefixSumIndex.entrySet()) {
+                    int previousSum = entry.getKey();
+                    int subarraySum = prefixSum - previousSum;
+
+                    if (condition.test(subarraySum)) {
+                        maxLength = Math.max(maxLength, i - entry.getValue());
+                    }
+                }
+
+                if (!prefixSumIndex.containsKey(prefixSum)) {
+                    prefixSumIndex.put(prefixSum, i);
+                }
+            }
+
+            return maxLength;
+        }
+    }
+}
+```
+
+
+### 2.2 Advanced HashMap Techniques
+
+```java
+// Advanced prefix sum with HashMap patterns
+public class AdvancedPrefixSumHashMap {
+
+    // Count equal 0s and 1s in binary array
+    public int findMaxLength(int[] nums) {
+        // Convert 0s to -1s, then find longest subarray with sum 0
+        Map<Integer, Integer> sumIndex = new HashMap<>();
+        sumIndex.put(0, -1);
+
+        int maxLength = 0;
+        int sum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            sum += (nums[i] == 1) ? 1 : -1;
+
+            if (sumIndex.containsKey(sum)) {
+                maxLength = Math.max(maxLength, i - sumIndex.get(sum));
+            } else {
+                sumIndex.put(sum, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Contiguous array with equal number of 0s and 1s
+    public int findMaxLengthBinary(int[] nums) {
+        Map<Integer, Integer> diffIndex = new HashMap<>();
+        diffIndex.put(0, -1);
+
+        int maxLength = 0;
+        int count0 = 0, count1 = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == 0) count0++;
+            else count1++;
+
+            int diff = count1 - count0;
+
+            if (diffIndex.containsKey(diff)) {
+                maxLength = Math.max(maxLength, i - diffIndex.get(diff));
+            } else {
+                diffIndex.put(diff, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Find all subarrays with equal number of 0s and 1s
+    public List<int[]> findAllEqualSubarrays(int[] nums) {
+        Map<Integer, List<Integer>> diffIndices = new HashMap<>();
+        diffIndices.put(0, new ArrayList<>(Arrays.asList(-1)));
+
+        List<int[]> result = new ArrayList<>();
+        int count0 = 0, count1 = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] == 0) count0++;
+            else count1++;
+
+            int diff = count1 - count0;
+
+            if (diffIndices.containsKey(diff)) {
+                for (int startIndex : diffIndices.get(diff)) {
+                    result.add(new int[]{startIndex + 1, i});
+                }
+            }
+
+            diffIndices.computeIfAbsent(diff, k -> new ArrayList<>()).add(i);
+        }
+
+        return result;
+    }
+
+    // Minimum operations to make array sum equal to target
+    public int minOperationsToTarget(int[] nums, int target) {
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        prefixSumCount.put(0, 1);
+
+        int operations = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // If we can form target sum, no operations needed for this prefix
+            if (prefixSumCount.containsKey(prefixSum - target)) {
+                // Found a valid subarray
+                continue;
+            }
+
+            prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        // This is a simplified version - actual implementation would be more complex
+        return operations;
+    }
+
+    // Subarrays with k odd numbers
+    public int numberOfSubarraysWithKOdds(int[] nums, int k) {
+        // Convert to binary: odd = 1, even = 0
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int oddCount = 0;
+
+        for (int num : nums) {
+            if (num % 2 == 1) oddCount++;
+
+            int target = oddCount - k;
+            if (prefixCount.containsKey(target)) {
+                count += prefixCount.get(target);
+            }
+
+            prefixCount.put(oddCount, prefixCount.getOrDefault(oddCount, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Replace elements to make sum divisible by k
+    public int minReplacementsForDivisibility(int[] nums, int k) {
+        Map<Integer, Integer> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1);
+
+        int prefixSum = 0;
+        int replacements = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderCount.containsKey(remainder)) {
+                // Found a subarray divisible by k, no replacement needed
+            } else {
+                // Need replacement to make divisible
+                remainderCount.put(remainder, remainderCount.getOrDefault(remainder, 0) + 1);
+            }
+        }
+
+        return replacements;
+    }
+
+    // Maximum length subarray with difference of k
+    public int maxSubarrayLengthWithDiff(int[] nums, int k) {
+        Map<Integer, Integer> firstOccurrence = new HashMap<>();
+        firstOccurrence.put(0, -1);
+
+        int maxLength = 0;
+        int sum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            sum += nums[i];
+
+            // Check for both +k and -k differences
+            if (firstOccurrence.containsKey(sum - k)) {
+                maxLength = Math.max(maxLength, i - firstOccurrence.get(sum - k));
+            }
+            if (firstOccurrence.containsKey(sum + k)) {
+                maxLength = Math.max(maxLength, i - firstOccurrence.get(sum + k));
+            }
+
+            if (!firstOccurrence.containsKey(sum)) {
+                firstOccurrence.put(sum, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Find subarrays with sum in range [left, right]
+    public int numSubarraysInRange(int[] nums, int left, int right) {
+        return numSubarraysAtMost(nums, right) - numSubarraysAtMost(nums, left - 1);
+    }
+
+    private int numSubarraysAtMost(int[] nums, int target) {
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        prefixSumCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Count all prefix sums such that current - previous <= target
+            for (Map.Entry<Integer, Integer> entry : prefixSumCount.entrySet()) {
+                if (prefixSum - entry.getKey() <= target) {
+                    count += entry.getValue();
+                }
+            }
+
+            prefixSumCount.put(prefixSum, prefixSumCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+}
+```
+
+
+***
+
+## Pattern 3: Subarray Sum Problems
+
+### 3.1 Various Sum Conditions
+
+```java
+// Comprehensive subarray sum problems
+public class SubarraySumProblems {
+
+    // Maximum sum subarray (Kadane's algorithm with prefix sum insight)
+    public int maxSubArray(int[] nums) {
+        int maxSoFar = nums[0];
+        int maxEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
+            maxSoFar = Math.max(maxSoFar, maxEndingHere);
+        }
+
+        return maxSoFar;
+    }
+
+    // Maximum sum subarray with indices
+    public int[] maxSubArrayWithIndices(int[] nums) {
+        int maxSum = nums[0];
+        int currentSum = nums[0];
+        int start = 0, end = 0, tempStart = 0;
+
+        for (int i = 1; i < nums.length; i++) {
+            if (currentSum < 0) {
+                currentSum = nums[i];
+                tempStart = i;
+            } else {
+                currentSum += nums[i];
+            }
+
+            if (currentSum > maxSum) {
+                maxSum = currentSum;
+                start = tempStart;
+                end = i;
+            }
+        }
+
+        return new int[]{maxSum, start, end};
+    }
+
+    // Minimum sum subarray
+    public int minSubArray(int[] nums) {
+        int minSoFar = nums[0];
+        int minEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            minEndingHere = Math.min(nums[i], minEndingHere + nums[i]);
+            minSoFar = Math.min(minSoFar, minEndingHere);
+        }
+
+        return minSoFar;
+    }
+
+    // Count of subarrays with sum less than k
+    public int numSubarraysWithSumLessThanK(int[] nums, int k) {
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Count all previous prefix sums where current - previous < k
+            for (Map.Entry<Integer, Integer> entry : prefixCount.entrySet()) {
+                if (prefixSum - entry.getKey() < k) {
+                    count += entry.getValue();
+                }
+            }
+
+            prefixCount.put(prefixSum, prefixCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Subarray with largest sum
+    public int[] subarrayWithLargestSum(int[] nums) {
+        int maxSum = Integer.MIN_VALUE;
+        int currentSum = 0;
+        int start = 0, end = 0, tempStart = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            currentSum += nums[i];
+
+            if (currentSum > maxSum) {
+                maxSum = currentSum;
+                start = tempStart;
+                end = i;
+            }
+
+            if (currentSum < 0) {
+                currentSum = 0;
+                tempStart = i + 1;
+            }
+        }
+
+        return Arrays.copyOfRange(nums, start, end + 1);
+    }
+
+    // Count subarrays with average >= threshold
+    public int numSubarraysWithAverage(int[] nums, double threshold) {
+        // Transform problem: subtract threshold from each element
+        // Then find subarrays with sum >= 0
+
+        int count = 0;
+        int n = nums.length;
+
+        for (int i = 0; i < n; i++) {
+            double sum = 0;
+            for (int j = i; j < n; j++) {
+                sum += nums[j];
+                double average = sum / (j - i + 1);
+
+                if (average >= threshold) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Longest subarray with sum divisible by k
+    public int longestSubarrayDivisibleByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderIndex = new HashMap<>();
+        remainderIndex.put(0, -1);
+
+        int maxLength = 0;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderIndex.containsKey(remainder)) {
+                maxLength = Math.max(maxLength, i - remainderIndex.get(remainder));
+            } else {
+                remainderIndex.put(remainder, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Number of subarrays with sum exactly k (optimized)
+    public int subarraySum(int[] nums, int k) {
+        Map<Integer, Integer> prefixSumFreq = new HashMap<>();
+        prefixSumFreq.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+            count += prefixSumFreq.getOrDefault(prefixSum - k, 0);
+            prefixSumFreq.put(prefixSum, prefixSumFreq.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Find all subarrays with sum k
+    public List<int[]> findAllSubarraysWithSumK(int[] nums, int k) {
+        Map<Integer, List<Integer>> prefixSumIndices = new HashMap<>();
+        prefixSumIndices.put(0, new ArrayList<>(Arrays.asList(-1)));
+
+        List<int[]> result = new ArrayList<>();
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+
+            int target = prefixSum - k;
+            if (prefixSumIndices.containsKey(target)) {
+                for (int startIndex : prefixSumIndices.get(target)) {
+                    result.add(new int[]{startIndex + 1, i});
+                }
+            }
+
+            prefixSumIndices.computeIfAbsent(prefixSum, key -> new ArrayList<>()).add(i);
+        }
+
+        return result;
+    }
+
+    // Maximum length subarray with positive sum
+    public int maxLengthPositiveSum(int[] nums) {
+        Map<Integer, Integer> prefixSumIndex = new HashMap<>();
+        prefixSumIndex.put(0, -1);
+
+        int maxLength = 0;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+
+            if (prefixSum > 0) {
+                maxLength = Math.max(maxLength, i + 1);
+            }
+
+            // Look for smaller prefix sums to get positive subarray
+            for (Map.Entry<Integer, Integer> entry : prefixSumIndex.entrySet()) {
+                if (prefixSum > entry.getKey()) {
+                    maxLength = Math.max(maxLength, i - entry.getValue());
+                }
+            }
+
+            if (!prefixSumIndex.containsKey(prefixSum)) {
+                prefixSumIndex.put(prefixSum, i);
+            }
+        }
+
+        return maxLength;
+    }
+}
+```
+
+
+### 3.2 Complex Sum Conditions
+
+```java
+// Advanced subarray sum problems with complex conditions
+public class ComplexSubarraySumProblems {
+
+    // Maximum sum of non-overlapping subarrays
+    public int maxSumTwoNoOverlap(int[] nums, int firstLen, int secondLen) {
+        int n = nums.length;
+        int[] prefixSum = new int[n + 1];
+
+        // Build prefix sum
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        return Math.max(
+            maxSumHelper(prefixSum, firstLen, secondLen),
+            maxSumHelper(prefixSum, secondLen, firstLen)
+        );
+    }
+
+    private int maxSumHelper(int[] prefixSum, int len1, int len2) {
+        int n = prefixSum.length - 1;
+        int maxSum = 0;
+
+        // Try all positions for first subarray
+        for (int i = 0; i <= n - len1; i++) {
+            int sum1 = prefixSum[i + len1] - prefixSum[i];
+
+            // Find max sum for second subarray before first
+            int maxBefore = 0;
+            for (int j = 0; j <= i - len2; j++) {
+                maxBefore = Math.max(maxBefore, prefixSum[j + len2] - prefixSum[j]);
+            }
+
+            // Find max sum for second subarray after first
+            int maxAfter = 0;
+            for (int j = i + len1; j <= n - len2; j++) {
+                maxAfter = Math.max(maxAfter, prefixSum[j + len2] - prefixSum[j]);
+            }
+
+            maxSum = Math.max(maxSum, sum1 + Math.max(maxBefore, maxAfter));
+        }
+
+        return maxSum;
+    }
+
+    // Count subarrays where sum of first half equals sum of second half
+    public int countEqualSumSubarrays(int[] nums) {
+        int count = 0;
+        int n = nums.length;
+
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j += 2) { // Only consider even-length subarrays
+                int len = j - i + 1;
+                if (len % 2 != 0) continue;
+
+                int mid = i + len / 2;
+                int leftSum = 0, rightSum = 0;
+
+                for (int k = i; k < mid; k++) {
+                    leftSum += nums[k];
+                }
+                for (int k = mid; k <= j; k++) {
+                    rightSum += nums[k];
+                }
+
+                if (leftSum == rightSum) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Maximum sum subarray with at most k negations
+    public int maxSumWithKNegations(int[] nums, int k) {
+        // This is a more complex problem involving prefix sums and DP
+        int n = nums.length;
+        Map<String, Integer> memo = new HashMap<>();
+
+        return maxSumWithKNegationsHelper(nums, 0, k, memo);
+    }
+
+    private int maxSumWithKNegationsHelper(int[] nums, int index, int k, Map<String, Integer> memo) {
+        if (index >= nums.length) return 0;
+
+        String key = index + "," + k;
+        if (memo.containsKey(key)) return memo.get(key);
+
+        // Don't negate current element
+        int withoutNegate = nums[index] + maxSumWithKNegationsHelper(nums, index + 1, k, memo);
+
+        // Negate current element if we have negations left
+        int withNegate = Integer.MIN_VALUE;
+        if (k > 0) {
+            withNegate = -nums[index] + maxSumWithKNegationsHelper(nums, index + 1, k - 1, memo);
+        }
+
+        int result = Math.max(withoutNegate, withNegate);
+        memo.put(key, result);
+        return result;
+    }
+
+    // Subarray with sum closest to target
+    public int[] subarrayClosestToTarget(int[] nums, int target) {
+        int closestSum = Integer.MAX_VALUE;
+        int[] result = new int[2];
+        int n = nums.length;
+
+        int[] prefixSum = new int[n + 1];
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        for (int i = 0; i < n; i++) {
+            for (int j = i; j < n; j++) {
+                int sum = prefixSum[j + 1] - prefixSum[i];
+
+                if (Math.abs(sum - target) < Math.abs(closestSum - target)) {
+                    closestSum = sum;
+                    result[0] = i;
+                    result[1] = j;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // Count subarrays with sum in range [lower, upper]
+    public int countRangeSum(int[] nums, int lower, int upper) {
+        long[] prefixSums = new long[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSums[i + 1] = prefixSums[i] + nums[i];
+        }
+
+        return mergeSortAndCount(prefixSums, 0, prefixSums.length - 1, lower, upper);
+    }
+
+    private int mergeSortAndCount(long[] sums, int start, int end, int lower, int upper) {
+        if (start >= end) return 0;
+
+        int mid = start + (end - start) / 2;
+        int count = mergeSortAndCount(sums, start, mid, lower, upper) +
+                   mergeSortAndCount(sums, mid + 1, end, lower, upper);
+
+        // Count pairs where i in [start, mid] and j in [mid+1, end]
+        int j = mid + 1, k = mid + 1;
+        for (int i = start; i <= mid; i++) {
+            while (j <= end && sums[j] - sums[i] < lower) j++;
+            while (k <= end && sums[k] - sums[i] <= upper) k++;
+            count += k - j;
+        }
+
+        // Merge
+        long[] temp = new long[end - start + 1];
+        int i = start, p = mid + 1, t = 0;
+
+        while (i <= mid && p <= end) {
+            if (sums[i] <= sums[p]) {
+                temp[t++] = sums[i++];
+            } else {
+                temp[t++] = sums[p++];
+            }
+        }
+
+        while (i <= mid) temp[t++] = sums[i++];
+        while (p <= end) temp[t++] = sums[p++];
+
+        System.arraycopy(temp, 0, sums, start, temp.length);
+
+        return count;
+    }
+
+    // Maximum sum of 3 non-overlapping subarrays
+    public int[] maxSumOfThreeSubarrays(int[] nums, int k) {
+        int n = nums.length;
+        int[] sums = new int[n - k + 1];
+
+        // Calculate sum of each k-length subarray
+        int sum = 0;
+        for (int i = 0; i < k; i++) {
+            sum += nums[i];
+        }
+        sums[0] = sum;
+
+        for (int i = 1; i < sums.length; i++) {
+            sum = sum - nums[i - 1] + nums[i + k - 1];
+            sums[i] = sum;
+        }
+
+        // Find best left and right subarrays for each middle position
+        int[] left = new int[sums.length];
+        int[] right = new int[sums.length];
+
+        int bestLeft = 0;
+        for (int i = 0; i < sums.length; i++) {
+            if (sums[i] > sums[bestLeft]) {
+                bestLeft = i;
+            }
+            left[i] = bestLeft;
+        }
+
+        int bestRight = sums.length - 1;
+        for (int i = sums.length - 1; i >= 0; i--) {
+            if (sums[i] >= sums[bestRight]) {
+                bestRight = i;
+            }
+            right[i] = bestRight;
+        }
+
+        // Find the best combination
+        int maxSum = 0;
+        int[] result = new int[3];
+
+        for (int mid = k; mid < sums.length - k; mid++) {
+            int l = left[mid - k];
+            int r = right[mid + k];
+            int totalSum = sums[l] + sums[mid] + sums[r];
+
+            if (totalSum > maxSum) {
+                maxSum = totalSum;
+                result[0] = l;
+                result[1] = mid;
+                result[2] = r;
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Range Query Problems
+
+### 4.1 Static Range Queries
+
+```java
+// Range query problems using prefix sum
+public class RangeQueryProblems {
+
+    // Basic range sum query - immutable
+    public static class NumArray {
+        private int[] prefixSum;
+
+        public NumArray(int[] nums) {
+            prefixSum = new int[nums.length + 1];
+            for (int i = 0; i < nums.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + nums[i];
+            }
+        }
+
+        public int sumRange(int left, int right) {
+            return prefixSum[right + 1] - prefixSum[left];
+        }
+
+        public double averageRange(int left, int right) {
+            int sum = sumRange(left, right);
+            return (double) sum / (right - left + 1);
+        }
+
+        public int maxInRange(int left, int right) {
+            // This would require additional preprocessing
+            // For now, we'll use a simple approach
+            int max = Integer.MIN_VALUE;
+            for (int i = left; i <= right; i++) {
+                int value = prefixSum[i + 1] - prefixSum[i];
+                max = Math.max(max, value);
+            }
+            return max;
+        }
+    }
+
+    // Range sum query with different data types
+    public static class TypedRangeQuery {
+        private long[] longPrefixSum;
+        private double[] doublePrefixSum;
+
+        public TypedRangeQuery(int[] nums) {
+            longPrefixSum = new long[nums.length + 1];
+            doublePrefixSum = new double[nums.length + 1];
+
+            for (int i = 0; i < nums.length; i++) {
+                longPrefixSum[i + 1] = longPrefixSum[i] + nums[i];
+                doublePrefixSum[i + 1] = doublePrefixSum[i] + nums[i];
+            }
+        }
+
+        public long longSumRange(int left, int right) {
+            return longPrefixSum[right + 1] - longPrefixSum[left];
+        }
+
+        public double doubleSumRange(int left, int right) {
+            return doublePrefixSum[right + 1] - doublePrefixSum[left];
+        }
+    }
+
+    // Range product query
+    public static class RangeProductQuery {
+        private long[] prefixProduct;
+        private boolean hasZero;
+        private int firstZeroIndex;
+
+        public RangeProductQuery(int[] nums) {
+            prefixProduct = new long[nums.length + 1];
+            prefixProduct[0] = 1;
+            hasZero = false;
+            firstZeroIndex = -1;
+
+            for (int i = 0; i < nums.length; i++) {
+                if (nums[i] == 0) {
+                    hasZero = true;
+                    firstZeroIndex = i;
+                    break;
+                }
+                prefixProduct[i + 1] = prefixProduct[i] * nums[i];
+            }
+        }
+
+        public long productRange(int left, int right) {
+            if (hasZero && firstZeroIndex >= left && firstZeroIndex <= right) {
+                return 0;
+            }
+
+            if (left == 0) {
+                return prefixProduct[right + 1];
+            }
+
+            return prefixProduct[right + 1] / prefixProduct[left];
+        }
+    }
+
+    // Range XOR query
+    public static class RangeXORQuery {
+        private int[] prefixXOR;
+
+        public RangeXORQuery(int[] nums) {
+            prefixXOR = new int[nums.length + 1];
+            for (int i = 0; i < nums.length; i++) {
+                prefixXOR[i + 1] = prefixXOR[i] ^ nums[i];
+            }
+        }
+
+        public int xorRange(int left, int right) {
+            return prefixXOR[right + 1] ^ prefixXOR[left];
+        }
+    }
+
+    // Range minimum/maximum query preprocessing
+    public static class RangeMinMaxQuery {
+        private int[][] minTable;
+        private int[][] maxTable;
+        private int[] log;
+
+        public RangeMinMaxQuery(int[] nums) {
+            int n = nums.length;
+            int logN = (int) (Math.log(n) / Math.log(2)) + 1;
+
+            minTable = new int[n][logN];
+            maxTable = new int[n][logN];
+            log = new int[n + 1];
+
+            // Precompute logarithms
+            for (int i = 2; i <= n; i++) {
+                log[i] = log[i / 2] + 1;
+            }
+
+            // Initialize for intervals of length 1
+            for (int i = 0; i < n; i++) {
+                minTable[i][0] = nums[i];
+                maxTable[i][0] = nums[i];
+            }
+
+            // Build sparse table
+            for (int j = 1; (1 << j) <= n; j++) {
+                for (int i = 0; i + (1 << j) - 1 < n; i++) {
+                    minTable[i][j] = Math.min(minTable[i][j - 1],
+                                            minTable[i + (1 << (j - 1))][j - 1]);
+                    maxTable[i][j] = Math.max(maxTable[i][j - 1],
+                                            maxTable[i + (1 << (j - 1))][j - 1]);
+                }
+            }
+        }
+
+        public int rangeMin(int left, int right) {
+            int j = log[right - left + 1];
+            return Math.min(minTable[left][j], minTable[right - (1 << j) + 1][j]);
+        }
+
+        public int rangeMax(int left, int right) {
+            int j = log[right - left + 1];
+            return Math.max(maxTable[left][j], maxTable[right - (1 << j) + 1][j]);
+        }
+    }
+
+    // Range frequency query
+    public static class RangeFrequencyQuery {
+        private Map<Integer, List<Integer>> valueIndices;
+
+        public RangeFrequencyQuery(int[] nums) {
+            valueIndices = new HashMap<>();
+            for (int i = 0; i < nums.length; i++) {
+                valueIndices.computeIfAbsent(nums[i], k -> new ArrayList<>()).add(i);
+            }
+        }
+
+        public int rangeFreqQuery(int left, int right, int value) {
+            if (!valueIndices.containsKey(value)) return 0;
+
+            List<Integer> indices = valueIndices.get(value);
+
+            // Binary search for left bound
+            int leftBound = Collections.binarySearch(indices, left);
+            if (leftBound < 0) leftBound = -leftBound - 1;
+
+            // Binary search for right bound
+            int rightBound = Collections.binarySearch(indices, right);
+            if (rightBound < 0) rightBound = -rightBound - 2;
+            else {
+                // Include the found index
+                while (rightBound + 1 < indices.size() && indices.get(rightBound + 1) == right) {
+                    rightBound++;
+                }
+            }
+
+            return Math.max(0, rightBound - leftBound + 1);
+        }
+    }
+
+    // Range count query (count elements in range [a, b])
+    public static class RangeCountQuery {
+        private int[] nums;
+        private int[] sorted;
+
+        public RangeCountQuery(int[] nums) {
+            this.nums = nums.clone();
+            this.sorted = nums.clone();
+            Arrays.sort(this.sorted);
+        }
+
+        public int rangeCount(int left, int right, int minVal, int maxVal) {
+            int count = 0;
+            for (int i = left; i <= right; i++) {
+                if (nums[i] >= minVal && nums[i] <= maxVal) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        public int countInArray(int minVal, int maxVal) {
+            int leftBound = lowerBound(sorted, minVal);
+            int rightBound = upperBound(sorted, maxVal);
+            return rightBound - leftBound;
+        }
+
+        private int lowerBound(int[] arr, int target) {
+            int left = 0, right = arr.length;
+            while (left < right) {
+                int mid = left + (right - left) / 2;
+                if (arr[mid] < target) {
+                    left = mid + 1;
+                } else {
+                    right = mid;
+                }
+            }
+            return left;
+        }
+
+        private int upperBound(int[] arr, int target) {
+            int left = 0, right = arr.length;
+            while (left < right) {
+                int mid = left + (right - left) / 2;
+                if (arr[mid] <= target) {
+                    left = mid + 1;
+                } else {
+                    right = mid;
+                }
+            }
+            return left;
+        }
+    }
+}
+```
+
+
+### 4.2 Dynamic Range Queries
+
+```java
+// Range queries with updates
+public class DynamicRangeQueries {
+
+    // Range sum query - mutable
+    public static class NumArrayMutable {
+        private int[] nums;
+        private int[] prefixSum;
+
+        public NumArrayMutable(int[] nums) {
+            this.nums = nums.clone();
+            this.prefixSum = new int[nums.length + 1];
+            buildPrefixSum();
+        }
+
+        private void buildPrefixSum() {
+            for (int i = 0; i < nums.length; i++) {
+                prefixSum[i + 1] = prefixSum[i] + nums[i];
+            }
+        }
+
+        public void update(int index, int val) {
+            nums[index] = val;
+            buildPrefixSum(); // Rebuild - O(n) operation
+        }
+
+        public int sumRange(int left, int right) {
+            return prefixSum[right + 1] - prefixSum[left];
+        }
+    }
+
+    // Optimized mutable range sum using difference array for range updates
+    public static class OptimizedRangeSumUpdate {
+        private int[] diff;
+        private int[] original;
+
+        public OptimizedRangeSumUpdate(int[] nums) {
+            original = nums.clone();
+            diff = new int[nums.length + 1];
+
+            // Build difference array
+            for (int i = 0; i < nums.length; i++) {
+                diff[i] = nums[i] - (i > 0 ? nums[i - 1] : 0);
+            }
+        }
+
+        // Range update: add val to all elements in [left, right]
+        public void rangeUpdate(int left, int right, int val) {
+            diff[left] += val;
+            if (right + 1 < diff.length) {
+                diff[right + 1] -= val;
+            }
+        }
+
+        // Point query: get current value at index
+        public int pointQuery(int index) {
+            int sum = 0;
+            for (int i = 0; i <= index; i++) {
+                sum += diff[i];
+            }
+            return sum;
+        }
+
+        // Rebuild original array after all updates
+        public int[] getUpdatedArray() {
+            int[] result = new int[original.length];
+            int sum = 0;
+            for (int i = 0; i < result.length; i++) {
+                sum += diff[i];
+                result[i] = sum;
+            }
+            return result;
+        }
+
+        // Range sum query after all updates
+        public int sumRange(int left, int right) {
+            int[] updated = getUpdatedArray();
+            int sum = 0;
+            for (int i = left; i <= right; i++) {
+                sum += updated[i];
+            }
+            return sum;
+        }
+    }
+
+    // Square root decomposition for range queries
+    public static class SqrtDecomposition {
+        private int[] nums;
+        private int[] blocks;
+        private int blockSize;
+        private int blockCount;
+
+        public SqrtDecomposition(int[] nums) {
+            this.nums = nums.clone();
+            this.blockSize = (int) Math.ceil(Math.sqrt(nums.length));
+            this.blockCount = (int) Math.ceil((double) nums.length / blockSize);
+            this.blocks = new int[blockCount];
+
+            // Precompute block sums
+            for (int i = 0; i < nums.length; i++) {
+                blocks[i / blockSize] += nums[i];
+            }
+        }
+
+        public void update(int index, int val) {
+            int blockIndex = index / blockSize;
+            blocks[blockIndex] = blocks[blockIndex] - nums[index] + val;
+            nums[index] = val;
+        }
+
+        public int sumRange(int left, int right) {
+            int sum = 0;
+            int leftBlock = left / blockSize;
+            int rightBlock = right / blockSize;
+
+            if (leftBlock == rightBlock) {
+                // Both in same block
+                for (int i = left; i <= right; i++) {
+                    sum += nums[i];
+                }
+            } else {
+                // Sum partial left block
+                for (int i = left; i < (leftBlock + 1) * blockSize; i++) {
+                    sum += nums[i];
+                }
+
+                // Sum complete middle blocks
+                for (int i = leftBlock + 1; i < rightBlock; i++) {
+                    sum += blocks[i];
+                }
+
+                // Sum partial right block
+                for (int i = rightBlock * blockSize; i <= right; i++) {
+                    sum += nums[i];
+                }
+            }
+
+            return sum;
+        }
+    }
+
+    // Mo's algorithm for offline range queries
+    public static class MoAlgorithm {
+        private int[] nums;
+        private int blockSize;
+
+        static class Query {
+            int left, right, index;
+
+            Query(int left, int right, int index) {
+                this.left = left;
+                this.right = right;
+                this.index = index;
+            }
+        }
+
+        public MoAlgorithm(int[] nums) {
+            this.nums = nums;
+            this.blockSize = (int) Math.ceil(Math.sqrt(nums.length));
+        }
+
+        public int[] processQueries(int[][] queries) {
+            int n = queries.length;
+            Query[] queryList = new Query[n];
+
+            for (int i = 0; i < n; i++) {
+                queryList[i] = new Query(queries[i][0], queries[i][1], i);
+            }
+
+            // Sort queries by Mo's order
+            Arrays.sort(queryList, (a, b) -> {
+                int blockA = a.left / blockSize;
+                int blockB = b.left / blockSize;
+                if (blockA != blockB) {
+                    return Integer.compare(blockA, blockB);
+                }
+                return Integer.compare(a.right, b.right);
+            });
+
+            int[] answers = new int[n];
+            int currentLeft = 0, currentRight = -1;
+            int currentSum = 0;
+
+            for (Query query : queryList) {
+                // Extend or shrink current range to match query range
+                while (currentRight < query.right) {
+                    currentRight++;
+                    currentSum += nums[currentRight];
+                }
+
+                while (currentLeft > query.left) {
+                    currentLeft--;
+                    currentSum += nums[currentLeft];
+                }
+
+                while (currentRight > query.right) {
+                    currentSum -= nums[currentRight];
+                    currentRight--;
+                }
+
+                while (currentLeft < query.left) {
+                    currentSum -= nums[currentLeft];
+                    currentLeft++;
+                }
+
+                answers[query.index] = currentSum;
+            }
+
+            return answers;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 5: 2D Prefix Sum
+
+### 5.1 2D Range Sum Queries
+
+```java
+// 2D prefix sum for matrix range queries
+public class TwoDPrefixSum {
+
+    // Basic 2D range sum query - immutable
+    public static class NumMatrix {
+        private int[][] prefixSum;
+
+        public NumMatrix(int[][] matrix) {
+            if (matrix.length == 0 || matrix[0].length == 0) {
+                prefixSum = new int[1][1];
+                return;
+            }
+
+            int m = matrix.length, n = matrix[0].length;
+            prefixSum = new int[m + 1][n + 1];
+
+            // Build 2D prefix sum
+            for (int i = 1; i <= m; i++) {
+                for (int j = 1; j <= n; j++) {
+                    prefixSum[i][j] = matrix[i - 1][j - 1] +
+                                     prefixSum[i - 1][j] +
+                                     prefixSum[i][j - 1] -
+                                     prefixSum[i - 1][j - 1];
+                }
+            }
+        }
+
+        public int sumRegion(int row1, int col1, int row2, int col2) {
+            return prefixSum[row2 + 1][col2 + 1] -
+                   prefixSum[row1][col2 + 1] -
+                   prefixSum[row2 + 1][col1] +
+                   prefixSum[row1][col1];
+        }
+
+        public double averageRegion(int row1, int col1, int row2, int col2) {
+            int sum = sumRegion(row1, col1, row2, col2);
+            int area = (row2 - row1 + 1) * (col2 - col1 + 1);
+            return (double) sum / area;
+        }
+    }
+
+    // Count number of 1s in binary matrix regions
+    public static class BinaryMatrixRangeQuery {
+        private int[][] prefixCount;
+
+        public BinaryMatrixRangeQuery(int[][] matrix) {
+            int m = matrix.length, n = matrix[0].length;
+            prefixCount = new int[m + 1][n + 1];
+
+            for (int i = 1; i <= m; i++) {
+                for (int j = 1; j <= n; j++) {
+                    prefixCount[i][j] = matrix[i - 1][j - 1] +
+                                       prefixCount[i - 1][j] +
+                                       prefixCount[i][j - 1] -
+                                       prefixCount[i - 1][j - 1];
+                }
+            }
+        }
+
+        public int countOnes(int row1, int col1, int row2, int col2) {
+            return prefixCount[row2 + 1][col2 + 1] -
+                   prefixCount[row1][col2 + 1] -
+                   prefixCount[row2 + 1][col1] +
+                   prefixCount[row1][col1];
+        }
+
+        public int countZeros(int row1, int col1, int row2, int col2) {
+            int totalCells = (row2 - row1 + 1) * (col2 - col1 + 1);
+            return totalCells - countOnes(row1, col1, row2, col2);
+        }
+    }
+
+    // Find largest rectangle with all 1s
+    public int maximalRectangle(char[][] matrix) {
+        if (matrix.length == 0) return 0;
+
+        int m = matrix.length, n = matrix[0].length;
+        int[] heights = new int[n];
+        int maxArea = 0;
+
+        for (int i = 0; i < m; i++) {
+            // Update heights for current row
+            for (int j = 0; j < n; j++) {
+                heights[j] = matrix[i][j] == '1' ? heights[j] + 1 : 0;
+            }
+
+            // Find largest rectangle in histogram
+            maxArea = Math.max(maxArea, largestRectangleInHistogram(heights));
+        }
+
+        return maxArea;
+    }
+
+    private int largestRectangleInHistogram(int[] heights) {
+        Stack<Integer> stack = new Stack<>();
+        int maxArea = 0;
+
+        for (int i = 0; i <= heights.length; i++) {
+            int h = (i == heights.length) ? 0 : heights[i];
+
+            while (!stack.isEmpty() && heights[stack.peek()] > h) {
+                int height = heights[stack.pop()];
+                int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+                maxArea = Math.max(maxArea, height * width);
+            }
+
+            stack.push(i);
+        }
+
+        return maxArea;
+    }
+
+    // Count square submatrices with all 1s
+    public int countSquares(int[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        int[][] dp = new int[m][n];
+        int count = 0;
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (matrix[i][j] == 1) {
+                    if (i == 0 || j == 0) {
+                        dp[i][j] = 1;
+                    } else {
+                        dp[i][j] = Math.min(Math.min(dp[i - 1][j], dp[i][j - 1]),
+                                           dp[i - 1][j - 1]) + 1;
+                    }
+                    count += dp[i][j];
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Find submatrix with target sum
+    public boolean hasSubmatrixWithSum(int[][] matrix, int target) {
+        int m = matrix.length, n = matrix[0].length;
+
+        // For each pair of rows
+        for (int top = 0; top < m; top++) {
+            int[] temp = new int[n];
+
+            for (int bottom = top; bottom < m; bottom++) {
+                // Add current row to temp array
+                for (int k = 0; k < n; k++) {
+                    temp[k] += matrix[bottom][k];
+                }
+
+                // Check if any subarray in temp has sum equal to target
+                if (hasSubarrayWithSum(temp, target)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasSubarrayWithSum(int[] arr, int target) {
+        Set<Integer> prefixSums = new HashSet<>();
+        prefixSums.add(0);
+
+        int prefixSum = 0;
+        for (int num : arr) {
+            prefixSum += num;
+
+            if (prefixSums.contains(prefixSum - target)) {
+                return true;
+            }
+
+            prefixSums.add(prefixSum);
+        }
+
+        return false;
+    }
+
+    // 2D range sum with updates using 2D Binary Indexed Tree
+    public static class Matrix2DBIT {
+        private int[][] tree;
+        private int m, n;
+
+        public Matrix2DBIT(int[][] matrix) {
+            if (matrix.length == 0) return;
+
+            m = matrix.length;
+            n = matrix[0].length;
+            tree = new int[m + 1][n + 1];
+
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    update(i, j, matrix[i][j]);
+                }
+            }
+        }
+
+        public void update(int row, int col, int val) {
+            for (int i = row + 1; i <= m; i += i & (-i)) {
+                for (int j = col + 1; j <= n; j += j & (-j)) {
+                    tree[i][j] += val;
+                }
+            }
+        }
+
+        public int query(int row, int col) {
+            int sum = 0;
+            for (int i = row + 1; i > 0; i -= i & (-i)) {
+                for (int j = col + 1; j > 0; j -= j & (-j)) {
+                    sum += tree[i][j];
+                }
+            }
+            return sum;
+        }
+
+        public int sumRegion(int row1, int col1, int row2, int col2) {
+            return query(row2, col2) - query(row1 - 1, col2) -
+                   query(row2, col1 - 1) + query(row1 - 1, col1 - 1);
+        }
+    }
+}
+```
+
+
+### 5.2 Advanced 2D Problems
+
+```java
+// Advanced 2D prefix sum applications
+public class Advanced2DPrefixSum {
+
+    // Largest plus sign of 1s in binary matrix
+    public int orderOfLargestPlusSign(int n, int[][] mines) {
+        int[][] grid = new int[n][n];
+
+        // Initialize grid with 1s
+        for (int i = 0; i < n; i++) {
+            Arrays.fill(grid[i], 1);
+        }
+
+        // Set mines to 0
+        for (int[] mine : mines) {
+            grid[mine[0]][mine[1]] = 0;
+        }
+
+        // DP arrays for four directions
+        int[][] left = new int[n][n];
+        int[][] right = new int[n][n];
+        int[][] up = new int[n][n];
+        int[][] down = new int[n][n];
+
+        // Fill left and up arrays
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid[i][j] == 1) {
+                    left[i][j] = (j == 0) ? 1 : left[i][j - 1] + 1;
+                    up[i][j] = (i == 0) ? 1 : up[i - 1][j] + 1;
+                }
+            }
+        }
+
+        // Fill right and down arrays
+        for (int i = n - 1; i >= 0; i--) {
+            for (int j = n - 1; j >= 0; j--) {
+                if (grid[i][j] == 1) {
+                    right[i][j] = (j == n - 1) ? 1 : right[i][j + 1] + 1;
+                    down[i][j] = (i == n - 1) ? 1 : down[i + 1][j] + 1;
+                }
+            }
+        }
+
+        int maxOrder = 0;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                int order = Math.min(Math.min(left[i][j], right[i][j]),
+                                   Math.min(up[i][j], down[i][j]));
+                maxOrder = Math.max(maxOrder, order);
+            }
+        }
+
+        return maxOrder;
+    }
+
+    // Count number of submatrices with sum in range [target1, target2]
+    public int numSubmatricesInRange(int[][] matrix, int target1, int target2) {
+        int m = matrix.length, n = matrix[0].length;
+        int count = 0;
+
+        for (int top = 0; top < m; top++) {
+            int[] colSum = new int[n];
+
+            for (int bottom = top; bottom < m; bottom++) {
+                // Add current row to column sums
+                for (int k = 0; k < n; k++) {
+                    colSum[k] += matrix[bottom][k];
+                }
+
+                // Count subarrays in colSum with sum in range
+                count += countSubarraysInRange(colSum, target1, target2);
+            }
+        }
+
+        return count;
+    }
+
+    private int countSubarraysInRange(int[] arr, int target1, int target2) {
+        return countSubarraysAtMost(arr, target2) - countSubarraysAtMost(arr, target1 - 1);
+    }
+
+    private int countSubarraysAtMost(int[] arr, int target) {
+        int count = 0;
+
+        for (int i = 0; i < arr.length; i++) {
+            int sum = 0;
+            for (int j = i; j < arr.length; j++) {
+                sum += arr[j];
+                if (sum <= target) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Maximum sum rectangle in matrix
+    public int maxSumRectangle(int[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        int maxSum = Integer.MIN_VALUE;
+
+        for (int top = 0; top < m; top++) {
+            int[] temp = new int[n];
+
+            for (int bottom = top; bottom < m; bottom++) {
+                // Add current row to temp
+                for (int k = 0; k < n; k++) {
+                    temp[k] += matrix[bottom][k];
+                }
+
+                // Find maximum subarray sum in temp
+                int currentMax = kadaneMaxSum(temp);
+                maxSum = Math.max(maxSum, currentMax);
+            }
+        }
+
+        return maxSum;
+    }
+
+    private int kadaneMaxSum(int[] arr) {
+        int maxSoFar = arr[0];
+        int maxEndingHere = arr[0];
+
+        for (int i = 1; i < arr.length; i++) {
+            maxEndingHere = Math.max(arr[i], maxEndingHere + arr[i]);
+            maxSoFar = Math.max(maxSoFar, maxEndingHere);
+        }
+
+        return maxSoFar;
+    }
+
+    // Count islands using 2D prefix sum approach
+    public int numIslands(char[][] grid) {
+        if (grid.length == 0) return 0;
+
+        int m = grid.length, n = grid[0].length;
+        boolean[][] visited = new boolean[m][n];
+        int count = 0;
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid[i][j] == '1' && !visited[i][j]) {
+                    dfs(grid, visited, i, j);
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private void dfs(char[][] grid, boolean[][] visited, int i, int j) {
+        if (i < 0 || i >= grid.length || j < 0 || j >= grid[0].length ||
+            visited[i][j] || grid[i][j] == '0') {
+            return;
+        }
+
+        visited[i][j] = true;
+
+        dfs(grid, visited, i + 1, j);
+        dfs(grid, visited, i - 1, j);
+        dfs(grid, visited, i, j + 1);
+        dfs(grid, visited, i, j - 1);
+    }
+
+    // Find all rectangles with area k
+    public List<int[]> findRectanglesWithArea(int[][] matrix, int k) {
+        List<int[]> result = new ArrayList<>();
+        int m = matrix.length, n = matrix[0].length;
+
+        for (int r1 = 0; r1 < m; r1++) {
+            for (int c1 = 0; c1 < n; c1++) {
+                for (int r2 = r1; r2 < m; r2++) {
+                    for (int c2 = c1; c2 < n; c2++) {
+                        int area = (r2 - r1 + 1) * (c2 - c1 + 1);
+                        if (area == k) {
+                            result.add(new int[]{r1, c1, r2, c2});
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 6: Prefix Sum with Modular Arithmetic
+
+### 6.1 Modular Sum Problems
+
+```java
+// Prefix sum problems involving modular arithmetic
+public class ModularPrefixSum {
+
+    // Continuous subarray sum (sum is multiple of k)
+    public boolean checkSubarraySum(int[] nums, int k) {
+        Map<Integer, Integer> remainderIndex = new HashMap<>();
+        remainderIndex.put(0, -1); // Handle edge case
+
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = prefixSum % k;
+
+            if (remainderIndex.containsKey(remainder)) {
+                // Check if subarray length is at least 2
+                if (i - remainderIndex.get(remainder) > 1) {
+                    return true;
+                }
+            } else {
+                remainderIndex.put(remainder, i);
+            }
+        }
+
+        return false;
+    }
+
+    // Count subarrays with sum divisible by k
+    public int subarraysDivByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1); // Empty subarray
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Handle negative remainders properly
+            int remainder = ((prefixSum % k) + k) % k;
+
+            count += remainderCount.getOrDefault(remainder, 0);
+            remainderCount.put(remainder, remainderCount.getOrDefault(remainder, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Make sum divisible by p by removing minimum subarray
+    public int minSubarray(int[] nums, int p) {
+        long totalSum = 0;
+        for (int num : nums) {
+            totalSum += num;
+        }
+
+        int targetRemainder = (int) (totalSum % p);
+        if (targetRemainder == 0) return 0; // Already divisible
+
+        Map<Integer, Integer> remainderIndex = new HashMap<>();
+        remainderIndex.put(0, -1);
+
+        int minLength = nums.length;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int currentRemainder = prefixSum % p;
+
+            // We want to remove subarray with remainder = targetRemainder
+            int neededRemainder = (currentRemainder - targetRemainder + p) % p;
+
+            if (remainderIndex.containsKey(neededRemainder)) {
+                minLength = Math.min(minLength, i - remainderIndex.get(neededRemainder));
+            }
+
+            remainderIndex.put(currentRemainder, i);
+        }
+
+        return minLength == nums.length ? -1 : minLength;
+    }
+
+    // Count nice subarrays (exactly k odd numbers)
+    public int numberOfSubarrays(int[] nums, int k) {
+        // Convert to binary: odd = 1, even = 0
+        // Then find subarrays with sum = k
+
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int oddCount = 0;
+
+        for (int num : nums) {
+            if (num % 2 == 1) oddCount++;
+
+            count += prefixCount.getOrDefault(oddCount - k, 0);
+            prefixCount.put(oddCount, prefixCount.getOrDefault(oddCount, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Subarray sums divisible by k with constraints
+    public int subarraysDivByKWithConstraints(int[] nums, int k, int minLength) {
+        Map<Integer, List<Integer>> remainderIndices = new HashMap<>();
+        remainderIndices.put(0, new ArrayList<>(Arrays.asList(-1)));
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderIndices.containsKey(remainder)) {
+                for (int prevIndex : remainderIndices.get(remainder)) {
+                    if (i - prevIndex >= minLength) {
+                        count++;
+                    }
+                }
+            }
+
+            remainderIndices.computeIfAbsent(remainder, key -> new ArrayList<>()).add(i);
+        }
+
+        return count;
+    }
+
+    // Maximum length subarray with sum divisible by k
+    public int maxLengthDivisibleByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderFirstIndex = new HashMap<>();
+        remainderFirstIndex.put(0, -1);
+
+        int maxLength = 0;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderFirstIndex.containsKey(remainder)) {
+                maxLength = Math.max(maxLength, i - remainderFirstIndex.get(remainder));
+            } else {
+                remainderFirstIndex.put(remainder, i);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Count subarrays where sum % k == target
+    public int countSubarraysWithModK(int[] nums, int k, int target) {
+        Map<Integer, Integer> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+            int remainder = ((prefixSum % k) + k) % k;
+
+            int neededRemainder = ((remainder - target) % k + k) % k;
+            count += remainderCount.getOrDefault(neededRemainder, 0);
+
+            remainderCount.put(remainder, remainderCount.getOrDefault(remainder, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Subarray with sum congruent to target modulo m
+    public boolean hasSubarrayCongruent(int[] nums, int target, int m) {
+        Set<Integer> remainders = new HashSet<>();
+        remainders.add(0);
+
+        int prefixSum = 0;
+        for (int num : nums) {
+            prefixSum += num;
+            int remainder = ((prefixSum % m) + m) % m;
+            int neededRemainder = ((remainder - target) % m + m) % m;
+
+            if (remainders.contains(neededRemainder)) {
+                return true;
+            }
+
+            remainders.add(remainder);
+        }
+
+        return false;
+    }
+
+    // Find shortest subarray with sum divisible by k
+    public int shortestSubarrayDivisibleByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderIndex = new HashMap<>();
+        remainderIndex.put(0, -1);
+
+        int minLength = Integer.MAX_VALUE;
+        int prefixSum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum += nums[i];
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderIndex.containsKey(remainder)) {
+                minLength = Math.min(minLength, i - remainderIndex.get(remainder));
+                // Update with current index for potentially shorter subarrays
+                remainderIndex.put(remainder, i);
+            } else {
+                remainderIndex.put(remainder, i);
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? -1 : minLength;
+    }
+}
+```
+
+
+### 6.2 Advanced Modular Applications
+
+```java
+// Advanced modular arithmetic with prefix sums
+public class AdvancedModularPrefixSum {
+
+    // Count pairs (i,j) where (prefix[j] - prefix[i]) % k == 0
+    public long countPairsModK(int[] nums, int k) {
+        Map<Integer, Long> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1L);
+
+        long count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+            int remainder = ((prefixSum % k) + k) % k;
+
+            count += remainderCount.getOrDefault(remainder, 0L);
+            remainderCount.put(remainder, remainderCount.getOrDefault(remainder, 0L) + 1);
+        }
+
+        return count;
+    }
+
+    // Maximum sum subarray with sum divisible by k
+    public int maxSumDivisibleByK(int[] nums, int k) {
+        Map<Integer, Integer> remainderMinPrefix = new HashMap<>();
+        remainderMinPrefix.put(0, 0);
+
+        int maxSum = Integer.MIN_VALUE;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+            int remainder = ((prefixSum % k) + k) % k;
+
+            if (remainderMinPrefix.containsKey(remainder)) {
+                int subarraySum = prefixSum - remainderMinPrefix.get(remainder);
+                maxSum = Math.max(maxSum, subarraySum);
+            }
+
+            // Keep track of minimum prefix sum for each remainder
+            if (!remainderMinPrefix.containsKey(remainder) ||
+                prefixSum < remainderMinPrefix.get(remainder)) {
+                remainderMinPrefix.put(remainder, prefixSum);
+            }
+        }
+
+        return maxSum;
+    }
+
+    // Count triangular subarrays (sum = n*(n+1)/2 for some n)
+    public int countTriangularSubarrays(int[] nums) {
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        Set<Integer> triangularNumbers = generateTriangularNumbers(1000000);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            for (int triangular : triangularNumbers) {
+                if (triangular > prefixSum) break;
+
+                int target = prefixSum - triangular;
+                count += prefixCount.getOrDefault(target, 0);
+            }
+
+            prefixCount.put(prefixSum, prefixCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    private Set<Integer> generateTriangularNumbers(int maxVal) {
+        Set<Integer> triangular = new HashSet<>();
+        int n = 1;
+
+        while (true) {
+            int value = n * (n + 1) / 2;
+            if (value > maxVal) break;
+
+            triangular.add(value);
+            n++;
+        }
+
+        return triangular;
+    }
+
+    // Subarray with GCD of prefix sums equal to k
+    public int countSubarraysWithGCD(int[] nums, int k) {
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            // Check all previous prefix sums
+            for (Map.Entry<Integer, Integer> entry : prefixCount.entrySet()) {
+                int prevSum = entry.getKey();
+                if (gcd(Math.abs(prefixSum - prevSum), k) == k) {
+                    count += entry.getValue();
+                }
+            }
+
+            prefixCount.put(prefixSum, prefixCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    private int gcd(int a, int b) {
+        while (b != 0) {
+            int temp = b;
+            b = a % b;
+            a = temp;
+        }
+        return a;
+    }
+
+    // Count subarrays with prime sum
+    public int countPrimeSumSubarrays(int[] nums) {
+        int maxSum = Arrays.stream(nums).sum();
+        boolean[] isPrime = sieveOfEratosthenes(maxSum);
+
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            for (Map.Entry<Integer, Integer> entry : prefixCount.entrySet()) {
+                int subarraySum = prefixSum - entry.getKey();
+                if (subarraySum > 1 && subarraySum <= maxSum && isPrime[subarraySum]) {
+                    count += entry.getValue();
+                }
+            }
+
+            prefixCount.put(prefixSum, prefixCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    private boolean[] sieveOfEratosthenes(int n) {
+        boolean[] isPrime = new boolean[n + 1];
+        Arrays.fill(isPrime, true);
+        isPrime[0] = isPrime[1] = false;
+
+        for (int i = 2; i * i <= n; i++) {
+            if (isPrime[i]) {
+                for (int j = i * i; j <= n; j += i) {
+                    isPrime[j] = false;
+                }
+            }
+        }
+
+        return isPrime;
+    }
+
+    // Perfect square sum subarrays
+    public int countPerfectSquareSubarrays(int[] nums) {
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int prefixSum = 0;
+
+        for (int num : nums) {
+            prefixSum += num;
+
+            for (Map.Entry<Integer, Integer> entry : prefixCount.entrySet()) {
+                int subarraySum = prefixSum - entry.getKey();
+                if (isPerfectSquare(subarraySum)) {
+                    count += entry.getValue();
+                }
+            }
+
+            prefixCount.put(prefixSum, prefixCount.getOrDefault(prefixSum, 0) + 1);
+        }
+
+        return count;
+    }
+
+    private boolean isPerfectSquare(int n) {
+        if (n < 0) return false;
+        int sqrt = (int) Math.sqrt(n);
+        return sqrt * sqrt == n;
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Difference Array Techniques
+
+### 7.1 Range Update Operations
+
+```java
+// Difference array for efficient range updates
+public class DifferenceArrayTechniques {
+
+    // Basic difference array implementation
+    public static class DifferenceArray {
+        private int[] diff;
+        private int[] original;
+
+        public DifferenceArray(int[] nums) {
+            original = nums.clone();
+            diff = new int[nums.length + 1];
+
+            // Build difference array
+            diff[0] = nums[0];
+            for (int i = 1; i < nums.length; i++) {
+                diff[i] = nums[i] - nums[i - 1];
+            }
+        }
+
+        // Range update: add val to all elements in [left, right]
+        public void rangeUpdate(int left, int right, int val) {
+            diff[left] += val;
+            if (right + 1 < diff.length) {
+                diff[right + 1] -= val;
+            }
+        }
+
+        // Get current array after all updates
+        public int[] getArray() {
+            int[] result = new int[original.length];
+            result[0] = diff[0];
+
+            for (int i = 1; i < result.length; i++) {
+                result[i] = result[i - 1] + diff[i];
+            }
+
+            return result;
+        }
+
+        // Point query: get value at specific index
+        public int pointQuery(int index) {
+            int value = 0;
+            for (int i = 0; i <= index; i++) {
+                value += diff[i];
+            }
+            return value;
+        }
+
+        // Range query: get sum in range [left, right]
+        public int rangeQuery(int left, int right) {
+            int[] arr = getArray();
+            int sum = 0;
+            for (int i = left; i <= right; i++) {
+                sum += arr[i];
+            }
+            return sum;
+        }
+    }
+
+    // Range addition problem
+    public int[] getModifiedArray(int length, int[][] updates) {
+        int[] diff = new int[length + 1];
+
+        // Apply all updates to difference array
+        for (int[] update : updates) {
+            int start = update[0];
+            int end = update[1];
+            int val = update[2];
+
+            diff[start] += val;
+            if (end + 1 < diff.length) {
+                diff[end + 1] -= val;
+            }
+        }
+
+        // Convert difference array back to original array
+        int[] result = new int[length];
+        result[0] = diff[0];
+
+        for (int i = 1; i < length; i++) {
+            result[i] = result[i - 1] + diff[i];
+        }
+
+        return result;
+    }
+
+    // Corporate flight bookings
+    public int[] corpFlightBookings(int[][] bookings, int n) {
+        int[] diff = new int[n + 1];
+
+        for (int[] booking : bookings) {
+            int first = booking[0] - 1; // Convert to 0-indexed
+            int last = booking[1] - 1;
+            int seats = booking[2];
+
+            diff[first] += seats;
+            if (last + 1 < diff.length) {
+                diff[last + 1] -= seats;
+            }
+        }
+
+        // Build result using prefix sum
+        int[] result = new int[n];
+        result[0] = diff[0];
+
+        for (int i = 1; i < n; i++) {
+            result[i] = result[i - 1] + diff[i];
+        }
+
+        return result;
+    }
+
+    // Car pooling problem
+    public boolean carPooling(int[][] trips, int capacity) {
+        int[] diff = new int[1001]; // Maximum possible location
+
+        for (int[] trip : trips) {
+            int passengers = trip[0];
+            int start = trip[1];
+            int end = trip[2];
+
+            diff[start] += passengers;
+            diff[end] -= passengers; // Passengers get off at end location
+        }
+
+        // Check if capacity is exceeded at any point
+        int currentPassengers = 0;
+        for (int passengers : diff) {
+            currentPassengers += passengers;
+            if (currentPassengers > capacity) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // My calendar I (using difference array concept)
+    public static class MyCalendar {
+        private Map<Integer, Integer> events;
+
+        public MyCalendar() {
+            events = new TreeMap<>();
+        }
+
+        public boolean book(int start, int end) {
+            events.put(start, events.getOrDefault(start, 0) + 1);
+            events.put(end, events.getOrDefault(end, 0) - 1);
+
+            int active = 0;
+            for (Map.Entry<Integer, Integer> entry : events.entrySet()) {
+                active += entry.getValue();
+                if (active > 1) {
+                    // Revert the booking
+                    events.put(start, events.get(start) - 1);
+                    events.put(end, events.get(end) + 1);
+
+                    // Clean up zero entries
+                    if (events.get(start) == 0) events.remove(start);
+                    if (events.get(end) == 0) events.remove(end);
+
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    // My calendar II (allow at most 2 overlaps)
+    public static class MyCalendarTwo {
+        private Map<Integer, Integer> events;
+
+        public MyCalendarTwo() {
+            events = new TreeMap<>();
+        }
+
+        public boolean book(int start, int end) {
+            events.put(start, events.getOrDefault(start, 0) + 1);
+            events.put(end, events.getOrDefault(end, 0) - 1);
+
+            int active = 0;
+            for (Map.Entry<Integer, Integer> entry : events.entrySet()) {
+                active += entry.getValue();
+                if (active > 2) {
+                    // Revert the booking
+                    events.put(start, events.get(start) - 1);
+                    events.put(end, events.get(end) + 1);
+
+                    if (events.get(start) == 0) events.remove(start);
+                    if (events.get(end) == 0) events.remove(end);
+
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    // Range sum of sorted subarray sums
+    public int rangeSum(int[] nums, int n, int left, int right) {
+        List<Integer> subarraySums = new ArrayList<>();
+
+        // Generate all subarray sums
+        for (int i = 0; i < n; i++) {
+            int sum = 0;
+            for (int j = i; j < n; j++) {
+                sum += nums[j];
+                subarraySums.add(sum);
+            }
+        }
+
+        // Sort the sums
+        Collections.sort(subarraySums);
+
+        // Calculate range sum
+        int MOD = 1000000007;
+        long result = 0;
+
+        for (int i = left - 1; i < right; i++) {
+            result = (result + subarraySums.get(i)) % MOD;
+        }
+
+        return (int) result;
+    }
+
+    // Apply operations to make array elements equal
+    public int minOperationsToMakeEqual(int[] nums, int target) {
+        int[] diff = new int[nums.length + 1];
+
+        // Convert to difference array
+        diff[0] = nums[0];
+        for (int i = 1; i < nums.length; i++) {
+            diff[i] = nums[i] - nums[i - 1];
+        }
+
+        int operations = 0;
+
+        // Count operations needed for difference array
+        for (int d : diff) {
+            if (d > target) {
+                operations += d - target;
+            }
+        }
+
+        return operations;
+    }
+}
+```
+
+
+### 7.2 Advanced Difference Array Applications
+
+```java
+// Advanced applications of difference arrays
+public class AdvancedDifferenceArray {
+
+    // 2D difference array for 2D range updates
+    public static class Matrix2DDifferenceArray {
+        private int[][] diff;
+        private int m, n;
+
+        public Matrix2DDifferenceArray(int m, int n) {
+            this.m = m;
+            this.n = n;
+            this.diff = new int[m + 1][n + 1];
+        }
+
+        public Matrix2DDifferenceArray(int[][] matrix) {
+            this.m = matrix.length;
+            this.n = matrix[0].length;
+            this.diff = new int[m + 1][n + 1];
+
+            // Build 2D difference array
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    rangeUpdate(i, j, i, j, matrix[i][j]);
+                }
+            }
+        }
+
+        // Range update: add val to rectangle [r1, c1] to [r2, c2]
+        public void rangeUpdate(int r1, int c1, int r2, int c2, int val) {
+            diff[r1][c1] += val;
+            diff[r1][c2 + 1] -= val;
+            diff[r2 + 1][c1] -= val;
+            diff[r2 + 1][c2 + 1] += val;
+        }
+
+        // Get the final matrix after all updates
+        public int[][] getMatrix() {
+            int[][] result = new int[m][n];
+
+            // Apply prefix sum to get original values
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    result[i][j] = diff[i][j];
+
+                    if (i > 0) result[i][j] += result[i - 1][j];
+                    if (j > 0) result[i][j] += result[i][j - 1];
+                    if (i > 0 && j > 0) result[i][j] -= result[i - 1][j - 1];
+                }
+            }
+
+            return result;
+        }
+    }
+
+    // Range update with multiplication
+    public static class MultiplicativeDifferenceArray {
+        private double[] multipliers;
+        private int[] original;
+
+        public MultiplicativeDifferenceArray(int[] nums) {
+            original = nums.clone();
+            multipliers = new double[nums.length + 1];
+            Arrays.fill(multipliers, 1.0);
+        }
+
+        // Multiply all elements in [left, right] by factor
+        public void rangeMultiply(int left, int right, double factor) {
+            multipliers[left] *= factor;
+            if (right + 1 < multipliers.length) {
+                multipliers[right + 1] /= factor;
+            }
+        }
+
+        public double[] getArray() {
+            double[] result = new double[original.length];
+            double currentMultiplier = 1.0;
+
+            for (int i = 0; i < original.length; i++) {
+                currentMultiplier *= multipliers[i];
+                result[i] = original[i] * currentMultiplier;
+            }
+
+            return result;
+        }
+    }
+
+    // Minimum number of arrows to burst balloons
+    public int findMinArrowShots(int[][] points) {
+        if (points.length == 0) return 0;
+
+        // Sort by end point
+        Arrays.sort(points, (a, b) -> Integer.compare(a[1], b[1]));
+
+        int arrows = 1;
+        int end = points[0][1];
+
+        for (int i = 1; i < points.length; i++) {
+            if (points[i][0] > end) {
+                arrows++;
+                end = points[i][1];
+            }
+        }
+
+        return arrows;
+    }
+
+    // Meeting rooms II with difference array approach
+    public int minMeetingRooms(int[][] intervals) {
+        Map<Integer, Integer> events = new TreeMap<>();
+
+        for (int[] interval : intervals) {
+            events.put(interval[0], events.getOrDefault(interval[0], 0) + 1);
+            events.put(interval[1], events.getOrDefault(interval[1], 0) - 1);
+        }
+
+        int maxRooms = 0;
+        int currentRooms = 0;
+
+        for (int change : events.values()) {
+            currentRooms += change;
+            maxRooms = Math.max(maxRooms, currentRooms);
+        }
+
+        return maxRooms;
+    }
+
+    // Maximum height after queries
+    public int[] maximumHeight(int[][] queries) {
+        Map<Integer, Integer> changes = new TreeMap<>();
+
+        for (int[] query : queries) {
+            int left = query[0];
+            int right = query[1];
+            int height = query[2];
+
+            changes.put(left, changes.getOrDefault(left, 0) + height);
+            changes.put(right + 1, changes.getOrDefault(right + 1, 0) - height);
+        }
+
+        int maxHeight = 0;
+        int currentHeight = 0;
+
+        for (int change : changes.values()) {
+            currentHeight += change;
+            maxHeight = Math.max(maxHeight, currentHeight);
+        }
+
+        return new int[]{maxHeight};
+    }
+    public List<Integer> fallingSquares(int[][] positions) {
+        List<Integer> result = new ArrayList<>();
+        List<Interval> intervals = new ArrayList<>();
+
+        for (int[] pos : positions) {
+            int left = pos[0];
+            int right = pos[0] + pos[1] - 1;
+            int height = pos[1];
+
+            int maxHeight = 0;
+
+            // Find maximum height in the range
+            for (Interval interval : intervals) {
+                if (interval.left <= right && interval.right >= left) {
+                    maxHeight = Math.max(maxHeight, interval.height);
+                }
+            }
+
+            int newHeight = maxHeight + height;
+            intervals.add(new Interval(left, right, newHeight));
+
+            // Find global maximum height
+            int globalMax = 0;
+            for (Interval interval : intervals) {
+                globalMax = Math.max(globalMax, interval.height);
+            }
+
+            result.add(globalMax);
+        }
+
+        return result;
+    }
+
+    static class Interval {
+        int left, right, height;
+
+        Interval(int left, int right, int height) {
+            this.left = left;
+            this.right = right;
+            this.height = height;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 8: Maximum/Minimum Subarray Problems
+
+### 8.1 Kadane's Algorithm Variants
+
+```java
+// Maximum and minimum subarray problems using prefix sum insights
+public class MaxMinSubarrayProblems {
+
+    // Maximum subarray sum (Kadane's Algorithm)
+    public int maxSubArray(int[] nums) {
+        int maxSoFar = nums[0];
+        int maxEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
+            maxSoFar = Math.max(maxSoFar, maxEndingHere);
+        }
+
+        return maxSoFar;
+    }
+
+    // Maximum subarray sum with at most k negations allowed
+    public int maxSubarrayWithKNegations(int[] nums, int k) {
+        int n = nums.length;
+        Integer[][] memo = new Integer[n][k + 1];
+        return maxSubarrayHelper(nums, 0, k, memo);
+    }
+
+    private int maxSubarrayHelper(int[] nums, int index, int k, Integer[][] memo) {
+        if (index >= nums.length) return 0;
+
+        if (memo[index][k] != null) return memo[index][k];
+
+        // Don't take current element
+        int skipCurrent = maxSubarrayHelper(nums, index + 1, k, memo);
+
+        // Take current element without negation
+        int takeCurrent = nums[index] + Math.max(0, maxSubarrayHelper(nums, index + 1, k, memo));
+
+        // Take current element with negation (if k > 0)
+        int takeNegated = Integer.MIN_VALUE;
+        if (k > 0) {
+            takeNegated = -nums[index] + Math.max(0, maxSubarrayHelper(nums, index + 1, k - 1, memo));
+        }
+
+        int result = Math.max(skipCurrent, Math.max(takeCurrent, takeNegated));
+        memo[index][k] = result;
+        return result;
+    }
+
+    // Maximum subarray product
+    public int maxProduct(int[] nums) {
+        int maxSoFar = nums[0];
+        int maxHere = nums[0];
+        int minHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            if (nums[i] < 0) {
+                int temp = maxHere;
+                maxHere = minHere;
+                minHere = temp;
+            }
+
+            maxHere = Math.max(nums[i], maxHere * nums[i]);
+            minHere = Math.min(nums[i], minHere * nums[i]);
+
+            maxSoFar = Math.max(maxSoFar, maxHere);
+        }
+
+        return maxSoFar;
+    }
+
+    // Maximum sum of non-adjacent elements
+    public int rob(int[] nums) {
+        if (nums.length == 0) return 0;
+        if (nums.length == 1) return nums[0];
+
+        int prev2 = nums[0];
+        int prev1 = Math.max(nums[0], nums[1]);
+
+        for (int i = 2; i < nums.length; i++) {
+            int current = Math.max(prev1, prev2 + nums[i]);
+            prev2 = prev1;
+            prev1 = current;
+        }
+
+        return prev1;
+    }
+
+    // Maximum sum circular subarray
+    public int maxSubarraySumCircular(int[] arr) {
+        int totalSum = Arrays.stream(arr).sum();
+
+        // Case 1: Maximum subarray is non-circular
+        int maxKadane = kadaneMax(arr);
+
+        // Case 2: Maximum subarray is circular (total - minimum subarray)
+        int minKadane = kadaneMin(arr);
+        int maxCircular = totalSum - minKadane;
+
+        // Handle edge case: all elements negative
+        return maxCircular == 0 ? maxKadane : Math.max(maxKadane, maxCircular);
+    }
+
+    private int kadaneMax(int[] arr) {
+        int max = arr[0], current = arr[0];
+        for (int i = 1; i < arr.length; i++) {
+            current = Math.max(arr[i], current + arr[i]);
+            max = Math.max(max, current);
+        }
+        return max;
+    }
+
+    private int kadaneMin(int[] arr) {
+        int min = arr[0], current = arr[0];
+        for (int i = 1; i < arr.length; i++) {
+            current = Math.min(arr[i], current + arr[i]);
+            min = Math.min(min, current);
+        }
+        return min;
+    }
+
+    // Maximum subarray sum after at most k operations (increment any element)
+    public int maxSubarrayAfterKOperations(int[] nums, int k) {
+        // Find minimum element and its count
+        int minVal = Arrays.stream(nums).min().orElse(0);
+        long minCount = Arrays.stream(nums).filter(x -> x == minVal).count();
+
+        // If we can make all negative elements zero
+        if (minVal < 0 && k >= -minVal * minCount) {
+            int remaining = (int)(k + minVal * minCount);
+
+            // After making negatives zero, add remaining operations to maximum element
+            int sum = Arrays.stream(nums).map(x -> Math.max(0, x)).sum();
+            int maxVal = Arrays.stream(nums).max().orElse(0);
+
+            return sum + remaining;
+        }
+
+        // Otherwise, use operations on the minimum elements
+        int[] modified = nums.clone();
+        for (int i = 0; i < modified.length && k > 0; i++) {
+            if (modified[i] == minVal) {
+                int increment = Math.min(k, -minVal);
+                modified[i] += increment;
+                k -= increment;
+            }
+        }
+
+        return kadaneMax(modified);
+    }
+
+    // Minimum subarray sum
+    public int minSubArray(int[] nums) {
+        int minSoFar = nums[0];
+        int minEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            minEndingHere = Math.min(nums[i], minEndingHere + nums[i]);
+            minSoFar = Math.min(minSoFar, minEndingHere);
+        }
+
+        return minSoFar;
+    }
+
+    // Maximum sum subarray of size k
+    public int maxSumSubarrayOfSizeK(int[] nums, int k) {
+        if (nums.length < k) return Integer.MIN_VALUE;
+
+        // Calculate sum of first window
+        int windowSum = 0;
+        for (int i = 0; i < k; i++) {
+            windowSum += nums[i];
+        }
+
+        int maxSum = windowSum;
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            windowSum = windowSum - nums[i - k] + nums[i];
+            maxSum = Math.max(maxSum, windowSum);
+        }
+
+        return maxSum;
+    }
+
+    // Maximum average subarray of length k
+    public double findMaxAverage(int[] nums, int k) {
+        int sum = 0;
+        for (int i = 0; i < k; i++) {
+            sum += nums[i];
+        }
+
+        int maxSum = sum;
+        for (int i = k; i < nums.length; i++) {
+            sum = sum - nums[i - k] + nums[i];
+            maxSum = Math.max(maxSum, sum);
+        }
+
+        return (double) maxSum / k;
+    }
+}
+```
+
+
+### 8.2 Advanced Maximum Subarray Problems
+
+```java
+// Advanced maximum subarray variants
+public class AdvancedMaxSubarray {
+
+    // Maximum sum of 3 non-overlapping subarrays
+    public int[] maxSumOfThreeSubarrays(int[] nums, int k) {
+        int n = nums.length;
+        int[] sums = new int[n - k + 1];
+
+        // Calculate sum of each k-length subarray
+        int sum = 0;
+        for (int i = 0; i < k; i++) {
+            sum += nums[i];
+        }
+        sums[0] = sum;
+
+        for (int i = 1; i < sums.length; i++) {
+            sum = sum - nums[i - 1] + nums[i + k - 1];
+            sums[i] = sum;
+        }
+
+        // Find best left subarray for each position
+        int[] left = new int[sums.length];
+        int bestLeft = 0;
+        for (int i = 0; i < sums.length; i++) {
+            if (sums[i] > sums[bestLeft]) {
+                bestLeft = i;
+            }
+            left[i] = bestLeft;
+        }
+
+        // Find best right subarray for each position
+        int[] right = new int[sums.length];
+        int bestRight = sums.length - 1;
+        for (int i = sums.length - 1; i >= 0; i--) {
+            if (sums[i] >= sums[bestRight]) {
+                bestRight = i;
+            }
+            right[i] = bestRight;
+        }
+
+        // Find the best combination
+        int maxSum = 0;
+        int[] result = new int[3];
+
+        for (int mid = k; mid < sums.length - k; mid++) {
+            int l = left[mid - k];
+            int r = right[mid + k];
+            int totalSum = sums[l] + sums[mid] + sums[r];
+
+            if (totalSum > maxSum) {
+                maxSum = totalSum;
+                result[0] = l;
+                result[1] = mid;
+                result[2] = r;
+            }
+        }
+
+        return result;
+    }
+
+    // Maximum subarray sum with length at least k
+    public int maxSubarrayLenAtLeastK(int[] nums, int k) {
+        int n = nums.length;
+        int[] prefixSum = new int[n + 1];
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        int maxSum = Integer.MIN_VALUE;
+
+        for (int i = 0; i <= n - k; i++) {
+            for (int j = i + k; j <= n; j++) {
+                maxSum = Math.max(maxSum, prefixSum[j] - prefixSum[i]);
+            }
+        }
+
+        return maxSum;
+    }
+
+    // Maximum subarray sum with length exactly k
+    public int maxSubarrayLenExactlyK(int[] nums, int k) {
+        if (nums.length < k) return Integer.MIN_VALUE;
+
+        int[] prefixSum = new int[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        int maxSum = Integer.MIN_VALUE;
+        for (int i = 0; i <= nums.length - k; i++) {
+            maxSum = Math.max(maxSum, prefixSum[i + k] - prefixSum[i]);
+        }
+
+        return maxSum;
+    }
+
+    // Maximum sum of two non-overlapping subarrays
+    public int maxSumTwoNoOverlap(int[] nums, int firstLen, int secondLen) {
+        return Math.max(
+            maxSum2Helper(nums, firstLen, secondLen),
+            maxSum2Helper(nums, secondLen, firstLen)
+        );
+    }
+
+    private int maxSum2Helper(int[] nums, int len1, int len2) {
+        int n = nums.length;
+        int[] prefixSum = new int[n + 1];
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        int maxSum = 0;
+
+        // Try all positions for first subarray
+        for (int i = 0; i <= n - len1; i++) {
+            int sum1 = prefixSum[i + len1] - prefixSum[i];
+
+            // Find best second subarray before first
+            int maxBefore = 0;
+            for (int j = 0; j <= i - len2; j++) {
+                maxBefore = Math.max(maxBefore, prefixSum[j + len2] - prefixSum[j]);
+            }
+
+            // Find best second subarray after first
+            int maxAfter = 0;
+            for (int j = i + len1; j <= n - len2; j++) {
+                maxAfter = Math.max(maxAfter, prefixSum[j + len2] - prefixSum[j]);
+            }
+
+            maxSum = Math.max(maxSum, sum1 + Math.max(maxBefore, maxAfter));
+        }
+
+        return maxSum;
+    }
+
+    // Maximum subarray sum after removing at most one element
+    public int maximumSum(int[] arr) {
+        int n = arr.length;
+        if (n == 1) return arr[0];
+
+        int[] maxEndingHere = new int[n]; // Without deletion
+        int[] maxEndingHereWithDel = new int[n]; // With one deletion
+
+        maxEndingHere[0] = arr[0];
+        maxEndingHereWithDel[0] = 0; // Can't delete from single element
+
+        int result = arr[0];
+
+        for (int i = 1; i < n; i++) {
+            maxEndingHere[i] = Math.max(arr[i], maxEndingHere[i - 1] + arr[i]);
+
+            // Either delete current element or extend previous deletion
+            maxEndingHereWithDel[i] = Math.max(
+                maxEndingHere[i - 1], // Delete current
+                maxEndingHereWithDel[i - 1] + arr[i] // Extend with current
+            );
+
+            result = Math.max(result, Math.max(maxEndingHere[i], maxEndingHereWithDel[i]));
+        }
+
+        return result;
+    }
+
+    // Constrained subset sum
+    public int constrainedSubsetSum(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] dp = new int[nums.length];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove elements outside window
+            while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+                deque.pollFirst();
+            }
+
+            // Calculate dp[i]
+            dp[i] = nums[i];
+            if (!deque.isEmpty()) {
+                dp[i] = Math.max(dp[i], nums[i] + dp[deque.peekFirst()]);
+            }
+
+            // Maintain decreasing deque
+            while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+                deque.pollLast();
+            }
+
+            if (dp[i] > 0) {
+                deque.offerLast(i);
+            }
+        }
+
+        return Arrays.stream(dp).max().orElse(0);
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Binary Indexed Tree (Fenwick Tree)
+
+### 9.1 Basic BIT Implementation
+
+```java
+// Binary Indexed Tree for efficient prefix sum queries and updates
+public class BinaryIndexedTree {
+
+    // Basic Binary Indexed Tree
+    public static class BIT {
+        private int[] tree;
+        private int n;
+
+        public BIT(int size) {
+            this.n = size;
+            this.tree = new int[n + 1];
+        }
+
+        public BIT(int[] nums) {
+            this.n = nums.length;
+            this.tree = new int[n + 1];
+
+            for (int i = 0; i < nums.length; i++) {
+                update(i, nums[i]);
+            }
+        }
+
+        // Update element at index i by adding delta
+        public void update(int i, int delta) {
+            i++; // Convert to 1-indexed
+            while (i <= n) {
+                tree[i] += delta;
+                i += i & (-i); // Add last set bit
+            }
+        }
+
+        // Get prefix sum from 0 to i (inclusive)
+        public int query(int i) {
+            i++; // Convert to 1-indexed
+            int sum = 0;
+            while (i > 0) {
+                sum += tree[i];
+                i -= i & (-i); // Remove last set bit
+            }
+            return sum;
+        }
+
+        // Get range sum from left to right (inclusive)
+        public int rangeQuery(int left, int right) {
+            return query(right) - (left > 0 ? query(left - 1) : 0);
+        }
+
+        // Set element at index i to value
+        public void set(int i, int value) {
+            int currentValue = rangeQuery(i, i);
+            update(i, value - currentValue);
+        }
+
+        // Get element at index i
+        public int get(int i) {
+            return rangeQuery(i, i);
+        }
+
+        // Find the kth smallest element (if tree contains frequencies)
+        public int kthElement(int k) {
+            int sum = 0;
+            int pos = 0;
+            int bitMask = Integer.highestOneBit(n);
+
+            while (bitMask != 0) {
+                int next = pos + bitMask;
+                if (next <= n && sum + tree[next] < k) {
+                    sum += tree[next];
+                    pos = next;
+                }
+                bitMask >>= 1;
+            }
+
+            return pos;
+        }
+    }
+
+    // Range sum query - mutable using BIT
+    public static class NumArrayBIT {
+        private BIT bit;
+        private int[] nums;
+
+        public NumArrayBIT(int[] nums) {
+            this.nums = nums.clone();
+            this.bit = new BIT(nums);
+        }
+
+        public void update(int index, int val) {
+            int delta = val - nums[index];
+            nums[index] = val;
+            bit.update(index, delta);
+        }
+
+        public int sumRange(int left, int right) {
+            return bit.rangeQuery(left, right);
+        }
+    }
+
+    // Count smaller numbers after self
+    public List<Integer> countSmaller(int[] nums) {
+        // Coordinate compression
+        Set<Integer> sorted = new TreeSet<>();
+        for (int num : nums) {
+            sorted.add(num);
+        }
+
+        Map<Integer, Integer> compressed = new HashMap<>();
+        int index = 0;
+        for (int num : sorted) {
+            compressed.put(num, index++);
+        }
+
+        BIT bit = new BIT(sorted.size());
+        List<Integer> result = new ArrayList<>();
+
+        // Process from right to left
+        for (int i = nums.length - 1; i >= 0; i--) {
+            int compressedValue = compressed.get(nums[i]);
+
+            // Count elements smaller than current
+            int count = compressedValue > 0 ? bit.query(compressedValue - 1) : 0;
+            result.add(count);
+
+            // Add current element to BIT
+            bit.update(compressedValue, 1);
+        }
+
+        Collections.reverse(result);
+        return result;
+    }
+
+    // Count of range sum
+    public int countRangeSum(int[] nums, int lower, int upper) {
+        long[] prefixSums = new long[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSums[i + 1] = prefixSums[i] + nums[i];
+        }
+
+        // Coordinate compression
+        Set<Long> values = new TreeSet<>();
+        for (long sum : prefixSums) {
+            values.add(sum);
+            values.add(sum - lower);
+            values.add(sum - upper);
+        }
+
+        Map<Long, Integer> compressed = new HashMap<>();
+        int index = 0;
+        for (long value : values) {
+            compressed.put(value, index++);
+        }
+
+        BIT bit = new BIT(values.size());
+        int count = 0;
+
+        for (long sum : prefixSums) {
+            // Count valid ranges ending at current position
+            int lowerBound = compressed.get(sum - upper);
+            int upperBound = compressed.get(sum - lower);
+
+            count += bit.rangeQuery(lowerBound, upperBound);
+
+            // Add current prefix sum to BIT
+            bit.update(compressed.get(sum), 1);
+        }
+
+        return count;
+    }
+
+    // Reverse pairs
+    public int reversePairs(int[] nums) {
+        // Use merge sort approach with BIT for counting
+        return mergeSortAndCount(nums, 0, nums.length - 1);
+    }
+
+    private int mergeSortAndCount(int[] nums, int start, int end) {
+        if (start >= end) return 0;
+
+        int mid = start + (end - start) / 2;
+        int count = mergeSortAndCount(nums, start, mid) +
+                   mergeSortAndCount(nums, mid + 1, end);
+
+        // Count reverse pairs
+        int j = mid + 1;
+        for (int i = start; i <= mid; i++) {
+            while (j <= end && (long) nums[i] > 2L * nums[j]) {
+                j++;
+            }
+            count += j - (mid + 1);
+        }
+
+        // Merge
+        int[] temp = new int[end - start + 1];
+        int i = start, k = mid + 1, t = 0;
+
+        while (i <= mid && k <= end) {
+            if (nums[i] <= nums[k]) {
+                temp[t++] = nums[i++];
+            } else {
+                temp[t++] = nums[k++];
+            }
+        }
+
+        while (i <= mid) temp[t++] = nums[i++];
+        while (k <= end) temp[t++] = nums[k++];
+
+        System.arraycopy(temp, 0, nums, start, temp.length);
+
+        return count;
+    }
+}
+```
+
+
+### 9.2 Advanced BIT Applications
+
+```java
+// Advanced Binary Indexed Tree applications
+public class AdvancedBIT {
+
+    // 2D Binary Indexed Tree
+    public static class BIT2D {
+        private int[][] tree;
+        private int m, n;
+
+        public BIT2D(int rows, int cols) {
+            this.m = rows;
+            this.n = cols;
+            this.tree = new int[m + 1][n + 1];
+        }
+
+        public void update(int row, int col, int delta) {
+            for (int i = row + 1; i <= m; i += i & (-i)) {
+                for (int j = col + 1; j <= n; j += j & (-j)) {
+                    tree[i][j] += delta;
+                }
+            }
+        }
+
+        public int query(int row, int col) {
+            int sum = 0;
+            for (int i = row + 1; i > 0; i -= i & (-i)) {
+                for (int j = col + 1; j > 0; j -= j & (-j)) {
+                    sum += tree[i][j];
+                }
+            }
+            return sum;
+        }
+
+        public int rangeQuery(int row1, int col1, int row2, int col2) {
+            return query(row2, col2) - query(row1 - 1, col2) -
+                   query(row2, col1 - 1) + query(row1 - 1, col1 - 1);
+        }
+    }
+
+    // Range update BIT using difference array technique
+    public static class RangeUpdateBIT {
+        private BIT bit;
+
+        public RangeUpdateBIT(int size) {
+            this.bit = new BIT(size);
+        }
+
+        // Add delta to range [left, right]
+        public void rangeUpdate(int left, int right, int delta) {
+            bit.update(left, delta);
+            if (right + 1 < bit.n) {
+                bit.update(right + 1, -delta);
+            }
+        }
+
+        // Get value at index i
+        public int pointQuery(int i) {
+            return bit.query(i);
+        }
+    }
+
+    // Maximum frequency stack using BIT
+    public static class FreqStack {
+        private Map<Integer, Integer> freq;
+        private Map<Integer, Stack<Integer>> stacks;
+        private int maxFreq;
+
+        public FreqStack() {
+            freq = new HashMap<>();
+            stacks = new HashMap<>();
+            maxFreq = 0;
+        }
+
+        public void push(int val) {
+            int f = freq.getOrDefault(val, 0) + 1;
+            freq.put(val, f);
+
+            if (f > maxFreq) {
+                maxFreq = f;
+            }
+
+            stacks.computeIfAbsent(f, k -> new Stack<>()).push(val);
+        }
+
+        public int pop() {
+            Stack<Integer> stack = stacks.get(maxFreq);
+            int val = stack.pop();
+
+            freq.put(val, freq.get(val) - 1);
+
+            if (stack.isEmpty()) {
+                maxFreq--;
+            }
+
+            return val;
+        }
+    }
+
+    // Longest increasing subsequence with BIT
+    public int lengthOfLIS(int[] nums) {
+        // Coordinate compression
+        Set<Integer> sorted = new TreeSet<>();
+        for (int num : nums) {
+            sorted.add(num);
+        }
+
+        Map<Integer, Integer> compressed = new HashMap<>();
+        int index = 1;
+        for (int num : sorted) {
+            compressed.put(num, index++);
+        }
+
+        BIT bit = new BIT(sorted.size());
+
+        for (int num : nums) {
+            int compressedValue = compressed.get(num);
+
+            // Query maximum LIS length for values < current
+            int lisLength = compressedValue > 1 ? bit.query(compressedValue - 1) : 0;
+
+            // Update BIT with new LIS length ending at current value
+            int currentMax = bit.rangeQuery(compressedValue - 1, compressedValue - 1);
+            if (lisLength + 1 > currentMax) {
+                bit.update(compressedValue - 1, lisLength + 1 - currentMax);
+            }
+        }
+
+        return bit.query(sorted.size() - 1);
+    }
+
+    // Range minimum query using BIT (with coordinate compression)
+    public static class RMQWithBIT {
+        private BIT bit;
+        private Map<Integer, Integer> compressed;
+        private int[] values;
+
+        public RMQWithBIT(int[] nums) {
+            Set<Integer> unique = new TreeSet<>();
+            for (int num : nums) {
+                unique.add(num);
+            }
+
+            compressed = new HashMap<>();
+            values = new int[unique.size()];
+            int index = 0;
+
+            for (int num : unique) {
+                compressed.put(num, index);
+                values[index] = num;
+                index++;
+            }
+
+            bit = new BIT(unique.size());
+
+            for (int num : nums) {
+                bit.update(compressed.get(num), 1);
+            }
+        }
+
+        public int rangeMin(int left, int right, int[] originalArray) {
+            // This is a simplified version - actual RMQ with BIT is more complex
+            int min = Integer.MAX_VALUE;
+            for (int i = left; i <= right; i++) {
+                min = Math.min(min, originalArray[i]);
+            }
+            return min;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 10: Segment Tree for Range Queries
+
+### 10.1 Basic Segment Tree
+
+```java
+// Segment Tree for range queries and updates
+public class SegmentTree {
+
+    // Basic Segment Tree for range sum queries
+    public static class RangeSumSegmentTree {
+        private int[] tree;
+        private int n;
+
+        public RangeSumSegmentTree(int[] nums) {
+            n = nums.length;
+            tree = new int[4 * n];
+            build(nums, 0, 0, n - 1);
+        }
+
+        private void build(int[] nums, int node, int start, int end) {
+            if (start == end) {
+                tree[node] = nums[start];
+            } else {
+                int mid = (start + end) / 2;
+                build(nums, 2 * node + 1, start, mid);
+                build(nums, 2 * node + 2, mid + 1, end);
+                tree[node] = tree[2 * node + 1] + tree[2 * node + 2];
+            }
+        }
+
+        public void update(int index, int val) {
+            update(0, 0, n - 1, index, val);
+        }
+
+        private void update(int node, int start, int end, int index, int val) {
+            if (start == end) {
+                tree[node] = val;
+            } else {
+                int mid = (start + end) / 2;
+                if (index <= mid) {
+                    update(2 * node + 1, start, mid, index, val);
+                } else {
+                    update(2 * node + 2, mid + 1, end, index, val);
+                }
+                tree[node] = tree[2 * node + 1] + tree[2 * node + 2];
+            }
+        }
+
+        public int query(int left, int right) {
+            return query(0, 0, n - 1, left, right);
+        }
+
+        private int query(int node, int start, int end, int left, int right) {
+            if (right < start || end < left) {
+                return 0;
+            }
+            if (left <= start && end <= right) {
+                return tree[node];
+            }
+
+            int mid = (start + end) / 2;
+            int leftSum = query(2 * node + 1, start, mid, left, right);
+            int rightSum = query(2 * node + 2, mid + 1, end, left, right);
+            return leftSum + rightSum;
+        }
+    }
+
+    // Segment Tree with lazy propagation for range updates
+    public static class LazySegmentTree {
+        private long[] tree;
+        private long[] lazy;
+        private int n;
+
+        public LazySegmentTree(int size) {
+            n = size;
+            tree = new long[4 * n];
+            lazy = new long[4 * n];
+        }
+
+        private void push(int node, int start, int end) {
+            if (lazy[node] != 0) {
+                tree[node] += lazy[node] * (end - start + 1);
+
+                if (start != end) {
+                    lazy[2 * node + 1] += lazy[node];
+                    lazy[2 * node + 2] += lazy[node];
+                }
+
+                lazy[node] = 0;
+            }
+        }
+
+        public void rangeUpdate(int left, int right, int val) {
+            rangeUpdate(0, 0, n - 1, left, right, val);
+        }
+
+        private void rangeUpdate(int node, int start, int end, int left, int right, int val) {
+            push(node, start, end);
+
+            if (start > right || end < left) {
+                return;
+            }
+
+            if (left <= start && end <= right) {
+                lazy[node] += val;
+                push(node, start, end);
+                return;
+            }
+
+            int mid = (start + end) / 2;
+            rangeUpdate(2 * node + 1, start, mid, left, right, val);
+            rangeUpdate(2 * node + 2, mid + 1, end, left, right, val);
+
+            push(2 * node + 1, start, mid);
+            push(2 * node + 2, mid + 1, end);
+            tree[node] = tree[2 * node + 1] + tree[2 * node + 2];
+        }
+
+        public long query(int left, int right) {
+            return query(0, 0, n - 1, left, right);
+        }
+
+        private long query(int node, int start, int end, int left, int right) {
+            if (start > right || end < left) {
+                return 0;
+            }
+
+            push(node, start, end);
+
+            if (left <= start && end <= right) {
+                return tree[node];
+            }
+
+            int mid = (start + end) / 2;
+            long leftSum = query(2 * node + 1, start, mid, left, right);
+            long rightSum = query(2 * node + 2, mid + 1, end, left, right);
+            return leftSum + rightSum;
+        }
+    }
+
+    // Range minimum query segment tree
+    public static class RMQSegmentTree {
+        private int[] tree;
+        private int n;
+
+        public RMQSegmentTree(int[] nums) {
+            n = nums.length;
+            tree = new int[4 * n];
+            build(nums, 0, 0, n - 1);
+        }
+
+        private void build(int[] nums, int node, int start, int end) {
+            if (start == end) {
+                tree[node] = nums[start];
+            } else {
+                int mid = (start + end) / 2;
+                build(nums, 2 * node + 1, start, mid);
+                build(nums, 2 * node + 2, mid + 1, end);
+                tree[node] = Math.min(tree[2 * node + 1], tree[2 * node + 2]);
+            }
+        }
+
+        public void update(int index, int val) {
+            update(0, 0, n - 1, index, val);
+        }
+
+        private void update(int node, int start, int end, int index, int val) {
+            if (start == end) {
+                tree[node] = val;
+            } else {
+                int mid = (start + end) / 2;
+                if (index <= mid) {
+                    update(2 * node + 1, start, mid, index, val);
+                } else {
+                    update(2 * node + 2, mid + 1, end, index, val);
+                }
+                tree[node] = Math.min(tree[2 * node + 1], tree[2 * node + 2]);
+            }
+        }
+
+        public int query(int left, int right) {
+            return query(0, 0, n - 1, left, right);
+        }
+
+        private int query(int node, int start, int end, int left, int right) {
+            if (right < start || end < left) {
+                return Integer.MAX_VALUE;
+            }
+            if (left <= start && end <= right) {
+                return tree[node];
+            }
+
+            int mid = (start + end) / 2;
+            int leftMin = query(2 * node + 1, start, mid, left, right);
+            int rightMin = query(2 * node + 2, mid + 1, end, left, right);
+            return Math.min(leftMin, rightMin);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Advanced Prefix Sum Applications
+
+### 11.1 Multi-dimensional Problems
+
+```java
+// Advanced prefix sum applications
+public class AdvancedPrefixSumApplications {
+
+    // Count number of nice subarrays
+    public int numberOfSubarrays(int[] nums, int k) {
+        return atMostK(nums, k) - atMostK(nums, k - 1);
+    }
+
+    private int atMostK(int[] nums, int k) {
+        int left = 0, count = 0, result = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            if (nums[right] % 2 == 1) {
+                count++;
+            }
+
+            while (count > k) {
+                if (nums[left] % 2 == 1) {
+                    count--;
+                }
+                left++;
+            }
+
+            result += right - left + 1;
+        }
+
+        return result;
+    }
+
+    // Subarrays with k different integers
+    public int subarraysWithKDistinct(int[] nums, int k) {
+        return atMostKDistinct(nums, k) - atMostKDistinct(nums, k - 1);
+    }
+
+    private int atMostKDistinct(int[] nums, int k) {
+        Map<Integer, Integer> count = new HashMap<>();
+        int left = 0, result = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            count.put(nums[right], count.getOrDefault(nums[right], 0) + 1);
+
+            while (count.size() > k) {
+                count.put(nums[left], count.get(nums[left]) - 1);
+                if (count.get(nums[left]) == 0) {
+                    count.remove(nums[left]);
+                }
+                left++;
+            }
+
+            result += right - left + 1;
+        }
+
+        return result;
+    }
+
+    // Shortest subarray with sum at least K
+    public int shortestSubarray(int[] nums, int k) {
+        int n = nums.length;
+        long[] prefixSum = new long[n + 1];
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        Deque<Integer> deque = new ArrayDeque<>();
+        int result = Integer.MAX_VALUE;
+
+        for (int i = 0; i <= n; i++) {
+            // Check if we can form a subarray with sum >= k
+            while (!deque.isEmpty() && prefixSum[i] - prefixSum[deque.peekFirst()] >= k) {
+                result = Math.min(result, i - deque.pollFirst());
+            }
+
+            // Maintain increasing order of prefix sums
+            while (!deque.isEmpty() && prefixSum[deque.peekLast()] >= prefixSum[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+        }
+
+        return result == Integer.MAX_VALUE ? -1 : result;
+    }
+
+    // Maximum size subarray sum equals k
+    public int maxSubArrayLen(int[] nums, int k) {
+        Map<Integer, Integer> sumToIndex = new HashMap<>();
+        sumToIndex.put(0, -1);
+
+        int maxLen = 0;
+        int sum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            sum += nums[i];
+
+            if (sumToIndex.containsKey(sum - k)) {
+                maxLen = Math.max(maxLen, i - sumToIndex.get(sum - k));
+            }
+
+            sumToIndex.putIfAbsent(sum, i);
+        }
+
+        return maxLen;
+    }
+
+    // Contiguous array (equal 0s and 1s)
+    public int findMaxLength(int[] nums) {
+        Map<Integer, Integer> sumToIndex = new HashMap<>();
+        sumToIndex.put(0, -1);
+
+        int maxLen = 0;
+        int sum = 0;
+
+        for (int i = 0; i < nums.length; i++) {
+            sum += (nums[i] == 1) ? 1 : -1;
+
+            if (sumToIndex.containsKey(sum)) {
+                maxLen = Math.max(maxLen, i - sumToIndex.get(sum));
+            } else {
+                sumToIndex.put(sum, i);
+            }
+        }
+
+        return maxLen;
+    }
+
+    // Minimum window substring
+    public String minWindow(String s, String t) {
+        if (s.length() < t.length()) return "";
+
+        Map<Character, Integer> tCount = new HashMap<>();
+        for (char c : t.toCharArray()) {
+            tCount.put(c, tCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int left = 0, minLen = Integer.MAX_VALUE, minStart = 0;
+        int required = tCount.size(), formed = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char c = s.charAt(right);
+            windowCount.put(c, windowCount.getOrDefault(c, 0) + 1);
+
+            if (tCount.containsKey(c) &&
+                windowCount.get(c).intValue() == tCount.get(c).intValue()) {
+                formed++;
+            }
+
+            while (left <= right && formed == required) {
+                if (right - left + 1 < minLen) {
+                    minLen = right - left + 1;
+                    minStart = left;
+                }
+
+                char leftChar = s.charAt(left);
+                windowCount.put(leftChar, windowCount.get(leftChar) - 1);
+
+                if (tCount.containsKey(leftChar) &&
+                    windowCount.get(leftChar) < tCount.get(leftChar)) {
+                    formed--;
+                }
+
+                left++;
+            }
+        }
+
+        return minLen == Integer.MAX_VALUE ? "" : s.substring(minStart, minStart + minLen);
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Optimization Techniques
+
+### 12.1 Space and Time Optimizations
+
+```java
+// Optimization techniques for prefix sum problems
+public class PrefixSumOptimizations {
+
+    // Space-optimized prefix sum for very large arrays
+    public static class StreamingPrefixSum {
+        private long runningSum;
+        private int count;
+
+        public StreamingPrefixSum() {
+            runningSum = 0;
+            count = 0;
+        }
+
+        public void addNumber(int num) {
+            runningSum += num;
+            count++;
+        }
+
+        public double getAverage() {
+            return count == 0 ? 0 : (double) runningSum / count;
+        }
+
+        public long getSum() {
+            return runningSum;
+        }
+
+        public int getCount() {
+            return count;
+        }
+    }
+
+    // Compressed prefix sum for sparse arrays
+    public static class CompressedPrefixSum {
+        private Map<Integer, Long> prefixSums;
+        private List<Integer> indices;
+
+        public CompressedPrefixSum(Map<Integer, Integer> sparseArray) {
+            prefixSums = new HashMap<>();
+            indices = new ArrayList<>(sparseArray.keySet());
+            Collections.sort(indices);
+
+            long sum = 0;
+            for (int index : indices) {
+                sum += sparseArray.get(index);
+                prefixSums.put(index, sum);
+            }
+        }
+
+        public long rangeSum(int left, int right) {
+            Long rightSum = prefixSums.get(right);
+            Long leftSum = prefixSums.get(left - 1);
+
+            if (rightSum == null) rightSum = getPrefixSum(right);
+            if (leftSum == null) leftSum = getPrefixSum(left - 1);
+
+            return rightSum - leftSum;
+        }
+
+        private long getPrefixSum(int index) {
+            int pos = Collections.binarySearch(indices, index);
+            if (pos >= 0) {
+                return prefixSums.get(indices.get(pos));
+            } else {
+                int insertPos = -pos - 1;
+                if (insertPos == 0) return 0;
+                return prefixSums.get(indices.get(insertPos - 1));
+            }
+        }
+    }
+
+    // Parallel prefix sum computation
+    public static class ParallelPrefixSum {
+
+        public static int[] parallelPrefixSum(int[] nums) {
+            int n = nums.length;
+            int[] result = nums.clone();
+
+            // Use divide and conquer approach
+            computePrefixSum(result, 0, n - 1);
+            return result;
+        }
+
+        private static void computePrefixSum(int[] arr, int left, int right) {
+            if (left >= right) return;
+
+            int mid = left + (right - left) / 2;
+
+            // Recursively compute for both halves
+            computePrefixSum(arr, left, mid);
+            computePrefixSum(arr, mid + 1, right);
+
+            // Add the sum of left half to all elements in right half
+            int leftSum = 0;
+            for (int i = left; i <= mid; i++) {
+                leftSum += arr[i];
+            }
+
+            for (int i = mid + 1; i <= right; i++) {
+                arr[i] += leftSum;
+            }
+        }
+    }
+
+    // Memory-efficient rolling prefix sum
+    public static class RollingPrefixSum {
+        private long sum;
+        private Queue<Integer> window;
+        private int maxSize;
+
+        public RollingPrefixSum(int maxSize) {
+            this.maxSize = maxSize;
+            this.sum = 0;
+            this.window = new LinkedList<>();
+        }
+
+        public void add(int num) {
+            if (window.size() >= maxSize) {
+                sum -= window.poll();
+            }
+
+            window.offer(num);
+            sum += num;
+        }
+
+        public long getSum() {
+            return sum;
+        }
+
+        public double getAverage() {
+            return window.isEmpty() ? 0 : (double) sum / window.size();
+        }
+
+        public int getSize() {
+            return window.size();
+        }
+    }
+
+    // Prefix sum with coordinate compression
+    public static long[] compressedRangeSum(int[] nums, int[][] queries) {
+        Set<Integer> coordinates = new TreeSet<>();
+
+        // Collect all coordinates
+        for (int num : nums) {
+            coordinates.add(num);
+        }
+        for (int[] query : queries) {
+            coordinates.add(query[0]);
+            coordinates.add(query[1]);
+        }
+
+        // Create mapping
+        Map<Integer, Integer> compressed = new HashMap<>();
+        List<Integer> sorted = new ArrayList<>(coordinates);
+        for (int i = 0; i < sorted.size(); i++) {
+            compressed.put(sorted.get(i), i);
+        }
+
+        // Build compressed array
+        long[] compressedArray = new long[sorted.size()];
+        for (int num : nums) {
+            compressedArray[compressed.get(num)]++;
+        }
+
+        // Build prefix sum
+        for (int i = 1; i < compressedArray.length; i++) {
+            compressedArray[i] += compressedArray[i - 1];
+        }
+
+        // Answer queries
+        long[] answers = new long[queries.length];
+        for (int i = 0; i < queries.length; i++) {
+            int left = compressed.get(queries[i][0]);
+            int right = compressed.get(queries[i][1]);
+
+            answers[i] = compressedArray[right] - (left > 0 ? compressedArray[left - 1] : 0);
+        }
+
+        return answers;
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Pattern | Time Complexity | Space Complexity | Key Use Cases |
+| :-- | :-- | :-- | :-- |
+| Basic Prefix Sum | O(n) build, O(1) query | O(n) | Range sum queries |
+| Prefix Sum + HashMap | O(n) | O(n) | Subarray sum problems |
+| 2D Prefix Sum | O(mn) build, O(1) query | O(mn) | Matrix range queries |
+| Difference Array | O(1) range update, O(n) rebuild | O(n) | Range updates |
+| Binary Indexed Tree | O(log n) update/query | O(n) | Dynamic range queries |
+| Segment Tree | O(log n) update/query | O(n) | Complex range operations |
+| Mo's Algorithm | O(n√n) | O(√n) | Offline range queries |
+
+
+***
+
+## Best Practices \& Interview Tips
+
+### Prefix Sum Guidelines
+
+```java
+// 1. Choose the right approach
+public class PrefixSumBestPractices {
+
+    // For static arrays with range sum queries
+    public void useBasicPrefixSum() {
+        int[] nums = {1, 2, 3, 4, 5};
+        int[] prefixSum = new int[nums.length + 1];
+
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        // Range sum from i to j: prefixSum[j+1] - prefixSum[i]
+    }
+
+    // For subarray sum problems
+    public void usePrefixSumWithHashMap() {
+        Map<Integer, Integer> prefixSumCount = new HashMap<>();
+        prefixSumCount.put(0, 1); // Important: empty subarray
+
+        // Process array and use HashMap for O(1) lookups
+    }
+
+    // For range updates
+    public void useDifferenceArray() {
+        int[] diff = new int[n + 1];
+
+        // Range update [l, r] with value v:
+        // diff[l] += v;
+        // diff[r + 1] -= v;
+
+        // Then build final array with prefix sum
+    }
+
+    // 2. Handle edge cases
+    public boolean handleEdgeCases(int[] nums, int target) {
+        if (nums == null || nums.length == 0) return false;
+
+        Map<Integer, Integer> prefixSum = new HashMap<>();
+        prefixSum.put(0, -1); // Handle empty subarray case
+
+        int sum = 0;
+        for (int i = 0; i < nums.length; i++) {
+            sum += nums[i];
+
+            if (prefixSum.containsKey(sum - target)) {
+                return true;
+            }
+
+            // Only store first occurrence for maximum length problems
+            prefixSum.putIfAbsent(sum, i);
+        }
+
+        return false;
+    }
+
+    // 3. Optimization techniques
+    public void optimizationTips() {
+        // Use long for large sums to prevent overflow
+        long[] prefixSum = new long[n + 1];
+
+        // For modular arithmetic problems
+        Map<Integer, Integer> remainderCount = new HashMap<>();
+        remainderCount.put(0, 1);
+
+        int sum = 0;
+        for (int num : nums) {
+            sum += num;
+            int remainder = ((sum % k) + k) % k; // Handle negative numbers
+            // Process remainder...
+        }
+    }
+}
+```
+
+
+### Common Pitfalls to Avoid
+
+1. **Off-by-one errors**: Be careful with 0-indexed vs 1-indexed arrays
+2. **Integer overflow**: Use `long` for large sum calculations
+3. **HashMap initialization**: Remember to put `(0, 1)` or `(0, -1)` for empty subarray
+4. **Negative modular**: Use `((sum % k) + k) % k` for proper modular arithmetic
+5. **Range update bounds**: Check array bounds when using difference arrays
+
+### Interview Tips
+
+- **Identify the pattern**: Look for "subarray", "range", "sum" keywords
+- **Start simple**: Begin with basic prefix sum, then optimize if needed
+- **Draw examples**: Visualize prefix sum arrays for better understanding
+- **Consider trade-offs**: Time vs space, static vs dynamic arrays
+- **Practice variations**: Subarray sum, 2D matrix, modular arithmetic

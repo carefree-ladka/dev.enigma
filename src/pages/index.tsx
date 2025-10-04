@@ -32,7 +32,7 @@ function HomepageHeader() {
           <Link
             className="button button--secondary button--lg"
             to="/docs/intro">
-            JSEnigma Tutorial
+            DevEnigma Tutorial
           </Link>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={siteConfig.title}
-      description="JSEnigma, js, html5, css3, react">
+      description="DevEnigma, js, html5, css3, react">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
@@ -53,3 +53,4 @@ export default function Home(): JSX.Element {
     </Layout>
   );
 }
+  

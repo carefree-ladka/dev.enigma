@@ -1,0 +1,1771 @@
+# Knapsack Problems
+
+## Table of Contents
+
+1. [Knapsack Fundamentals](#knapsack-fundamentals)
+2. [Pattern 1: 0/1 Knapsack](#pattern-1-01-knapsack)
+3. [Pattern 2: Unbounded Knapsack](#pattern-2-unbounded-knapsack)
+4. [Pattern 3: Bounded Knapsack](#pattern-3-bounded-knapsack)
+5. [Pattern 4: Multi-Dimensional Knapsack](#pattern-4-multi-dimensional-knapsack)
+6. [Pattern 5: Subset Sum Problems](#pattern-5-subset-sum-problems)
+7. [Pattern 6: Partition Problems](#pattern-6-partition-problems)
+8. [Pattern 7: Target Sum Problems](#pattern-7-target-sum-problems)
+9. [Pattern 8: Coin Change Problems](#pattern-8-coin-change-problems)
+10. [Pattern 9: Maximum/Minimum Knapsack](#pattern-9-maximumminimum-knapsack)
+11. [Pattern 10: Fractional Knapsack](#pattern-10-fractional-knapsack)
+12. [Pattern 11: Advanced Knapsack Variations](#pattern-11-advanced-knapsack-variations)
+13. [Pattern 12: Real-World Knapsack Applications](#pattern-12-real-world-knapsack-applications)
+
+***
+
+## Knapsack Fundamentals
+
+### Core Knapsack Concepts
+
+```java
+// Basic Knapsack Problem Types
+enum KnapsackType {
+    ZERO_ONE,           // Each item can be taken at most once
+    UNBOUNDED,          // Unlimited quantity of each item
+    BOUNDED,            // Limited quantity of each item
+    FRACTIONAL,         // Items can be broken into fractions
+    MULTI_DIMENSIONAL   // Multiple constraints (weight, volume, etc.)
+}
+
+// Item representation for knapsack problems
+class Item {
+    int weight;
+    int value;
+    int quantity; // For bounded knapsack
+    String name;  // Optional identifier
+
+    public Item(int weight, int value) {
+        this.weight = weight;
+        this.value = value;
+        this.quantity = 1; // Default for 0/1 knapsack
+    }
+
+    public Item(int weight, int value, int quantity) {
+        this.weight = weight;
+        this.value = value;
+        this.quantity = quantity;
+    }
+
+    public double getValueToWeightRatio() {
+        return (double) value / weight;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Item{weight=%d, value=%d, quantity=%d}",
+                           weight, value, quantity);
+    }
+}
+
+// Knapsack result with solution details
+class KnapsackResult {
+    int maxValue;
+    int totalWeight;
+    List<Item> selectedItems;
+    boolean[][] dpTable; // For analysis
+
+    public KnapsackResult(int maxValue, int totalWeight) {
+        this.maxValue = maxValue;
+        this.totalWeight = totalWeight;
+        this.selectedItems = new ArrayList<>();
+    }
+
+    public void addItem(Item item) {
+        selectedItems.add(item);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("KnapsackResult{maxValue=%d, totalWeight=%d, items=%d}",
+                           maxValue, totalWeight, selectedItems.size());
+    }
+}
+
+// Base Knapsack Solver Interface
+interface KnapsackSolver {
+    KnapsackResult solve(List<Item> items, int capacity);
+    int getMaxValue(List<Item> items, int capacity);
+    List<Item> getOptimalItems(List<Item> items, int capacity);
+}
+```
+
+
+### Common Knapsack Templates
+
+```java
+// Template for DP-based Knapsack Solutions
+abstract class KnapsackDPTemplate implements KnapsackSolver {
+
+    // Template method for solving knapsack
+    public final KnapsackResult solve(List<Item> items, int capacity) {
+        if (items.isEmpty() || capacity <= 0) {
+            return new KnapsackResult(0, 0);
+        }
+
+        // Initialize DP table
+        int[][] dp = initializeDPTable(items.size(), capacity);
+
+        // Fill DP table using specific strategy
+        fillDPTable(items, dp, capacity);
+
+        // Extract solution
+        int maxValue = dp[items.size()][capacity];
+        List<Item> selectedItems = backtrackSolution(items, dp, capacity);
+
+        KnapsackResult result = new KnapsackResult(maxValue, calculateWeight(selectedItems));
+        selectedItems.forEach(result::addItem);
+        result.dpTable = dp;
+
+        return result;
+    }
+
+    // Abstract methods to be implemented by specific knapsack types
+    protected abstract int[][] initializeDPTable(int itemCount, int capacity);
+    protected abstract void fillDPTable(List<Item> items, int[][] dp, int capacity);
+    protected abstract List<Item> backtrackSolution(List<Item> items, int[][] dp, int capacity);
+
+    protected int calculateWeight(List<Item> items) {
+        return items.stream().mapToInt(item -> item.weight).sum();
+    }
+
+    @Override
+    public int getMaxValue(List<Item> items, int capacity) {
+        return solve(items, capacity).maxValue;
+    }
+
+    @Override
+    public List<Item> getOptimalItems(List<Item> items, int capacity) {
+        return solve(items, capacity).selectedItems;
+    }
+}
+```
+
+
+***
+
+## Pattern 1: 0/1 Knapsack
+
+### 1.1 Classic 0/1 Knapsack
+
+```java
+// 0/1 Knapsack - Each item can be taken at most once
+public class ZeroOneKnapsack extends KnapsackDPTemplate {
+
+    // Recursive solution with memoization
+    public int knapsackRecursive(int[] weights, int[] values, int capacity) {
+        int n = weights.length;
+        Integer[][] memo = new Integer[n][capacity + 1];
+        return knapsackHelper(weights, values, n - 1, capacity, memo);
+    }
+
+    private int knapsackHelper(int[] weights, int[] values, int index, int capacity,
+                              Integer[][] memo) {
+        // Base case
+        if (index < 0 || capacity <= 0) return 0;
+
+        // Check memoization
+        if (memo[index][capacity] != null) {
+            return memo[index][capacity];
+        }
+
+        // If current item's weight is more than capacity, skip it
+        if (weights[index] > capacity) {
+            memo[index][capacity] = knapsackHelper(weights, values, index - 1, capacity, memo);
+        } else {
+            // Max of including or excluding current item
+            int include = values[index] + knapsackHelper(weights, values, index - 1,
+                                                        capacity - weights[index], memo);
+            int exclude = knapsackHelper(weights, values, index - 1, capacity, memo);
+            memo[index][capacity] = Math.max(include, exclude);
+        }
+
+        return memo[index][capacity];
+    }
+
+    // Bottom-up DP solution
+    public int knapsackDP(int[] weights, int[] values, int capacity) {
+        int n = weights.length;
+        int[][] dp = new int[n + 1][capacity + 1];
+
+        // Fill DP table
+        for (int i = 1; i <= n; i++) {
+            for (int w = 1; w <= capacity; w++) {
+                // Don't include current item
+                dp[i][w] = dp[i - 1][w];
+
+                // Include current item if it fits
+                if (weights[i - 1] <= w) {
+                    dp[i][w] = Math.max(dp[i][w],
+                                       dp[i - 1][w - weights[i - 1]] + values[i - 1]);
+                }
+            }
+        }
+
+        return dp[n][capacity];
+    }
+
+    // Space optimized version - O(capacity) space
+    public int knapsackOptimized(int[] weights, int[] values, int capacity) {
+        int[] dp = new int[capacity + 1];
+
+        for (int i = 0; i < weights.length; i++) {
+            // Traverse backwards to avoid using updated values
+            for (int w = capacity; w >= weights[i]; w--) {
+                dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+            }
+        }
+
+        return dp[capacity];
+    }
+
+    // Get actual items selected
+    public List<Integer> getSelectedItems(int[] weights, int[] values, int capacity) {
+        int n = weights.length;
+        int[][] dp = new int[n + 1][capacity + 1];
+
+        // Fill DP table
+        for (int i = 1; i <= n; i++) {
+            for (int w = 1; w <= capacity; w++) {
+                dp[i][w] = dp[i - 1][w];
+                if (weights[i - 1] <= w) {
+                    dp[i][w] = Math.max(dp[i][w],
+                                       dp[i - 1][w - weights[i - 1]] + values[i - 1]);
+                }
+            }
+        }
+
+        // Backtrack to find selected items
+        List<Integer> selectedItems = new ArrayList<>();
+        int i = n, w = capacity;
+
+        while (i > 0 && w > 0) {
+            // If value comes from including current item
+            if (dp[i][w] != dp[i - 1][w]) {
+                selectedItems.add(i - 1); // Add item index
+                w -= weights[i - 1];
+            }
+            i--;
+        }
+
+        Collections.reverse(selectedItems);
+        return selectedItems;
+    }
+
+    @Override
+    protected int[][] initializeDPTable(int itemCount, int capacity) {
+        return new int[itemCount + 1][capacity + 1];
+    }
+
+    @Override
+    protected void fillDPTable(List<Item> items, int[][] dp, int capacity) {
+        int n = items.size();
+
+        for (int i = 1; i <= n; i++) {
+            Item item = items.get(i - 1);
+            for (int w = 1; w <= capacity; w++) {
+                dp[i][w] = dp[i - 1][w]; // Don't take item
+
+                if (item.weight <= w) {
+                    dp[i][w] = Math.max(dp[i][w],
+                                       dp[i - 1][w - item.weight] + item.value);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected List<Item> backtrackSolution(List<Item> items, int[][] dp, int capacity) {
+        List<Item> selected = new ArrayList<>();
+        int i = items.size(), w = capacity;
+
+        while (i > 0 && w > 0) {
+            if (dp[i][w] != dp[i - 1][w]) {
+                selected.add(items.get(i - 1));
+                w -= items.get(i - 1).weight;
+            }
+            i--;
+        }
+
+        Collections.reverse(selected);
+        return selected;
+    }
+}
+```
+
+
+### 1.2 0/1 Knapsack Variations
+
+```java
+// 0/1 Knapsack with exact weight constraint
+public int knapsackExactWeight(int[] weights, int[] values, int targetWeight) {
+    int n = weights.length;
+    int[][] dp = new int[n + 1][targetWeight + 1];
+
+    // Initialize: impossible to achieve positive weight with 0 items
+    for (int w = 1; w <= targetWeight; w++) {
+        dp[0][w] = Integer.MIN_VALUE;
+    }
+
+    for (int i = 1; i <= n; i++) {
+        for (int w = 1; w <= targetWeight; w++) {
+            dp[i][w] = dp[i - 1][w]; // Don't take item
+
+            if (weights[i - 1] <= w && dp[i - 1][w - weights[i - 1]] != Integer.MIN_VALUE) {
+                dp[i][w] = Math.max(dp[i][w],
+                                   dp[i - 1][w - weights[i - 1]] + values[i - 1]);
+            }
+        }
+    }
+
+    return dp[n][targetWeight] == Integer.MIN_VALUE ? -1 : dp[n][targetWeight];
+}
+
+// 0/1 Knapsack with minimum items constraint
+public int knapsackMinItems(int[] weights, int[] values, int capacity, int minItems) {
+    int n = weights.length;
+    // dp[i][w][k] = max value using first i items, weight w, exactly k items
+    int[][][] dp = new int[n + 1][capacity + 1][minItems + 1];
+
+    // Initialize with negative infinity (impossible states)
+    for (int i = 0; i <= n; i++) {
+        for (int w = 0; w <= capacity; w++) {
+            for (int k = 1; k <= minItems; k++) {
+                dp[i][w][k] = Integer.MIN_VALUE;
+            }
+        }
+    }
+
+    for (int i = 1; i <= n; i++) {
+        for (int w = 0; w <= capacity; w++) {
+            for (int k = 0; k <= minItems; k++) {
+                // Don't take current item
+                dp[i][w][k] = dp[i - 1][w][k];
+
+                // Take current item
+                if (weights[i - 1] <= w && k > 0 &&
+                    dp[i - 1][w - weights[i - 1]][k - 1] != Integer.MIN_VALUE) {
+                    dp[i][w][k] = Math.max(dp[i][w][k],
+                        dp[i - 1][w - weights[i - 1]][k - 1] + values[i - 1]);
+                }
+            }
+        }
+    }
+
+    int maxValue = Integer.MIN_VALUE;
+    for (int k = minItems; k <= Math.min(minItems, n); k++) {
+        maxValue = Math.max(maxValue, dp[n][capacity][k]);
+    }
+
+    return maxValue == Integer.MIN_VALUE ? -1 : maxValue;
+}
+```
+
+
+***
+
+## Pattern 2: Unbounded Knapsack
+
+### 2.1 Classic Unbounded Knapsack
+
+```java
+// Unbounded Knapsack - Unlimited quantity of each item
+public class UnboundedKnapsack implements KnapsackSolver {
+
+    // Basic unbounded knapsack
+    public int unboundedKnapsack(int[] weights, int[] values, int capacity) {
+        int[] dp = new int[capacity + 1];
+
+        // For each capacity
+        for (int w = 1; w <= capacity; w++) {
+            // Try each item
+            for (int i = 0; i < weights.length; i++) {
+                if (weights[i] <= w) {
+                    dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+                }
+            }
+        }
+
+        return dp[capacity];
+    }
+
+    // Alternative approach - process items first
+    public int unboundedKnapsackAlt(int[] weights, int[] values, int capacity) {
+        int[] dp = new int[capacity + 1];
+
+        // For each item
+        for (int i = 0; i < weights.length; i++) {
+            // For each capacity where item can fit
+            for (int w = weights[i]; w <= capacity; w++) {
+                dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+            }
+        }
+
+        return dp[capacity];
+    }
+
+    // Get items used in optimal solution
+    public List<Integer> getItemsUsed(int[] weights, int[] values, int capacity) {
+        int[] dp = new int[capacity + 1];
+        int[] lastItem = new int[capacity + 1]; // Track last item used
+
+        for (int w = 1; w <= capacity; w++) {
+            for (int i = 0; i < weights.length; i++) {
+                if (weights[i] <= w && dp[w - weights[i]] + values[i] > dp[w]) {
+                    dp[w] = dp[w - weights[i]] + values[i];
+                    lastItem[w] = i;
+                }
+            }
+        }
+
+        // Reconstruct solution
+        List<Integer> items = new ArrayList<>();
+        int remainingCapacity = capacity;
+
+        while (remainingCapacity > 0 && dp[remainingCapacity] > 0) {
+            int itemIndex = lastItem[remainingCapacity];
+            items.add(itemIndex);
+            remainingCapacity -= weights[itemIndex];
+        }
+
+        return items;
+    }
+
+    // Count number of ways to achieve exact capacity
+    public int countWays(int[] weights, int capacity) {
+        int[] dp = new int[capacity + 1];
+        dp[0] = 1; // One way to achieve 0 capacity
+
+        for (int weight : weights) {
+            for (int w = weight; w <= capacity; w++) {
+                dp[w] += dp[w - weight];
+            }
+        }
+
+        return dp[capacity];
+    }
+
+    @Override
+    public KnapsackResult solve(List<Item> items, int capacity) {
+        int[] weights = items.stream().mapToInt(item -> item.weight).toArray();
+        int[] values = items.stream().mapToInt(item -> item.value).toArray();
+
+        int maxValue = unboundedKnapsack(weights, values, capacity);
+        List<Integer> itemIndices = getItemsUsed(weights, values, capacity);
+
+        KnapsackResult result = new KnapsackResult(maxValue, 0);
+        for (int index : itemIndices) {
+            result.addItem(items.get(index));
+        }
+
+        return result;
+    }
+
+    @Override
+    public int getMaxValue(List<Item> items, int capacity) {
+        int[] weights = items.stream().mapToInt(item -> item.weight).toArray();
+        int[] values = items.stream().mapToInt(item -> item.value).toArray();
+        return unboundedKnapsack(weights, values, capacity);
+    }
+
+    @Override
+    public List<Item> getOptimalItems(List<Item> items, int capacity) {
+        return solve(items, capacity).selectedItems;
+    }
+}
+```
+
+
+### 2.2 Unbounded Knapsack Applications
+
+```java
+// Rod Cutting Problem (Special case of unbounded knapsack)
+public int cutRod(int[] prices) {
+    int n = prices.length;
+    int[] dp = new int[n + 1];
+
+    for (int length = 1; length <= n; length++) {
+        for (int cut = 1; cut <= length; cut++) {
+            dp[length] = Math.max(dp[length], prices[cut - 1] + dp[length - cut]);
+        }
+    }
+
+    return dp[n];
+}
+
+// Rod Cutting with cuts information
+public List<Integer> cutRodWithCuts(int[] prices) {
+    int n = prices.length;
+    int[] dp = new int[n + 1];
+    int[] cuts = new int[n + 1]; // Store first cut made
+
+    for (int length = 1; length <= n; length++) {
+        for (int cut = 1; cut <= length; cut++) {
+            if (prices[cut - 1] + dp[length - cut] > dp[length]) {
+                dp[length] = prices[cut - 1] + dp[length - cut];
+                cuts[length] = cut;
+            }
+        }
+    }
+
+    // Reconstruct cuts
+    List<Integer> result = new ArrayList<>();
+    int remainingLength = n;
+
+    while (remainingLength > 0) {
+        int cut = cuts[remainingLength];
+        result.add(cut);
+        remainingLength -= cut;
+    }
+
+    return result;
+}
+
+// Maximum Ribbon Cut Problem
+public int maxRibbonCut(int n, int[] cuts) {
+    int[] dp = new int[n + 1];
+    Arrays.fill(dp, -1);
+    dp[0] = 0;
+
+    for (int length = 1; length <= n; length++) {
+        for (int cut : cuts) {
+            if (cut <= length && dp[length - cut] != -1) {
+                dp[length] = Math.max(dp[length], dp[length - cut] + 1);
+            }
+        }
+    }
+
+    return dp[n];
+}
+```
+
+
+***
+
+## Pattern 3: Bounded Knapsack
+
+### 3.1 Bounded Knapsack Implementation
+
+```java
+// Bounded Knapsack - Limited quantity of each item
+public class BoundedKnapsack implements KnapsackSolver {
+
+    // Basic bounded knapsack using 3D DP
+    public int boundedKnapsack(int[] weights, int[] values, int[] quantities, int capacity) {
+        int n = weights.length;
+        int[][][] dp = new int[n + 1][capacity + 1][getMaxQuantity(quantities) + 1];
+
+        for (int i = 1; i <= n; i++) {
+            for (int w = 1; w <= capacity; w++) {
+                for (int q = 0; q <= quantities[i - 1]; q++) {
+                    // Don't take any of current item
+                    dp[i][w][q] = dp[i - 1][w][0];
+
+                    // Take some quantity of current item
+                    for (int take = 1; take <= Math.min(q, w / weights[i - 1]); take++) {
+                        if (weights[i - 1] * take <= w) {
+                            dp[i][w][q] = Math.max(dp[i][w][q],
+                                dp[i - 1][w - weights[i - 1] * take][0] + values[i - 1] * take);
+                        }
+                    }
+                }
+            }
+        }
+
+        return dp[n][capacity][0];
+    }
+
+    // Optimized bounded knapsack - convert to 0/1 knapsack
+    public int boundedKnapsackOptimized(int[] weights, int[] values, int[] quantities, int capacity) {
+        List<Integer> expandedWeights = new ArrayList<>();
+        List<Integer> expandedValues = new ArrayList<>();
+
+        // Expand each item according to its quantity using binary representation
+        for (int i = 0; i < weights.length; i++) {
+            int remaining = quantities[i];
+            int multiplier = 1;
+
+            while (remaining > 0) {
+                int take = Math.min(remaining, multiplier);
+                expandedWeights.add(weights[i] * take);
+                expandedValues.add(values[i] * take);
+
+                remaining -= take;
+                multiplier *= 2;
+            }
+        }
+
+        // Apply 0/1 knapsack on expanded items
+        ZeroOneKnapsack solver = new ZeroOneKnapsack();
+        return solver.knapsackDP(
+            expandedWeights.stream().mapToInt(Integer::intValue).toArray(),
+            expandedValues.stream().mapToInt(Integer::intValue).toArray(),
+            capacity
+        );
+    }
+
+    // Space-optimized bounded knapsack
+    public int boundedKnapsackSpaceOptimized(int[] weights, int[] values, int[] quantities, int capacity) {
+        int[] dp = new int[capacity + 1];
+
+        for (int i = 0; i < weights.length; i++) {
+            // Process current item with its quantity limit
+            for (int q = 1; q <= quantities[i]; q++) {
+                for (int w = capacity; w >= weights[i]; w--) {
+                    dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+                }
+            }
+        }
+
+        return dp[capacity];
+    }
+
+    private int getMaxQuantity(int[] quantities) {
+        return Arrays.stream(quantities).max().orElse(0);
+    }
+
+    @Override
+    public KnapsackResult solve(List<Item> items, int capacity) {
+        int[] weights = items.stream().mapToInt(item -> item.weight).toArray();
+        int[] values = items.stream().mapToInt(item -> item.value).toArray();
+        int[] quantities = items.stream().mapToInt(item -> item.quantity).toArray();
+
+        int maxValue = boundedKnapsackOptimized(weights, values, quantities, capacity);
+        return new KnapsackResult(maxValue, 0);
+    }
+
+    @Override
+    public int getMaxValue(List<Item> items, int capacity) {
+        return solve(items, capacity).maxValue;
+    }
+
+    @Override
+    public List<Item> getOptimalItems(List<Item> items, int capacity) {
+        return solve(items, capacity).selectedItems;
+    }
+}
+```
+
+
+### 3.2 Multiple Knapsack Problem
+
+```java
+// Multiple Knapsack - Multiple knapsacks with different capacities
+public class MultipleKnapsack {
+
+    public int multipleKnapsack(int[] weights, int[] values, int[] capacities) {
+        int n = weights.length;
+        int k = capacities.length;
+
+        // dp[i][mask] = maximum value using first i items with knapsack availability mask
+        int[][] dp = new int[n + 1][1 << k];
+        int[][] remainingCapacity = new int[1 << k][k];
+
+        // Initialize remaining capacities for each mask
+        for (int mask = 0; mask < (1 << k); mask++) {
+            for (int j = 0; j < k; j++) {
+                remainingCapacity[mask][j] = capacities[j];
+            }
+        }
+
+        for (int i = 1; i <= n; i++) {
+            for (int mask = 0; mask < (1 << k); mask++) {
+                // Don't take current item
+                dp[i][mask] = dp[i - 1][mask];
+
+                // Try placing current item in each available knapsack
+                for (int j = 0; j < k; j++) {
+                    if (weights[i - 1] <= remainingCapacity[mask][j]) {
+                        int newMask = updateMask(mask, j, weights[i - 1], remainingCapacity);
+                        dp[i][mask] = Math.max(dp[i][mask],
+                                              dp[i - 1][newMask] + values[i - 1]);
+                    }
+                }
+            }
+        }
+
+        return dp[n][(1 << k) - 1]; // All knapsacks used
+    }
+
+    private int updateMask(int mask, int knapsackIndex, int weight, int[][] remainingCapacity) {
+        // This is a simplified version - actual implementation would be more complex
+        return mask;
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Multi-Dimensional Knapsack
+
+### 4.1 Two-Dimensional Knapsack
+
+```java
+// Two-Dimensional Knapsack (Weight and Volume constraints)
+public class TwoDimensionalKnapsack {
+
+    public int knapsack2D(int[] weights, int[] volumes, int[] values,
+                         int weightCapacity, int volumeCapacity) {
+        int n = weights.length;
+        int[][][] dp = new int[n + 1][weightCapacity + 1][volumeCapacity + 1];
+
+        for (int i = 1; i <= n; i++) {
+            for (int w = 1; w <= weightCapacity; w++) {
+                for (int v = 1; v <= volumeCapacity; v++) {
+                    // Don't take current item
+                    dp[i][w][v] = dp[i - 1][w][v];
+
+                    // Take current item if both constraints satisfied
+                    if (weights[i - 1] <= w && volumes[i - 1] <= v) {
+                        dp[i][w][v] = Math.max(dp[i][w][v],
+                            dp[i - 1][w - weights[i - 1]][v - volumes[i - 1]] + values[i - 1]);
+                    }
+                }
+            }
+        }
+
+        return dp[n][weightCapacity][volumeCapacity];
+    }
+
+    // Space-optimized version
+    public int knapsack2DOptimized(int[] weights, int[] volumes, int[] values,
+                                  int weightCapacity, int volumeCapacity) {
+        int[][] dp = new int[weightCapacity + 1][volumeCapacity + 1];
+
+        for (int i = 0; i < weights.length; i++) {
+            // Traverse backwards to avoid using updated values
+            for (int w = weightCapacity; w >= weights[i]; w--) {
+                for (int v = volumeCapacity; v >= volumes[i]; v--) {
+                    dp[w][v] = Math.max(dp[w][v], dp[w - weights[i]][v - volumes[i]] + values[i]);
+                }
+            }
+        }
+
+        return dp[weightCapacity][volumeCapacity];
+    }
+}
+```
+
+
+### 4.2 Multi-Constraint Knapsack
+
+```java
+// General Multi-Dimensional Knapsack
+public class MultiDimensionalKnapsack {
+
+    // Multi-dimensional item
+    static class MultiItem {
+        int value;
+        int[] constraints; // Multiple constraint values (weight, volume, cost, etc.)
+
+        MultiItem(int value, int[] constraints) {
+            this.value = value;
+            this.constraints = constraints.clone();
+        }
+    }
+
+    public int multiDimensionalKnapsack(List<MultiItem> items, int[] capacities) {
+        int n = items.size();
+        int dimensions = capacities.length;
+
+        // Use map to store DP states (too many dimensions for array)
+        Map<String, Integer> dp = new HashMap<>();
+
+        return solve(items, 0, capacities, dp);
+    }
+
+    private int solve(List<MultiItem> items, int index, int[] remainingCapacities,
+                     Map<String, Integer> dp) {
+        if (index >= items.size()) return 0;
+
+        String key = index + ":" + Arrays.toString(remainingCapacities);
+        if (dp.containsKey(key)) return dp.get(key);
+
+        // Don't take current item
+        int maxValue = solve(items, index + 1, remainingCapacities, dp);
+
+        // Take current item if all constraints satisfied
+        MultiItem item = items.get(index);
+        boolean canTake = true;
+
+        for (int i = 0; i < remainingCapacities.length; i++) {
+            if (item.constraints[i] > remainingCapacities[i]) {
+                canTake = false;
+                break;
+            }
+        }
+
+        if (canTake) {
+            int[] newCapacities = new int[remainingCapacities.length];
+            for (int i = 0; i < remainingCapacities.length; i++) {
+                newCapacities[i] = remainingCapacities[i] - item.constraints[i];
+            }
+
+            maxValue = Math.max(maxValue,
+                item.value + solve(items, index + 1, newCapacities, dp));
+        }
+
+        dp.put(key, maxValue);
+        return maxValue;
+    }
+}
+```
+
+
+***
+
+## Pattern 5: Subset Sum Problems
+
+### 5.1 Basic Subset Sum
+
+```java
+// Subset Sum Problem - Check if subset with given sum exists
+public class SubsetSum {
+
+    public boolean canPartition(int[] nums, int targetSum) {
+        boolean[] dp = new boolean[targetSum + 1];
+        dp[0] = true; // Empty subset has sum 0
+
+        for (int num : nums) {
+            // Traverse backwards to avoid using updated values
+            for (int sum = targetSum; sum >= num; sum--) {
+                dp[sum] = dp[sum] || dp[sum - num];
+            }
+        }
+
+        return dp[targetSum];
+    }
+
+    // Count number of subsets with given sum
+    public int countSubsets(int[] nums, int targetSum) {
+        int[] dp = new int[targetSum + 1];
+        dp[0] = 1; // One way to make sum 0 (empty subset)
+
+        for (int num : nums) {
+            for (int sum = targetSum; sum >= num; sum--) {
+                dp[sum] += dp[sum - num];
+            }
+        }
+
+        return dp[targetSum];
+    }
+
+    // Find one subset with target sum
+    public List<Integer> findSubset(int[] nums, int targetSum) {
+        boolean[][] dp = new boolean[nums.length + 1][targetSum + 1];
+
+        // Base case
+        for (int i = 0; i <= nums.length; i++) {
+            dp[i][0] = true;
+        }
+
+        // Fill DP table
+        for (int i = 1; i <= nums.length; i++) {
+            for (int sum = 1; sum <= targetSum; sum++) {
+                dp[i][sum] = dp[i - 1][sum]; // Don't include current number
+
+                if (nums[i - 1] <= sum) {
+                    dp[i][sum] = dp[i][sum] || dp[i - 1][sum - nums[i - 1]];
+                }
+            }
+        }
+
+        if (!dp[nums.length][targetSum]) {
+            return new ArrayList<>(); // No subset found
+        }
+
+        // Backtrack to find one subset
+        List<Integer> subset = new ArrayList<>();
+        int i = nums.length, sum = targetSum;
+
+        while (i > 0 && sum > 0) {
+            // If value came from including current element
+            if (dp[i][sum] && !dp[i - 1][sum]) {
+                subset.add(nums[i - 1]);
+                sum -= nums[i - 1];
+            }
+            i--;
+        }
+
+        return subset;
+    }
+
+    // Find all subsets with target sum
+    public List<List<Integer>> findAllSubsets(int[] nums, int targetSum) {
+        List<List<Integer>> result = new ArrayList<>();
+        List<Integer> currentSubset = new ArrayList<>();
+        findAllSubsetsHelper(nums, 0, targetSum, currentSubset, result);
+        return result;
+    }
+
+    private void findAllSubsetsHelper(int[] nums, int index, int remainingSum,
+                                     List<Integer> currentSubset, List<List<Integer>> result) {
+        if (remainingSum == 0) {
+            result.add(new ArrayList<>(currentSubset));
+            return;
+        }
+
+        if (index >= nums.length || remainingSum < 0) {
+            return;
+        }
+
+        // Include current number
+        currentSubset.add(nums[index]);
+        findAllSubsetsHelper(nums, index + 1, remainingSum - nums[index], currentSubset, result);
+        currentSubset.remove(currentSubset.size() - 1);
+
+        // Exclude current number
+        findAllSubsetsHelper(nums, index + 1, remainingSum, currentSubset, result);
+    }
+}
+```
+
+
+### 5.2 Subset Sum Variations
+
+```java
+// Minimum Subset Sum Difference
+public int minimumSubsetSumDifference(int[] nums) {
+    int totalSum = Arrays.stream(nums).sum();
+    boolean[] dp = new boolean[totalSum / 2 + 1];
+    dp[0] = true;
+
+    for (int num : nums) {
+        for (int sum = totalSum / 2; sum >= num; sum--) {
+            dp[sum] = dp[sum] || dp[sum - num];
+        }
+    }
+
+    // Find the largest sum <= totalSum/2 that can be achieved
+    int sum1 = 0;
+    for (int i = totalSum / 2; i >= 0; i--) {
+        if (dp[i]) {
+            sum1 = i;
+            break;
+        }
+    }
+
+    int sum2 = totalSum - sum1;
+    return Math.abs(sum2 - sum1);
+}
+
+// Count Subsets with Given Difference
+public int countSubsetsWithDifference(int[] nums, int diff) {
+    int totalSum = Arrays.stream(nums).sum();
+
+    // If (totalSum + diff) is odd or diff > totalSum, no solution
+    if ((totalSum + diff) % 2 != 0 || diff > totalSum) {
+        return 0;
+    }
+
+    int target = (totalSum + diff) / 2;
+    return countSubsets(nums, target);
+}
+
+// Perfect Sum Problem (with zeros)
+public int perfectSum(int[] nums, int targetSum) {
+    int MOD = 1000000007;
+    int[] dp = new int[targetSum + 1];
+    dp[0] = 1;
+
+    for (int num : nums) {
+        for (int sum = targetSum; sum >= num; sum--) {
+            dp[sum] = (dp[sum] + dp[sum - num]) % MOD;
+        }
+    }
+
+    return dp[targetSum];
+}
+```
+
+
+***
+
+## Pattern 6: Partition Problems
+
+### 6.1 Equal Partition Problems
+
+```java
+// Partition Equal Subset Sum
+public boolean canPartition(int[] nums) {
+    int totalSum = Arrays.stream(nums).sum();
+
+    // If total sum is odd, can't partition into equal subsets
+    if (totalSum % 2 != 0) return false;
+
+    int target = totalSum / 2;
+    boolean[] dp = new boolean[target + 1];
+    dp[0] = true;
+
+    for (int num : nums) {
+        for (int sum = target; sum >= num; sum--) {
+            dp[sum] = dp[sum] || dp[sum - num];
+        }
+    }
+
+    return dp[target];
+}
+
+// Partition to K Equal Sum Subsets
+public boolean canPartitionKSubsets(int[] nums, int k) {
+    int totalSum = Arrays.stream(nums).sum();
+
+    if (totalSum % k != 0) return false;
+
+    Arrays.sort(nums);
+    int target = totalSum / k;
+
+    // If largest number > target, impossible
+    if (nums[nums.length - 1] > target) return false;
+
+    boolean[] used = new boolean[nums.length];
+    return backtrack(nums, used, 0, k, 0, target);
+}
+
+private boolean backtrack(int[] nums, boolean[] used, int start, int k,
+                         int currentSum, int target) {
+    if (k == 1) return true; // Last subset automatically valid
+
+    if (currentSum == target) {
+        // Found one subset, look for next
+        return backtrack(nums, used, 0, k - 1, 0, target);
+    }
+
+    for (int i = start; i < nums.length; i++) {
+        if (!used[i] && currentSum + nums[i] <= target) {
+            used[i] = true;
+            if (backtrack(nums, used, i + 1, k, currentSum + nums[i], target)) {
+                return true;
+            }
+            used[i] = false;
+        }
+    }
+
+    return false;
+}
+
+// Partition Array into Two Arrays to Minimize Sum Difference
+public int minimumDifference(int[] nums) {
+    int n = nums.length / 2;
+    int totalSum = Arrays.stream(nums).sum();
+
+    // Generate all possible sums for left and right halves
+    Set<Integer>[] leftSums = new Set[n + 1];
+    Set<Integer>[] rightSums = new Set[n + 1];
+
+    for (int i = 0; i <= n; i++) {
+        leftSums[i] = new HashSet<>();
+        rightSums[i] = new HashSet<>();
+    }
+
+    // Generate sums for left half
+    generateSums(Arrays.copyOfRange(nums, 0, n), 0, 0, 0, leftSums);
+
+    // Generate sums for right half
+    generateSums(Arrays.copyOfRange(nums, n, 2 * n), 0, 0, 0, rightSums);
+
+    int minDiff = Integer.MAX_VALUE;
+
+    // Try all combinations
+    for (int i = 0; i <= n; i++) {
+        for (int leftSum : leftSums[i]) {
+            for (int rightSum : rightSums[n - i]) {
+                int sum1 = leftSum + rightSum;
+                int sum2 = totalSum - sum1;
+                minDiff = Math.min(minDiff, Math.abs(sum1 - sum2));
+            }
+        }
+    }
+
+    return minDiff;
+}
+
+private void generateSums(int[] nums, int index, int count, int sum, Set<Integer>[] sums) {
+    if (index == nums.length) {
+        sums[count].add(sum);
+        return;
+    }
+
+    // Include current number
+    generateSums(nums, index + 1, count + 1, sum + nums[index], sums);
+
+    // Exclude current number
+    generateSums(nums, index + 1, count, sum, sums);
+}
+```
+
+
+***
+
+## Pattern 7: Target Sum Problems
+
+### 7.1 Target Sum with +/- Operations
+
+```java
+// Target Sum (Assign + or - to each number)
+public int findTargetSumWays(int[] nums, int target) {
+    int totalSum = Arrays.stream(nums).sum();
+
+    // Check if target is achievable
+    if (target > totalSum || target < -totalSum || (totalSum + target) % 2 != 0) {
+        return 0;
+    }
+
+    // Convert to subset sum problem
+    // If P is positive subset and N is negative subset:
+    // P - N = target
+    // P + N = totalSum
+    // Therefore: P = (totalSum + target) / 2
+
+    int positiveSum = (totalSum + target) / 2;
+    return countSubsets(nums, positiveSum);
+}
+
+private int countSubsets(int[] nums, int targetSum) {
+    int[] dp = new int[targetSum + 1];
+    dp[0] = 1; // One way to make sum 0
+
+    for (int num : nums) {
+        for (int sum = targetSum; sum >= num; sum--) {
+            dp[sum] += dp[sum - num];
+        }
+    }
+
+    return dp[targetSum];
+}
+
+// Target Sum with specific operations allowed
+public int targetSumWithOperations(int[] nums, int target, boolean canAdd,
+                                  boolean canSubtract, boolean canMultiply) {
+    Map<String, Integer> memo = new HashMap<>();
+    return targetSumHelper(nums, 0, target, memo, canAdd, canSubtract, canMultiply);
+}
+
+private int targetSumHelper(int[] nums, int index, int target, Map<String, Integer> memo,
+                           boolean canAdd, boolean canSubtract, boolean canMultiply) {
+    if (index == nums.length) {
+        return target == 0 ? 1 : 0;
+    }
+
+    String key = index + "," + target;
+    if (memo.containsKey(key)) {
+        return memo.get(key);
+    }
+
+    int ways = 0;
+
+    if (canAdd) {
+        ways += targetSumHelper(nums, index + 1, target - nums[index], memo,
+                               canAdd, canSubtract, canMultiply);
+    }
+
+    if (canSubtract) {
+        ways += targetSumHelper(nums, index + 1, target + nums[index], memo,
+                               canAdd, canSubtract, canMultiply);
+    }
+
+    if (canMultiply && target % nums[index] == 0) {
+        ways += targetSumHelper(nums, index + 1, target / nums[index], memo,
+                               canAdd, canSubtract, canMultiply);
+    }
+
+    memo.put(key, ways);
+    return ways;
+}
+```
+
+
+***
+
+## Pattern 8: Coin Change Problems
+
+### 8.1 Classic Coin Change
+
+```java
+// Coin Change - Minimum coins needed
+public int coinChange(int[] coins, int amount) {
+    int[] dp = new int[amount + 1];
+    Arrays.fill(dp, amount + 1); // Initialize with impossible value
+    dp[0] = 0; // 0 coins needed for amount 0
+
+    for (int i = 1; i <= amount; i++) {
+        for (int coin : coins) {
+            if (coin <= i) {
+                dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+            }
+        }
+    }
+
+    return dp[amount] > amount ? -1 : dp[amount];
+}
+
+// Coin Change II - Number of ways to make amount
+public int change(int amount, int[] coins) {
+    int[] dp = new int[amount + 1];
+    dp[0] = 1; // One way to make amount 0
+
+    // Process coins one by one to avoid duplicates
+    for (int coin : coins) {
+        for (int i = coin; i <= amount; i++) {
+            dp[i] += dp[i - coin];
+        }
+    }
+
+    return dp[amount];
+}
+
+// Coin Change with coin usage tracking
+public List<Integer> coinChangeWithCoins(int[] coins, int amount) {
+    int[] dp = new int[amount + 1];
+    int[] coinUsed = new int[amount + 1]; // Track which coin was used
+
+    Arrays.fill(dp, amount + 1);
+    dp[0] = 0;
+
+    for (int i = 1; i <= amount; i++) {
+        for (int coin : coins) {
+            if (coin <= i && dp[i - coin] + 1 < dp[i]) {
+                dp[i] = dp[i - coin] + 1;
+                coinUsed[i] = coin;
+            }
+        }
+    }
+
+    if (dp[amount] > amount) {
+        return new ArrayList<>(); // No solution
+    }
+
+    // Reconstruct solution
+    List<Integer> result = new ArrayList<>();
+    int currentAmount = amount;
+
+    while (currentAmount > 0) {
+        int coin = coinUsed[currentAmount];
+        result.add(coin);
+        currentAmount -= coin;
+    }
+
+    return result;
+}
+```
+
+
+### 8.2 Advanced Coin Problems
+
+```java
+// Perfect Squares (Special case of coin change)
+public int numSquares(int n) {
+    int[] dp = new int[n + 1];
+    Arrays.fill(dp, Integer.MAX_VALUE);
+    dp[0] = 0;
+
+    // Generate perfect squares up to n
+    List<Integer> squares = new ArrayList<>();
+    for (int i = 1; i * i <= n; i++) {
+        squares.add(i * i);
+    }
+
+    for (int i = 1; i <= n; i++) {
+        for (int square : squares) {
+            if (square <= i) {
+                dp[i] = Math.min(dp[i], dp[i - square] + 1);
+            }
+        }
+    }
+
+    return dp[n];
+}
+
+// Coin Change with limited coins
+public int coinChangeWithLimit(int[] coins, int[] limits, int amount) {
+    int[] dp = new int[amount + 1];
+    Arrays.fill(dp, amount + 1);
+    dp[0] = 0;
+
+    for (int i = 0; i < coins.length; i++) {
+        int coin = coins[i];
+        int limit = limits[i];
+
+        // Use multiple knapsack approach for each coin type
+        for (int count = 1; count <= limit; count++) {
+            for (int j = amount; j >= coin; j--) {
+                dp[j] = Math.min(dp[j], dp[j - coin] + 1);
+            }
+        }
+    }
+
+    return dp[amount] > amount ? -1 : dp[amount];
+}
+```
+
+
+***
+
+## Pattern 9: Maximum/Minimum Knapsack
+
+### 9.1 Minimum Weight Knapsack
+
+```java
+// Minimum weight to achieve target value
+public int minWeightKnapsack(int[] weights, int[] values, int targetValue) {
+    int[] dp = new int[targetValue + 1];
+    Arrays.fill(dp, Integer.MAX_VALUE);
+    dp[0] = 0; // 0 weight needed for 0 value
+
+    for (int i = 0; i < weights.length; i++) {
+        for (int v = targetValue; v >= values[i]; v--) {
+            if (dp[v - values[i]] != Integer.MAX_VALUE) {
+                dp[v] = Math.min(dp[v], dp[v - values[i]] + weights[i]);
+            }
+        }
+    }
+
+    return dp[targetValue] == Integer.MAX_VALUE ? -1 : dp[targetValue];
+}
+
+// Maximum value with weight constraint
+public int maxValueWithMinWeight(int[] weights, int[] values, int maxWeight) {
+    int[] dp = new int[maxWeight + 1];
+
+    for (int i = 0; i < weights.length; i++) {
+        for (int w = maxWeight; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+        }
+    }
+
+    return dp[maxWeight];
+}
+```
+
+
+***
+
+## Pattern 10: Fractional Knapsack
+
+### 10.1 Fractional Knapsack (Greedy)
+
+```java
+// Fractional Knapsack - Items can be broken
+public class FractionalKnapsack {
+
+    static class FractionalItem {
+        int weight;
+        int value;
+        double ratio;
+
+        FractionalItem(int weight, int value) {
+            this.weight = weight;
+            this.value = value;
+            this.ratio = (double) value / weight;
+        }
+    }
+
+    public double fractionalKnapsack(int[] weights, int[] values, int capacity) {
+        List<FractionalItem> items = new ArrayList<>();
+
+        for (int i = 0; i < weights.length; i++) {
+            items.add(new FractionalItem(weights[i], values[i]));
+        }
+
+        // Sort by value-to-weight ratio in descending order
+        items.sort((a, b) -> Double.compare(b.ratio, a.ratio));
+
+        double totalValue = 0;
+        int remainingCapacity = capacity;
+
+        for (FractionalItem item : items) {
+            if (remainingCapacity >= item.weight) {
+                // Take the whole item
+                totalValue += item.value;
+                remainingCapacity -= item.weight;
+            } else {
+                // Take fraction of the item
+                double fraction = (double) remainingCapacity / item.weight;
+                totalValue += item.value * fraction;
+                break; // Knapsack is full
+            }
+        }
+
+        return totalValue;
+    }
+
+    // Get items with fractions
+    public List<String> fractionalKnapsackWithItems(int[] weights, int[] values, int capacity) {
+        List<FractionalItem> items = new ArrayList<>();
+
+        for (int i = 0; i < weights.length; i++) {
+            items.add(new FractionalItem(weights[i], values[i]));
+        }
+
+        items.sort((a, b) -> Double.compare(b.ratio, a.ratio));
+
+        List<String> result = new ArrayList<>();
+        int remainingCapacity = capacity;
+
+        for (int i = 0; i < items.size(); i++) {
+            FractionalItem item = items.get(i);
+
+            if (remainingCapacity >= item.weight) {
+                result.add(String.format("Item %d: Full (weight=%d, value=%d)",
+                                       i, item.weight, item.value));
+                remainingCapacity -= item.weight;
+            } else if (remainingCapacity > 0) {
+                double fraction = (double) remainingCapacity / item.weight;
+                result.add(String.format("Item %d: %.2f%% (weight=%d, value=%.2f)",
+                                       i, fraction * 100, remainingCapacity,
+                                       item.value * fraction));
+                break;
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Advanced Knapsack Variations
+
+### 11.1 Knapsack with Dependencies
+
+```java
+// Knapsack with item dependencies
+public class DependentKnapsack {
+
+    static class DependentItem {
+        int weight;
+        int value;
+        List<Integer> dependencies; // Items that must be taken before this one
+
+        DependentItem(int weight, int value) {
+            this.weight = weight;
+            this.value = value;
+            this.dependencies = new ArrayList<>();
+        }
+
+        void addDependency(int itemIndex) {
+            dependencies.add(itemIndex);
+        }
+    }
+
+    public int knapsackWithDependencies(List<DependentItem> items, int capacity) {
+        int n = items.size();
+        // dp[mask] = maximum value achievable with items in mask
+        int[] dp = new int[1 << n];
+
+        for (int mask = 0; mask < (1 << n); mask++) {
+            int weight = 0, value = 0;
+            boolean valid = true;
+
+            // Calculate weight and value for current mask
+            for (int i = 0; i < n; i++) {
+                if ((mask & (1 << i)) != 0) {
+                    DependentItem item = items.get(i);
+                    weight += item.weight;
+                    value += item.value;
+
+                    // Check if all dependencies are satisfied
+                    for (int dep : item.dependencies) {
+                        if ((mask & (1 << dep)) == 0) {
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if (!valid) break;
+                }
+            }
+
+            if (valid && weight <= capacity) {
+                dp[mask] = value;
+            }
+        }
+
+        return Arrays.stream(dp).max().orElse(0);
+    }
+}
+```
+
+
+### 11.2 Stochastic Knapsack
+
+```java
+// Knapsack with probabilistic weights/values
+public class StochasticKnapsack {
+
+    static class ProbabilisticItem {
+        int baseWeight;
+        int baseValue;
+        double successProbability;
+
+        ProbabilisticItem(int baseWeight, int baseValue, double successProbability) {
+            this.baseWeight = baseWeight;
+            this.baseValue = baseValue;
+            this.successProbability = successProbability;
+        }
+
+        double getExpectedValue() {
+            return baseValue * successProbability;
+        }
+
+        double getExpectedWeight() {
+            return baseWeight * successProbability;
+        }
+    }
+
+    // Simplified approach using expected values
+    public double expectedValueKnapsack(List<ProbabilisticItem> items, int capacity) {
+        // Convert to fractional knapsack using expected values
+        items.sort((a, b) -> Double.compare(
+            b.getExpectedValue() / b.getExpectedWeight(),
+            a.getExpectedValue() / a.getExpectedWeight()
+        ));
+
+        double totalExpectedValue = 0;
+        double remainingCapacity = capacity;
+
+        for (ProbabilisticItem item : items) {
+            double expectedWeight = item.getExpectedWeight();
+
+            if (remainingCapacity >= expectedWeight) {
+                totalExpectedValue += item.getExpectedValue();
+                remainingCapacity -= expectedWeight;
+            } else {
+                double fraction = remainingCapacity / expectedWeight;
+                totalExpectedValue += item.getExpectedValue() * fraction;
+                break;
+            }
+        }
+
+        return totalExpectedValue;
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Real-World Knapsack Applications
+
+### 12.1 Resource Allocation
+
+```java
+// Project Selection Problem
+public class ProjectSelection {
+
+    static class Project {
+        String name;
+        int cost;
+        int profit;
+        int duration;
+
+        Project(String name, int cost, int profit, int duration) {
+            this.name = name;
+            this.cost = cost;
+            this.profit = profit;
+            this.duration = duration;
+        }
+    }
+
+    public List<Project> selectProjects(List<Project> projects, int budget, int timeLimit) {
+        // Two-dimensional knapsack: cost and time constraints
+        int[][][] dp = new int[projects.size() + 1][budget + 1][timeLimit + 1];
+
+        for (int i = 1; i <= projects.size(); i++) {
+            Project project = projects.get(i - 1);
+
+            for (int b = 0; b <= budget; b++) {
+                for (int t = 0; t <= timeLimit; t++) {
+                    // Don't select current project
+                    dp[i][b][t] = dp[i - 1][b][t];
+
+                    // Select current project if constraints satisfied
+                    if (project.cost <= b && project.duration <= t) {
+                        dp[i][b][t] = Math.max(dp[i][b][t],
+                            dp[i - 1][b - project.cost][t - project.duration] + project.profit);
+                    }
+                }
+            }
+        }
+
+        // Backtrack to find selected projects
+        List<Project> selectedProjects = new ArrayList<>();
+        int i = projects.size(), b = budget, t = timeLimit;
+
+        while (i > 0 && dp[i][b][t] > 0) {
+            if (dp[i][b][t] != dp[i - 1][b][t]) {
+                Project project = projects.get(i - 1);
+                selectedProjects.add(project);
+                b -= project.cost;
+                t -= project.duration;
+            }
+            i--;
+        }
+
+        Collections.reverse(selectedProjects);
+        return selectedProjects;
+    }
+}
+```
+
+
+### 12.2 Investment Portfolio
+
+```java
+// Investment Portfolio Optimization
+public class PortfolioOptimization {
+
+    static class Investment {
+        String name;
+        double cost;
+        double expectedReturn;
+        double risk; // Standard deviation
+
+        Investment(String name, double cost, double expectedReturn, double risk) {
+            this.name = name;
+            this.cost = cost;
+            this.expectedReturn = expectedReturn;
+            this.risk = risk;
+        }
+
+        double getSharpeRatio() {
+            return expectedReturn / risk; // Simplified Sharpe ratio
+        }
+    }
+
+    public List<Investment> optimizePortfolio(List<Investment> investments,
+                                            double budget, double maxRisk) {
+        // Use greedy approach based on Sharpe ratio for simplicity
+        List<Investment> sortedInvestments = new ArrayList<>(investments);
+        sortedInvestments.sort((a, b) -> Double.compare(b.getSharpeRatio(), a.getSharpeRatio()));
+
+        List<Investment> portfolio = new ArrayList<>();
+        double remainingBudget = budget;
+        double currentRisk = 0;
+
+        for (Investment investment : sortedInvestments) {
+            if (investment.cost <= remainingBudget &&
+                currentRisk + investment.risk <= maxRisk) {
+                portfolio.add(investment);
+                remainingBudget -= investment.cost;
+                currentRisk += investment.risk;
+            }
+        }
+
+        return portfolio;
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Knapsack Type | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| 0/1 Knapsack | O(nW) | O(nW) to O(W) | Each item used at most once |
+| Unbounded | O(nW) | O(W) | Unlimited quantity of each item |
+| Bounded | O(nWΣk) | O(nW) | Limited quantity k of each item |
+| Multi-dimensional | O(nW₁W₂...Wₖ) | O(W₁W₂...Wₖ) | Multiple constraints |
+| Subset Sum | O(nS) | O(S) | Boolean satisfiability |
+| Coin Change | O(nA) | O(A) | A = amount, special case of unbounded |
+| Fractional | O(n log n) | O(1) | Greedy approach with sorting |
+
+*Where n = number of items, W = capacity, S = target sum, A = amount*
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Knapsack Algorithm Guidelines
+
+```java
+// 1. Choose appropriate knapsack type
+public KnapsackSolver selectSolver(ProblemType type) {
+    switch (type) {
+        case EACH_ITEM_ONCE: return new ZeroOneKnapsack();
+        case UNLIMITED_ITEMS: return new UnboundedKnapsack();
+        case LIMITED_QUANTITY: return new BoundedKnapsack();
+        case FRACTIONAL_ALLOWED: return new FractionalKnapsack();
+        default: throw new IllegalArgumentException("Unknown type");
+    }
+}
+
+// 2. Space optimization techniques
+public int optimizeSpace(int[] weights, int[] values, int capacity) {
+    // Use 1D array instead of 2D when possible
+    int[] dp = new int[capacity + 1];
+
+    for (int i = 0; i < weights.length; i++) {
+        // For 0/1: traverse backwards
+        for (int w = capacity; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+        }
+    }
+
+    return dp[capacity];
+}
+
+// 3. Early termination optimization
+public boolean canAchieveValue(int[] weights, int[] values, int capacity, int targetValue) {
+    int maxPossibleValue = Arrays.stream(values).sum();
+    if (targetValue > maxPossibleValue) return false;
+
+    // Use knapsack DP with early termination
+    int[] dp = new int[capacity + 1];
+
+    for (int i = 0; i < weights.length; i++) {
+        for (int w = capacity; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+            if (dp[w] >= targetValue) return true; // Early termination
+        }
+    }
+
+    return false;
+}
+
+// 4. Handle large numbers with approximation
+public int approximateKnapsack(int[] weights, int[] values, int capacity, double epsilon) {
+    // Scale down values for FPTAS (Fully Polynomial-Time Approximation Scheme)
+    int maxValue = Arrays.stream(values).max().orElse(1);
+    double scaleFactor = epsilon * maxValue / values.length;
+
+    int[] scaledValues = new int[values.length];
+    for (int i = 0; i < values.length; i++) {
+        scaledValues[i] = (int) (values[i] / scaleFactor);
+    }
+
+    // Solve with scaled values
+    ZeroOneKnapsack solver = new ZeroOneKnapsack();
+    return solver.knapsackDP(weights, scaledValues, capacity);
+}
+
+enum ProblemType {
+    EACH_ITEM_ONCE, UNLIMITED_ITEMS, LIMITED_QUANTITY, FRACTIONAL_ALLOWED
+}
+```
+
+
+### Common Pitfalls to Avoid
+
+1. **Integer Overflow**: Use `long` for large sums
+2. **Negative Weights/Values**: Handle edge cases appropriately
+3. **Empty Input**: Check for null/empty arrays
+4. **Memory Limits**: Use space optimization for large inputs
+5. **Wrong Loop Direction**: Backwards for 0/1, forwards for unbounded
+
+### Interview Tips
+
+- **Identify the knapsack variant** early: 0/1, unbounded, bounded, or fractional
+- **Start with recursive solution** then optimize with DP
+- **Consider space optimization** for large capacity values
+- **Practice backtracking** to find actual items selected
+- **Understand real-world applications** for better problem comprehension

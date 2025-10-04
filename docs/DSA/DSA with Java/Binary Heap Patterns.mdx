@@ -1,0 +1,1729 @@
+# Binary Heap
+
+## Table of Contents
+
+1. [Heap Fundamentals](#heap-fundamentals)
+2. [Pattern 1: Top K Elements](#pattern-1-top-k-elements)
+3. [Pattern 2: K-Way Merge](#pattern-2-k-way-merge)
+4. [Pattern 3: Two Heaps (Median)](#pattern-3-two-heaps-median)
+5. [Pattern 4: Priority Queue Scheduling](#pattern-4-priority-queue-scheduling)
+6. [Pattern 5: Heap Sort \& Variations](#pattern-5-heap-sort--variations)
+7. [Pattern 6: Stream Processing](#pattern-6-stream-processing)
+8. [Pattern 7: Frequency Based Problems](#pattern-7-frequency-based-problems)
+9. [Pattern 8: Distance \& Proximity](#pattern-8-distance--proximity)
+10. [Pattern 9: Custom Comparator Patterns](#pattern-9-custom-comparator-patterns)
+11. [Pattern 10: Range \& Window Problems](#pattern-10-range--window-problems)
+12. [Pattern 11: Graph Algorithms with Heaps](#pattern-11-graph-algorithms-with-heaps)
+13. [Pattern 12: Advanced Heap Patterns](#pattern-12-advanced-heap-patterns)
+
+***
+
+## Heap Fundamentals
+
+### Basic Heap Implementation
+
+```java
+class MinHeap {
+    private List<Integer> heap;
+
+    public MinHeap() {
+        heap = new ArrayList<>();
+    }
+
+    private int parent(int i) { return (i - 1) / 2; }
+    private int leftChild(int i) { return 2 * i + 1; }
+    private int rightChild(int i) { return 2 * i + 2; }
+
+    private void swap(int i, int j) {
+        int temp = heap.get(i);
+        heap.set(i, heap.get(j));
+        heap.set(j, temp);
+    }
+
+    public void insert(int val) {
+        heap.add(val);
+        int current = heap.size() - 1;
+
+        // Bubble up
+        while (current > 0 && heap.get(current) < heap.get(parent(current))) {
+            swap(current, parent(current));
+            current = parent(current);
+        }
+    }
+
+    public int extractMin() {
+        if (heap.isEmpty()) throw new RuntimeException("Heap is empty");
+
+        int min = heap.get(0);
+        int lastElement = heap.remove(heap.size() - 1);
+
+        if (!heap.isEmpty()) {
+            heap.set(0, lastElement);
+            heapifyDown(0);
+        }
+
+        return min;
+    }
+
+    private void heapifyDown(int index) {
+        while (true) {
+            int left = leftChild(index);
+            int right = rightChild(index);
+            int smallest = index;
+
+            if (left < heap.size() && heap.get(left) < heap.get(smallest)) {
+                smallest = left;
+            }
+
+            if (right < heap.size() && heap.get(right) < heap.get(smallest)) {
+                smallest = right;
+            }
+
+            if (smallest == index) break;
+
+            swap(index, smallest);
+            index = smallest;
+        }
+    }
+
+    public int peek() {
+        if (heap.isEmpty()) throw new RuntimeException("Heap is empty");
+        return heap.get(0);
+    }
+
+    public boolean isEmpty() { return heap.isEmpty(); }
+    public int size() { return heap.size(); }
+}
+```
+
+
+### Java PriorityQueue Usage
+
+```java
+// Min heap (default)
+PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+
+// Max heap
+PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+// Custom comparator
+PriorityQueue<int[]> customHeap = new PriorityQueue<>((a, b) -> a[0] - b[0]);
+
+// Common operations
+minHeap.offer(5);           // Insert
+int min = minHeap.poll();   // Extract min
+int peek = minHeap.peek();  // View min without removing
+boolean empty = minHeap.isEmpty();
+int size = minHeap.size();
+```
+
+
+***
+
+## Pattern 1: Top K Elements
+
+### 1.1 Kth Largest Element in Array
+
+```java
+int findKthLargest(int[] nums, int k) {
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+
+    for (int num : nums) {
+        minHeap.offer(num);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+    }
+
+    return minHeap.peek();
+}
+
+// Alternative using max heap
+int findKthLargestMaxHeap(int[] nums, int k) {
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+    for (int num : nums) {
+        maxHeap.offer(num);
+    }
+
+    for (int i = 0; i < k - 1; i++) {
+        maxHeap.poll();
+    }
+
+    return maxHeap.peek();
+}
+```
+
+
+### 1.2 Top K Frequent Elements
+
+```java
+int[] topKFrequent(int[] nums, int k) {
+    Map<Integer, Integer> frequencyMap = new HashMap<>();
+    for (int num : nums) {
+        frequencyMap.put(num, frequencyMap.getOrDefault(num, 0) + 1);
+    }
+
+    // Min heap based on frequency
+    PriorityQueue<Map.Entry<Integer, Integer>> minHeap =
+        new PriorityQueue<>((a, b) -> a.getValue() - b.getValue());
+
+    for (Map.Entry<Integer, Integer> entry : frequencyMap.entrySet()) {
+        minHeap.offer(entry);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+    }
+
+    int[] result = new int[k];
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = minHeap.poll().getKey();
+    }
+
+    return result;
+}
+
+// Using bucket sort approach
+int[] topKFrequentBucket(int[] nums, int k) {
+    Map<Integer, Integer> frequencyMap = new HashMap<>();
+    for (int num : nums) {
+        frequencyMap.put(num, frequencyMap.getOrDefault(num, 0) + 1);
+    }
+
+    List<Integer>[] buckets = new List[nums.length + 1];
+    for (int i = 0; i <= nums.length; i++) {
+        buckets[i] = new ArrayList<>();
+    }
+
+    for (Map.Entry<Integer, Integer> entry : frequencyMap.entrySet()) {
+        buckets[entry.getValue()].add(entry.getKey());
+    }
+
+    List<Integer> result = new ArrayList<>();
+    for (int i = buckets.length - 1; i >= 0 && result.size() < k; i--) {
+        result.addAll(buckets[i]);
+    }
+
+    return result.stream().mapToInt(i -> i).toArray();
+}
+```
+
+
+### 1.3 K Largest Elements in Stream
+
+```java
+class KthLargest {
+    private PriorityQueue<Integer> minHeap;
+    private int k;
+
+    public KthLargest(int k, int[] nums) {
+        this.k = k;
+        this.minHeap = new PriorityQueue<>();
+
+        for (int num : nums) {
+            add(num);
+        }
+    }
+
+    public int add(int val) {
+        minHeap.offer(val);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+        return minHeap.peek();
+    }
+}
+```
+
+
+### 1.4 K Smallest Elements
+
+```java
+int[] kSmallest(int[] nums, int k) {
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+    for (int num : nums) {
+        maxHeap.offer(num);
+        if (maxHeap.size() > k) {
+            maxHeap.poll();
+        }
+    }
+
+    int[] result = new int[k];
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = maxHeap.poll();
+    }
+
+    return result;
+}
+```
+
+
+### 1.5 Find K Pairs with Smallest Sums
+
+```java
+List<List<Integer>> kSmallestPairs(int[] nums1, int[] nums2, int k) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (nums1.length == 0 || nums2.length == 0 || k == 0) return result;
+
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) ->
+        (nums1[a[0]] + nums2[a[1]]) - (nums1[b[0]] + nums2[b[1]]));
+
+    // Initialize heap with first row
+    for (int j = 0; j < Math.min(nums2.length, k); j++) {
+        minHeap.offer(new int[]{0, j});
+    }
+
+    while (k > 0 && !minHeap.isEmpty()) {
+        int[] indices = minHeap.poll();
+        int i = indices[0], j = indices[1];
+
+        result.add(Arrays.asList(nums1[i], nums2[j]));
+        k--;
+
+        if (i + 1 < nums1.length) {
+            minHeap.offer(new int[]{i + 1, j});
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 2: K-Way Merge
+
+### 2.1 Merge K Sorted Lists
+
+```java
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode() {}
+    ListNode(int val) { this.val = val; }
+    ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+
+ListNode mergeKLists(ListNode[] lists) {
+    if (lists == null || lists.length == 0) return null;
+
+    PriorityQueue<ListNode> minHeap = new PriorityQueue<>((a, b) -> a.val - b.val);
+
+    // Add first node of each list
+    for (ListNode list : lists) {
+        if (list != null) {
+            minHeap.offer(list);
+        }
+    }
+
+    ListNode dummy = new ListNode(0);
+    ListNode current = dummy;
+
+    while (!minHeap.isEmpty()) {
+        ListNode node = minHeap.poll();
+        current.next = node;
+        current = current.next;
+
+        if (node.next != null) {
+            minHeap.offer(node.next);
+        }
+    }
+
+    return dummy.next;
+}
+```
+
+
+### 2.2 Merge K Sorted Arrays
+
+```java
+int[] mergeKSortedArrays(int[][] arrays) {
+    PriorityQueue<ArrayElement> minHeap = new PriorityQueue<>((a, b) -> a.value - b.value);
+
+    // Add first element of each array
+    for (int i = 0; i < arrays.length; i++) {
+        if (arrays[i].length > 0) {
+            minHeap.offer(new ArrayElement(arrays[i][0], i, 0));
+        }
+    }
+
+    List<Integer> result = new ArrayList<>();
+
+    while (!minHeap.isEmpty()) {
+        ArrayElement element = minHeap.poll();
+        result.add(element.value);
+
+        int nextIndex = element.index + 1;
+        if (nextIndex < arrays[element.arrayIndex].length) {
+            minHeap.offer(new ArrayElement(
+                arrays[element.arrayIndex][nextIndex],
+                element.arrayIndex,
+                nextIndex
+            ));
+        }
+    }
+
+    return result.stream().mapToInt(i -> i).toArray();
+}
+
+class ArrayElement {
+    int value;
+    int arrayIndex;
+    int index;
+
+    ArrayElement(int value, int arrayIndex, int index) {
+        this.value = value;
+        this.arrayIndex = arrayIndex;
+        this.index = index;
+    }
+}
+```
+
+
+### 2.3 Smallest Range Covering Elements from K Lists
+
+```java
+int[] smallestRange(List<List<Integer>> nums) {
+    PriorityQueue<Element> minHeap = new PriorityQueue<>((a, b) -> a.value - b.value);
+    int max = Integer.MIN_VALUE;
+
+    // Initialize heap with first element of each list
+    for (int i = 0; i < nums.size(); i++) {
+        int value = nums.get(i).get(0);
+        minHeap.offer(new Element(value, i, 0));
+        max = Math.max(max, value);
+    }
+
+    int[] result = {0, Integer.MAX_VALUE};
+
+    while (minHeap.size() == nums.size()) {
+        Element element = minHeap.poll();
+
+        // Update result if current range is smaller
+        if (max - element.value < result[1] - result[0]) {
+            result[0] = element.value;
+            result[1] = max;
+        }
+
+        // Add next element from same list
+        if (element.index + 1 < nums.get(element.listIndex).size()) {
+            int nextValue = nums.get(element.listIndex).get(element.index + 1);
+            minHeap.offer(new Element(nextValue, element.listIndex, element.index + 1));
+            max = Math.max(max, nextValue);
+        }
+    }
+
+    return result;
+}
+
+class Element {
+    int value;
+    int listIndex;
+    int index;
+
+    Element(int value, int listIndex, int index) {
+        this.value = value;
+        this.listIndex = listIndex;
+        this.index = index;
+    }
+}
+```
+
+
+### 2.4 Kth Smallest Element in Sorted Matrix
+
+```java
+int kthSmallest(int[][] matrix, int k) {
+    int n = matrix.length;
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[0] - b[0]);
+
+    // Add first element of each row
+    for (int i = 0; i < n; i++) {
+        minHeap.offer(new int[]{matrix[i][0], i, 0});
+    }
+
+    for (int i = 0; i < k - 1; i++) {
+        int[] element = minHeap.poll();
+        int row = element[1];
+        int col = element[2];
+
+        if (col + 1 < n) {
+            minHeap.offer(new int[]{matrix[row][col + 1], row, col + 1});
+        }
+    }
+
+    return minHeap.peek()[0];
+}
+```
+
+
+***
+
+## Pattern 3: Two Heaps (Median)
+
+### 3.1 Find Median from Data Stream
+
+```java
+class MedianFinder {
+    private PriorityQueue<Integer> maxHeap; // left half
+    private PriorityQueue<Integer> minHeap; // right half
+
+    public MedianFinder() {
+        maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+        minHeap = new PriorityQueue<>();
+    }
+
+    public void addNum(int num) {
+        if (maxHeap.isEmpty() || num <= maxHeap.peek()) {
+            maxHeap.offer(num);
+        } else {
+            minHeap.offer(num);
+        }
+
+        // Balance heaps
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.offer(maxHeap.poll());
+        } else if (minHeap.size() > maxHeap.size() + 1) {
+            maxHeap.offer(minHeap.poll());
+        }
+    }
+
+    public double findMedian() {
+        if (maxHeap.size() == minHeap.size()) {
+            return (maxHeap.peek() + minHeap.peek()) / 2.0;
+        } else if (maxHeap.size() > minHeap.size()) {
+            return maxHeap.peek();
+        } else {
+            return minHeap.peek();
+        }
+    }
+}
+```
+
+
+### 3.2 Sliding Window Median
+
+```java
+double[] medianSlidingWindow(int[] nums, int k) {
+    double[] result = new double[nums.length - k + 1];
+
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+
+    for (int i = 0; i < nums.length; i++) {
+        // Add element
+        addNumber(nums[i], maxHeap, minHeap);
+
+        // Remove element going out of window
+        if (i >= k) {
+            removeNumber(nums[i - k], maxHeap, minHeap);
+        }
+
+        // Calculate median when window is full
+        if (i >= k - 1) {
+            result[i - k + 1] = getMedian(maxHeap, minHeap);
+        }
+    }
+
+    return result;
+}
+
+private void addNumber(int num, PriorityQueue<Integer> maxHeap, PriorityQueue<Integer> minHeap) {
+    if (maxHeap.isEmpty() || num <= maxHeap.peek()) {
+        maxHeap.offer(num);
+    } else {
+        minHeap.offer(num);
+    }
+    balanceHeaps(maxHeap, minHeap);
+}
+
+private void removeNumber(int num, PriorityQueue<Integer> maxHeap, PriorityQueue<Integer> minHeap) {
+    if (num <= maxHeap.peek()) {
+        maxHeap.remove(num);
+    } else {
+        minHeap.remove(num);
+    }
+    balanceHeaps(maxHeap, minHeap);
+}
+
+private void balanceHeaps(PriorityQueue<Integer> maxHeap, PriorityQueue<Integer> minHeap) {
+    if (maxHeap.size() > minHeap.size() + 1) {
+        minHeap.offer(maxHeap.poll());
+    } else if (minHeap.size() > maxHeap.size() + 1) {
+        maxHeap.offer(minHeap.poll());
+    }
+}
+
+private double getMedian(PriorityQueue<Integer> maxHeap, PriorityQueue<Integer> minHeap) {
+    if (maxHeap.size() == minHeap.size()) {
+        return ((long) maxHeap.peek() + (long) minHeap.peek()) / 2.0;
+    } else if (maxHeap.size() > minHeap.size()) {
+        return maxHeap.peek();
+    } else {
+        return minHeap.peek();
+    }
+}
+```
+
+
+### 3.3 IPO (Initial Public Offering)
+
+```java
+int findMaximizedCapital(int k, int w, int[] profits, int[] capital) {
+    PriorityQueue<int[]> minCapitalHeap = new PriorityQueue<>((a, b) -> a[0] - b[0]);
+    PriorityQueue<Integer> maxProfitHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+    // Initialize with all projects
+    for (int i = 0; i < profits.length; i++) {
+        minCapitalHeap.offer(new int[]{capital[i], profits[i]});
+    }
+
+    int currentCapital = w;
+
+    for (int i = 0; i < k; i++) {
+        // Move all affordable projects to profit heap
+        while (!minCapitalHeap.isEmpty() && minCapitalHeap.peek()[0] <= currentCapital) {
+            int[] project = minCapitalHeap.poll();
+            maxProfitHeap.offer(project[1]);
+        }
+
+        // Pick most profitable project
+        if (maxProfitHeap.isEmpty()) break;
+
+        currentCapital += maxProfitHeap.poll();
+    }
+
+    return currentCapital;
+}
+```
+
+
+***
+
+## Pattern 4: Priority Queue Scheduling
+
+### 4.1 Task Scheduler
+
+```java
+int leastInterval(char[] tasks, int n) {
+    Map<Character, Integer> frequencyMap = new HashMap<>();
+    for (char task : tasks) {
+        frequencyMap.put(task, frequencyMap.getOrDefault(task, 0) + 1);
+    }
+
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    maxHeap.addAll(frequencyMap.values());
+
+    Queue<int[]> queue = new LinkedList<>(); // [frequency, availableTime]
+    int time = 0;
+
+    while (!maxHeap.isEmpty() || !queue.isEmpty()) {
+        time++;
+
+        // Add tasks back to heap if cooling period is over
+        if (!queue.isEmpty() && queue.peek()[1] == time) {
+            maxHeap.offer(queue.poll()[0]);
+        }
+
+        if (!maxHeap.isEmpty()) {
+            int frequency = maxHeap.poll() - 1;
+            if (frequency > 0) {
+                queue.offer(new int[]{frequency, time + n + 1});
+            }
+        }
+    }
+
+    return time;
+}
+```
+
+
+### 4.2 Rearrange String k Distance Apart
+
+```java
+String rearrangeString(String s, int k) {
+    if (k <= 1) return s;
+
+    Map<Character, Integer> frequencyMap = new HashMap<>();
+    for (char c : s.toCharArray()) {
+        frequencyMap.put(c, frequencyMap.getOrDefault(c, 0) + 1);
+    }
+
+    PriorityQueue<Map.Entry<Character, Integer>> maxHeap =
+        new PriorityQueue<>((a, b) -> b.getValue() - a.getValue());
+    maxHeap.addAll(frequencyMap.entrySet());
+
+    Queue<Map.Entry<Character, Integer>> queue = new LinkedList<>();
+    StringBuilder result = new StringBuilder();
+
+    while (!maxHeap.isEmpty()) {
+        List<Map.Entry<Character, Integer>> temp = new ArrayList<>();
+
+        for (int i = 0; i < k && !maxHeap.isEmpty(); i++) {
+            Map.Entry<Character, Integer> entry = maxHeap.poll();
+            result.append(entry.getKey());
+            entry.setValue(entry.getValue() - 1);
+
+            if (entry.getValue() > 0) {
+                temp.add(entry);
+            }
+        }
+
+        maxHeap.addAll(temp);
+
+        if (!maxHeap.isEmpty() && temp.size() < k) {
+            return "";
+        }
+    }
+
+    return result.toString();
+}
+```
+
+
+### 4.3 Meeting Rooms II
+
+```java
+int minMeetingRooms(int[][] intervals) {
+    if (intervals == null || intervals.length == 0) return 0;
+
+    Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+
+    for (int[] interval : intervals) {
+        if (!minHeap.isEmpty() && minHeap.peek() <= interval[0]) {
+            minHeap.poll();
+        }
+        minHeap.offer(interval[1]);
+    }
+
+    return minHeap.size();
+}
+```
+
+
+### 4.4 Employee Free Time
+
+```java
+List<Interval> employeeFreeTime(List<List<Interval>> schedule) {
+    PriorityQueue<IteratorWithIndex> minHeap = new PriorityQueue<>(
+        (a, b) -> a.interval.start - b.interval.start
+    );
+
+    // Initialize heap with first interval of each employee
+    for (int i = 0; i < schedule.size(); i++) {
+        if (!schedule.get(i).isEmpty()) {
+            minHeap.offer(new IteratorWithIndex(schedule.get(i).listIterator(), i));
+        }
+    }
+
+    List<Interval> result = new ArrayList<>();
+    Interval previous = null;
+
+    while (!minHeap.isEmpty()) {
+        IteratorWithIndex entry = minHeap.poll();
+        Interval current = entry.interval;
+
+        if (previous != null && previous.end < current.start) {
+            result.add(new Interval(previous.end, current.start));
+        }
+
+        previous = previous == null || previous.end < current.end ? current : previous;
+
+        if (entry.iterator.hasNext()) {
+            entry.interval = entry.iterator.next();
+            minHeap.offer(entry);
+        }
+    }
+
+    return result;
+}
+
+class IteratorWithIndex {
+    ListIterator<Interval> iterator;
+    Interval interval;
+    int employeeIndex;
+
+    IteratorWithIndex(ListIterator<Interval> iterator, int employeeIndex) {
+        this.iterator = iterator;
+        this.employeeIndex = employeeIndex;
+        this.interval = iterator.next();
+    }
+}
+
+class Interval {
+    int start, end;
+    Interval(int start, int end) {
+        this.start = start;
+        this.end = end;
+    }
+}
+```
+
+
+***
+
+## Pattern 5: Heap Sort \& Variations
+
+### 5.1 Heap Sort Implementation
+
+```java
+void heapSort(int[] nums) {
+    int n = nums.length;
+
+    // Build max heap
+    for (int i = n / 2 - 1; i >= 0; i--) {
+        heapify(nums, n, i);
+    }
+
+    // Extract elements one by one
+    for (int i = n - 1; i > 0; i--) {
+        swap(nums, 0, i);
+        heapify(nums, i, 0);
+    }
+}
+
+void heapify(int[] nums, int n, int i) {
+    int largest = i;
+    int left = 2 * i + 1;
+    int right = 2 * i + 2;
+
+    if (left < n && nums[left] > nums[largest]) {
+        largest = left;
+    }
+
+    if (right < n && nums[right] > nums[largest]) {
+        largest = right;
+    }
+
+    if (largest != i) {
+        swap(nums, i, largest);
+        heapify(nums, n, largest);
+    }
+}
+
+void swap(int[] nums, int i, int j) {
+    int temp = nums[i];
+    nums[i] = nums[j];
+    nums[j] = temp;
+}
+```
+
+
+### 5.2 Sort Characters by Frequency
+
+```java
+String frequencySort(String s) {
+    Map<Character, Integer> frequencyMap = new HashMap<>();
+    for (char c : s.toCharArray()) {
+        frequencyMap.put(c, frequencyMap.getOrDefault(c, 0) + 1);
+    }
+
+    PriorityQueue<Map.Entry<Character, Integer>> maxHeap =
+        new PriorityQueue<>((a, b) -> b.getValue() - a.getValue());
+    maxHeap.addAll(frequencyMap.entrySet());
+
+    StringBuilder result = new StringBuilder();
+    while (!maxHeap.isEmpty()) {
+        Map.Entry<Character, Integer> entry = maxHeap.poll();
+        for (int i = 0; i < entry.getValue(); i++) {
+            result.append(entry.getKey());
+        }
+    }
+
+    return result.toString();
+}
+```
+
+
+### 5.3 Sort Array by Increasing Frequency
+
+```java
+int[] frequencySort(int[] nums) {
+    Map<Integer, Integer> frequencyMap = new HashMap<>();
+    for (int num : nums) {
+        frequencyMap.put(num, frequencyMap.getOrDefault(num, 0) + 1);
+    }
+
+    return Arrays.stream(nums)
+        .boxed()
+        .sorted((a, b) -> {
+            int freqA = frequencyMap.get(a);
+            int freqB = frequencyMap.get(b);
+            if (freqA != freqB) {
+                return freqA - freqB; // ascending by frequency
+            }
+            return b - a; // descending by value if same frequency
+        })
+        .mapToInt(Integer::intValue)
+        .toArray();
+}
+```
+
+
+### 5.4 Wiggle Sort II
+
+```java
+void wiggleSort(int[] nums) {
+    int n = nums.length;
+    int[] sorted = nums.clone();
+    Arrays.sort(sorted);
+
+    int i = (n + 1) / 2 - 1; // end of first half
+    int j = n - 1; // end of second half
+
+    for (int k = 0; k < n; k++) {
+        if (k % 2 == 0) {
+            nums[k] = sorted[i--];
+        } else {
+            nums[k] = sorted[j--];
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 6: Stream Processing
+
+### 6.1 Running Median of Stream
+
+```java
+class RunningMedian {
+    private PriorityQueue<Integer> maxHeap;
+    private PriorityQueue<Integer> minHeap;
+
+    public RunningMedian() {
+        maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+        minHeap = new PriorityQueue<>();
+    }
+
+    public void addNumber(int num) {
+        if (maxHeap.isEmpty() || num <= maxHeap.peek()) {
+            maxHeap.offer(num);
+        } else {
+            minHeap.offer(num);
+        }
+
+        rebalance();
+    }
+
+    private void rebalance() {
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.offer(maxHeap.poll());
+        } else if (minHeap.size() > maxHeap.size() + 1) {
+            maxHeap.offer(minHeap.poll());
+        }
+    }
+
+    public double getMedian() {
+        if (maxHeap.size() == minHeap.size()) {
+            return (maxHeap.peek() + minHeap.peek()) / 2.0;
+        }
+        return maxHeap.size() > minHeap.size() ? maxHeap.peek() : minHeap.peek();
+    }
+}
+```
+
+
+### 6.2 Kth Largest in Stream
+
+```java
+class KthLargestInStream {
+    private PriorityQueue<Integer> minHeap;
+    private int k;
+
+    public KthLargestInStream(int k, int[] nums) {
+        this.k = k;
+        this.minHeap = new PriorityQueue<>();
+
+        for (int num : nums) {
+            add(num);
+        }
+    }
+
+    public int add(int val) {
+        minHeap.offer(val);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+        return minHeap.peek();
+    }
+}
+```
+
+
+### 6.3 Maximum Average Pass Ratio
+
+```java
+double maxAverageRatio(int[][] classes, int extraStudents) {
+    PriorityQueue<double[]> maxHeap = new PriorityQueue<>((a, b) ->
+        Double.compare(b[0], a[0])); // max heap by gain
+
+    for (int[] cls : classes) {
+        double gain = calculateGain(cls[0], cls[1]);
+        maxHeap.offer(new double[]{gain, cls[0], cls[1]});
+    }
+
+    for (int i = 0; i < extraStudents; i++) {
+        double[] top = maxHeap.poll();
+        int pass = (int) top[1] + 1;
+        int total = (int) top[2] + 1;
+        double newGain = calculateGain(pass, total);
+        maxHeap.offer(new double[]{newGain, pass, total});
+    }
+
+    double totalRatio = 0;
+    while (!maxHeap.isEmpty()) {
+        double[] cls = maxHeap.poll();
+        totalRatio += cls[1] / cls[2];
+    }
+
+    return totalRatio / classes.length;
+}
+
+private double calculateGain(int pass, int total) {
+    return (double) (pass + 1) / (total + 1) - (double) pass / total;
+}
+```
+
+
+***
+
+## Pattern 7: Frequency Based Problems
+
+### 7.1 Top K Frequent Words
+
+```java
+List<String> topKFrequent(String[] words, int k) {
+    Map<String, Integer> frequencyMap = new HashMap<>();
+    for (String word : words) {
+        frequencyMap.put(word, frequencyMap.getOrDefault(word, 0) + 1);
+    }
+
+    PriorityQueue<String> minHeap = new PriorityQueue<>((a, b) -> {
+        int freqA = frequencyMap.get(a);
+        int freqB = frequencyMap.get(b);
+        if (freqA != freqB) {
+            return freqA - freqB; // min frequency first
+        }
+        return b.compareTo(a); // lexicographically larger first
+    });
+
+    for (String word : frequencyMap.keySet()) {
+        minHeap.offer(word);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+    }
+
+    List<String> result = new ArrayList<>();
+    while (!minHeap.isEmpty()) {
+        result.add(0, minHeap.poll());
+    }
+
+    return result;
+}
+```
+
+
+### 7.2 Reorganize String
+
+```java
+String reorganizeString(String s) {
+    Map<Character, Integer> frequencyMap = new HashMap<>();
+    for (char c : s.toCharArray()) {
+        frequencyMap.put(c, frequencyMap.getOrDefault(c, 0) + 1);
+    }
+
+    PriorityQueue<Map.Entry<Character, Integer>> maxHeap =
+        new PriorityQueue<>((a, b) -> b.getValue() - a.getValue());
+    maxHeap.addAll(frequencyMap.entrySet());
+
+    StringBuilder result = new StringBuilder();
+    Map.Entry<Character, Integer> previous = null;
+
+    while (!maxHeap.isEmpty()) {
+        Map.Entry<Character, Integer> current = maxHeap.poll();
+        result.append(current.getKey());
+        current.setValue(current.getValue() - 1);
+
+        if (previous != null && previous.getValue() > 0) {
+            maxHeap.offer(previous);
+        }
+
+        previous = current;
+    }
+
+    return result.length() == s.length() ? result.toString() : "";
+}
+```
+
+
+### 7.3 Find K Most Frequent Elements in Array
+
+```java
+List<Integer> findKMostFrequent(int[] nums, int k) {
+    Map<Integer, Integer> frequencyMap = new HashMap<>();
+    for (int num : nums) {
+        frequencyMap.put(num, frequencyMap.getOrDefault(num, 0) + 1);
+    }
+
+    PriorityQueue<Map.Entry<Integer, Integer>> maxHeap =
+        new PriorityQueue<>((a, b) -> b.getValue() - a.getValue());
+    maxHeap.addAll(frequencyMap.entrySet());
+
+    List<Integer> result = new ArrayList<>();
+    for (int i = 0; i < k && !maxHeap.isEmpty(); i++) {
+        result.add(maxHeap.poll().getKey());
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 8: Distance \& Proximity
+
+### 8.1 K Closest Points to Origin
+
+```java
+int[][] kClosest(int[][] points, int k) {
+    PriorityQueue<int[]> maxHeap = new PriorityQueue<>((a, b) ->
+        (b[0] * b[0] + b[1] * b[1]) - (a[0] * a[0] + a[1] * a[1]));
+
+    for (int[] point : points) {
+        maxHeap.offer(point);
+        if (maxHeap.size() > k) {
+            maxHeap.poll();
+        }
+    }
+
+    int[][] result = new int[k][2];
+    for (int i = 0; i < k; i++) {
+        result[i] = maxHeap.poll();
+    }
+
+    return result;
+}
+```
+
+
+### 8.2 Find K Closest Elements
+
+```java
+List<Integer> findClosestElements(int[] arr, int k, int x) {
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>((a, b) -> {
+        int diffA = Math.abs(a - x);
+        int diffB = Math.abs(b - x);
+        if (diffA != diffB) {
+            return diffB - diffA; // max heap by distance
+        }
+        return b - a; // if same distance, larger value first
+    });
+
+    for (int num : arr) {
+        maxHeap.offer(num);
+        if (maxHeap.size() > k) {
+            maxHeap.poll();
+        }
+    }
+
+    List<Integer> result = new ArrayList<>(maxHeap);
+    Collections.sort(result);
+    return result;
+}
+```
+
+
+### 8.3 Minimum Cost to Connect Sticks
+
+```java
+int connectSticks(int[] sticks) {
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+    for (int stick : sticks) {
+        minHeap.offer(stick);
+    }
+
+    int totalCost = 0;
+    while (minHeap.size() > 1) {
+        int first = minHeap.poll();
+        int second = minHeap.poll();
+        int cost = first + second;
+        totalCost += cost;
+        minHeap.offer(cost);
+    }
+
+    return totalCost;
+}
+```
+
+
+### 8.4 Minimum Cost to Hire K Workers
+
+```java
+double mincostToHireWorkers(int[] quality, int[] wage, int k) {
+    int n = quality.length;
+    Worker[] workers = new Worker[n];
+
+    for (int i = 0; i < n; i++) {
+        workers[i] = new Worker(quality[i], wage[i]);
+    }
+
+    Arrays.sort(workers, (a, b) -> Double.compare(a.ratio, b.ratio));
+
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    double result = Double.MAX_VALUE;
+    int qualitySum = 0;
+
+    for (Worker worker : workers) {
+        maxHeap.offer(worker.quality);
+        qualitySum += worker.quality;
+
+        if (maxHeap.size() > k) {
+            qualitySum -= maxHeap.poll();
+        }
+
+        if (maxHeap.size() == k) {
+            result = Math.min(result, qualitySum * worker.ratio);
+        }
+    }
+
+    return result;
+}
+
+class Worker {
+    int quality;
+    int wage;
+    double ratio;
+
+    Worker(int quality, int wage) {
+        this.quality = quality;
+        this.wage = wage;
+        this.ratio = (double) wage / quality;
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Custom Comparator Patterns
+
+### 9.1 Car Pooling
+
+```java
+boolean carPooling(int[][] trips, int capacity) {
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+    Arrays.sort(trips, (a, b) -> a[1] - b[1]);
+
+    int currentPassengers = 0;
+
+    for (int[] trip : trips) {
+        int passengers = trip[0];
+        int start = trip[1];
+        int end = trip[2];
+
+        // Remove passengers that have reached their destination
+        while (!minHeap.isEmpty() && minHeap.peek()[1] <= start) {
+            currentPassengers -= minHeap.poll()[0];
+        }
+
+        // Add current trip passengers
+        currentPassengers += passengers;
+        minHeap.offer(new int[]{passengers, end});
+
+        if (currentPassengers > capacity) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 9.2 Process Tasks Using Servers
+
+```java
+int[] assignTasks(int[] servers, int[] tasks) {
+    PriorityQueue<int[]> availableServers = new PriorityQueue<>((a, b) -> {
+        if (a[0] != b[0]) return a[0] - b[0]; // weight
+        return a[1] - b[1]; // index
+    });
+
+    PriorityQueue<int[]> busyServers = new PriorityQueue<>((a, b) -> a[2] - b[2]); // free time
+
+    for (int i = 0; i < servers.length; i++) {
+        availableServers.offer(new int[]{servers[i], i, 0});
+    }
+
+    int[] result = new int[tasks.length];
+
+    for (int i = 0; i < tasks.length; i++) {
+        int currentTime = i;
+
+        // Free up servers
+        while (!busyServers.isEmpty() && busyServers.peek()[2] <= currentTime) {
+            int[] server = busyServers.poll();
+            availableServers.offer(new int[]{server[0], server[1], 0});
+        }
+
+        if (!availableServers.isEmpty()) {
+            int[] server = availableServers.poll();
+            result[i] = server[1];
+            server[2] = currentTime + tasks[i];
+            busyServers.offer(server);
+        } else {
+            // All servers busy, use earliest available
+            int[] server = busyServers.poll();
+            result[i] = server[1];
+            server[2] += tasks[i];
+            busyServers.offer(server);
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 9.3 Single-Threaded CPU
+
+```java
+int[] getOrder(int[][] tasks) {
+    int n = tasks.length;
+    int[][] indexedTasks = new int[n][3];
+
+    for (int i = 0; i < n; i++) {
+        indexedTasks[i] = new int[]{tasks[i][0], tasks[i][1], i};
+    }
+
+    Arrays.sort(indexedTasks, (a, b) -> a[0] - b[0]); // sort by start time
+
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> {
+        if (a[1] != b[1]) return a[1] - b[1]; // process time
+        return a[2] - b[2]; // index
+    });
+
+    List<Integer> result = new ArrayList<>();
+    long currentTime = 0;
+    int i = 0;
+
+    while (i < n || !minHeap.isEmpty()) {
+        // Add all available tasks
+        while (i < n && indexedTasks[i][0] <= currentTime) {
+            minHeap.offer(indexedTasks[i]);
+            i++;
+        }
+
+        if (!minHeap.isEmpty()) {
+            int[] task = minHeap.poll();
+            result.add(task[2]);
+            currentTime += task[1];
+        } else {
+            currentTime = indexedTasks[i][0];
+        }
+    }
+
+    return result.stream().mapToInt(Integer::intValue).toArray();
+}
+```
+
+
+***
+
+## Pattern 10: Range \& Window Problems
+
+### 10.1 Maximum Sliding Window
+
+```java
+int[] maxSlidingWindow(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>();
+    List<Integer> result = new ArrayList<>();
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+            deque.pollFirst();
+        }
+
+        // Remove smaller elements
+        while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        if (i >= k - 1) {
+            result.add(nums[deque.peekFirst()]);
+        }
+    }
+
+    return result.stream().mapToInt(Integer::intValue).toArray();
+}
+```
+
+
+### 10.2 Sliding Window Maximum using Heap
+
+```java
+int[] maxSlidingWindowHeap(int[] nums, int k) {
+    PriorityQueue<int[]> maxHeap = new PriorityQueue<>((a, b) -> b[0] - a[0]);
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        maxHeap.offer(new int[]{nums[i], i});
+
+        // Remove elements outside window
+        while (!maxHeap.isEmpty() && maxHeap.peek()[1] <= i - k) {
+            maxHeap.poll();
+        }
+
+        if (i >= k - 1) {
+            result[i - k + 1] = maxHeap.peek()[0];
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 10.3 Smallest Range Covering K Lists
+
+```java
+int[] smallestRangeCoveringKLists(List<List<Integer>> nums) {
+    PriorityQueue<Element> minHeap = new PriorityQueue<>((a, b) -> a.value - b.value);
+    int max = Integer.MIN_VALUE;
+
+    for (int i = 0; i < nums.size(); i++) {
+        if (!nums.get(i).isEmpty()) {
+            int value = nums.get(i).get(0);
+            minHeap.offer(new Element(value, i, 0));
+            max = Math.max(max, value);
+        }
+    }
+
+    int[] result = {0, Integer.MAX_VALUE};
+
+    while (minHeap.size() == nums.size()) {
+        Element element = minHeap.poll();
+
+        if (max - element.value < result[1] - result[0]) {
+            result[0] = element.value;
+            result[1] = max;
+        }
+
+        if (element.index + 1 < nums.get(element.listIndex).size()) {
+            int nextValue = nums.get(element.listIndex).get(element.index + 1);
+            minHeap.offer(new Element(nextValue, element.listIndex, element.index + 1));
+            max = Math.max(max, nextValue);
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 11: Graph Algorithms with Heaps
+
+### 11.1 Dijkstra's Algorithm
+
+```java
+int[] dijkstra(int[][] graph, int start) {
+    int n = graph.length;
+    int[] distances = new int[n];
+    Arrays.fill(distances, Integer.MAX_VALUE);
+    distances[start] = 0;
+
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+    minHeap.offer(new int[]{start, 0});
+
+    boolean[] visited = new boolean[n];
+
+    while (!minHeap.isEmpty()) {
+        int[] current = minHeap.poll();
+        int node = current[0];
+        int distance = current[1];
+
+        if (visited[node]) continue;
+        visited[node] = true;
+
+        for (int neighbor = 0; neighbor < n; neighbor++) {
+            if (graph[node][neighbor] != 0) {
+                int newDistance = distance + graph[node][neighbor];
+                if (newDistance < distances[neighbor]) {
+                    distances[neighbor] = newDistance;
+                    minHeap.offer(new int[]{neighbor, newDistance});
+                }
+            }
+        }
+    }
+
+    return distances;
+}
+```
+
+
+### 11.2 Network Delay Time
+
+```java
+int networkDelayTime(int[][] times, int n, int k) {
+    Map<Integer, List<int[]>> graph = new HashMap<>();
+    for (int[] time : times) {
+        graph.computeIfAbsent(time[0], x -> new ArrayList<>()).add(new int[]{time[1], time[2]});
+    }
+
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+    minHeap.offer(new int[]{k, 0});
+
+    Set<Integer> visited = new HashSet<>();
+    int maxTime = 0;
+
+    while (!minHeap.isEmpty()) {
+        int[] current = minHeap.poll();
+        int node = current[0];
+        int time = current[1];
+
+        if (visited.contains(node)) continue;
+        visited.add(node);
+        maxTime = Math.max(maxTime, time);
+
+        if (graph.containsKey(node)) {
+            for (int[] neighbor : graph.get(node)) {
+                if (!visited.contains(neighbor[0])) {
+                    minHeap.offer(new int[]{neighbor[0], time + neighbor[1]});
+                }
+            }
+        }
+    }
+
+    return visited.size() == n ? maxTime : -1;
+}
+```
+
+
+### 11.3 Path with Maximum Minimum Value
+
+```java
+int maximumMinimumPath(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    PriorityQueue<int[]> maxHeap = new PriorityQueue<>((a, b) -> b[2] - a[2]);
+    boolean[][] visited = new boolean[m][n];
+
+    maxHeap.offer(new int[]{0, 0, grid[0][0]});
+    int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+
+    while (!maxHeap.isEmpty()) {
+        int[] current = maxHeap.poll();
+        int row = current[0], col = current[1], minVal = current[2];
+
+        if (row == m - 1 && col == n - 1) {
+            return minVal;
+        }
+
+        if (visited[row][col]) continue;
+        visited[row][col] = true;
+
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (newRow >= 0 && newRow < m && newCol >= 0 && newCol < n && !visited[newRow][newCol]) {
+                maxHeap.offer(new int[]{newRow, newCol, Math.min(minVal, grid[newRow][newCol])});
+            }
+        }
+    }
+
+    return -1;
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Heap Patterns
+
+### 12.1 Trapping Rain Water II
+
+```java
+int trapRainWater(int[][] heightMap) {
+    if (heightMap == null || heightMap.length == 0) return 0;
+
+    int m = heightMap.length, n = heightMap[0].length;
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[2] - b[2]);
+    boolean[][] visited = new boolean[m][n];
+
+    // Add boundary cells
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i == 0 || i == m - 1 || j == 0 || j == n - 1) {
+                minHeap.offer(new int[]{i, j, heightMap[i][j]});
+                visited[i][j] = true;
+            }
+        }
+    }
+
+    int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    int waterTrapped = 0;
+
+    while (!minHeap.isEmpty()) {
+        int[] current = minHeap.poll();
+        int row = current[0], col = current[1], height = current[2];
+
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (newRow >= 0 && newRow < m && newCol >= 0 && newCol < n && !visited[newRow][newCol]) {
+                waterTrapped += Math.max(0, height - heightMap[newRow][newCol]);
+                minHeap.offer(new int[]{newRow, newCol, Math.max(height, heightMap[newRow][newCol])});
+                visited[newRow][newCol] = true;
+            }
+        }
+    }
+
+    return waterTrapped;
+}
+```
+
+
+### 12.2 Skyline Problem
+
+```java
+List<List<Integer>> getSkyline(int[][] buildings) {
+    List<int[]> events = new ArrayList<>();
+
+    for (int[] building : buildings) {
+        events.add(new int[]{building[0], building[2], 1}); // start
+        events.add(new int[]{building[1], building[2], -1}); // end
+    }
+
+    events.sort((a, b) -> {
+        if (a[0] != b[0]) return a[0] - b[0];
+        if (a[2] != b[2]) return b[2] - a[2]; // start before end
+        return a[2] == 1 ? b[1] - a[1] : a[1] - b[1]; // taller first for start, shorter first for end
+    });
+
+    List<List<Integer>> result = new ArrayList<>();
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    maxHeap.offer(0);
+
+    for (int[] event : events) {
+        int x = event[0], height = event[1], type = event[2];
+
+        if (type == 1) {
+            maxHeap.offer(height);
+        } else {
+            maxHeap.remove(height);
+        }
+
+        int maxHeight = maxHeap.peek();
+        if (result.isEmpty() || result.get(result.size() - 1).get(1) != maxHeight) {
+            result.add(Arrays.asList(x, maxHeight));
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 12.3 Maximum Performance Team
+
+```java
+int maxPerformance(int n, int[] speed, int[] efficiency, int k) {
+    final int MOD = 1000000007;
+
+    int[][] engineers = new int[n][2];
+    for (int i = 0; i < n; i++) {
+        engineers[i] = new int[]{efficiency[i], speed[i]};
+    }
+
+    Arrays.sort(engineers, (a, b) -> b[0] - a[0]); // sort by efficiency desc
+
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+    long maxPerformance = 0;
+    long speedSum = 0;
+
+    for (int[] engineer : engineers) {
+        int eff = engineer[0];
+        int spd = engineer[1];
+
+        minHeap.offer(spd);
+        speedSum += spd;
+
+        if (minHeap.size() > k) {
+            speedSum -= minHeap.poll();
+        }
+
+        maxPerformance = Math.max(maxPerformance, speedSum * eff);
+    }
+
+    return (int) (maxPerformance % MOD);
+}
+```
+
+
+### 12.4 Minimum Number of Refueling Stops
+
+```java
+int minRefuelStops(int target, int startFuel, int[][] stations) {
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    int fuel = startFuel;
+    int position = 0;
+    int refuels = 0;
+    int stationIndex = 0;
+
+    while (fuel < target) {
+        // Add all reachable stations to heap
+        while (stationIndex < stations.length && stations[stationIndex][0] <= fuel) {
+            maxHeap.offer(stations[stationIndex][1]);
+            stationIndex++;
+        }
+
+        if (maxHeap.isEmpty()) {
+            return -1; // Cannot reach target
+        }
+
+        fuel += maxHeap.poll();
+        refuels++;
+    }
+
+    return refuels;
+}
+```
+
+
+***
+
+## Time Complexity Reference
+
+| Operation | Min Heap | Max Heap | PriorityQueue |
+| :-- | :-- | :-- | :-- |
+| Insert | O(log n) | O(log n) | O(log n) |
+| Extract Min/Max | O(log n) | O(log n) | O(log n) |
+| Peek | O(1) | O(1) | O(1) |
+| Delete | O(log n) | O(log n) | O(log n) |
+| Build Heap | O(n) | O(n) | O(n) |
+| Heapify | O(log n) | O(log n) | O(log n) |
+
+## Common Heap Patterns Summary
+
+1. **Top K Elements**: Use min heap of size K for K largest, max heap of size K for K smallest[2][3]
+2. **K-Way Merge**: Use min heap to merge multiple sorted structures[4]
+3. **Two Heaps**: Use max heap for smaller half, min heap for larger half (median problems)[5]
+4. **Scheduling**: Use priority queue for task scheduling based on priority[6]
+5. **Distance Problems**: Use heap to maintain K closest/farthest elements[7]
+6. **Frequency Problems**: Use heap with custom comparator for frequency-based sorting[8]
+7. **Stream Processing**: Maintain running statistics using heaps[9]
+8. **Graph Algorithms**: Use min heap for shortest path algorithms[10]

@@ -1,0 +1,2029 @@
+# Binary Tree & BST
+
+## Table of Contents
+1. [Tree Node Definition](#tree-node-definition)
+2. [Pattern 1: Traversal Patterns](#pattern-1-traversal-patterns)
+3. [Pattern 2: Level Order (BFS) Patterns](#pattern-2-level-order-bfs-patterns)
+4. [Pattern 3: DFS Recursive Patterns](#pattern-3-dfs-recursive-patterns)
+5. [Pattern 4: Path Problems](#pattern-4-path-problems)
+6. [Pattern 5: Tree Construction](#pattern-5-tree-construction)
+7. [Pattern 6: BST Patterns](#pattern-6-bst-patterns)
+8. [Pattern 7: Tree Modification](#pattern-7-tree-modification)
+9. [Pattern 8: Ancestor & LCA Problems](#pattern-8-ancestor--lca-problems)
+10. [Pattern 9: Serialization/Deserialization](#pattern-9-serializationdeserialization)
+11. [Pattern 10: View & Boundary Problems](#pattern-10-view--boundary-problems)
+12. [Pattern 11: Distance & Range Problems](#pattern-11-distance--range-problems)
+13. [Pattern 12: Subtree Problems](#pattern-12-subtree-problems)
+
+---
+
+## Tree Node Definition
+
+```java
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+
+    TreeNode(int val) {
+        this.val = val;
+    }
+
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+```
+
+---
+
+## Pattern 1: Traversal Patterns
+
+### 1.1 Inorder Traversal (Left, Root, Right)
+
+**Recursive:**
+```java
+List<Integer> inorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    inorder(root, result);
+    return result;
+}
+
+void inorder(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+    inorder(root.left, result);
+    result.add(root.val);
+    inorder(root.right, result);
+}
+```
+
+**Iterative:**
+```java
+List<Integer> inorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    Deque<TreeNode> stack = new ArrayDeque<>();
+    TreeNode curr = root;
+
+    while (curr != null || !stack.isEmpty()) {
+        while (curr != null) {
+            stack.push(curr);
+            curr = curr.left;
+        }
+        curr = stack.pop();
+        result.add(curr.val);
+        curr = curr.right;
+    }
+    return result;
+}
+```
+
+**Morris Traversal (O(1) Space):**
+```java
+List<Integer> inorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    TreeNode curr = root;
+
+    while (curr != null) {
+        if (curr.left == null) {
+            result.add(curr.val);
+            curr = curr.right;
+        } else {
+            TreeNode pred = curr.left;
+            while (pred.right != null && pred.right != curr) {
+                pred = pred.right;
+            }
+
+            if (pred.right == null) {
+                pred.right = curr;
+                curr = curr.left;
+            } else {
+                pred.right = null;
+                result.add(curr.val);
+                curr = curr.right;
+            }
+        }
+    }
+    return result;
+}
+```
+
+### 1.2 Preorder Traversal (Root, Left, Right)
+
+**Recursive:**
+```java
+List<Integer> preorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    preorder(root, result);
+    return result;
+}
+
+void preorder(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+    result.add(root.val);
+    preorder(root.left, result);
+    preorder(root.right, result);
+}
+```
+
+**Iterative:**
+```java
+List<Integer> preorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Deque<TreeNode> stack = new ArrayDeque<>();
+    stack.push(root);
+
+    while (!stack.isEmpty()) {
+        TreeNode node = stack.pop();
+        result.add(node.val);
+
+        if (node.right != null) stack.push(node.right);
+        if (node.left != null) stack.push(node.left);
+    }
+    return result;
+}
+```
+
+### 1.3 Postorder Traversal (Left, Right, Root)
+
+**Recursive:**
+```java
+List<Integer> postorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    postorder(root, result);
+    return result;
+}
+
+void postorder(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+    postorder(root.left, result);
+    postorder(root.right, result);
+    result.add(root.val);
+}
+```
+
+**Iterative (Two Stacks):**
+```java
+List<Integer> postorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Deque<TreeNode> stack1 = new ArrayDeque<>();
+    Deque<TreeNode> stack2 = new ArrayDeque<>();
+
+    stack1.push(root);
+
+    while (!stack1.isEmpty()) {
+        TreeNode node = stack1.pop();
+        stack2.push(node);
+
+        if (node.left != null) stack1.push(node.left);
+        if (node.right != null) stack1.push(node.right);
+    }
+
+    while (!stack2.isEmpty()) {
+        result.add(stack2.pop().val);
+    }
+    return result;
+}
+```
+
+**Iterative (One Stack):**
+```java
+List<Integer> postorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Deque<TreeNode> stack = new ArrayDeque<>();
+    TreeNode curr = root;
+    TreeNode lastVisited = null;
+
+    while (curr != null || !stack.isEmpty()) {
+        while (curr != null) {
+            stack.push(curr);
+            curr = curr.left;
+        }
+
+        TreeNode peekNode = stack.peek();
+        if (peekNode.right != null && lastVisited != peekNode.right) {
+            curr = peekNode.right;
+        } else {
+            result.add(peekNode.val);
+            lastVisited = stack.pop();
+        }
+    }
+    return result;
+}
+```
+
+---
+
+## Pattern 2: Level Order (BFS) Patterns
+
+### 2.1 Basic Level Order Traversal
+
+```java
+List<List<Integer>> levelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> level = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            level.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+        result.add(level);
+    }
+    return result;
+}
+```
+
+### 2.2 Level Order Bottom (Reverse Level Order)
+
+```java
+List<List<Integer>> levelOrderBottom(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> level = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            level.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+        result.add(0, level); // Add at beginning
+    }
+    return result;
+}
+```
+
+### 2.3 Zigzag Level Order
+
+```java
+List<List<Integer>> zigzagLevelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    boolean leftToRight = true;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> level = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            if (leftToRight) {
+                level.add(node.val);
+            } else {
+                level.add(0, node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+        result.add(level);
+        leftToRight = !leftToRight;
+    }
+    return result;
+}
+```
+
+### 2.4 Average of Levels
+
+```java
+List<Double> averageOfLevels(TreeNode root) {
+    List<Double> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        double sum = 0;
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            sum += node.val;
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+        result.add(sum / size);
+    }
+    return result;
+}
+```
+
+### 2.5 Level with Maximum Sum
+
+```java
+int maxLevelSum(TreeNode root) {
+    if (root == null) return 0;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    int maxSum = Integer.MIN_VALUE;
+    int maxLevel = 1;
+    int currentLevel = 1;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        int levelSum = 0;
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            levelSum += node.val;
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        if (levelSum > maxSum) {
+            maxSum = levelSum;
+            maxLevel = currentLevel;
+        }
+        currentLevel++;
+    }
+    return maxLevel;
+}
+```
+
+### 2.6 Populate Next Right Pointers
+
+```java
+class Node {
+    int val;
+    Node left, right, next;
+    Node(int val) { this.val = val; }
+}
+
+Node connect(Node root) {
+    if (root == null) return null;
+
+    Queue<Node> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        Node prev = null;
+
+        for (int i = 0; i < size; i++) {
+            Node node = queue.poll();
+
+            if (prev != null) {
+                prev.next = node;
+            }
+            prev = node;
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+    return root;
+}
+
+// O(1) Space Solution
+Node connectOptimized(Node root) {
+    if (root == null) return null;
+
+    Node leftmost = root;
+
+    while (leftmost.left != null) {
+        Node head = leftmost;
+
+        while (head != null) {
+            head.left.next = head.right;
+
+            if (head.next != null) {
+                head.right.next = head.next.left;
+            }
+            head = head.next;
+        }
+        leftmost = leftmost.left;
+    }
+    return root;
+}
+```
+
+---
+
+## Pattern 3: DFS Recursive Patterns
+
+### 3.1 Maximum Depth
+
+```java
+int maxDepth(TreeNode root) {
+    if (root == null) return 0;
+    return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+}
+```
+
+### 3.2 Minimum Depth
+
+```java
+int minDepth(TreeNode root) {
+    if (root == null) return 0;
+
+    if (root.left == null && root.right == null) return 1;
+
+    if (root.left == null) return 1 + minDepth(root.right);
+    if (root.right == null) return 1 + minDepth(root.left);
+
+    return 1 + Math.min(minDepth(root.left), minDepth(root.right));
+}
+```
+
+### 3.3 Diameter of Binary Tree
+
+```java
+int diameterOfBinaryTree(TreeNode root) {
+    int[] diameter = new int[1];
+    height(root, diameter);
+    return diameter[0];
+}
+
+int height(TreeNode root, int[] diameter) {
+    if (root == null) return 0;
+
+    int left = height(root.left, diameter);
+    int right = height(root.right, diameter);
+
+    diameter[0] = Math.max(diameter[0], left + right);
+
+    return 1 + Math.max(left, right);
+}
+```
+
+### 3.4 Check if Balanced
+
+```java
+boolean isBalanced(TreeNode root) {
+    return checkHeight(root) != -1;
+}
+
+int checkHeight(TreeNode root) {
+    if (root == null) return 0;
+
+    int left = checkHeight(root.left);
+    if (left == -1) return -1;
+
+    int right = checkHeight(root.right);
+    if (right == -1) return -1;
+
+    if (Math.abs(left - right) > 1) return -1;
+
+    return 1 + Math.max(left, right);
+}
+```
+
+### 3.5 Symmetric Tree
+
+```java
+boolean isSymmetric(TreeNode root) {
+    if (root == null) return true;
+    return isMirror(root.left, root.right);
+}
+
+boolean isMirror(TreeNode left, TreeNode right) {
+    if (left == null && right == null) return true;
+    if (left == null || right == null) return false;
+
+    return left.val == right.val &&
+           isMirror(left.left, right.right) &&
+           isMirror(left.right, right.left);
+}
+```
+
+### 3.6 Invert Binary Tree
+
+```java
+TreeNode invertTree(TreeNode root) {
+    if (root == null) return null;
+
+    TreeNode temp = root.left;
+    root.left = invertTree(root.right);
+    root.right = invertTree(temp);
+
+    return root;
+}
+```
+
+### 3.7 Same Tree
+
+```java
+boolean isSameTree(TreeNode p, TreeNode q) {
+    if (p == null && q == null) return true;
+    if (p == null || q == null) return false;
+
+    return p.val == q.val &&
+           isSameTree(p.left, q.left) &&
+           isSameTree(p.right, q.right);
+}
+```
+
+### 3.8 Count Complete Tree Nodes
+
+```java
+int countNodes(TreeNode root) {
+    if (root == null) return 0;
+
+    int leftHeight = getLeftHeight(root);
+    int rightHeight = getRightHeight(root);
+
+    if (leftHeight == rightHeight) {
+        return (1 << leftHeight) - 1; // 2^h - 1
+    }
+
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+
+int getLeftHeight(TreeNode root) {
+    int height = 0;
+    while (root != null) {
+        height++;
+        root = root.left;
+    }
+    return height;
+}
+
+int getRightHeight(TreeNode root) {
+    int height = 0;
+    while (root != null) {
+        height++;
+        root = root.right;
+    }
+    return height;
+}
+```
+
+---
+
+## Pattern 4: Path Problems
+
+### 4.1 Binary Tree Paths (Root to Leaf)
+
+```java
+List<String> binaryTreePaths(TreeNode root) {
+    List<String> result = new ArrayList<>();
+    if (root == null) return result;
+    findPaths(root, "", result);
+    return result;
+}
+
+void findPaths(TreeNode root, String path, List<String> result) {
+    if (root == null) return;
+
+    path += root.val;
+
+    if (root.left == null && root.right == null) {
+        result.add(path);
+        return;
+    }
+
+    path += "->";
+    findPaths(root.left, path, result);
+    findPaths(root.right, path, result);
+}
+```
+
+### 4.2 Path Sum (Target Sum)
+
+```java
+boolean hasPathSum(TreeNode root, int targetSum) {
+    if (root == null) return false;
+
+    if (root.left == null && root.right == null) {
+        return targetSum == root.val;
+    }
+
+    return hasPathSum(root.left, targetSum - root.val) ||
+           hasPathSum(root.right, targetSum - root.val);
+}
+```
+
+### 4.3 Path Sum II (All Paths with Target Sum)
+
+```java
+List<List<Integer>> pathSum(TreeNode root, int targetSum) {
+    List<List<Integer>> result = new ArrayList<>();
+    findPaths(root, targetSum, new ArrayList<>(), result);
+    return result;
+}
+
+void findPaths(TreeNode root, int remaining, List<Integer> path,
+               List<List<Integer>> result) {
+    if (root == null) return;
+
+    path.add(root.val);
+
+    if (root.left == null && root.right == null && remaining == root.val) {
+        result.add(new ArrayList<>(path));
+    } else {
+        findPaths(root.left, remaining - root.val, path, result);
+        findPaths(root.right, remaining - root.val, path, result);
+    }
+
+    path.remove(path.size() - 1); // Backtrack
+}
+```
+
+### 4.4 Path Sum III (Any Path)
+
+```java
+int pathSum(TreeNode root, int targetSum) {
+    if (root == null) return 0;
+
+    return pathSumFrom(root, targetSum) +
+           pathSum(root.left, targetSum) +
+           pathSum(root.right, targetSum);
+}
+
+int pathSumFrom(TreeNode root, long targetSum) {
+    if (root == null) return 0;
+
+    int count = 0;
+    if (root.val == targetSum) count++;
+
+    count += pathSumFrom(root.left, targetSum - root.val);
+    count += pathSumFrom(root.right, targetSum - root.val);
+
+    return count;
+}
+
+// Optimized with HashMap
+int pathSumOptimized(TreeNode root, int targetSum) {
+    HashMap<Long, Integer> prefixSum = new HashMap<>();
+    prefixSum.put(0L, 1);
+    return pathSumHelper(root, 0, targetSum, prefixSum);
+}
+
+int pathSumHelper(TreeNode root, long currentSum, int target,
+                  HashMap<Long, Integer> prefixSum) {
+    if (root == null) return 0;
+
+    currentSum += root.val;
+    int count = prefixSum.getOrDefault(currentSum - target, 0);
+
+    prefixSum.put(currentSum, prefixSum.getOrDefault(currentSum, 0) + 1);
+
+    count += pathSumHelper(root.left, currentSum, target, prefixSum);
+    count += pathSumHelper(root.right, currentSum, target, prefixSum);
+
+    prefixSum.put(currentSum, prefixSum.get(currentSum) - 1);
+
+    return count;
+}
+```
+
+### 4.5 Maximum Path Sum
+
+```java
+int maxPathSum(TreeNode root) {
+    int[] max = new int[]{Integer.MIN_VALUE};
+    maxPathSumHelper(root, max);
+    return max[0];
+}
+
+int maxPathSumHelper(TreeNode root, int[] max) {
+    if (root == null) return 0;
+
+    int left = Math.max(0, maxPathSumHelper(root.left, max));
+    int right = Math.max(0, maxPathSumHelper(root.right, max));
+
+    max[0] = Math.max(max[0], left + right + root.val);
+
+    return root.val + Math.max(left, right);
+}
+```
+
+### 4.6 Sum Root to Leaf Numbers
+
+```java
+int sumNumbers(TreeNode root) {
+    return sumHelper(root, 0);
+}
+
+int sumHelper(TreeNode root, int currentSum) {
+    if (root == null) return 0;
+
+    currentSum = currentSum * 10 + root.val;
+
+    if (root.left == null && root.right == null) {
+        return currentSum;
+    }
+
+    return sumHelper(root.left, currentSum) + sumHelper(root.right, currentSum);
+}
+```
+
+### 4.7 Longest Zigzag Path
+
+```java
+int longestZigZag(TreeNode root) {
+    int[] max = new int[1];
+    dfs(root, true, 0, max);
+    dfs(root, false, 0, max);
+    return max[0];
+}
+
+void dfs(TreeNode root, boolean isLeft, int length, int[] max) {
+    if (root == null) return;
+
+    max[0] = Math.max(max[0], length);
+
+    if (isLeft) {
+        dfs(root.left, false, length + 1, max);
+        dfs(root.right, true, 1, max);
+    } else {
+        dfs(root.right, true, length + 1, max);
+        dfs(root.left, false, 1, max);
+    }
+}
+```
+
+---
+
+## Pattern 5: Tree Construction
+
+### 5.1 Build Tree from Preorder and Inorder
+
+```java
+int preIndex = 0;
+
+TreeNode buildTree(int[] preorder, int[] inorder) {
+    HashMap<Integer, Integer> inMap = new HashMap<>();
+    for (int i = 0; i < inorder.length; i++) {
+        inMap.put(inorder[i], i);
+    }
+    return build(preorder, 0, preorder.length - 1, inMap);
+}
+
+TreeNode build(int[] preorder, int inStart, int inEnd,
+               HashMap<Integer, Integer> inMap) {
+    if (inStart > inEnd) return null;
+
+    int rootVal = preorder[preIndex++];
+    TreeNode root = new TreeNode(rootVal);
+
+    int inIndex = inMap.get(rootVal);
+
+    root.left = build(preorder, inStart, inIndex - 1, inMap);
+    root.right = build(preorder, inIndex + 1, inEnd, inMap);
+
+    return root;
+}
+```
+
+### 5.2 Build Tree from Inorder and Postorder
+
+```java
+int postIndex;
+
+TreeNode buildTree(int[] inorder, int[] postorder) {
+    postIndex = postorder.length - 1;
+    HashMap<Integer, Integer> inMap = new HashMap<>();
+    for (int i = 0; i < inorder.length; i++) {
+        inMap.put(inorder[i], i);
+    }
+    return build(postorder, 0, postorder.length - 1, inMap);
+}
+
+TreeNode build(int[] postorder, int inStart, int inEnd,
+               HashMap<Integer, Integer> inMap) {
+    if (inStart > inEnd) return null;
+
+    int rootVal = postorder[postIndex--];
+    TreeNode root = new TreeNode(rootVal);
+
+    int inIndex = inMap.get(rootVal);
+
+    root.right = build(postorder, inIndex + 1, inEnd, inMap);
+    root.left = build(postorder, inStart, inIndex - 1, inMap);
+
+    return root;
+}
+```
+
+### 5.3 Build Tree from Preorder and Postorder
+
+```java
+int preIndex = 0, postIndex = 0;
+
+TreeNode constructFromPrePost(int[] preorder, int[] postorder) {
+    TreeNode root = new TreeNode(preorder[preIndex++]);
+    if (root.val != postorder[postIndex]) {
+        root.left = constructFromPrePost(preorder, postorder);
+    }
+    if (root.val != postorder[postIndex]) {
+        root.right = constructFromPrePost(preorder, postorder);
+    }
+    postIndex++;
+    return root;
+}
+```
+
+### 5.4 Build Complete Binary Tree from Array
+
+```java
+TreeNode arrayToTree(int[] arr, int i) {
+    if (i >= arr.length) return null;
+
+    TreeNode root = new TreeNode(arr[i]);
+    root.left = arrayToTree(arr, 2 * i + 1);
+    root.right = arrayToTree(arr, 2 * i + 2);
+
+    return root;
+}
+```
+
+### 5.5 Convert Sorted Array to BST
+
+```java
+TreeNode sortedArrayToBST(int[] nums) {
+    return buildBST(nums, 0, nums.length - 1);
+}
+
+TreeNode buildBST(int[] nums, int left, int right) {
+    if (left > right) return null;
+
+    int mid = left + (right - left) / 2;
+    TreeNode root = new TreeNode(nums[mid]);
+
+    root.left = buildBST(nums, left, mid - 1);
+    root.right = buildBST(nums, mid + 1, right);
+
+    return root;
+}
+```
+
+### 5.6 Convert Sorted List to BST
+
+```java
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode(int val) { this.val = val; }
+}
+
+TreeNode sortedListToBST(ListNode head) {
+    if (head == null) return null;
+    if (head.next == null) return new TreeNode(head.val);
+
+    ListNode slow = head, fast = head, prev = null;
+
+    while (fast != null && fast.next != null) {
+        prev = slow;
+        slow = slow.next;
+        fast = fast.next.next;
+    }
+
+    TreeNode root = new TreeNode(slow.val);
+
+    if (prev != null) prev.next = null;
+    root.left = sortedListToBST(head == slow ? null : head);
+    root.right = sortedListToBST(slow.next);
+
+    return root;
+}
+```
+
+---
+
+## Pattern 6: BST Patterns
+
+### 6.1 Validate BST
+
+```java
+boolean isValidBST(TreeNode root) {
+    return validate(root, null, null);
+}
+
+boolean validate(TreeNode root, Integer min, Integer max) {
+    if (root == null) return true;
+
+    if ((min != null && root.val <= min) || (max != null && root.val >= max)) {
+        return false;
+    }
+
+    return validate(root.left, min, root.val) && validate(root.right, root.val, max);
+}
+
+// Using Inorder
+boolean isValidBST2(TreeNode root) {
+    Deque<TreeNode> stack = new ArrayDeque<>();
+    Integer prev = null;
+    TreeNode curr = root;
+
+    while (curr != null || !stack.isEmpty()) {
+        while (curr != null) {
+            stack.push(curr);
+            curr = curr.left;
+        }
+        curr = stack.pop();
+
+        if (prev != null && curr.val <= prev) return false;
+        prev = curr.val;
+
+        curr = curr.right;
+    }
+    return true;
+}
+```
+
+### 6.2 Search in BST
+
+```java
+TreeNode searchBST(TreeNode root, int val) {
+    if (root == null || root.val == val) return root;
+
+    if (val < root.val) {
+        return searchBST(root.left, val);
+    }
+    return searchBST(root.right, val);
+}
+
+// Iterative
+TreeNode searchBSTIterative(TreeNode root, int val) {
+    while (root != null && root.val != val) {
+        root = val < root.val ? root.left : root.right;
+    }
+    return root;
+}
+```
+
+### 6.3 Insert into BST
+
+```java
+TreeNode insertIntoBST(TreeNode root, int val) {
+    if (root == null) return new TreeNode(val);
+
+    if (val < root.val) {
+        root.left = insertIntoBST(root.left, val);
+    } else {
+        root.right = insertIntoBST(root.right, val);
+    }
+    return root;
+}
+
+// Iterative
+TreeNode insertIntoBSTIterative(TreeNode root, int val) {
+    if (root == null) return new TreeNode(val);
+
+    TreeNode curr = root;
+    while (true) {
+        if (val < curr.val) {
+            if (curr.left == null) {
+                curr.left = new TreeNode(val);
+                break;
+            }
+            curr = curr.left;
+        } else {
+            if (curr.right == null) {
+                curr.right = new TreeNode(val);
+                break;
+            }
+            curr = curr.right;
+        }
+    }
+    return root;
+}
+```
+
+### 6.4 Delete from BST
+
+```java
+TreeNode deleteNode(TreeNode root, int key) {
+    if (root == null) return null;
+
+    if (key < root.val) {
+        root.left = deleteNode(root.left, key);
+    } else if (key > root.val) {
+        root.right = deleteNode(root.right, key);
+    } else {
+        // Node has two children
+        TreeNode minNode = findMin(root.right);
+        root.val = minNode.val;
+        root.right = deleteNode(root.right, minNode.val);
+    }
+    return root;
+}
+
+TreeNode findMin(TreeNode root) {
+    while (root.left != null) root = root.left;
+    return root;
+}
+```
+
+### 6.5 Kth Smallest Element in BST
+
+```java
+int kthSmallest(TreeNode root, int k) {
+    Deque<TreeNode> stack = new ArrayDeque<>();
+    TreeNode curr = root;
+
+    while (curr != null || !stack.isEmpty()) {
+        while (curr != null) {
+            stack.push(curr);
+            curr = curr.left;
+        }
+        curr = stack.pop();
+        k--;
+        if (k == 0) return curr.val;
+        curr = curr.right;
+    }
+    return -1;
+}
+
+// With counter approach
+int kthSmallest2(TreeNode root, int k) {
+    int[] result = new int[]{0};
+    int[] count = new int[]{k};
+    inorder(root, count, result);
+    return result[0];
+}
+
+void inorder(TreeNode root, int[] count, int[] result) {
+    if (root == null) return;
+
+    inorder(root.left, count, result);
+
+    count[0]--;
+    if (count[0] == 0) {
+        result[0] = root.val;
+        return;
+    }
+
+    inorder(root.right, count, result);
+}
+```
+
+### 6.6 Kth Largest Element in BST
+
+```java
+int kthLargest(TreeNode root, int k) {
+    int[] result = new int[]{0};
+    int[] count = new int[]{k};
+    reverseInorder(root, count, result);
+    return result[0];
+}
+
+void reverseInorder(TreeNode root, int[] count, int[] result) {
+    if (root == null) return;
+
+    reverseInorder(root.right, count, result);
+
+    count[0]--;
+    if (count[0] == 0) {
+        result[0] = root.val;
+        return;
+    }
+
+    reverseInorder(root.left, count, result);
+}
+```
+
+### 6.7 Lowest Common Ancestor in BST
+
+```java
+TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+    if (root.val > p.val && root.val > q.val) {
+        return lowestCommonAncestor(root.left, p, q);
+    }
+    if (root.val < p.val && root.val < q.val) {
+        return lowestCommonAncestor(root.right, p, q);
+    }
+    return root;
+}
+
+// Iterative
+TreeNode lowestCommonAncestorIterative(TreeNode root, TreeNode p, TreeNode q) {
+    while (root != null) {
+        if (root.val > p.val && root.val > q.val) {
+            root = root.left;
+        } else if (root.val < p.val && root.val < q.val) {
+            root = root.right;
+        } else {
+            return root;
+        }
+    }
+    return null;
+}
+```
+
+### 6.8 Inorder Successor in BST
+
+```java
+TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
+    TreeNode successor = null;
+
+    while (root != null) {
+        if (p.val < root.val) {
+            successor = root;
+            root = root.left;
+        } else {
+            root = root.right;
+        }
+    }
+    return successor;
+}
+```
+
+### 6.9 Inorder Predecessor in BST
+
+```java
+TreeNode inorderPredecessor(TreeNode root, TreeNode p) {
+    TreeNode predecessor = null;
+
+    while (root != null) {
+        if (p.val > root.val) {
+            predecessor = root;
+            root = root.right;
+        } else {
+            root = root.left;
+        }
+    }
+    return predecessor;
+}
+```
+
+### 6.10 Two Sum IV - Input is a BST
+
+```java
+boolean findTarget(TreeNode root, int k) {
+    HashSet<Integer> set = new HashSet<>();
+    return find(root, k, set);
+}
+
+boolean find(TreeNode root, int k, HashSet<Integer> set) {
+    if (root == null) return false;
+
+    if (set.contains(k - root.val)) return true;
+
+    set.add(root.val);
+
+    return find(root.left, k, set) || find(root.right, k, set);
+}
+
+// Using Two Pointers with Inorder
+boolean findTarget2(TreeNode root, int k) {
+    List<Integer> list = new ArrayList<>();
+    inorder(root, list);
+
+    int left = 0, right = list.size() - 1;
+
+    while (left < right) {
+        int sum = list.get(left) + list.get(right);
+        if (sum == k) return true;
+        if (sum < k) left++;
+        else right--;
+    }
+    return false;
+}
+
+void inorder(TreeNode root, List<Integer> list) {
+    if (root == null) return;
+    inorder(root.left, list);
+    list.add(root.val);
+    inorder(root.right, list);
+}
+```
+
+### 6.11 Range Sum of BST
+
+```java
+int rangeSumBST(TreeNode root, int low, int high) {
+    if (root == null) return 0;
+
+    if (root.val < low) {
+        return rangeSumBST(root.right, low, high);
+    }
+    if (root.val > high) {
+        return rangeSumBST(root.left, low, high);
+    }
+
+    return root.val + rangeSumBST(root.left, low, high) +
+           rangeSumBST(root.right, low, high);
+}
+```
+
+### 6.12 Convert BST to Greater Tree
+
+```java
+int sum = 0;
+
+TreeNode convertBST(TreeNode root) {
+    if (root != null) {
+        convertBST(root.right);
+        sum += root.val;
+        root.val = sum;
+        convertBST(root.left);
+    }
+    return root;
+}
+```
+
+### 6.13 Recover BST (Two nodes swapped)
+
+```java
+TreeNode first = null, second = null, prev = null;
+
+void recoverTree(TreeNode root) {
+    inorder(root);
+
+    // Swap values
+    int temp = first.val;
+    first.val = second.val;
+    second.val = temp;
+}
+
+void inorder(TreeNode root) {
+    if (root == null) return;
+
+    inorder(root.left);
+
+    if (prev != null && prev.val > root.val) {
+        if (first == null) first = prev;
+        second = root;
+    }
+    prev = root;
+
+    inorder(root.right);
+}
+```
+
+---
+
+## Pattern 7: Tree Modification
+
+### 7.1 Flatten Binary Tree to Linked List
+
+```java
+void flatten(TreeNode root) {
+    if (root == null) return;
+
+    flatten(root.left);
+    flatten(root.right);
+
+    TreeNode right = root.right;
+    root.right = root.left;
+    root.left = null;
+
+    TreeNode curr = root;
+    while (curr.right != null) {
+        curr = curr.right;
+    }
+    curr.right = right;
+}
+
+// Iterative
+void flattenIterative(TreeNode root) {
+    TreeNode curr = root;
+
+    while (curr != null) {
+        if (curr.left != null) {
+            TreeNode rightmost = curr.left;
+            while (rightmost.right != null) {
+                rightmost = rightmost.right;
+            }
+
+            rightmost.right = curr.right;
+            curr.right = curr.left;
+            curr.left = null;
+        }
+        curr = curr.right;
+    }
+}
+```
+
+### 7.2 Binary Tree Pruning (Remove subtrees with all zeros)
+
+```java
+TreeNode pruneTree(TreeNode root) {
+    if (root == null) return null;
+
+    root.left = pruneTree(root.left);
+    root.right = pruneTree(root.right);
+
+    if (root.val == 0 && root.left == null && root.right == null) {
+        return null;
+    }
+
+    return root;
+}
+```
+
+### 7.3 Delete Leaves with Given Value
+
+```java
+TreeNode removeLeafNodes(TreeNode root, int target) {
+    if (root == null) return null;
+
+    root.left = removeLeafNodes(root.left, target);
+    root.right = removeLeafNodes(root.right, target);
+
+    if (root.left == null && root.right == null && root.val == target) {
+        return null;
+    }
+
+    return root;
+}
+```
+
+### 7.4 Add One Row to Tree
+
+```java
+TreeNode addOneRow(TreeNode root, int val, int depth) {
+    if (depth == 1) {
+        TreeNode newRoot = new TreeNode(val);
+        newRoot.left = root;
+        return newRoot;
+    }
+
+    addRow(root, val, depth, 1);
+    return root;
+}
+
+void addRow(TreeNode root, int val, int depth, int currentDepth) {
+    if (root == null) return;
+
+    if (currentDepth == depth - 1) {
+        TreeNode tempLeft = root.left;
+        TreeNode tempRight = root.right;
+
+        root.left = new TreeNode(val);
+        root.right = new TreeNode(val);
+
+        root.left.left = tempLeft;
+        root.right.right = tempRight;
+
+        return;
+    }
+
+    addRow(root.left, val, depth, currentDepth + 1);
+    addRow(root.right, val, depth, currentDepth + 1);
+}
+```
+
+### 7.5 Merge Two Binary Trees
+
+```java
+TreeNode mergeTrees(TreeNode t1, TreeNode t2) {
+    if (t1 == null) return t2;
+    if (t2 == null) return t1;
+
+    TreeNode merged = new TreeNode(t1.val + t2.val);
+    merged.left = mergeTrees(t1.left, t2.left);
+    merged.right = mergeTrees(t1.right, t2.right);
+
+    return merged;
+}
+```
+
+---
+
+## Pattern 8: Ancestor & LCA Problems
+
+### 8.1 Lowest Common Ancestor (Binary Tree)
+
+```java
+TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+    if (root == null || root == p || root == q) return root;
+
+    TreeNode left = lowestCommonAncestor(root.left, p, q);
+    TreeNode right = lowestCommonAncestor(root.right, p, q);
+
+    if (left != null && right != null) return root;
+    return left != null ? left : right;
+}
+```
+
+### 8.2 Distance Between Two Nodes
+
+```java
+int findDistance(TreeNode root, TreeNode p, TreeNode q) {
+    TreeNode lca = lowestCommonAncestor(root, p, q);
+    int d1 = findLevel(lca, p, 0);
+    int d2 = findLevel(lca, q, 0);
+    return d1 + d2;
+}
+
+int findLevel(TreeNode root, TreeNode target, int level) {
+    if (root == null) return -1;
+    if (root == target) return level;
+
+    int left = findLevel(root.left, target, level + 1);
+    if (left != -1) return left;
+
+    return findLevel(root.right, target, level + 1);
+}
+```
+
+### 8.3 All Ancestors of a Node
+
+```java
+boolean findAncestors(TreeNode root, int target, List<Integer> ancestors) {
+    if (root == null) return false;
+
+    if (root.val == target) return true;
+
+    if (findAncestors(root.left, target, ancestors) ||
+        findAncestors(root.right, target, ancestors)) {
+        ancestors.add(root.val);
+        return true;
+    }
+
+    return false;
+}
+```
+
+### 8.4 Deepest Leaves Sum
+
+```java
+int deepestLeavesSum(TreeNode root) {
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    int sum = 0;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        sum = 0;
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            sum += node.val;
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+    return sum;
+}
+```
+
+---
+
+## Pattern 9: Serialization/Deserialization
+
+### 9.1 Serialize and Deserialize Binary Tree
+
+```java
+class Codec {
+    // Serialize
+    public String serialize(TreeNode root) {
+        if (root == null) return "null";
+
+        StringBuilder sb = new StringBuilder();
+        Queue<TreeNode> queue = new ArrayDeque<>();
+        queue.offer(root);
+
+        while (!queue.isEmpty()) {
+            TreeNode node = queue.poll();
+
+            if (node == null) {
+                sb.append("null,");
+            } else {
+                sb.append(node.val).append(",");
+                queue.offer(node.left);
+                queue.offer(node.right);
+            }
+        }
+        return sb.toString();
+    }
+
+    // Deserialize
+    public TreeNode deserialize(String data) {
+        if (data.equals("null")) return null;
+
+        String[] values = data.split(",");
+        TreeNode root = new TreeNode(Integer.parseInt(values[0]));
+        Queue<TreeNode> queue = new ArrayDeque<>();
+        queue.offer(root);
+
+        int i = 1;
+        while (!queue.isEmpty()) {
+            TreeNode node = queue.poll();
+
+            if (!values[i].equals("null")) {
+                node.left = new TreeNode(Integer.parseInt(values[i]));
+                queue.offer(node.left);
+            }
+            i++;
+
+            if (!values[i].equals("null")) {
+                node.right = new TreeNode(Integer.parseInt(values[i]));
+                queue.offer(node.right);
+            }
+            i++;
+        }
+        return root;
+    }
+}
+```
+
+### 9.2 Serialize and Deserialize BST (Optimized)
+
+```java
+class Codec {
+    // Serialize using preorder
+    public String serialize(TreeNode root) {
+        StringBuilder sb = new StringBuilder();
+        serialize(root, sb);
+        return sb.toString();
+    }
+
+    void serialize(TreeNode root, StringBuilder sb) {
+        if (root == null) return;
+        sb.append(root.val).append(",");
+        serialize(root.left, sb);
+        serialize(root.right, sb);
+    }
+
+    // Deserialize
+    public TreeNode deserialize(String data) {
+        if (data.isEmpty()) return null;
+        String[] values = data.split(",");
+        Queue<Integer> queue = new ArrayDeque<>();
+        for (String val : values) {
+            queue.offer(Integer.parseInt(val));
+        }
+        return deserialize(queue, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+
+    TreeNode deserialize(Queue<Integer> queue, int min, int max) {
+        if (queue.isEmpty()) return null;
+
+        int val = queue.peek();
+        if (val < min || val > max) return null;
+
+        queue.poll();
+        TreeNode root = new TreeNode(val);
+        root.left = deserialize(queue, min, val);
+        root.right = deserialize(queue, val, max);
+        return root;
+    }
+}
+```
+
+---
+
+## Pattern 10: View & Boundary Problems
+
+### 10.1 Right Side View
+
+```java
+List<Integer> rightSideView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            if (i == size - 1) {
+                result.add(node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+    return result;
+}
+
+// DFS approach
+List<Integer> rightSideViewDFS(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    dfs(root, 0, result);
+    return result;
+}
+
+void dfs(TreeNode root, int level, List<Integer> result) {
+    if (root == null) return;
+
+    if (level == result.size()) {
+        result.add(root.val);
+    }
+
+    dfs(root.right, level + 1, result);
+    dfs(root.left, level + 1, result);
+}
+```
+
+### 10.2 Left Side View
+
+```java
+List<Integer> leftSideView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            if (i == 0) {
+                result.add(node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+    return result;
+}
+```
+
+### 10.3 Top View
+
+```java
+class Pair {
+    TreeNode node;
+    int hd;
+    Pair(TreeNode node, int hd) {
+        this.node = node;
+        this.hd = hd;
+    }
+}
+
+List<Integer> topView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, Integer> map = new TreeMap<>();
+    Queue<Pair> queue = new ArrayDeque<>();
+    queue.offer(new Pair(root, 0));
+
+    while (!queue.isEmpty()) {
+        Pair pair = queue.poll();
+        TreeNode node = pair.node;
+        int hd = pair.hd;
+
+        if (!map.containsKey(hd)) {
+            map.put(hd, node.val);
+        }
+
+        if (node.left != null) {
+            queue.offer(new Pair(node.left, hd - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new Pair(node.right, hd + 1));
+        }
+    }
+
+    result.addAll(map.values());
+    return result;
+}
+```
+
+### 10.4 Bottom View
+
+```java
+List<Integer> bottomView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, Integer> map = new TreeMap<>();
+    Queue<Pair> queue = new ArrayDeque<>();
+    queue.offer(new Pair(root, 0));
+
+    while (!queue.isEmpty()) {
+        Pair pair = queue.poll();
+        TreeNode node = pair.node;
+        int hd = pair.hd;
+
+        map.put(hd, node.val); // Overwrite for bottom view
+
+        if (node.left != null) {
+            queue.offer(new Pair(node.left, hd - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new Pair(node.right, hd + 1));
+        }
+    }
+
+    result.addAll(map.values());
+    return result;
+}
+```
+
+### 10.5 Vertical Order Traversal
+
+```java
+List<List<Integer>> verticalOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, List<Integer>> map = new TreeMap<>();
+    Queue<Pair> queue = new ArrayDeque<>();
+    queue.offer(new Pair(root, 0));
+
+    while (!queue.isEmpty()) {
+        Pair pair = queue.poll();
+        TreeNode node = pair.node;
+        int hd = pair.hd;
+
+        map.computeIfAbsent(hd, k -> new ArrayList<>()).add(node.val);
+
+        if (node.left != null) {
+            queue.offer(new Pair(node.left, hd - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new Pair(node.right, hd + 1));
+        }
+    }
+
+    for (List<Integer> list : map.values()) {
+        result.add(list);
+    }
+    return result;
+}
+```
+
+### 10.6 Boundary Traversal
+
+```java
+List<Integer> boundaryOfBinaryTree(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    if (!isLeaf(root)) result.add(root.val);
+
+    addLeftBoundary(root.left, result);
+    addLeaves(root, result);
+    addRightBoundary(root.right, result);
+
+    return result;
+}
+
+boolean isLeaf(TreeNode node) {
+    return node != null && node.left == null && node.right == null;
+}
+
+void addLeftBoundary(TreeNode root, List<Integer> result) {
+    TreeNode curr = root;
+    while (curr != null) {
+        if (!isLeaf(curr)) result.add(curr.val);
+        curr = curr.left != null ? curr.left : curr.right;
+    }
+}
+
+void addRightBoundary(TreeNode root, List<Integer> result) {
+    TreeNode curr = root;
+    List<Integer> temp = new ArrayList<>();
+
+    while (curr != null) {
+        if (!isLeaf(curr)) temp.add(curr.val);
+        curr = curr.right != null ? curr.right : curr.left;
+    }
+
+    for (int i = temp.size() - 1; i >= 0; i--) {
+        result.add(temp.get(i));
+    }
+}
+
+void addLeaves(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+
+    if (isLeaf(root)) {
+        result.add(root.val);
+        return;
+    }
+
+    addLeaves(root.left, result);
+    addLeaves(root.right, result);
+}
+```
+
+---
+
+## Pattern 11: Distance & Range Problems
+
+### 11.1 All Nodes Distance K
+
+```java
+List<Integer> distanceK(TreeNode root, TreeNode target, int k) {
+    HashMap<TreeNode, TreeNode> parent = new HashMap<>();
+    buildParentMap(root, null, parent);
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    HashSet<TreeNode> visited = new HashSet<>();
+
+    queue.offer(target);
+    visited.add(target);
+    int distance = 0;
+
+    while (!queue.isEmpty()) {
+        if (distance == k) {
+            List<Integer> result = new ArrayList<>();
+            for (TreeNode node : queue) {
+                result.add(node.val);
+            }
+            return result;
+        }
+
+        int size = queue.size();
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            if (node.left != null && !visited.contains(node.left)) {
+                queue.offer(node.left);
+                visited.add(node.left);
+            }
+            if (node.right != null && !visited.contains(node.right)) {
+                queue.offer(node.right);
+                visited.add(node.right);
+            }
+            if (parent.get(node) != null && !visited.contains(parent.get(node))) {
+                queue.offer(parent.get(node));
+                visited.add(parent.get(node));
+            }
+        }
+        distance++;
+    }
+    return new ArrayList<>();
+}
+
+void buildParentMap(TreeNode root, TreeNode par, HashMap<TreeNode, TreeNode> parent) {
+    if (root == null) return;
+    parent.put(root, par);
+    buildParentMap(root.left, root, parent);
+    buildParentMap(root.right, root, parent);
+}
+```
+
+### 11.2 Width of Binary Tree
+
+```java
+int widthOfBinaryTree(TreeNode root) {
+    if (root == null) return 0;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    HashMap<TreeNode, Integer> map = new HashMap<>();
+
+    queue.offer(root);
+    map.put(root, 0);
+    int maxWidth = 1;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        int start = map.get(queue.peek());
+        int end = start;
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            int idx = map.get(node);
+            end = idx;
+
+            if (node.left != null) {
+                queue.offer(node.left);
+                map.put(node.left, 2 * idx);
+            }
+            if (node.right != null) {
+                queue.offer(node.right);
+                map.put(node.right, 2 * idx + 1);
+            }
+        }
+        maxWidth = Math.max(maxWidth, end - start + 1);
+    }
+    return maxWidth;
+}
+```
+
+---
+
+## Pattern 12: Subtree Problems
+
+### 12.1 Subtree of Another Tree
+
+```java
+boolean isSubtree(TreeNode root, TreeNode subRoot) {
+    if (root == null) return false;
+
+    if (isSameTree(root, subRoot)) return true;
+
+    return isSubtree(root.left, subRoot) || isSubtree(root.right, subRoot);
+}
+
+boolean isSameTree(TreeNode p, TreeNode q) {
+    if (p == null && q == null) return true;
+    if (p == null || q == null) return false;
+
+    return p.val == q.val && isSameTree(p.left, q.left) && isSameTree(p.right, q.right);
+}
+```
+
+### 12.2 Count Univalue Subtrees
+
+```java
+int countUnivalSubtrees(TreeNode root) {
+    int[] count = new int[1];
+    isUnival(root, count);
+    return count[0];
+}
+
+boolean isUnival(TreeNode root, int[] count) {
+    if (root == null) return true;
+
+    boolean left = isUnival(root.left, count);
+    boolean right = isUnival(root.right, count);
+
+    if (!left || !right) return false;
+
+    if (root.left != null && root.left.val != root.val) return false;
+    if (root.right != null && root.right.val != root.val) return false;
+
+    count[0]++;
+    return true;
+}
+```
+
+### 12.3 Maximum Average Subtree
+
+```java
+double maximumAverageSubtree(TreeNode root) {
+    double[] max = new double[]{0.0};
+    helper(root, max);
+    return max[0];
+}
+
+double[] helper(TreeNode root, double[] max) {
+    if (root == null) return new double[]{0, 0}; // {sum, count}
+
+    double[] left = helper(root.left, max);
+    double[] right = helper(root.right, max);
+
+    double sum = root.val + left[0] + right[0];
+    double count = 1 + left[1] + right[1];
+    double avg = sum / count;
+
+    max[0] = Math.max(max[0], avg);
+
+    return new double[]{sum, count};
+}
+```
+
+---
+
+## Common Tree Problem Techniques Summary
+
+### 1. **Traversal Choice**
+- **Inorder**: BST problems, sorted order
+- **Preorder**: Tree construction, serialization
+- **Postorder**: Bottom-up processing, deletion
+- **Level Order**: Level-wise operations, shortest path
+
+### 2. **DFS vs BFS**
+- **DFS**: Path problems, tree properties, recursion-friendly
+- **BFS**: Level-wise, shortest distance, width
+
+### 3. **Helper Variables**
+- Use arrays/objects for mutable state in recursion
+- Pass level/depth information
+- Use HashMap for parent pointers
+
+### 4. **Common Patterns**
+- **Two Pass**: First gather info, then process
+- **Post-order for bottom-up**: Children first, then parent
+- **Parent Pointers**: For upward traversal
+- **Horizontal Distance**: For vertical/top/bottom views
+
+### 5. **Time Complexities**
+- Most tree operations: O(n)
+- BST search/insert/delete: O(h) where h = height
+- Balanced BST: O(log n)
+- Skewed tree: O(n)
+
+---

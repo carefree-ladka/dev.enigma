@@ -1,0 +1,1364 @@
+# Binary Tree View Implementations
+
+A comprehensive guide to binary tree traversal and view algorithms using ArrayDeque for optimal performance in Data Structures and Algorithms.
+
+## Table of Contents
+
+1. [Basic Node Structures](#basic-node-structures)
+2. [ArrayDeque Fundamentals](#arraydeque-fundamentals)
+3. [Tree Construction Helpers](#tree-construction-helpers)
+4. [Top View Implementation](#top-view-implementation)
+5. [Bottom View Implementation](#bottom-view-implementation)
+6. [Left View Implementation](#left-view-implementation)
+7. [Right View Implementation](#right-view-implementation)
+8. [Boundary Traversal](#boundary-traversal)
+9. [Vertical Order Traversal](#vertical-order-traversal)
+10. [Level Order Views](#level-order-views)
+11. [Diagonal Views](#diagonal-views)
+12. [Advanced View Techniques](#advanced-view-techniques)
+13. [Usage Examples](#usage-examples)
+
+***
+
+## Basic Node Structures
+
+The foundation of binary tree operations starts with node definitions:
+
+### Binary Tree Node
+
+```java
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+
+    TreeNode() {}
+
+    TreeNode(int val) {
+        this.val = val;
+    }
+
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+```
+
+
+### Enhanced Node with Coordinates
+
+```java
+class TreeNodeWithCoords {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    int row;    // Level/depth
+    int col;    // Horizontal distance
+
+    TreeNodeWithCoords(int val, int row, int col) {
+        this.val = val;
+        this.row = row;
+        this.col = col;
+    }
+}
+```
+
+
+### Node with Horizontal Distance
+
+```java
+class QueueNode {
+    TreeNode node;
+    int hd;     // Horizontal Distance
+    int level;  // Level from root
+
+    QueueNode(TreeNode node, int hd) {
+        this.node = node;
+        this.hd = hd;
+    }
+
+    QueueNode(TreeNode node, int hd, int level) {
+        this.node = node;
+        this.hd = hd;
+        this.level = level;
+    }
+}
+```
+
+
+***
+
+## ArrayDeque Fundamentals
+
+### Why ArrayDeque over LinkedList?
+
+ArrayDeque provides **O(1)** operations for both ends and is **faster than LinkedList** for queue operations in tree traversals.
+
+**Key Advantages:**
+
+- **O(1)** enqueue/dequeue operations
+- Better cache locality than LinkedList
+- No node allocation overhead
+- Circular array implementation
+- Suitable for both **Queue** and **Stack** operations
+
+
+### ArrayDeque as Queue
+
+```java
+import java.util.ArrayDeque;
+import java.util.Queue;
+
+// Using as Queue (FIFO)
+Queue<TreeNode> queue = new ArrayDeque<>();
+queue.offer(node);        // Add to rear
+TreeNode current = queue.poll(); // Remove from front
+```
+
+
+### ArrayDeque as Stack
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+
+// Using as Stack (LIFO)
+Deque<TreeNode> stack = new ArrayDeque<>();
+stack.push(node);         // Add to front
+TreeNode current = stack.pop(); // Remove from front
+```
+
+
+### ArrayDeque Performance Characteristics[3]
+
+| Operation | Time Complexity | Space Complexity |
+| :-- | :-- | :-- |
+| offer/offerLast | O(1) | O(1) |
+| offerFirst | O(1) | O(1) |
+| poll/pollFirst | O(1) | O(1) |
+| pollLast | O(1) | O(1) |
+| peek/peekFirst | O(1) | O(1) |
+| peekLast | O(1) | O(1) |
+
+
+***
+
+## Tree Construction Helpers
+
+### Create Tree from Array (Level Order)
+
+```java
+public static TreeNode createTreeFromArray(Integer[] arr) {
+    if (arr == null || arr.length == 0) return null;
+
+    TreeNode root = new TreeNode(arr[0]);
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    int i = 1;
+
+    while (!queue.isEmpty() && i < arr.length) {
+        TreeNode node = queue.poll();
+
+        if (i < arr.length && arr[i] != null) {
+            node.left = new TreeNode(arr[i]);
+            queue.offer(node.left);
+        }
+        i++;
+
+        if (i < arr.length && arr[i] != null) {
+            node.right = new TreeNode(arr[i]);
+            queue.offer(node.right);
+        }
+        i++;
+    }
+
+    return root;
+}
+```
+
+
+### Print Tree Structure
+
+```java
+public static void printTree(TreeNode root) {
+    printTree(root, "", true);
+}
+
+private static void printTree(TreeNode root, String prefix, boolean isLast) {
+    if (root == null) return;
+
+    System.out.println(prefix + (isLast ? "└── " : "├── ") + root.val);
+
+    List<TreeNode> children = new ArrayList<>();
+    if (root.left != null) children.add(root.left);
+    if (root.right != null) children.add(root.right);
+
+    for (int i = 0; i < children.size(); i++) {
+        boolean isLastChild = (i == children.size() - 1);
+        String newPrefix = prefix + (isLast ? "    " : "│   ");
+        printTree(children.get(i), newPrefix, isLastChild);
+    }
+}
+```
+
+
+***
+
+## Top View Implementation
+
+### 1. Top View (Horizontal Distance Based)
+
+**Concept**: View the tree from above - only the topmost node at each horizontal distance is visible.
+
+```java
+import java.util.*;
+
+public static List<Integer> topView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    // TreeMap to store horizontal distance -> node value
+    TreeMap<Integer, Integer> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int hd = current.hd;
+        TreeNode node = current.node;
+
+        // Only add if this horizontal distance hasn't been seen
+        if (!map.containsKey(hd)) {
+            map.put(hd, node.val);
+        }
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, hd - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, hd + 1));
+        }
+    }
+
+    // TreeMap automatically sorts by key (horizontal distance)
+    result.addAll(map.values());
+    return result;
+}
+```
+
+**Time Complexity:** O(n log n) | **Space Complexity:** O(n)
+
+### 2. Top View with Level Priority
+
+```java
+public static List<Integer> topViewWithLevel(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    class NodeInfo {
+        int val, level;
+        NodeInfo(int val, int level) {
+            this.val = val;
+            this.level = level;
+        }
+    }
+
+    TreeMap<Integer, NodeInfo> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int hd = current.hd;
+        int level = current.level;
+        TreeNode node = current.node;
+
+        if (!map.containsKey(hd) || map.get(hd).level > level) {
+            map.put(hd, new NodeInfo(node.val, level));
+        }
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, hd - 1, level + 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, hd + 1, level + 1));
+        }
+    }
+
+    for (NodeInfo info : map.values()) {
+        result.add(info.val);
+    }
+    return result;
+}
+```
+
+**Example**:
+
+```
+     1
+   /   \
+  2     3
+ / \   / \
+4   5 6   7
+
+Top View: [4, 2, 1, 3, 7]
+```
+
+
+***
+
+## Bottom View Implementation
+
+### 1. Bottom View (Always Update Strategy)
+
+**Concept**: View the tree from below - only the bottommost node at each horizontal distance is visible.[7]
+
+```java
+public static List<Integer> bottomView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, Integer> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int hd = current.hd;
+        TreeNode node = current.node;
+
+        // Always update - last one at this distance wins
+        map.put(hd, node.val);
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, hd - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, hd + 1));
+        }
+    }
+
+    result.addAll(map.values());
+    return result;
+}
+```
+
+**Time Complexity:** O(n log n) | **Space Complexity:** O(n)
+
+### 2. Bottom View with Maximum Level
+
+```java
+public static List<Integer> bottomViewMaxLevel(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    class NodeInfo {
+        int val, level;
+        NodeInfo(int val, int level) {
+            this.val = val;
+            this.level = level;
+        }
+    }
+
+    TreeMap<Integer, NodeInfo> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int hd = current.hd;
+        int level = current.level;
+        TreeNode node = current.node;
+
+        if (!map.containsKey(hd) || map.get(hd).level <= level) {
+            map.put(hd, new NodeInfo(node.val, level));
+        }
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, hd - 1, level + 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, hd + 1, level + 1));
+        }
+    }
+
+    for (NodeInfo info : map.values()) {
+        result.add(info.val);
+    }
+    return result;
+}
+```
+
+**Example**:
+
+```
+     1
+   /   \
+  2     3
+ / \   / \
+4   5 6   7
+
+Bottom View: [4, 5, 6, 7]
+```
+
+
+***
+
+## Left View Implementation
+
+### 1. Left View (Level Order)
+
+**Concept**: View from the left side - first node encountered at each level.
+
+```java
+public static List<Integer> leftView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+
+            // First node of each level
+            if (i == 0) {
+                result.add(node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+
+    return result;
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(w) where w is max width
+
+### 2. Left View (Recursive DFS)
+
+```java
+public static List<Integer> leftViewRecursive(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    leftViewHelper(root, 0, result);
+    return result;
+}
+
+private static void leftViewHelper(TreeNode node, int level, List<Integer> result) {
+    if (node == null) return;
+
+    // First time visiting this level
+    if (level == result.size()) {
+        result.add(node.val);
+    }
+
+    leftViewHelper(node.left, level + 1, result);   // Visit left first
+    leftViewHelper(node.right, level + 1, result);
+}
+```
+
+**Time Complexity:** O(n) | **Space Complexity:** O(h) where h is height
+
+### 3. Left View with Node Details
+
+```java
+public static List<Map<String, Integer>> leftViewWithDetails(TreeNode root) {
+    List<Map<String, Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    int currentLevel = 0;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+
+            if (i == 0) {
+                Map<String, Integer> nodeInfo = new HashMap<>();
+                nodeInfo.put("val", node.val);
+                nodeInfo.put("level", currentLevel);
+                result.add(nodeInfo);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+        currentLevel++;
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Right View Implementation
+
+### 1. Right View (Level Order)
+
+**Concept**: View from the right side - last node encountered at each level.
+
+```java
+public static List<Integer> rightView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+
+            // Last node of each level
+            if (i == levelSize - 1) {
+                result.add(node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 2. Right View (Recursive DFS)
+
+```java
+public static List<Integer> rightViewRecursive(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    rightViewHelper(root, 0, result);
+    return result;
+}
+
+private static void rightViewHelper(TreeNode node, int level, List<Integer> result) {
+    if (node == null) return;
+
+    // First time visiting this level
+    if (level == result.size()) {
+        result.add(node.val);
+    }
+
+    rightViewHelper(node.right, level + 1, result);  // Visit right first
+    rightViewHelper(node.left, level + 1, result);
+}
+```
+
+
+### 3. Right View Optimized BFS
+
+```java
+public static List<Integer> rightViewOptimized(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        TreeNode rightmost = null;
+
+        // Process all nodes at current level
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+            rightmost = node; // Keep updating, last one will be rightmost
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        if (rightmost != null) {
+            result.add(rightmost.val);
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Boundary Traversal
+
+### 1. Complete Boundary Traversal
+
+**Concept**: Print boundary nodes in anti-clockwise direction.
+
+```java
+public static List<Integer> boundaryTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    // Add root if not leaf
+    if (!isLeaf(root)) {
+        result.add(root.val);
+    }
+
+    // Add left boundary (excluding root and leaves)
+    addLeftBoundary(root.left, result);
+
+    // Add all leaves
+    addLeaves(root, result);
+
+    // Add right boundary (excluding root and leaves) in reverse
+    addRightBoundary(root.right, result);
+
+    return result;
+}
+
+private static boolean isLeaf(TreeNode node) {
+    return node != null && node.left == null && node.right == null;
+}
+
+private static void addLeftBoundary(TreeNode node, List<Integer> result) {
+    while (node != null) {
+        if (!isLeaf(node)) {
+            result.add(node.val);
+        }
+
+        if (node.left != null) {
+            node = node.left;
+        } else {
+            node = node.right;
+        }
+    }
+}
+
+private static void addRightBoundary(TreeNode node, List<Integer> result) {
+    Deque<Integer> stack = new ArrayDeque<>();
+
+    while (node != null) {
+        if (!isLeaf(node)) {
+            stack.push(node.val);
+        }
+
+        if (node.right != null) {
+            node = node.right;
+        } else {
+            node = node.left;
+        }
+    }
+
+    // Add in reverse order
+    while (!stack.isEmpty()) {
+        result.add(stack.pop());
+    }
+}
+
+private static void addLeaves(TreeNode node, List<Integer> result) {
+    if (node == null) return;
+
+    if (isLeaf(node)) {
+        result.add(node.val);
+        return;
+    }
+
+    addLeaves(node.left, result);
+    addLeaves(node.right, result);
+}
+```
+
+
+### 2. Boundary with Specific Order
+
+```java
+public static List<Integer> boundaryAntiClockwise(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    result.add(root.val);
+
+    // Left boundary (top to bottom, excluding root and leaves)
+    List<Integer> leftBoundary = new ArrayList<>();
+    TreeNode curr = root.left;
+    while (curr != null) {
+        if (!isLeaf(curr)) {
+            leftBoundary.add(curr.val);
+        }
+        curr = (curr.left != null) ? curr.left : curr.right;
+    }
+
+    // Leaves (left to right)
+    List<Integer> leaves = new ArrayList<>();
+    collectLeaves(root, leaves);
+
+    // Right boundary (bottom to top, excluding root and leaves)
+    List<Integer> rightBoundary = new ArrayList<>();
+    curr = root.right;
+    while (curr != null) {
+        if (!isLeaf(curr)) {
+            rightBoundary.add(curr.val);
+        }
+        curr = (curr.right != null) ? curr.right : curr.left;
+    }
+
+    result.addAll(leftBoundary);
+    for (Integer leaf : leaves) {
+        if (!leaf.equals(root.val)) {
+            result.add(leaf);
+        }
+    }
+    Collections.reverse(rightBoundary);
+    result.addAll(rightBoundary);
+
+    return result;
+}
+
+private static void collectLeaves(TreeNode node, List<Integer> leaves) {
+    if (node == null) return;
+
+    if (isLeaf(node)) {
+        leaves.add(node.val);
+    } else {
+        collectLeaves(node.left, leaves);
+        collectLeaves(node.right, leaves);
+    }
+}
+```
+
+
+***
+
+## Vertical Order Traversal
+
+### 1. Vertical Order (Column-wise)
+
+```java
+public static List<List<Integer>> verticalOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, List<Integer>> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int col = current.hd;
+        TreeNode node = current.node;
+
+        map.computeIfAbsent(col, k -> new ArrayList<>()).add(node.val);
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, col - 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, col + 1));
+        }
+    }
+
+    result.addAll(map.values());
+    return result;
+}
+```
+
+
+### 2. Vertical Order with Level Priority
+
+```java
+public static List<List<Integer>> verticalOrderWithLevel(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    class NodeInfo {
+        int val, level;
+        NodeInfo(int val, int level) {
+            this.val = val;
+            this.level = level;
+        }
+    }
+
+    TreeMap<Integer, List<NodeInfo>> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int col = current.hd;
+        int level = current.level;
+        TreeNode node = current.node;
+
+        map.computeIfAbsent(col, k -> new ArrayList<>())
+           .add(new NodeInfo(node.val, level));
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, col - 1, level + 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, col + 1, level + 1));
+        }
+    }
+
+    for (List<NodeInfo> nodes : map.values()) {
+        nodes.sort((a, b) -> {
+            if (a.level != b.level) return Integer.compare(a.level, b.level);
+            return Integer.compare(a.val, b.val);
+        });
+
+        List<Integer> column = new ArrayList<>();
+        for (NodeInfo info : nodes) {
+            column.add(info.val);
+        }
+        result.add(column);
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Level Order Views
+
+### 1. Level Order Traversal
+
+```java
+public static List<List<Integer>> levelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+            currentLevel.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        result.add(currentLevel);
+    }
+
+    return result;
+}
+```
+
+
+### 2. Zigzag Level Order
+
+```java
+public static List<List<Integer>> zigzagLevelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+    boolean leftToRight = true;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+
+            if (leftToRight) {
+                currentLevel.add(node.val);
+            } else {
+                currentLevel.add(0, node.val); // Add to beginning for reverse order
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        result.add(currentLevel);
+        leftToRight = !leftToRight;
+    }
+
+    return result;
+}
+```
+
+
+### 3. Reverse Level Order[12]
+
+```java
+public static List<List<Integer>> reverseLevelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    Deque<List<Integer>> stack = new ArrayDeque<>(); // Using ArrayDeque as stack
+
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+            currentLevel.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        stack.push(currentLevel); // Push level to stack
+    }
+
+    // Pop all levels from stack to get reverse order
+    while (!stack.isEmpty()) {
+        result.add(stack.pop());
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Diagonal Views
+
+### 1. Diagonal Traversal (Slope -1)
+
+```java
+public static List<List<Integer>> diagonalTraversal(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new ArrayDeque<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> diagonal = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            // Follow the diagonal (keep going right)
+            while (node != null) {
+                diagonal.add(node.val);
+
+                if (node.left != null) {
+                    queue.offer(node.left);
+                }
+
+                node = node.right;
+            }
+        }
+
+        if (!diagonal.isEmpty()) {
+            result.add(diagonal);
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 2. Anti-Diagonal Traversal
+
+```java
+public static List<List<Integer>> antiDiagonalTraversal(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    TreeMap<Integer, List<Integer>> map = new TreeMap<>();
+
+    antiDiagonalHelper(root, 0, map);
+
+    result.addAll(map.values());
+    return result;
+}
+
+private static void antiDiagonalHelper(TreeNode node, int diag,
+                                      TreeMap<Integer, List<Integer>> map) {
+    if (node == null) return;
+
+    map.computeIfAbsent(diag, k -> new ArrayList<>()).add(node.val);
+
+    antiDiagonalHelper(node.left, diag + 1, map);
+    antiDiagonalHelper(node.right, diag - 1, map);
+}
+```
+
+
+***
+
+## Advanced View Techniques
+
+### 1. Generic View with Custom Comparator
+
+```java
+public static List<Integer> customView(TreeNode root,
+                                     BiPredicate<NodeInfo, NodeInfo> shouldReplace) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    class NodeInfo {
+        int val, level;
+        NodeInfo(int val, int level) {
+            this.val = val;
+            this.level = level;
+        }
+    }
+
+    TreeMap<Integer, NodeInfo> map = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    queue.offer(new QueueNode(root, 0, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNode current = queue.poll();
+        int hd = current.hd;
+        int level = current.level;
+        TreeNode node = current.node;
+
+        NodeInfo candidate = new NodeInfo(node.val, level);
+
+        if (!map.containsKey(hd) || shouldReplace.test(map.get(hd), candidate)) {
+            map.put(hd, candidate);
+        }
+
+        if (node.left != null) {
+            queue.offer(new QueueNode(node.left, hd - 1, level + 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNode(node.right, hd + 1, level + 1));
+        }
+    }
+
+    for (NodeInfo info : map.values()) {
+        result.add(info.val);
+    }
+    return result;
+}
+
+// Usage examples:
+// Top view: customView(root, (current, candidate) -> candidate.level < current.level)
+// Bottom view: customView(root, (current, candidate) -> candidate.level >= current.level)
+```
+
+
+### 2. View with Distance Calculation
+
+```java
+public static List<Map<String, Object>> viewWithDistance(TreeNode root, String viewType) {
+    List<Map<String, Object>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    class NodeInfo {
+        int val, level, distance;
+        NodeInfo(int val, int level, int distance) {
+            this.val = val;
+            this.level = level;
+            this.distance = distance;
+        }
+    }
+
+    TreeMap<Integer, NodeInfo> distances = new TreeMap<>();
+    Queue<QueueNode> queue = new ArrayDeque<>();
+
+    // QueueNode with distance from root
+    class QueueNodeWithDistance extends QueueNode {
+        int distance;
+        QueueNodeWithDistance(TreeNode node, int hd, int level, int distance) {
+            super(node, hd, level);
+            this.distance = distance;
+        }
+    }
+
+    queue.offer(new QueueNodeWithDistance(root, 0, 0, 0));
+
+    while (!queue.isEmpty()) {
+        QueueNodeWithDistance current = (QueueNodeWithDistance) queue.poll();
+        int hd = current.hd;
+        int level = current.level;
+        int distance = current.distance;
+        TreeNode node = current.node;
+
+        boolean shouldUpdate = !distances.containsKey(hd) ||
+            ("top".equals(viewType) && level < distances.get(hd).level) ||
+            ("bottom".equals(viewType) && level >= distances.get(hd).level);
+
+        if (shouldUpdate) {
+            distances.put(hd, new NodeInfo(node.val, level, distance));
+        }
+
+        if (node.left != null) {
+            queue.offer(new QueueNodeWithDistance(node.left, hd - 1, level + 1, distance + 1));
+        }
+        if (node.right != null) {
+            queue.offer(new QueueNodeWithDistance(node.right, hd + 1, level + 1, distance + 1));
+        }
+    }
+
+    for (NodeInfo info : distances.values()) {
+        Map<String, Object> nodeMap = new HashMap<>();
+        nodeMap.put("val", info.val);
+        nodeMap.put("distance", info.distance);
+        result.add(nodeMap);
+    }
+    return result;
+}
+```
+
+
+### 3. Morris Traversal for Views
+
+```java
+public static List<Integer> morrisInorderView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    TreeNode current = root;
+
+    while (current != null) {
+        if (current.left == null) {
+            result.add(current.val);
+            current = current.right;
+        } else {
+            // Find predecessor
+            TreeNode predecessor = current.left;
+            while (predecessor.right != null && predecessor.right != current) {
+                predecessor = predecessor.right;
+            }
+
+            if (predecessor.right == null) {
+                predecessor.right = current;
+                current = current.left;
+            } else {
+                predecessor.right = null;
+                result.add(current.val);
+                current = current.right;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Usage Examples
+
+Here's how to use these view techniques:
+
+```java
+public class BinaryTreeViewDemo {
+    public static void main(String[] args) {
+        System.out.println("=== Binary Tree View Techniques Demo ===");
+
+        // Create sample tree
+        //       1
+        //     /   \
+        //    2     3
+        //   / \   / \
+        //  4   5 6   7
+        Integer[] treeArray = {1, 2, 3, 4, 5, 6, 7};
+        TreeNode tree = createTreeFromArray(treeArray);
+
+        System.out.println("Tree structure:");
+        printTree(tree);
+
+        System.out.println("\n=== View Results ===");
+        System.out.println("Top View: " + topView(tree));           // [4, 2, 1, 3, 7]
+        System.out.println("Bottom View: " + bottomView(tree));     // [4, 5, 6, 7]
+        System.out.println("Left View: " + leftView(tree));         // [1, 2, 4]
+        System.out.println("Right View: " + rightView(tree));       // [1, 3, 7]
+
+        List<Integer> boundary = boundaryTraversal(tree);
+        System.out.println("Boundary Traversal: " + boundary);     // [1, 2, 4, 5, 6, 7, 3]
+
+        List<List<Integer>> vertical = verticalOrder(tree);
+        System.out.println("Vertical Order: " + vertical);         // [[4], [2], [1, 5, 6], [3], [7]]
+
+        List<List<Integer>> levelOrder = levelOrder(tree);
+        System.out.println("Level Order: " + levelOrder);          // [[1], [2, 3], [4, 5, 6, 7]]
+
+        List<List<Integer>> zigzag = zigzagLevelOrder(tree);
+        System.out.println("Zigzag Order: " + zigzag);            // [[1], [3, 2], [4, 5, 6, 7]]
+
+        // More complex tree for diagonal
+        //         8
+        //       /   \
+        //      3     10
+        //     / \      \
+        //    1   6     14
+        //       / \   /
+        //      4   7 13
+        Integer[] complexArray = {8, 3, 10, 1, 6, null, 14, null, null, 4, 7, 13};
+        TreeNode complexTree = createTreeFromArray(complexArray);
+
+        List<List<Integer>> diagonal = diagonalTraversal(complexTree);
+        System.out.println("Diagonal Traversal: " + diagonal);
+
+        // Performance testing
+        System.out.println("\n=== Performance Testing ===");
+        performanceTest();
+    }
+
+    private static void performanceTest() {
+        // Create large tree (perfect binary tree with 2^10 - 1 = 1023 nodes)
+        TreeNode largeTree = createPerfectBinaryTree(10);
+
+        long startTime = System.nanoTime();
+        topView(largeTree);
+        long endTime = System.nanoTime();
+
+        System.out.println("ArrayDeque Top View - 1023 nodes: " +
+                          (endTime - startTime) / 1_000_000 + "ms");
+
+        startTime = System.nanoTime();
+        rightView(largeTree);
+        endTime = System.nanoTime();
+
+        System.out.println("ArrayDeque Right View - 1023 nodes: " +
+                          (endTime - startTime) / 1_000_000 + "ms");
+    }
+
+    private static TreeNode createPerfectBinaryTree(int depth) {
+        if (depth == 0) return null;
+        TreeNode root = new TreeNode(depth);
+        root.left = createPerfectBinaryTree(depth - 1);
+        root.right = createPerfectBinaryTree(depth - 1);
+        return root;
+    }
+}
+```
+
+
+***
+
+## Time Complexity Summary
+
+| View Type | Time Complexity | Space Complexity | Notes |
+| :-- | :-- | :-- | :-- |
+| Top View | O(n log n) | O(n) | TreeMap sorting by HD |
+| Bottom View | O(n log n) | O(n) | TreeMap sorting by HD |
+| Left View | O(n) | O(w) | w = max width |
+| Right View | O(n) | O(w) | w = max width |
+| Boundary | O(n) | O(h) | h = height |
+| Vertical Order | O(n log n) | O(n) | TreeMap sorting |
+| Level Order | O(n) | O(w) | w = max width |
+| Zigzag | O(n) | O(w) | w = max width |
+| Diagonal | O(n) | O(n) | ArrayDeque storage |
+
+
+***
+
+## ArrayDeque vs LinkedList Performance[5]
+
+**For tree traversals with 10,000 nodes:**
+
+
+| Operation | ArrayDeque | LinkedList | Difference |
+| :-- | :-- | :-- | :-- |
+| `offer()` | ~0.5ms | ~1.2ms | **2.4x faster** |
+| `poll()` | ~0.3ms | ~0.8ms | **2.7x faster** |
+| `peek()` | ~0.1ms | ~0.2ms | **2x faster** |
+| Total Traversal | ~12ms | ~28ms | **2.3x faster** |
+
+
+***
+
+## Common Patterns to Remember
+
+### 1. **Horizontal Distance Pattern**
+
+Use horizontal distance for vertical views:
+
+```java
+// Left child: hd - 1, Right child: hd + 1
+if (node.left != null) queue.offer(new QueueNode(node.left, hd - 1));
+if (node.right != null) queue.offer(new QueueNode(node.right, hd + 1));
+```
+
+
+### 2. **Level Tracking Pattern**
+
+Track levels for first/last occurrence:
+
+```java
+if (level == result.size()) {
+    result.add(node.val); // First occurrence at this level
+}
+```
+
+
+### 3. **TreeMap with Sorting Pattern**
+
+Common for coordinate-based views:
+
+```java
+TreeMap<Integer, Integer> map = new TreeMap<>(); // Auto-sorted by key
+result.addAll(map.values());
+```
+
+
+### 4. **BFS Level Processing**
+
+Process entire levels at once:
+
+```java
+while (!queue.isEmpty()) {
+    int levelSize = queue.size();
+    for (int i = 0; i < levelSize; i++) {
+        TreeNode node = queue.poll();
+        // Process node
+    }
+}
+```
+
+
+### 5. **ArrayDeque as Stack Pattern**
+
+Use ArrayDeque for stack operations:
+
+```java
+Deque<TreeNode> stack = new ArrayDeque<>();
+stack.push(node);           // Add to top
+TreeNode current = stack.pop(); // Remove from top
+```
+
+
+***
+
+## Key Interview Tips
+
+1. **Choose ArrayDeque**: Always prefer ArrayDeque over LinkedList for queue operations[4][3]
+2. **Visualize the Tree**: Always draw the tree structure first
+3. **Master Coordinates**: Understand horizontal distance and level concepts
+4. **BFS vs DFS**: BFS for level-based views, DFS for recursive solutions
+5. **Handle Edge Cases**: Empty tree, single node, skewed trees
+6. **TreeMap Benefits**: Automatic sorting by keys eliminates manual sorting
+7. **Memory Efficiency**: ArrayDeque provides better cache locality than LinkedList[5]
+8. **Test Thoroughly**: Use balanced, skewed, and complete trees for validation
+
+**Recommendation**: Always use **ArrayDeque** for tree traversals - it's faster, more memory efficient, and demonstrates understanding of optimal data structure selection for the given use case!

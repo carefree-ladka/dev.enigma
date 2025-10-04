@@ -1,0 +1,4008 @@
+# Sliding Window
+
+## Table of Contents
+
+1. [Sliding Window Fundamentals](#sliding-window-fundamentals)
+2. [Pattern 1: Fixed Size Sliding Window](#pattern-1-fixed-size-sliding-window)
+3. [Pattern 2: Variable Size Sliding Window](#pattern-2-variable-size-sliding-window)
+4. [Pattern 3: Sliding Window with HashMap](#pattern-3-sliding-window-with-hashmap)
+5. [Pattern 4: Sliding Window Maximum/Minimum](#pattern-4-sliding-window-maximumminimum)
+6. [Pattern 5: String Matching with Sliding Window](#pattern-5-string-matching-with-sliding-window)
+7. [Pattern 6: Multiple Pointers Sliding Window](#pattern-6-multiple-pointers-sliding-window)
+8. [Pattern 7: Sliding Window with Deque](#pattern-7-sliding-window-with-deque)
+9. [Pattern 8: Two Arrays Sliding Window](#pattern-8-two-arrays-sliding-window)
+10. [Pattern 9: Advanced Sliding Window Techniques](#pattern-9-advanced-sliding-window-techniques)
+11. [Pattern 10: Sliding Window Optimization](#pattern-10-sliding-window-optimization)
+12. [Pattern 11: Real-World Applications](#pattern-11-real-world-applications)
+13. [Pattern 12: Complex Sliding Window Problems](#pattern-12-complex-sliding-window-problems)
+
+***
+
+## Sliding Window Fundamentals
+
+### Core Concepts and Implementation
+
+```java
+// Basic Sliding Window Implementation
+public class SlidingWindowFundamentals {
+
+    // Template for Fixed Size Sliding Window
+    public static class FixedWindowTemplate {
+
+        // Generic template for fixed size window problems
+        public int fixedSizeWindowTemplate(int[] nums, int windowSize) {
+            if (nums.length < windowSize) return -1;
+
+            // Calculate sum/value of first window
+            int windowSum = 0;
+            for (int i = 0; i < windowSize; i++) {
+                windowSum += nums[i];
+            }
+
+            int result = windowSum; // or any other calculation
+
+            // Slide the window
+            for (int i = windowSize; i < nums.length; i++) {
+                // Remove element going out of window
+                windowSum -= nums[i - windowSize];
+                // Add new element coming into window
+                windowSum += nums[i];
+
+                // Update result based on problem requirement
+                result = Math.max(result, windowSum); // or any other operation
+            }
+
+            return result;
+        }
+
+        // Maximum sum of subarray of size k
+        public int maxSumSubarray(int[] nums, int k) {
+            if (nums.length < k) return Integer.MIN_VALUE;
+
+            int windowSum = 0;
+
+            // Calculate sum of first window
+            for (int i = 0; i < k; i++) {
+                windowSum += nums[i];
+            }
+
+            int maxSum = windowSum;
+
+            // Slide window and find maximum
+            for (int i = k; i < nums.length; i++) {
+                windowSum = windowSum - nums[i - k] + nums[i];
+                maxSum = Math.max(maxSum, windowSum);
+            }
+
+            return maxSum;
+        }
+
+        // Average of all subarrays of size k
+        public double[] findAverages(int[] arr, int k) {
+            double[] result = new double[arr.length - k + 1];
+            double windowSum = 0;
+
+            // Calculate sum of first window
+            for (int i = 0; i < k; i++) {
+                windowSum += arr[i];
+            }
+            result[0] = windowSum / k;
+
+            // Slide window and calculate averages
+            for (int i = k; i < arr.length; i++) {
+                windowSum = windowSum - arr[i - k] + arr[i];
+                result[i - k + 1] = windowSum / k;
+            }
+
+            return result;
+        }
+    }
+
+    // Template for Variable Size Sliding Window
+    public static class VariableWindowTemplate {
+
+        // Generic template for variable size window problems
+        public int variableSizeWindowTemplate(int[] nums, int condition) {
+            int left = 0;
+            int windowValue = 0; // sum, product, etc.
+            int result = 0; // or Integer.MAX_VALUE for minimum problems
+
+            for (int right = 0; right < nums.length; right++) {
+                // Expand window by including nums[right]
+                windowValue += nums[right]; // or any other operation
+
+                // Shrink window while condition is violated
+                while (windowValue > condition) { // or any other condition
+                    windowValue -= nums[left];
+                    left++;
+                }
+
+                // Update result
+                result = Math.max(result, right - left + 1); // or any other calculation
+            }
+
+            return result;
+        }
+
+        // Longest subarray with sum <= target
+        public int longestSubarrayWithSumAtMost(int[] nums, int target) {
+            int left = 0;
+            int sum = 0;
+            int maxLength = 0;
+
+            for (int right = 0; right < nums.length; right++) {
+                sum += nums[right];
+
+                // Shrink window while sum exceeds target
+                while (sum > target) {
+                    sum -= nums[left];
+                    left++;
+                }
+
+                maxLength = Math.max(maxLength, right - left + 1);
+            }
+
+            return maxLength;
+        }
+
+        // Smallest subarray with sum >= target
+        public int minSubArrayLen(int target, int[] nums) {
+            int left = 0;
+            int sum = 0;
+            int minLength = Integer.MAX_VALUE;
+
+            for (int right = 0; right < nums.length; right++) {
+                sum += nums[right];
+
+                // Shrink window while sum >= target
+                while (sum >= target) {
+                    minLength = Math.min(minLength, right - left + 1);
+                    sum -= nums[left];
+                    left++;
+                }
+            }
+
+            return minLength == Integer.MAX_VALUE ? 0 : minLength;
+        }
+    }
+
+    // Sliding Window Utilities
+    public static class SlidingWindowUtils {
+
+        // Check if sliding window technique is applicable
+        public static boolean isApplicable(String problemDescription) {
+            String[] keywords = {
+                "subarray", "substring", "contiguous", "window",
+                "consecutive", "range", "interval"
+            };
+
+            String lowerDesc = problemDescription.toLowerCase();
+            for (String keyword : keywords) {
+                if (lowerDesc.contains(keyword)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Determine window type based on problem constraints
+        public static String determineWindowType(boolean hasFixedSize,
+                                               boolean hasCondition,
+                                               boolean needsOptimization) {
+            if (hasFixedSize) {
+                return "Fixed Size Sliding Window";
+            } else if (hasCondition) {
+                return "Variable Size Sliding Window";
+            } else if (needsOptimization) {
+                return "Sliding Window with Data Structures";
+            } else {
+                return "Two Pointers or Other Technique";
+            }
+        }
+
+        // Calculate all possible window sizes for debugging
+        public static void printAllWindows(int[] nums, int maxWindowSize) {
+            for (int windowSize = 1; windowSize <= maxWindowSize; windowSize++) {
+                System.out.println("Window size " + windowSize + ":");
+
+                for (int i = 0; i <= nums.length - windowSize; i++) {
+                    System.out.print("[");
+                    for (int j = i; j < i + windowSize; j++) {
+                        System.out.print(nums[j]);
+                        if (j < i + windowSize - 1) System.out.print(", ");
+                    }
+                    System.out.print("] ");
+                }
+                System.out.println();
+            }
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Fixed Size Sliding Window
+
+### 1.1 Basic Fixed Window Problems
+
+```java
+// Fixed size sliding window problems
+public class FixedSizeSliding Window {
+
+    // Maximum sum subarray of size k
+    public int maxSumSubarray(int[] nums, int k) {
+        if (nums.length < k) return Integer.MIN_VALUE;
+
+        // Calculate sum of first window
+        int windowSum = 0;
+        for (int i = 0; i < k; i++) {
+            windowSum += nums[i];
+        }
+
+        int maxSum = windowSum;
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            windowSum = windowSum - nums[i - k] + nums[i];
+            maxSum = Math.max(maxSum, windowSum);
+        }
+
+        return maxSum;
+    }
+
+    // First negative integer in every window of size k
+    public int[] firstNegativeInWindow(int[] nums, int k) {
+        int[] result = new int[nums.length - k + 1];
+        Queue<Integer> negatives = new LinkedList<>(); // Store indices
+
+        // Process first window
+        for (int i = 0; i < k; i++) {
+            if (nums[i] < 0) {
+                negatives.offer(i);
+            }
+        }
+        result[0] = negatives.isEmpty() ? 0 : nums[negatives.peek()];
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            // Remove elements outside current window
+            while (!negatives.isEmpty() && negatives.peek() <= i - k) {
+                negatives.poll();
+            }
+
+            // Add current element if negative
+            if (nums[i] < 0) {
+                negatives.offer(i);
+            }
+
+            result[i - k + 1] = negatives.isEmpty() ? 0 : nums[negatives.peek()];
+        }
+
+        return result;
+    }
+
+    // Count occurrences of anagrams in string
+    public int countAnagrams(String text, String pattern) {
+        if (text.length() < pattern.length()) return 0;
+
+        // Count characters in pattern
+        Map<Character, Integer> patternCount = new HashMap<>();
+        for (char c : pattern.toCharArray()) {
+            patternCount.put(c, patternCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int windowSize = pattern.length();
+        int count = 0;
+
+        // Process first window
+        for (int i = 0; i < windowSize; i++) {
+            char c = text.charAt(i);
+            windowCount.put(c, windowCount.getOrDefault(c, 0) + 1);
+        }
+
+        if (windowCount.equals(patternCount)) {
+            count++;
+        }
+
+        // Slide the window
+        for (int i = windowSize; i < text.length(); i++) {
+            // Add new character
+            char newChar = text.charAt(i);
+            windowCount.put(newChar, windowCount.getOrDefault(newChar, 0) + 1);
+
+            // Remove old character
+            char oldChar = text.charAt(i - windowSize);
+            windowCount.put(oldChar, windowCount.get(oldChar) - 1);
+            if (windowCount.get(oldChar) == 0) {
+                windowCount.remove(oldChar);
+            }
+
+            // Check if current window is anagram
+            if (windowCount.equals(patternCount)) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // Maximum of all subarrays of size k
+    public int[] maxInWindows(int[] nums, int k) {
+        int[] result = new int[nums.length - k + 1];
+        Deque<Integer> deque = new ArrayDeque<>(); // Store indices
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove indices outside current window
+            while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+                deque.pollFirst();
+            }
+
+            // Remove indices of smaller elements
+            while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+
+            // Add to result when window is complete
+            if (i >= k - 1) {
+                result[i - k + 1] = nums[deque.peekFirst()];
+            }
+        }
+
+        return result;
+    }
+
+    // Count distinct elements in every window of size k
+    public int[] countDistinctInWindow(int[] nums, int k) {
+        int[] result = new int[nums.length - k + 1];
+        Map<Integer, Integer> freqMap = new HashMap<>();
+
+        // Process first window
+        for (int i = 0; i < k; i++) {
+            freqMap.put(nums[i], freqMap.getOrDefault(nums[i], 0) + 1);
+        }
+        result[0] = freqMap.size();
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            // Add new element
+            freqMap.put(nums[i], freqMap.getOrDefault(nums[i], 0) + 1);
+
+            // Remove old element
+            int oldElement = nums[i - k];
+            freqMap.put(oldElement, freqMap.get(oldElement) - 1);
+            if (freqMap.get(oldElement) == 0) {
+                freqMap.remove(oldElement);
+            }
+
+            result[i - k + 1] = freqMap.size();
+        }
+
+        return result;
+    }
+
+    // Minimum window size with sum >= target
+    public int minWindowSumGreaterEqual(int[] nums, int target) {
+        int minLength = Integer.MAX_VALUE;
+
+        // Try all possible window sizes
+        for (int windowSize = 1; windowSize <= nums.length; windowSize++) {
+            // Check if any window of this size has sum >= target
+            int windowSum = 0;
+
+            // Calculate sum of first window
+            for (int i = 0; i < windowSize; i++) {
+                windowSum += nums[i];
+            }
+
+            if (windowSum >= target) {
+                return windowSize;
+            }
+
+            // Slide the window
+            for (int i = windowSize; i < nums.length; i++) {
+                windowSum = windowSum - nums[i - windowSize] + nums[i];
+                if (windowSum >= target) {
+                    return windowSize;
+                }
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? -1 : minLength;
+    }
+
+    // Maximum average subarray
+    public double findMaxAverage(int[] nums, int k) {
+        // Calculate sum of first window
+        long sum = 0;
+        for (int i = 0; i < k; i++) {
+            sum += nums[i];
+        }
+
+        long maxSum = sum;
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            sum = sum - nums[i - k] + nums[i];
+            maxSum = Math.max(maxSum, sum);
+        }
+
+        return (double) maxSum / k;
+    }
+}
+```
+
+
+### 1.2 Advanced Fixed Window Problems
+
+```java
+// Advanced fixed size window problems
+public class AdvancedFixedWindow {
+
+    // Sliding window median
+    public double[] medianSlidingWindow(int[] nums, int k) {
+        double[] result = new double[nums.length - k + 1];
+
+        // Use two heaps to maintain median
+        PriorityQueue<Integer> small = new PriorityQueue<>(Collections.reverseOrder()); // max heap
+        PriorityQueue<Integer> large = new PriorityQueue<>(); // min heap
+
+        for (int i = 0; i < nums.length; i++) {
+            // Add current element
+            if (small.isEmpty() || nums[i] <= small.peek()) {
+                small.offer(nums[i]);
+            } else {
+                large.offer(nums[i]);
+            }
+
+            // Remove element going out of window
+            if (i >= k) {
+                int elementToRemove = nums[i - k];
+                if (elementToRemove <= small.peek()) {
+                    small.remove(elementToRemove);
+                } else {
+                    large.remove(elementToRemove);
+                }
+            }
+
+            // Balance heaps
+            balanceHeaps(small, large);
+
+            // Calculate median when window is full
+            if (i >= k - 1) {
+                double median;
+                if (small.size() == large.size()) {
+                    median = ((long) small.peek() + large.peek()) / 2.0;
+                } else {
+                    median = small.peek();
+                }
+                result[i - k + 1] = median;
+            }
+        }
+
+        return result;
+    }
+
+    private void balanceHeaps(PriorityQueue<Integer> small, PriorityQueue<Integer> large) {
+        if (small.size() > large.size() + 1) {
+            large.offer(small.poll());
+        } else if (large.size() > small.size() + 1) {
+            small.offer(large.poll());
+        }
+    }
+
+    // Maximum sum of k consecutive elements with no adjacent elements
+    public int maxSumNoAdjacent(int[] nums, int k) {
+        if (k * 2 - 1 > nums.length) return -1;
+
+        int maxSum = 0;
+
+        // Try all possible starting positions
+        for (int start = 0; start <= nums.length - (k * 2 - 1); start++) {
+            int sum = 0;
+            for (int i = 0; i < k; i++) {
+                sum += nums[start + i * 2]; // Take every alternate element
+            }
+            maxSum = Math.max(maxSum, sum);
+        }
+
+        return maxSum;
+    }
+
+    // Count subarrays of size k with all elements distinct
+    public int countDistinctSubarrays(int[] nums, int k) {
+        int count = 0;
+
+        for (int i = 0; i <= nums.length - k; i++) {
+            Set<Integer> distinct = new HashSet<>();
+
+            for (int j = i; j < i + k; j++) {
+                distinct.add(nums[j]);
+            }
+
+            if (distinct.size() == k) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // Optimized version using sliding window
+    public int countDistinctSubarraysOptimized(int[] nums, int k) {
+        Map<Integer, Integer> freqMap = new HashMap<>();
+        int count = 0;
+
+        // Process first window
+        for (int i = 0; i < k; i++) {
+            freqMap.put(nums[i], freqMap.getOrDefault(nums[i], 0) + 1);
+        }
+
+        if (freqMap.size() == k) {
+            count++;
+        }
+
+        // Slide the window
+        for (int i = k; i < nums.length; i++) {
+            // Add new element
+            freqMap.put(nums[i], freqMap.getOrDefault(nums[i], 0) + 1);
+
+            // Remove old element
+            int oldElement = nums[i - k];
+            freqMap.put(oldElement, freqMap.get(oldElement) - 1);
+            if (freqMap.get(oldElement) == 0) {
+                freqMap.remove(oldElement);
+            }
+
+            if (freqMap.size() == k) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // Maximum points from cards (choose k cards from start or end)
+    public int maxScore(int[] cardPoints, int k) {
+        int n = cardPoints.length;
+
+        // Calculate sum of first k cards from start
+        int currentScore = 0;
+        for (int i = 0; i < k; i++) {
+            currentScore += cardPoints[i];
+        }
+
+        int maxScore = currentScore;
+
+        // Try replacing cards from start with cards from end
+        for (int i = 0; i < k; i++) {
+            // Remove one card from start, add one card from end
+            currentScore = currentScore - cardPoints[k - 1 - i] + cardPoints[n - 1 - i];
+            maxScore = Math.max(maxScore, currentScore);
+        }
+
+        return maxScore;
+    }
+
+    // Minimum swaps to group all 1s together
+    public int minSwaps(int[] data) {
+        int totalOnes = 0;
+        for (int num : data) {
+            if (num == 1) totalOnes++;
+        }
+
+        if (totalOnes <= 1) return 0;
+
+        // Count 1s in first window of size totalOnes
+        int onesInWindow = 0;
+        for (int i = 0; i < totalOnes; i++) {
+            if (data[i] == 1) onesInWindow++;
+        }
+
+        int maxOnesInWindow = onesInWindow;
+
+        // Slide the window
+        for (int i = totalOnes; i < data.length; i++) {
+            // Remove element going out
+            if (data[i - totalOnes] == 1) onesInWindow--;
+            // Add element coming in
+            if (data[i] == 1) onesInWindow++;
+
+            maxOnesInWindow = Math.max(maxOnesInWindow, onesInWindow);
+        }
+
+        return totalOnes - maxOnesInWindow;
+    }
+}
+```
+
+
+***
+
+## Pattern 2: Variable Size Sliding Window
+
+### 2.1 Basic Variable Window Problems
+
+```java
+// Variable size sliding window problems
+public class VariableSizeSliding Window {
+
+    // Longest substring without repeating characters
+    public int lengthOfLongestSubstring(String s) {
+        Set<Character> window = new HashSet<>();
+        int left = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            // Shrink window while character exists
+            while (window.contains(s.charAt(right))) {
+                window.remove(s.charAt(left));
+                left++;
+            }
+
+            window.add(s.charAt(right));
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Longest substring with at most k distinct characters
+    public int lengthOfLongestSubstringKDistinct(String s, int k) {
+        if (k == 0) return 0;
+
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charCount.put(rightChar, charCount.getOrDefault(rightChar, 0) + 1);
+
+            // Shrink window while more than k distinct characters
+            while (charCount.size() > k) {
+                char leftChar = s.charAt(left);
+                charCount.put(leftChar, charCount.get(leftChar) - 1);
+                if (charCount.get(leftChar) == 0) {
+                    charCount.remove(leftChar);
+                }
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Minimum window substring
+    public String minWindow(String s, String t) {
+        if (s.length() < t.length()) return "";
+
+        Map<Character, Integer> targetCount = new HashMap<>();
+        for (char c : t.toCharArray()) {
+            targetCount.put(c, targetCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int left = 0;
+        int minLength = Integer.MAX_VALUE;
+        int minStart = 0;
+        int formed = 0;
+        int required = targetCount.size();
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            windowCount.put(rightChar, windowCount.getOrDefault(rightChar, 0) + 1);
+
+            if (targetCount.containsKey(rightChar) &&
+                windowCount.get(rightChar).intValue() == targetCount.get(rightChar).intValue()) {
+                formed++;
+            }
+
+            // Shrink window while it's valid
+            while (left <= right && formed == required) {
+                if (right - left + 1 < minLength) {
+                    minLength = right - left + 1;
+                    minStart = left;
+                }
+
+                char leftChar = s.charAt(left);
+                windowCount.put(leftChar, windowCount.get(leftChar) - 1);
+                if (targetCount.containsKey(leftChar) &&
+                    windowCount.get(leftChar) < targetCount.get(leftChar)) {
+                    formed--;
+                }
+                left++;
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? "" : s.substring(minStart, minStart + minLength);
+    }
+
+    // Longest subarray with sum <= target
+    public int longestSubarrayWithSum(int[] nums, int target) {
+        int left = 0;
+        int sum = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            sum += nums[right];
+
+            // Shrink window while sum exceeds target
+            while (sum > target) {
+                sum -= nums[left];
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Longest subarray with at most k zeros
+    public int longestOnes(int[] nums, int k) {
+        int left = 0;
+        int zeros = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            if (nums[right] == 0) {
+                zeros++;
+            }
+
+            // Shrink window while zeros exceed k
+            while (zeros > k) {
+                if (nums[left] == 0) {
+                    zeros--;
+                }
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Smallest subarray with sum >= target
+    public int minSubArrayLen(int target, int[] nums) {
+        int left = 0;
+        int sum = 0;
+        int minLength = Integer.MAX_VALUE;
+
+        for (int right = 0; right < nums.length; right++) {
+            sum += nums[right];
+
+            // Shrink window while sum >= target
+            while (sum >= target) {
+                minLength = Math.min(minLength, right - left + 1);
+                sum -= nums[left];
+                left++;
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? 0 : minLength;
+    }
+
+    // Fruit into baskets (at most 2 types)
+    public int totalFruit(int[] fruits) {
+        Map<Integer, Integer> fruitCount = new HashMap<>();
+        int left = 0;
+        int maxFruits = 0;
+
+        for (int right = 0; right < fruits.length; right++) {
+            fruitCount.put(fruits[right], fruitCount.getOrDefault(fruits[right], 0) + 1);
+
+            // Shrink window while more than 2 types
+            while (fruitCount.size() > 2) {
+                int leftFruit = fruits[left];
+                fruitCount.put(leftFruit, fruitCount.get(leftFruit) - 1);
+                if (fruitCount.get(leftFruit) == 0) {
+                    fruitCount.remove(leftFruit);
+                }
+                left++;
+            }
+
+            maxFruits = Math.max(maxFruits, right - left + 1);
+        }
+
+        return maxFruits;
+    }
+
+    // Longest repeating character replacement
+    public int characterReplacement(String s, int k) {
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int maxLength = 0;
+        int maxFreq = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charCount.put(rightChar, charCount.getOrDefault(rightChar, 0) + 1);
+            maxFreq = Math.max(maxFreq, charCount.get(rightChar));
+
+            // Shrink window if replacements needed > k
+            while (right - left + 1 - maxFreq > k) {
+                char leftChar = s.charAt(left);
+                charCount.put(leftChar, charCount.get(leftChar) - 1);
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+}
+```
+
+
+### 2.2 Advanced Variable Window Problems
+
+```java
+// Advanced variable size window problems
+public class AdvancedVariableWindow {
+
+    // Subarrays with k different integers
+    public int subarraysWithKDistinct(int[] nums, int k) {
+        return atMostK(nums, k) - atMostK(nums, k - 1);
+    }
+
+    private int atMostK(int[] nums, int k) {
+        Map<Integer, Integer> count = new HashMap<>();
+        int left = 0;
+        int result = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            count.put(nums[right], count.getOrDefault(nums[right], 0) + 1);
+
+            while (count.size() > k) {
+                count.put(nums[left], count.get(nums[left]) - 1);
+                if (count.get(nums[left]) == 0) {
+                    count.remove(nums[left]);
+                }
+                left++;
+            }
+
+            result += right - left + 1;
+        }
+
+        return result;
+    }
+
+    // Number of nice subarrays (exactly k odd numbers)
+    public int numberOfSubarrays(int[] nums, int k) {
+        return atMostKOdd(nums, k) - atMostKOdd(nums, k - 1);
+    }
+
+    private int atMostKOdd(int[] nums, int k) {
+        int left = 0;
+        int oddCount = 0;
+        int result = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            if (nums[right] % 2 == 1) {
+                oddCount++;
+            }
+
+            while (oddCount > k) {
+                if (nums[left] % 2 == 1) {
+                    oddCount--;
+                }
+                left++;
+            }
+
+            result += right - left + 1;
+        }
+
+        return result;
+    }
+
+    // Subarray product less than k
+    public int numSubarrayProductLessThanK(int[] nums, int k) {
+        if (k <= 1) return 0;
+
+        int left = 0;
+        int product = 1;
+        int count = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            product *= nums[right];
+
+            while (product >= k) {
+                product /= nums[left];
+                left++;
+            }
+
+            count += right - left + 1;
+        }
+
+        return count;
+    }
+
+    // Longest substring with at least k repeating characters
+    public int longestSubstring(String s, int k) {
+        Map<Character, Integer> charCount = new HashMap<>();
+
+        // Count frequency of each character
+        for (char c : s.toCharArray()) {
+            charCount.put(c, charCount.getOrDefault(c, 0) + 1);
+        }
+
+        // Find characters with frequency < k
+        Set<Character> invalidChars = new HashSet<>();
+        for (Map.Entry<Character, Integer> entry : charCount.entrySet()) {
+            if (entry.getValue() < k) {
+                invalidChars.add(entry.getKey());
+            }
+        }
+
+        if (invalidChars.isEmpty()) {
+            return s.length();
+        }
+
+        // Split string by invalid characters and recursively solve
+        int maxLength = 0;
+        int start = 0;
+
+        for (int i = 0; i <= s.length(); i++) {
+            if (i == s.length() || invalidChars.contains(s.charAt(i))) {
+                if (i > start) {
+                    maxLength = Math.max(maxLength,
+                                       longestSubstring(s.substring(start, i), k));
+                }
+                start = i + 1;
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Minimum window with character frequency
+    public String minWindowWithFreq(String s, Map<Character, Integer> targetFreq) {
+        Map<Character, Integer> windowFreq = new HashMap<>();
+        int left = 0;
+        int minLength = Integer.MAX_VALUE;
+        int minStart = 0;
+        int validChars = 0;
+        int requiredChars = targetFreq.size();
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            windowFreq.put(rightChar, windowFreq.getOrDefault(rightChar, 0) + 1);
+
+            if (targetFreq.containsKey(rightChar) &&
+                windowFreq.get(rightChar).intValue() == targetFreq.get(rightChar).intValue()) {
+                validChars++;
+            }
+
+            while (validChars == requiredChars) {
+                if (right - left + 1 < minLength) {
+                    minLength = right - left + 1;
+                    minStart = left;
+                }
+
+                char leftChar = s.charAt(left);
+                windowFreq.put(leftChar, windowFreq.get(leftChar) - 1);
+
+                if (targetFreq.containsKey(leftChar) &&
+                    windowFreq.get(leftChar) < targetFreq.get(leftChar)) {
+                    validChars--;
+                }
+                left++;
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? "" : s.substring(minStart, minStart + minLength);
+    }
+
+    // Maximum erasure value (sum of unique elements in subarray)
+    public int maximumUniqueSubarray(int[] nums) {
+        Set<Integer> seen = new HashSet<>();
+        int left = 0;
+        int sum = 0;
+        int maxSum = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            while (seen.contains(nums[right])) {
+                seen.remove(nums[left]);
+                sum -= nums[left];
+                left++;
+            }
+
+            seen.add(nums[right]);
+            sum += nums[right];
+            maxSum = Math.max(maxSum, sum);
+        }
+
+        return maxSum;
+    }
+}
+```
+
+
+***
+
+## Pattern 3: Sliding Window with HashMap
+
+### 3.1 Character Frequency Problems
+
+```java
+// Sliding window problems using HashMap for frequency tracking
+public class SlidingWindowHashMap {
+
+    // Find all anagrams in a string
+    public List<Integer> findAnagrams(String s, String p) {
+        List<Integer> result = new ArrayList<>();
+        if (s.length() < p.length()) return result;
+
+        Map<Character, Integer> pCount = new HashMap<>();
+        Map<Character, Integer> windowCount = new HashMap<>();
+
+        // Count characters in pattern
+        for (char c : p.toCharArray()) {
+            pCount.put(c, pCount.getOrDefault(c, 0) + 1);
+        }
+
+        int windowSize = p.length();
+
+        // Process first window
+        for (int i = 0; i < windowSize; i++) {
+            char c = s.charAt(i);
+            windowCount.put(c, windowCount.getOrDefault(c, 0) + 1);
+        }
+
+        if (windowCount.equals(pCount)) {
+            result.add(0);
+        }
+
+        // Slide the window
+        for (int i = windowSize; i < s.length(); i++) {
+            // Add new character
+            char newChar = s.charAt(i);
+            windowCount.put(newChar, windowCount.getOrDefault(newChar, 0) + 1);
+
+            // Remove old character
+            char oldChar = s.charAt(i - windowSize);
+            windowCount.put(oldChar, windowCount.get(oldChar) - 1);
+            if (windowCount.get(oldChar) == 0) {
+                windowCount.remove(oldChar);
+            }
+
+            if (windowCount.equals(pCount)) {
+                result.add(i - windowSize + 1);
+            }
+        }
+
+        return result;
+    }
+
+    // Permutation in string
+    public boolean checkInclusion(String s1, String s2) {
+        if (s1.length() > s2.length()) return false;
+
+        Map<Character, Integer> s1Count = new HashMap<>();
+        for (char c : s1.toCharArray()) {
+            s1Count.put(c, s1Count.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int windowSize = s1.length();
+
+        // Process first window
+        for (int i = 0; i < windowSize; i++) {
+            char c = s2.charAt(i);
+            windowCount.put(c, windowCount.getOrDefault(c, 0) + 1);
+        }
+
+        if (windowCount.equals(s1Count)) return true;
+
+        // Slide the window
+        for (int i = windowSize; i < s2.length(); i++) {
+            // Add new character
+            char newChar = s2.charAt(i);
+            windowCount.put(newChar, windowCount.getOrDefault(newChar, 0) + 1);
+
+            // Remove old character
+            char oldChar = s2.charAt(i - windowSize);
+            windowCount.put(oldChar, windowCount.get(oldChar) - 1);
+            if (windowCount.get(oldChar) == 0) {
+                windowCount.remove(oldChar);
+            }
+
+            if (windowCount.equals(s1Count)) return true;
+        }
+
+        return false;
+    }
+
+    // Longest substring with exactly k distinct characters
+    public int longestSubstringExactlyKDistinct(String s, int k) {
+        if (k == 0 || s.isEmpty()) return 0;
+
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charCount.put(rightChar, charCount.getOrDefault(rightChar, 0) + 1);
+
+            // Shrink window while more than k distinct characters
+            while (charCount.size() > k) {
+                char leftChar = s.charAt(left);
+                charCount.put(leftChar, charCount.get(leftChar) - 1);
+                if (charCount.get(leftChar) == 0) {
+                    charCount.remove(leftChar);
+                }
+                left++;
+            }
+
+            // Update maxLength only when we have exactly k distinct characters
+            if (charCount.size() == k) {
+                maxLength = Math.max(maxLength, right - left + 1);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Smallest window containing all characters of another string
+    public String smallestWindow(String s, String t) {
+        Map<Character, Integer> tCount = new HashMap<>();
+        for (char c : t.toCharArray()) {
+            tCount.put(c, tCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int left = 0;
+        int minLength = Integer.MAX_VALUE;
+        int minStart = 0;
+        int matched = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+
+            if (tCount.containsKey(rightChar)) {
+                windowCount.put(rightChar, windowCount.getOrDefault(rightChar, 0) + 1);
+                if (windowCount.get(rightChar).intValue() == tCount.get(rightChar).intValue()) {
+                    matched++;
+                }
+            }
+
+            // Shrink window while all characters are matched
+            while (matched == tCount.size()) {
+                if (right - left + 1 < minLength) {
+                    minLength = right - left + 1;
+                    minStart = left;
+                }
+
+                char leftChar = s.charAt(left);
+                if (tCount.containsKey(leftChar)) {
+                    if (windowCount.get(leftChar).intValue() == tCount.get(leftChar).intValue()) {
+                        matched--;
+                    }
+                    windowCount.put(leftChar, windowCount.get(leftChar) - 1);
+                }
+                left++;
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? "" : s.substring(minStart, minStart + minLength);
+    }
+
+    // Count substrings with exactly k distinct characters
+    public int countSubstringExactlyKDistinct(String s, int k) {
+        return atMostKDistinct(s, k) - atMostKDistinct(s, k - 1);
+    }
+
+    private int atMostKDistinct(String s, int k) {
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int count = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charCount.put(rightChar, charCount.getOrDefault(rightChar, 0) + 1);
+
+            while (charCount.size() > k) {
+                char leftChar = s.charAt(left);
+                charCount.put(leftChar, charCount.get(leftChar) - 1);
+                if (charCount.get(leftChar) == 0) {
+                    charCount.remove(leftChar);
+                }
+                left++;
+            }
+
+            count += right - left + 1;
+        }
+
+        return count;
+    }
+
+    // Longest substring with equal frequency of characters
+    public int longestSubstringEqualFreq(String s) {
+        int maxLength = 0;
+
+        // Try all possible starting positions
+        for (int start = 0; start < s.length(); start++) {
+            Map<Character, Integer> freq = new HashMap<>();
+
+            for (int end = start; end < s.length(); end++) {
+                char c = s.charAt(end);
+                freq.put(c, freq.getOrDefault(c, 0) + 1);
+
+                if (hasEqualFrequency(freq)) {
+                    maxLength = Math.max(maxLength, end - start + 1);
+                }
+            }
+        }
+
+        return maxLength;
+    }
+
+    private boolean hasEqualFrequency(Map<Character, Integer> freq) {
+        Set<Integer> frequencies = new HashSet<>(freq.values());
+        return frequencies.size() <= 1;
+    }
+
+    // Replace the substring for balanced string
+    public int balancedString(String s) {
+        Map<Character, Integer> count = new HashMap<>();
+        for (char c : s.toCharArray()) {
+            count.put(c, count.getOrDefault(c, 0) + 1);
+        }
+
+        int n = s.length();
+        int target = n / 4;
+
+        // Check if already balanced
+        boolean balanced = true;
+        for (int freq : count.values()) {
+            if (freq > target) {
+                balanced = false;
+                break;
+            }
+        }
+        if (balanced) return 0;
+
+        int left = 0;
+        int minLength = n;
+
+        for (int right = 0; right < n; right++) {
+            count.put(s.charAt(right), count.get(s.charAt(right)) - 1);
+
+            while (isBalanceable(count, target)) {
+                minLength = Math.min(minLength, right - left + 1);
+                count.put(s.charAt(left), count.get(s.charAt(left)) + 1);
+                left++;
+            }
+        }
+
+        return minLength;
+    }
+
+    private boolean isBalanceable(Map<Character, Integer> count, int target) {
+        for (char c : "QWER".toCharArray()) {
+            if (count.getOrDefault(c, 0) > target) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+```
+
+
+### 3.2 Advanced HashMap Applications
+
+```java
+// Advanced sliding window with HashMap applications
+public class AdvancedHashMapWindow {
+
+    // Shortest subarray to be removed to make array sorted
+    public int findLengthOfShortestSubarray(int[] arr) {
+        int n = arr.length;
+
+        // Find the longest non-decreasing prefix
+        int left = 0;
+        while (left < n - 1 && arr[left] <= arr[left + 1]) {
+            left++;
+        }
+
+        if (left == n - 1) return 0; // Array is already sorted
+
+        // Find the longest non-decreasing suffix
+        int right = n - 1;
+        while (right > 0 && arr[right - 1] <= arr[right]) {
+            right--;
+        }
+
+        // Minimum length considering removing suffix or prefix
+        int minLength = Math.min(n - left - 1, right);
+
+        // Try to merge prefix and suffix
+        int i = 0, j = right;
+        while (i <= left && j < n) {
+            if (arr[i] <= arr[j]) {
+                minLength = Math.min(minLength, j - i - 1);
+                i++;
+            } else {
+                j++;
+            }
+        }
+
+        return minLength;
+    }
+
+    // Frequency of the most frequent element after k operations
+    public int maxFrequency(int[] nums, int k) {
+        Arrays.sort(nums);
+
+        int left = 0;
+        long sum = 0;
+        int maxFreq = 1;
+
+        for (int right = 0; right < nums.length; right++) {
+            sum += nums[right];
+
+            // Shrink window while cost exceeds k
+            while ((long) nums[right] * (right - left + 1) - sum > k) {
+                sum -= nums[left];
+                left++;
+            }
+
+            maxFreq = Math.max(maxFreq, right - left + 1);
+        }
+
+        return maxFreq;
+    }
+
+    // Minimum operations to reduce X to zero
+    public int minOperations(int[] nums, int x) {
+        int target = Arrays.stream(nums).sum() - x;
+        if (target < 0) return -1;
+        if (target == 0) return nums.length;
+
+        // Find longest subarray with sum = target
+        Map<Integer, Integer> prefixSumIndex = new HashMap<>();
+        prefixSumIndex.put(0, -1);
+
+        int sum = 0;
+        int maxLength = -1;
+
+        for (int i = 0; i < nums.length; i++) {
+            sum += nums[i];
+
+            if (prefixSumIndex.containsKey(sum - target)) {
+                maxLength = Math.max(maxLength, i - prefixSumIndex.get(sum - target));
+            }
+
+            prefixSumIndex.put(sum, i);
+        }
+
+        return maxLength == -1 ? -1 : nums.length - maxLength;
+    }
+
+    // Subarrays with k odd numbers
+    public int numberOfSubarraysWithKOdd(int[] nums, int k) {
+        Map<Integer, Integer> prefixCount = new HashMap<>();
+        prefixCount.put(0, 1);
+
+        int count = 0;
+        int oddCount = 0;
+
+        for (int num : nums) {
+            if (num % 2 == 1) oddCount++;
+
+            count += prefixCount.getOrDefault(oddCount - k, 0);
+            prefixCount.put(oddCount, prefixCount.getOrDefault(oddCount, 0) + 1);
+        }
+
+        return count;
+    }
+
+    // Count vowel substrings of a string
+    public int countVowelSubstrings(String word) {
+        Set<Character> vowels = Set.of('a', 'e', 'i', 'o', 'u');
+        int count = 0;
+
+        for (int i = 0; i < word.length(); i++) {
+            Set<Character> seen = new HashSet<>();
+
+            for (int j = i; j < word.length(); j++) {
+                char c = word.charAt(j);
+
+                if (!vowels.contains(c)) {
+                    break; // Non-vowel character, break
+                }
+
+                seen.add(c);
+
+                if (seen.size() == 5) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    // Longest substring of all vowels in order
+    public int longestBeautifulSubstring(String word) {
+        if (word.length() < 5) return 0;
+
+        String target = "aeiou";
+        int maxLength = 0;
+        int currentLength = 1;
+        int vowelIndex = 0;
+
+        for (int i = 1; i < word.length(); i++) {
+            char curr = word.charAt(i);
+            char prev = word.charAt(i - 1);
+
+            if (curr == prev) {
+                currentLength++;
+            } else if (vowelIndex < 4 && curr == target.charAt(vowelIndex + 1)) {
+                vowelIndex++;
+                currentLength++;
+            } else if (curr == 'a') {
+                vowelIndex = 0;
+                currentLength = 1;
+            } else {
+                vowelIndex = 0;
+                currentLength = 1;
+            }
+
+            if (vowelIndex == 4) {
+                maxLength = Math.max(maxLength, currentLength);
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Count number of homogenous substrings
+    public int countHomogenous(String s) {
+        int MOD = 1000000007;
+        long count = 0;
+
+        int i = 0;
+        while (i < s.length()) {
+            int j = i;
+            while (j < s.length() && s.charAt(j) == s.charAt(i)) {
+                j++;
+            }
+
+            long len = j - i;
+            count = (count + len * (len + 1) / 2) % MOD;
+            i = j;
+        }
+
+        return (int) count;
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Sliding Window Maximum/Minimum
+
+### 4.1 Deque-based Window Extremes
+
+```java
+// Sliding window maximum and minimum using deque
+public class SlidingWindowExtremes {
+
+    // Sliding window maximum using deque
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>(); // Store indices
+        int[] result = new int[nums.length - k + 1];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove indices outside current window
+            while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+                deque.pollFirst();
+            }
+
+            // Remove indices of smaller elements (maintain decreasing order)
+            while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+
+            // Add to result when window is complete
+            if (i >= k - 1) {
+                result[i - k + 1] = nums[deque.peekFirst()];
+            }
+        }
+
+        return result;
+    }
+
+    // Sliding window minimum using deque
+    public int[] minSlidingWindow(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] result = new int[nums.length - k + 1];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove indices outside current window
+            while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+                deque.pollFirst();
+            }
+
+            // Remove indices of larger elements (maintain increasing order)
+            while (!deque.isEmpty() && nums[deque.peekLast()] >= nums[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+
+            if (i >= k - 1) {
+                result[i - k + 1] = nums[deque.peekFirst()];
+            }
+        }
+
+        return result;
+    }
+
+    // Constrained subsequence sum
+    public int constrainedSubsetSum(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] dp = new int[nums.length];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove indices outside window of size k
+            while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+                deque.pollFirst();
+            }
+
+            // Calculate dp[i]
+            dp[i] = nums[i];
+            if (!deque.isEmpty()) {
+                dp[i] = Math.max(dp[i], nums[i] + dp[deque.peekFirst()]);
+            }
+
+            // Maintain decreasing order in deque
+            while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+                deque.pollLast();
+            }
+
+            if (dp[i] > 0) {
+                deque.offerLast(i);
+            }
+        }
+
+        return Arrays.stream(dp).max().orElse(0);
+    }
+
+    // Maximum of minimum values in all windows
+    public int[] maxOfMinWindows(int[] nums) {
+        int n = nums.length;
+        int[] result = new int[n];
+
+        // For each window size
+        for (int windowSize = 1; windowSize <= n; windowSize++) {
+            Deque<Integer> deque = new ArrayDeque<>();
+            int maxOfMins = Integer.MIN_VALUE;
+
+            for (int i = 0; i < n; i++) {
+                // Remove elements outside current window
+                while (!deque.isEmpty() && deque.peekFirst() <= i - windowSize) {
+                    deque.pollFirst();
+                }
+
+                // Maintain increasing order (for minimum)
+                while (!deque.isEmpty() && nums[deque.peekLast()] >= nums[i]) {
+                    deque.pollLast();
+                }
+
+                deque.offerLast(i);
+
+                if (i >= windowSize - 1) {
+                    maxOfMins = Math.max(maxOfMins, nums[deque.peekFirst()]);
+                }
+            }
+
+            result[windowSize - 1] = maxOfMins;
+        }
+
+        return result;
+    }
+
+    // Shortest subarray with sum at least K (can have negative numbers)
+    public int shortestSubarray(int[] nums, int k) {
+        int n = nums.length;
+        long[] prefixSum = new long[n + 1];
+
+        // Build prefix sum array
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        Deque<Integer> deque = new ArrayDeque<>();
+        int minLength = Integer.MAX_VALUE;
+
+        for (int i = 0; i <= n; i++) {
+            // Check if current prefix sum can form valid subarray
+            while (!deque.isEmpty() && prefixSum[i] - prefixSum[deque.peekFirst()] >= k) {
+                minLength = Math.min(minLength, i - deque.pollFirst());
+            }
+
+            // Maintain increasing order of prefix sums
+            while (!deque.isEmpty() && prefixSum[deque.peekLast()] >= prefixSum[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+        }
+
+        return minLength == Integer.MAX_VALUE ? -1 : minLength;
+    }
+
+    // Sliding window maximum with updates
+    public static class SlidingWindowMaxWithUpdates {
+        private TreeMap<Integer, Integer> window;
+        private int[] nums;
+        private int k;
+        private int start;
+
+        public SlidingWindowMaxWithUpdates(int[] nums, int k) {
+            this.nums = nums.clone();
+            this.k = k;
+            this.window = new TreeMap<>();
+            this.start = 0;
+
+            // Initialize first window
+            for (int i = 0; i < k; i++) {
+                window.put(nums[i], window.getOrDefault(nums[i], 0) + 1);
+            }
+        }
+
+        public int getMax() {
+            return window.isEmpty() ? Integer.MIN_VALUE : window.lastKey();
+        }
+
+        public void slideWindow() {
+            if (start + k >= nums.length) return;
+
+            // Remove element going out of window
+            int outgoing = nums[start];
+            window.put(outgoing, window.get(outgoing) - 1);
+            if (window.get(outgoing) == 0) {
+                window.remove(outgoing);
+            }
+
+            // Add element coming into window
+            int incoming = nums[start + k];
+            window.put(incoming, window.getOrDefault(incoming, 0) + 1);
+
+            start++;
+        }
+
+        public void update(int index, int value) {
+            if (index >= start && index < start + k) {
+                // Element is in current window
+                int oldValue = nums[index];
+
+                // Remove old value
+                window.put(oldValue, window.get(oldValue) - 1);
+                if (window.get(oldValue) == 0) {
+                    window.remove(oldValue);
+                }
+
+                // Add new value
+                window.put(value, window.getOrDefault(value, 0) + 1);
+            }
+
+            nums[index] = value;
+        }
+    }
+
+    // Jump game VI with sliding window maximum
+    public int maxResult(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] dp = new int[nums.length];
+        dp[0] = nums[0];
+        deque.offerLast(0);
+
+        for (int i = 1; i < nums.length; i++) {
+            // Remove indices outside window
+            while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+                deque.pollFirst();
+            }
+
+            // Calculate dp[i] using maximum from window
+            dp[i] = nums[i] + dp[deque.peekFirst()];
+
+            // Maintain decreasing order in deque
+            while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+        }
+
+        return dp[nums.length - 1];
+    }
+}
+```
+
+
+***
+
+## Pattern 5: String Matching with Sliding Window
+
+### 5.1 Pattern Matching Problems
+
+```java
+// String pattern matching using sliding window
+public class StringPatternMatching {
+
+    // Find all substrings of size k with k-1 distinct characters
+    public List<String> findSubstrings(String s, int k) {
+        List<String> result = new ArrayList<>();
+        if (s.length() < k) return result;
+
+        for (int i = 0; i <= s.length() - k; i++) {
+            String substring = s.substring(i, i + k);
+            Set<Character> distinct = new HashSet<>();
+
+            for (char c : substring.toCharArray()) {
+                distinct.add(c);
+            }
+
+            if (distinct.size() == k - 1) {
+                result.add(substring);
+            }
+        }
+
+        return result;
+    }
+
+    // Optimized version using sliding window
+    public List<String> findSubstringsOptimized(String s, int k) {
+        List<String> result = new ArrayList<>();
+        if (s.length() < k) return result;
+
+        Map<Character, Integer> charCount = new HashMap<>();
+
+        // Process first window
+        for (int i = 0; i < k; i++) {
+            char c = s.charAt(i);
+            charCount.put(c, charCount.getOrDefault(c, 0) + 1);
+        }
+
+        if (charCount.size() == k - 1) {
+            result.add(s.substring(0, k));
+        }
+
+        // Slide the window
+        for (int i = k; i < s.length(); i++) {
+            // Add new character
+            char newChar = s.charAt(i);
+            charCount.put(newChar, charCount.getOrDefault(newChar, 0) + 1);
+
+            // Remove old character
+            char oldChar = s.charAt(i - k);
+            charCount.put(oldChar, charCount.get(oldChar) - 1);
+            if (charCount.get(oldChar) == 0) {
+                charCount.remove(oldChar);
+            }
+
+            if (charCount.size() == k - 1) {
+                result.add(s.substring(i - k + 1, i + 1));
+            }
+        }
+
+        return result;
+    }
+
+    // Check if string contains permutation of pattern
+    public boolean checkPermutation(String s, String pattern) {
+        if (s.length() < pattern.length()) return false;
+
+        Map<Character, Integer> patternCount = new HashMap<>();
+        for (char c : pattern.toCharArray()) {
+            patternCount.put(c, patternCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int windowSize = pattern.length();
+
+        // Process first window
+        for (int i = 0; i < windowSize; i++) {
+            char c = s.charAt(i);
+            windowCount.put(c, windowCount.getOrDefault(c, 0) + 1);
+        }
+
+        if (windowCount.equals(patternCount)) return true;
+
+        // Slide the window
+        for (int i = windowSize; i < s.length(); i++) {
+            // Add new character
+            char newChar = s.charAt(i);
+            windowCount.put(newChar, windowCount.getOrDefault(newChar, 0) + 1);
+
+            // Remove old character
+            char oldChar = s.charAt(i - windowSize);
+            windowCount.put(oldChar, windowCount.get(oldChar) - 1);
+            if (windowCount.get(oldChar) == 0) {
+                windowCount.remove(oldChar);
+            }
+
+            if (windowCount.equals(patternCount)) return true;
+        }
+
+        return false;
+    }
+
+    // Find all starting indices where pattern appears as subsequence
+    public List<Integer> findPatternSubsequence(String text, String pattern) {
+        List<Integer> result = new ArrayList<>();
+
+        for (int i = 0; i <= text.length() - pattern.length(); i++) {
+            int patternIndex = 0;
+
+            for (int j = i; j < text.length() && patternIndex < pattern.length(); j++) {
+                if (text.charAt(j) == pattern.charAt(patternIndex)) {
+                    patternIndex++;
+                }
+            }
+
+            if (patternIndex == pattern.length()) {
+                result.add(i);
+            }
+        }
+
+        return result;
+    }
+
+    // Longest repeating character replacement
+    public int characterReplacement(String s, int k) {
+        Map<Character, Integer> charCount = new HashMap<>();
+        int left = 0;
+        int maxLength = 0;
+        int maxFreq = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charCount.put(rightChar, charCount.getOrDefault(rightChar, 0) + 1);
+            maxFreq = Math.max(maxFreq, charCount.get(rightChar));
+
+            // If replacements needed > k, shrink window
+            while (right - left + 1 - maxFreq > k) {
+                char leftChar = s.charAt(left);
+                charCount.put(leftChar, charCount.get(leftChar) - 1);
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Get equal substrings within budget
+    public int equalSubstring(String s, String t, int maxCost) {
+        int left = 0;
+        int currentCost = 0;
+        int maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            currentCost += Math.abs(s.charAt(right) - t.charAt(right));
+
+            while (currentCost > maxCost) {
+                currentCost -= Math.abs(s.charAt(left) - t.charAt(left));
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Find repeated DNA sequences
+    public List<String> findRepeatedDnaSequences(String s) {
+        Set<String> seen = new HashSet<>();
+        Set<String> repeated = new HashSet<>();
+
+        for (int i = 0; i <= s.length() - 10; i++) {
+            String sequence = s.substring(i, i + 10);
+
+            if (seen.contains(sequence)) {
+                repeated.add(sequence);
+            } else {
+                seen.add(sequence);
+            }
+        }
+
+        return new ArrayList<>(repeated);
+    }
+
+    // Optimized using rolling hash
+    public List<String> findRepeatedDnaSequencesOptimized(String s) {
+        Set<Integer> seen = new HashSet<>();
+        Set<String> repeated = new HashSet<>();
+
+        Map<Character, Integer> charToNum = Map.of('A', 0, 'C', 1, 'G', 2, 'T', 3);
+
+        int hash = 0;
+        int power = 1;
+
+        // Calculate hash for first 10 characters
+        for (int i = 0; i < 10 && i < s.length(); i++) {
+            hash = hash * 4 + charToNum.get(s.charAt(i));
+            if (i < 9) power *= 4;
+        }
+
+        seen.add(hash);
+
+        // Roll the hash
+        for (int i = 10; i < s.length(); i++) {
+            hash = (hash - charToNum.get(s.charAt(i - 10)) * power) * 4 +
+                   charToNum.get(s.charAt(i));
+
+            if (seen.contains(hash)) {
+                repeated.add(s.substring(i - 9, i + 1));
+            } else {
+                seen.add(hash);
+            }
+        }
+
+        return new ArrayList<>(repeated);
+    }
+}
+```
+
+
+***
+
+## Pattern 6: Multiple Pointers Sliding Window
+
+### 6.1 Three Pointers and Beyond
+
+```java
+// Multiple pointers sliding window problems
+public class MultiplePointersSlidingWindow {
+
+    // Three sum using sliding window approach
+    public List<List<Integer>> threeSum(int[] nums) {
+        Arrays.sort(nums);
+        List<List<Integer>> result = new ArrayList<>();
+
+        for (int i = 0; i < nums.length - 2; i++) {
+            if (i > 0 && nums[i] == nums[i - 1]) continue; // Skip duplicates
+
+            int left = i + 1, right = nums.length - 1;
+            int target = -nums[i];
+
+            while (left < right) {
+                int sum = nums[left] + nums[right];
+
+                if (sum == target) {
+                    result.add(Arrays.asList(nums[i], nums[left], nums[right]));
+
+                    // Skip duplicates
+                    while (left < right && nums[left] == nums[left + 1]) left++;
+                    while (left < right && nums[right] == nums[right - 1]) right--;
+
+                    left++;
+                    right--;
+                } else if (sum < target) {
+                    left++;
+                } else {
+                    right--;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // Four sum using multiple pointers
+    public List<List<Integer>> fourSum(int[] nums, int target) {
+        Arrays.sort(nums);
+        List<List<Integer>> result = new ArrayList<>();
+
+        for (int i = 0; i < nums.length - 3; i++) {
+            if (i > 0 && nums[i] == nums[i - 1]) continue;
+
+            for (int j = i + 1; j < nums.length - 2; j++) {
+                if (j > i + 1 && nums[j] == nums[j - 1]) continue;
+
+                int left = j + 1, right = nums.length - 1;
+                long remaining = (long) target - nums[i] - nums[j];
+
+                while (left < right) {
+                    long sum = nums[left] + nums[right];
+
+                    if (sum == remaining) {
+                        result.add(Arrays.asList(nums[i], nums[j], nums[left], nums[right]));
+
+                        while (left < right && nums[left] == nums[left + 1]) left++;
+                        while (left < right && nums[right] == nums[right - 1]) right--;
+
+                        left++;
+                        right--;
+                    } else if (sum < remaining) {
+                        left++;
+                    } else {
+                        right--;
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // Trapping rain water using two pointers
+    public int trap(int[] height) {
+        if (height.length < 3) return 0;
+
+        int left = 0, right = height.length - 1;
+        int leftMax = 0, rightMax = 0;
+        int water = 0;
+
+        while (left < right) {
+            if (height[left] < height[right]) {
+                if (height[left] >= leftMax) {
+                    leftMax = height[left];
+                } else {
+                    water += leftMax - height[left];
+                }
+                left++;
+            } else {
+                if (height[right] >= rightMax) {
+                    rightMax = height[right];
+                } else {
+                    water += rightMax - height[right];
+                }
+                right--;
+            }
+        }
+
+        return water;
+    }
+
+    // Container with most water
+    public int maxArea(int[] height) {
+        int left = 0, right = height.length - 1;
+        int maxWater = 0;
+
+        while (left < right) {
+            int width = right - left;
+            int currentWater = Math.min(height[left], height[right]) * width;
+            maxWater = Math.max(maxWater, currentWater);
+
+            if (height[left] < height[right]) {
+                left++;
+            } else {
+                right--;
+            }
+        }
+
+        return maxWater;
+    }
+
+    // Threesome closest to target
+    public int threeSumClosest(int[] nums, int target) {
+        Arrays.sort(nums);
+        int closestSum = nums[0] + nums[1] + nums[2];
+
+        for (int i = 0; i < nums.length - 2; i++) {
+            int left = i + 1, right = nums.length - 1;
+
+            while (left < right) {
+                int currentSum = nums[i] + nums[left] + nums[right];
+
+                if (Math.abs(currentSum - target) < Math.abs(closestSum - target)) {
+                    closestSum = currentSum;
+                }
+
+                if (currentSum < target) {
+                    left++;
+                } else if (currentSum > target) {
+                    right--;
+                } else {
+                    return currentSum; // Exact match found
+                }
+            }
+        }
+
+        return closestSum;
+    }
+
+    // Remove duplicates from sorted array II (allow at most 2 duplicates)
+    public int removeDuplicates(int[] nums) {
+        if (nums.length <= 2) return nums.length;
+
+        int writeIndex = 2; // Position to write next element
+
+        for (int readIndex = 2; readIndex < nums.length; readIndex++) {
+            if (nums[readIndex] != nums[writeIndex - 2]) {
+                nums[writeIndex] = nums[readIndex];
+                writeIndex++;
+            }
+        }
+
+        return writeIndex;
+    }
+
+    // Sort colors (Dutch national flag)
+    public void sortColors(int[] nums) {
+        int low = 0, mid = 0, high = nums.length - 1;
+
+        while (mid <= high) {
+            if (nums[mid] == 0) {
+                swap(nums, low, mid);
+                low++;
+                mid++;
+            } else if (nums[mid] == 1) {
+                mid++;
+            } else { // nums[mid] == 2
+                swap(nums, mid, high);
+                high--;
+                // Don't increment mid as we need to check swapped element
+            }
+        }
+    }
+
+    private void swap(int[] nums, int i, int j) {
+        int temp = nums[i];
+        nums[i] = nums[j];
+        nums[j] = temp;
+    }
+
+    // Squares of sorted array
+    public int[] sortedSquares(int[] nums) {
+        int[] result = new int[nums.length];
+        int left = 0, right = nums.length - 1;
+        int index = nums.length - 1;
+
+        while (left <= right) {
+            int leftSquare = nums[left] * nums[left];
+            int rightSquare = nums[right] * nums[right];
+
+            if (leftSquare > rightSquare) {
+                result[index] = leftSquare;
+                left++;
+            } else {
+                result[index] = rightSquare;
+                right--;
+            }
+            index--;
+        }
+
+        return result;
+    }
+
+    // Partition labels
+    public List<Integer> partitionLabels(String s) {
+        Map<Character, Integer> lastIndex = new HashMap<>();
+
+        // Record last occurrence of each character
+        for (int i = 0; i < s.length(); i++) {
+            lastIndex.put(s.charAt(i), i);
+        }
+
+        List<Integer> result = new ArrayList<>();
+        int start = 0, end = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            end = Math.max(end, lastIndex.get(s.charAt(i)));
+
+            if (i == end) {
+                result.add(end - start + 1);
+                start = end + 1;
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Sliding Window with Deque
+
+### 7.1 Deque Applications in Sliding Window
+
+```java
+// Advanced sliding window using deque for optimization
+public class SlidingWindowDeque {
+
+    // Sliding window maximum using monotonic deque
+    public int[] maxSlidingWindow(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] result = new int[nums.length - k + 1];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Remove elements outside window
+            while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+                deque.pollFirst();
+            }
+
+            // Maintain decreasing order
+            while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+
+            if (i >= k - 1) {
+                result[i - k + 1] = nums[deque.peekFirst()];
+            }
+        }
+
+        return result;
+    }
+
+    // Longest continuous subarray with absolute diff <= limit
+    public int longestSubarray(int[] nums, int limit) {
+        Deque<Integer> maxDeque = new ArrayDeque<>(); // Decreasing
+        Deque<Integer> minDeque = new ArrayDeque<>(); // Increasing
+
+        int left = 0, maxLength = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            // Maintain decreasing order in maxDeque
+            while (!maxDeque.isEmpty() && nums[maxDeque.peekLast()] <= nums[right]) {
+                maxDeque.pollLast();
+            }
+            maxDeque.offerLast(right);
+
+            // Maintain increasing order in minDeque
+            while (!minDeque.isEmpty() && nums[minDeque.peekLast()] >= nums[right]) {
+                minDeque.pollLast();
+            }
+            minDeque.offerLast(right);
+
+            // Shrink window while difference exceeds limit
+            while (nums[maxDeque.peekFirst()] - nums[minDeque.peekFirst()] > limit) {
+                if (maxDeque.peekFirst() <= left) {
+                    maxDeque.pollFirst();
+                }
+                if (minDeque.peekFirst() <= left) {
+                    minDeque.pollFirst();
+                }
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Jump game VI using deque
+    public int maxResult(int[] nums, int k) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        int[] dp = new int[nums.length];
+
+        dp[0] = nums[0];
+        deque.offerLast(0);
+
+        for (int i = 1; i < nums.length; i++) {
+            // Remove indices outside window
+            while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+                deque.pollFirst();
+            }
+
+            // Calculate dp[i] using maximum from previous k elements
+            dp[i] = nums[i] + dp[deque.peekFirst()];
+
+            // Maintain decreasing order
+            while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+        }
+
+        return dp[nums.length - 1];
+    }
+
+    // Find median from data stream using sliding window
+    public static class SlidingWindowMedian {
+        private Deque<Integer> window;
+        private int k;
+
+        public SlidingWindowMedian(int k) {
+            this.k = k;
+            this.window = new ArrayDeque<>();
+        }
+
+        public double findSlidingWindowMedian(int[] nums) {
+            List<Double> medians = new ArrayList<>();
+
+            for (int num : nums) {
+                window.offerLast(num);
+
+                if (window.size() > k) {
+                    window.pollFirst();
+                }
+
+                if (window.size() == k) {
+                    medians.add(calculateMedian());
+                }
+            }
+
+            return medians.isEmpty() ? 0.0 : medians.get(medians.size() - 1);
+        }
+
+        private double calculateMedian() {
+            List<Integer> sorted = new ArrayList<>(window);
+            Collections.sort(sorted);
+
+            int size = sorted.size();
+            if (size % 2 == 1) {
+                return sorted.get(size / 2);
+            } else {
+                return (sorted.get(size / 2 - 1) + sorted.get(size / 2)) / 2.0;
+            }
+        }
+    }
+
+    // Shortest subarray with sum at least K
+    public int shortestSubarray(int[] nums, int k) {
+        long[] prefixSum = new long[nums.length + 1];
+        for (int i = 0; i < nums.length; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        Deque<Integer> deque = new ArrayDeque<>();
+        int minLength = Integer.MAX_VALUE;
+
+        for (int i = 0; i <= nums.length; i++) {
+            // Check for valid subarrays ending at i
+            while (!deque.isEmpty() && prefixSum[i] - prefixSum[deque.peekFirst()] >= k) {
+                minLength = Math.min(minLength, i - deque.pollFirst());
+            }
+
+            // Maintain increasing order of prefix sums
+            while (!deque.isEmpty() && prefixSum[deque.peekLast()] >= prefixSum[i]) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+        }
+
+        return minLength == Integer.MAX_VALUE ? -1 : minLength;
+    }
+
+    // Maximum sum of subarray with length at least k
+    public int maxSubarraySum(int[] nums, int k) {
+        int n = nums.length;
+        long[] prefixSum = new long[n + 1];
+
+        for (int i = 0; i < n; i++) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i];
+        }
+
+        Deque<Integer> deque = new ArrayDeque<>();
+        long maxSum = Long.MIN_VALUE;
+
+        for (int i = 0; i <= n; i++) {
+            if (i >= k) {
+                // Add current prefix to deque while maintaining increasing order
+                while (!deque.isEmpty() && prefixSum[deque.peekLast()] >= prefixSum[i - k]) {
+                    deque.pollLast();
+                }
+                deque.offerLast(i - k);
+
+                // Calculate maximum sum ending at i
+                maxSum = Math.max(maxSum, prefixSum[i] - prefixSum[deque.peekFirst()]);
+            }
+        }
+
+        return (int) maxSum;
+    }
+
+    // Sliding window unique elements counter
+    public int[] slidingWindowUniqueCount(int[] nums, int k) {
+        Map<Integer, Deque<Integer>> elementIndices = new HashMap<>();
+        int[] result = new int[nums.length - k + 1];
+
+        for (int i = 0; i < nums.length; i++) {
+            // Add current element
+            elementIndices.computeIfAbsent(nums[i], key -> new ArrayDeque<>()).offerLast(i);
+
+            // Remove elements outside current window
+            for (Deque<Integer> indices : elementIndices.values()) {
+                while (!indices.isEmpty() && indices.peekFirst() <= i - k) {
+                    indices.pollFirst();
+                }
+            }
+
+            // Count unique elements in current window
+            if (i >= k - 1) {
+                int uniqueCount = 0;
+                for (Deque<Integer> indices : elementIndices.values()) {
+                    if (!indices.isEmpty()) {
+                        uniqueCount++;
+                    }
+                }
+                result[i - k + 1] = uniqueCount;
+            }
+        }
+
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 8: Two Arrays Sliding Window
+
+### 8.1 Cross Array Operations
+
+```java
+// Sliding window operations across two arrays
+public class TwoArraysSlidingWindow {
+
+    // Minimum window substring covering all characters from another array
+    public String minWindowCoveringArray(String s, char[] chars) {
+        Map<Character, Integer> targetCount = new HashMap<>();
+        for (char c : chars) {
+            targetCount.put(c, targetCount.getOrDefault(c, 0) + 1);
+        }
+
+        Map<Character, Integer> windowCount = new HashMap<>();
+        int left = 0, minLength = Integer.MAX_VALUE, minStart = 0;
+        int formed = 0, required = targetCount.size();
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            windowCount.put(rightChar, windowCount.getOrDefault(rightChar, 0) + 1);
+
+            if (targetCount.containsKey(rightChar) &&
+                windowCount.get(rightChar).intValue() == targetCount.get(rightChar).intValue()) {
+                formed++;
+            }
+
+            while (formed == required) {
+                if (right - left + 1 < minLength) {
+                    minLength = right - left + 1;
+                    minStart = left;
+                }
+
+                char leftChar = s.charAt(left);
+                windowCount.put(leftChar, windowCount.get(leftChar) - 1);
+
+                if (targetCount.containsKey(leftChar) &&
+                    windowCount.get(leftChar) < targetCount.get(leftChar)) {
+                    formed--;
+                }
+                left++;
+            }
+        }
+
+        return minLength == Integer.MAX_VALUE ? "" : s.substring(minStart, minStart + minLength);
+    }
+
+    // Find common elements in sliding windows of two arrays
+    public List<List<Integer>> findCommonInWindows(int[] arr1, int[] arr2, int k) {
+        List<List<Integer>> result = new ArrayList<>();
+
+        for (int i = 0; i <= arr1.length - k; i++) {
+            Set<Integer> window1 = new HashSet<>();
+            for (int j = i; j < i + k; j++) {
+                window1.add(arr1[j]);
+            }
+
+            for (int j = 0; j <= arr2.length - k; j++) {
+                Set<Integer> window2 = new HashSet<>();
+                for (int l = j; l < j + k; l++) {
+                    window2.add(arr2[l]);
+                }
+
+                Set<Integer> common = new HashSet<>(window1);
+                common.retainAll(window2);
+
+                if (!common.isEmpty()) {
+                    result.add(new ArrayList<>(common));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    // Maximum sum of k elements from two arrays
+    public int maxSumFromTwoArrays(int[] nums1, int[] nums2, int k) {
+        int maxSum = Integer.MIN_VALUE;
+
+        // Try all combinations of taking i elements from nums1 and k-i from nums2
+        for (int i = 0; i <= Math.min(k, nums1.length); i++) {
+            int remaining = k - i;
+            if (remaining > nums2.length) continue;
+
+            // Sum of top i elements from nums1
+            int sum1 = 0;
+            PriorityQueue<Integer> pq1 = new PriorityQueue<>(Collections.reverseOrder());
+            for (int num : nums1) {
+                pq1.offer(num);
+            }
+            for (int j = 0; j < i && !pq1.isEmpty(); j++) {
+                sum1 += pq1.poll();
+            }
+
+            // Sum of top remaining elements from nums2
+            int sum2 = 0;
+            PriorityQueue<Integer> pq2 = new PriorityQueue<>(Collections.reverseOrder());
+            for (int num : nums2) {
+                pq2.offer(num);
+            }
+            for (int j = 0; j < remaining && !pq2.isEmpty(); j++) {
+                sum2 += pq2.poll();
+            }
+
+            maxSum = Math.max(maxSum, sum1 + sum2);
+        }
+
+        return maxSum;
+    }
+
+    // Interleave two arrays to maximize sum of sliding window
+    public int maxSumInterleaved(int[] arr1, int[] arr2, int windowSize) {
+        List<Integer> interleaved = new ArrayList<>();
+        int i = 0, j = 0;
+
+        // Interleave based on which element is larger
+        while (i < arr1.length && j < arr2.length) {
+            if (arr1[i] >= arr2[j]) {
+                interleaved.add(arr1[i]);
+                i++;
+            } else {
+                interleaved.add(arr2[j]);
+                j++;
+            }
+        }
+
+        // Add remaining elements
+        while (i < arr1.length) {
+            interleaved.add(arr1[i]);
+            i++;
+        }
+        while (j < arr2.length) {
+            interleaved.add(arr2[j]);
+            j++;
+        }
+
+        // Find maximum sum in sliding window
+        if (interleaved.size() < windowSize) return 0;
+
+        int windowSum = 0;
+        for (int k = 0; k < windowSize; k++) {
+            windowSum += interleaved.get(k);
+        }
+
+        int maxSum = windowSum;
+        for (int k = windowSize; k < interleaved.size(); k++) {
+            windowSum = windowSum - interleaved.get(k - windowSize) + interleaved.get(k);
+            maxSum = Math.max(maxSum, windowSum);
+        }
+
+        return maxSum;
+    }
+
+    // Longest common subarray between two arrays
+    public int longestCommonSubarray(int[] arr1, int[] arr2) {
+        Map<String, Integer> subarrayMap = new HashMap<>();
+        int maxLength = 0;
+
+        // Generate all subarrays of arr1
+        for (int i = 0; i < arr1.length; i++) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = i; j < arr1.length; j++) {
+                if (j > i) sb.append(",");
+                sb.append(arr1[j]);
+                subarrayMap.put(sb.toString(), j - i + 1);
+            }
+        }
+
+        // Check subarrays of arr2
+        for (int i = 0; i < arr2.length; i++) {
+            StringBuilder sb = new StringBuilder();
+            for (int j = i; j < arr2.length; j++) {
+                if (j > i) sb.append(",");
+                sb.append(arr2[j]);
+
+                String subarray = sb.toString();
+                if (subarrayMap.containsKey(subarray)) {
+                    maxLength = Math.max(maxLength, j - i + 1);
+                }
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Merge two arrays to get minimum sliding window maximum
+    public int minSlidingWindowMax(int[] arr1, int[] arr2, int k) {
+        List<Integer> merged = new ArrayList<>();
+
+        // Try different merging strategies
+        int minWindowMax = Integer.MAX_VALUE;
+
+        // Strategy 1: All from arr1 first, then arr2
+        merged.clear();
+        for (int num : arr1) merged.add(num);
+        for (int num : arr2) merged.add(num);
+        minWindowMax = Math.min(minWindowMax, getMinSlidingWindowMax(merged, k));
+
+        // Strategy 2: All from arr2 first, then arr1
+        merged.clear();
+        for (int num : arr2) merged.add(num);
+        for (int num : arr1) merged.add(num);
+        minWindowMax = Math.min(minWindowMax, getMinSlidingWindowMax(merged, k));
+
+        // Strategy 3: Interleave alternately
+        merged.clear();
+        int i = 0, j = 0;
+        boolean takeFromFirst = true;
+
+        while (i < arr1.length || j < arr2.length) {
+            if (takeFromFirst && i < arr1.length) {
+                merged.add(arr1[i]);
+                i++;
+            } else if (!takeFromFirst && j < arr2.length) {
+                merged.add(arr2[j]);
+                j++;
+            } else if (i < arr1.length) {
+                merged.add(arr1[i]);
+                i++;
+            } else {
+                merged.add(arr2[j]);
+                j++;
+            }
+            takeFromFirst = !takeFromFirst;
+        }
+
+        minWindowMax = Math.min(minWindowMax, getMinSlidingWindowMax(merged, k));
+
+        return minWindowMax;
+    }
+
+    private int getMinSlidingWindowMax(List<Integer> arr, int k) {
+        if (arr.size() < k) return Integer.MAX_VALUE;
+
+        Deque<Integer> deque = new ArrayDeque<>();
+        int minMax = Integer.MAX_VALUE;
+
+        for (int i = 0; i < arr.size(); i++) {
+            while (!deque.isEmpty() && deque.peekFirst() <= i - k) {
+                deque.pollFirst();
+            }
+
+            while (!deque.isEmpty() && arr.get(deque.peekLast()) <= arr.get(i)) {
+                deque.pollLast();
+            }
+
+            deque.offerLast(i);
+
+            if (i >= k - 1) {
+                minMax = Math.min(minMax, arr.get(deque.peekFirst()));
+            }
+        }
+
+        return minMax;
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Advanced Sliding Window Techniques
+
+### 9.1 Complex Problem Solving
+
+```java
+// Advanced sliding window techniques for complex problems
+public class AdvancedSlidingWindowTechniques {
+
+    // Longest substring with at most k distinct characters using optimized approach
+    public int lengthOfLongestSubstringKDistinctOptimized(String s, int k) {
+        if (k == 0 || s.isEmpty()) return 0;
+
+        Map<Character, Integer> charLastIndex = new HashMap<>();
+        int left = 0, maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char rightChar = s.charAt(right);
+            charLastIndex.put(rightChar, right);
+
+            if (charLastIndex.size() > k) {
+                // Find character with smallest last index
+                int minIndex = Collections.min(charLastIndex.values());
+                char charToRemove = s.charAt(minIndex);
+                charLastIndex.remove(charToRemove);
+                left = minIndex + 1;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Sliding window with multiple constraints
+    public int longestSubarrayMultipleConstraints(int[] nums, int maxSum, int maxLength) {
+        int left = 0, sum = 0, result = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            sum += nums[right];
+
+            // Shrink window while violating constraints
+            while (sum > maxSum || right - left + 1 > maxLength) {
+                sum -= nums[left];
+                left++;
+            }
+
+            result = Math.max(result, right - left + 1);
+        }
+
+        return result;
+    }
+
+    // Minimum operations to make array satisfy sliding window property
+    public int minOperations(int[] nums, int k) {
+        // Sliding window property: max - min <= k for any window
+        int operations = 0;
+
+        for (int windowSize = 2; windowSize <= nums.length; windowSize++) {
+            for (int i = 0; i <= nums.length - windowSize; i++) {
+                int min = Integer.MAX_VALUE;
+                int max = Integer.MIN_VALUE;
+
+                for (int j = i; j < i + windowSize; j++) {
+                    min = Math.min(min, nums[j]);
+                    max = Math.max(max, nums[j]);
+                }
+
+                if (max - min > k) {
+                    // Need to reduce the difference
+                    operations += (max - min - k + 1) / 2;
+                }
+            }
+        }
+
+        return operations;
+    }
+
+    // Sliding window with custom validator
+    public int longestValidWindow(int[] nums, Predicate<int[]> validator) {
+        int maxLength = 0;
+
+        for (int left = 0; left < nums.length; left++) {
+            for (int right = left; right < nums.length; right++) {
+                int[] window = Arrays.copyOfRange(nums, left, right + 1);
+
+                if (validator.test(window)) {
+                    maxLength = Math.max(maxLength, right - left + 1);
+                } else {
+                    break; // No need to expand further from this left
+                }
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Adaptive sliding window (window size changes based on content)
+    public List<Integer> adaptiveWindow(int[] nums, Function<Integer, Integer> sizeCalculator) {
+        List<Integer> results = new ArrayList<>();
+        int left = 0;
+
+        while (left < nums.length) {
+            int windowSize = sizeCalculator.apply(nums[left]);
+            int right = Math.min(left + windowSize - 1, nums.length - 1);
+
+            // Process current window
+            int sum = 0;
+            for (int i = left; i <= right; i++) {
+                sum += nums[i];
+            }
+            results.add(sum);
+
+            left = right + 1;
+        }
+
+        return results;
+    }
+
+    // Multi-level sliding window (nested windows)
+    public int maxSumNestedWindows(int[] nums, int outerSize, int innerSize) {
+        if (outerSize < innerSize) return 0;
+
+        int maxSum = Integer.MIN_VALUE;
+
+        for (int outer = 0; outer <= nums.length - outerSize; outer++) {
+            // For each outer window, find best inner window
+            int maxInnerSum = Integer.MIN_VALUE;
+
+            for (int inner = outer; inner <= outer + outerSize - innerSize; inner++) {
+                int innerSum = 0;
+                for (int i = inner; i < inner + innerSize; i++) {
+                    innerSum += nums[i];
+                }
+                maxInnerSum = Math.max(maxInnerSum, innerSum);
+            }
+
+            maxSum = Math.max(maxSum, maxInnerSum);
+        }
+
+        return maxSum;
+    }
+
+    // Sliding window with gap constraints
+    public int longestWindowWithGaps(int[] nums, int maxGap) {
+        int left = 0, maxLength = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            // Check if current window satisfies gap constraint
+            while (left < right && !satisfiesGapConstraint(nums, left, right, maxGap)) {
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    private boolean satisfiesGapConstraint(int[] nums, int left, int right, int maxGap) {
+        for (int i = left; i < right; i++) {
+            if (Math.abs(nums[i + 1] - nums[i]) > maxGap) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Sliding window with frequency constraints
+    public int longestWindowFrequencyConstraint(String s, int maxFreq) {
+        Map<Character, Integer> freq = new HashMap<>();
+        int left = 0, maxLength = 0;
+
+        for (int right = 0; right < s.length(); right++) {
+            char c = s.charAt(right);
+            freq.put(c, freq.getOrDefault(c, 0) + 1);
+
+            // Shrink window while any character frequency > maxFreq
+            while (freq.values().stream().anyMatch(f -> f > maxFreq)) {
+                char leftChar = s.charAt(left);
+                freq.put(leftChar, freq.get(leftChar) - 1);
+                if (freq.get(leftChar) == 0) {
+                    freq.remove(leftChar);
+                }
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Bidirectional sliding window
+    public int longestPalindromeSubarray(int[] nums) {
+        int maxLength = 1;
+
+        // For each potential center
+        for (int center = 0; center < nums.length; center++) {
+            // Odd length palindromes
+            int left = center, right = center;
+            while (left >= 0 && right < nums.length && nums[left] == nums[right]) {
+                maxLength = Math.max(maxLength, right - left + 1);
+                left--;
+                right++;
+            }
+
+            // Even length palindromes
+            left = center;
+            right = center + 1;
+            while (left >= 0 && right < nums.length && nums[left] == nums[right]) {
+                maxLength = Math.max(maxLength, right - left + 1);
+                left--;
+                right++;
+            }
+        }
+
+        return maxLength;
+    }
+
+    // Circular sliding window
+    public int maxSumCircularSubarray(int[] nums) {
+        // Case 1: Maximum subarray is non-circular
+        int maxKadane = kadane(nums);
+
+        // Case 2: Maximum subarray is circular
+        int totalSum = Arrays.stream(nums).sum();
+        int minKadane = kadaneMin(nums);
+        int maxCircular = totalSum - minKadane;
+
+        return maxCircular == 0 ? maxKadane : Math.max(maxKadane, maxCircular);
+    }
+
+    private int kadane(int[] nums) {
+        int maxSoFar = nums[0];
+        int maxEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
+            maxSoFar = Math.max(maxSoFar, maxEndingHere);
+        }
+
+        return maxSoFar;
+    }
+
+    private int kadaneMin(int[] nums) {
+        int minSoFar = nums[0];
+        int minEndingHere = nums[0];
+
+        for (int i = 1; i < nums.length; i++) {
+            minEndingHere = Math.min(nums[i], minEndingHere + nums[i]);
+            minSoFar = Math.min(minSoFar, minEndingHere);
+        }
+
+        return minSoFar;
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Pattern Type | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| Fixed Size Window | O(n) | O(1) to O(k) | Constant window size, slide by 1 |
+| Variable Size Window | O(n) | O(1) to O(n) | Expand/shrink based on condition |
+| Two Pointers | O(n) | O(1) | Move pointers based on comparison |
+| Deque Window | O(n) | O(k) | Maintain order for min/max queries |
+| HashMap Window | O(n) | O(k) | Track frequency/occurrences |
+| Multiple Arrays | O(n×m) | O(n+m) | Cross-array operations |
+| Multi-level Window | O(n²) | O(k) | Nested window operations |
+
+
+***
+
+## Best Practices \& Interview Tips
+
+### Sliding Window Guidelines
+
+```java
+// 1. Identify sliding window problems
+public class SlidingWindowBestPractices {
+
+    // Problem identification checklist
+    public boolean isSlidingWindowProblem(String problemDescription) {
+        String[] keywords = {
+            "subarray", "substring", "contiguous", "window",
+            "consecutive", "range", "maximum", "minimum",
+            "longest", "shortest", "sum", "product"
+        };
+
+        String desc = problemDescription.toLowerCase();
+        return Arrays.stream(keywords).anyMatch(desc::contains);
+    }
+
+    // Choose appropriate technique
+    public String chooseApproach(boolean fixedSize, boolean hasConstraint, boolean needsOrder) {
+        if (fixedSize) {
+            return "Fixed Size Sliding Window";
+        } else if (hasConstraint) {
+            return "Variable Size with Two Pointers";
+        } else if (needsOrder) {
+            return "Sliding Window with Deque";
+        } else {
+            return "Sliding Window with HashMap";
+        }
+    }
+
+    // Template for debugging
+    public void debugSlidingWindow(int[] nums, int left, int right, int windowSum) {
+        System.out.printf("Window [%d, %d]: [", left, right);
+        for (int i = left; i <= right; i++) {
+            System.out.print(nums[i]);
+            if (i < right) System.out.print(", ");
+        }
+        System.out.printf("] Sum: %d%n", windowSum);
+    }
+
+    // Common edge cases to handle
+    public void handleEdgeCases() {
+        // 1. Empty array or string
+        // 2. Window size larger than array
+        // 3. All elements same
+        // 4. Single element
+        // 5. Negative numbers (for sum problems)
+        // 6. Integer overflow for large sums
+    }
+
+    // Performance optimization tips
+    public void optimizationTips() {
+        // 1. Use appropriate data structures (HashMap vs Array)
+        // 2. Avoid unnecessary operations in tight loops
+        // 3. Consider space-time tradeoffs
+        // 4. Use built-in functions when appropriate
+        // 5. Handle overflow with long data type
+    }
+}
+```
+
+## Pattern 10: Sliding Window Optimization
+
+### 10.1 Memory and Time Optimizations
+
+```java
+// Optimization techniques for sliding window problems
+public class SlidingWindowOptimization {
+
+    // Space-optimized sliding window for large datasets
+    public static class MemoryEfficientWindow {
+        private int windowSum;
+        private int windowSize;
+        private int[] buffer;
+        private int head;
+        private int count;
+
+        public MemoryEfficientWindow(int size) {
+            this.windowSize = size;
+            this.buffer = new int[size];
+            this.head = 0;
+            this.count = 0;
+            this.windowSum = 0;
+        }
+
+        public void addElement(int element) {
+            if (count < windowSize) {
+                buffer[count] = element;
+                windowSum += element;
+                count++;
+            } else {
+                // Replace oldest element
+                windowSum = windowSum - buffer[head] + element;
+                buffer[head] = element;
+                head = (head + 1) % windowSize;
+            }
+        }
+
+        public double getAverage() {
+            return count == 0 ? 0.0 : (double) windowSum / Math.min(count, windowSize);
+        }
+
+        public int getSum() {
+            return windowSum;
+        }
+
+        public boolean isWindowFull() {
+            return count >= windowSize;
+        }
+    }
+
+    // Lazy evaluation for complex window operations
+    public static class LazyEvaluationWindow {
+        private int[] nums;
+        private int windowSize;
+        private Map<String, Object> cache;
+        private int lastLeft, lastRight;
+
+        public LazyEvaluationWindow(int[] nums, int windowSize) {
+            this.nums = nums;
+            this.windowSize = windowSize;
+            this.cache = new HashMap<>();
+            this.lastLeft = -1;
+            this.lastRight = -1;
+        }
+
+        public int getSum(int left, int right) {
+            String key = "sum_" + left + "_" + right;
+
+            if (cache.containsKey(key)) {
+                return (Integer) cache.get(key);
+            }
+
+            int sum = 0;
+            for (int i = left; i <= right; i++) {
+                sum += nums[i];
+            }
+
+            cache.put(key, sum);
+            return sum;
+        }
+
+        public int getMax(int left, int right) {
+            String key = "max_" + left + "_" + right;
+
+            if (cache.containsKey(key)) {
+                return (Integer) cache.get(key);
+            }
+
+            int max = Integer.MIN_VALUE;
+            for (int i = left; i <= right; i++) {
+                max = Math.max(max, nums[i]);
+            }
+
+            cache.put(key, max);
+            return max;
+        }
+
+        public void clearCache() {
+            cache.clear();
+        }
+    }
+
+    // Parallel sliding window for large arrays
+    public static class ParallelSlidingWindow {
+
+        public static List<Integer> parallelMaxWindows(int[] nums, int k) {
+            if (nums.length < k) return new ArrayList<>();
+
+            int numThreads = Runtime.getRuntime().availableProcessors();
+            int chunkSize = Math.max(1, nums.length / numThreads);
+
+            List<Future<List<Integer>>> futures = new ArrayList<>();
+            ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+            for (int i = 0; i < nums.length; i += chunkSize) {
+                int start = i;
+                int end = Math.min(i + chunkSize + k - 1, nums.length);
+
+                Future<List<Integer>> future = executor.submit(() -> {
+                    List<Integer> results = new ArrayList<>();
+
+                    for (int j = start; j <= end - k; j++) {
+                        int max = Integer.MIN_VALUE;
+                        for (int l = j; l < j + k; l++) {
+                            max = Math.max(max, nums[l]);
+                        }
+                        results.add(max);
+                    }
+
+                    return results;
+                });
+
+                futures.add(future);
+            }
+
+            List<Integer> result = new ArrayList<>();
+            try {
+                for (Future<List<Integer>> future : futures) {
+                    result.addAll(future.get());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                executor.shutdown();
+            }
+
+            return result;
+        }
+    }
+
+    // Incremental sliding window updates
+    public static class IncrementalWindow {
+        private TreeMap<Integer, Integer> windowElements;
+        private int[] nums;
+        private int left, right;
+        private int sum;
+
+        public IncrementalWindow(int[] nums) {
+            this.nums = nums;
+            this.windowElements = new TreeMap<>();
+            this.left = 0;
+            this.right = -1;
+            this.sum = 0;
+        }
+
+        public void expandRight() {
+            if (right + 1 < nums.length) {
+                right++;
+                int element = nums[right];
+                windowElements.put(element, windowElements.getOrDefault(element, 0) + 1);
+                sum += element;
+            }
+        }
+
+        public void shrinkLeft() {
+            if (left <= right) {
+                int element = nums[left];
+                windowElements.put(element, windowElements.get(element) - 1);
+                if (windowElements.get(element) == 0) {
+                    windowElements.remove(element);
+                }
+                sum -= element;
+                left++;
+            }
+        }
+
+        public int getSum() {
+            return sum;
+        }
+
+        public int getMin() {
+            return windowElements.isEmpty() ? Integer.MAX_VALUE : windowElements.firstKey();
+        }
+
+        public int getMax() {
+            return windowElements.isEmpty() ? Integer.MIN_VALUE : windowElements.lastKey();
+        }
+
+        public int getSize() {
+            return right - left + 1;
+        }
+    }
+
+    // Compressed sliding window for sparse data
+    public static class CompressedWindow {
+        private Map<Integer, Integer> valueToIndex;
+        private List<Integer> compressedValues;
+        private int[] frequencies;
+
+        public CompressedWindow(int[] nums) {
+            Set<Integer> uniqueValues = new HashSet<>();
+            for (int num : nums) {
+                uniqueValues.add(num);
+            }
+
+            compressedValues = new ArrayList<>(uniqueValues);
+            Collections.sort(compressedValues);
+
+            valueToIndex = new HashMap<>();
+            for (int i = 0; i < compressedValues.size(); i++) {
+                valueToIndex.put(compressedValues.get(i), i);
+            }
+
+            frequencies = new int[compressedValues.size()];
+        }
+
+        public void addElement(int element) {
+            Integer index = valueToIndex.get(element);
+            if (index != null) {
+                frequencies[index]++;
+            }
+        }
+
+        public void removeElement(int element) {
+            Integer index = valueToIndex.get(element);
+            if (index != null && frequencies[index] > 0) {
+                frequencies[index]--;
+            }
+        }
+
+        public int getDistinctCount() {
+            int count = 0;
+            for (int freq : frequencies) {
+                if (freq > 0) count++;
+            }
+            return count;
+        }
+
+        public int getMin() {
+            for (int i = 0; i < frequencies.length; i++) {
+                if (frequencies[i] > 0) {
+                    return compressedValues.get(i);
+                }
+            }
+            return Integer.MAX_VALUE;
+        }
+
+        public int getMax() {
+            for (int i = frequencies.length - 1; i >= 0; i--) {
+                if (frequencies[i] > 0) {
+                    return compressedValues.get(i);
+                }
+            }
+            return Integer.MIN_VALUE;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Real-World Applications
+
+### 11.1 Practical Sliding Window Use Cases
+
+```java
+// Real-world applications of sliding window technique
+public class RealWorldSlidingWindow {
+
+    // Network packet analysis with sliding window
+    public static class NetworkPacketAnalyzer {
+        private Queue<PacketInfo> window;
+        private long windowSizeMs;
+        private long totalBytes;
+
+        static class PacketInfo {
+            long timestamp;
+            int size;
+            String sourceIP;
+
+            PacketInfo(long timestamp, int size, String sourceIP) {
+                this.timestamp = timestamp;
+                this.size = size;
+                this.sourceIP = sourceIP;
+            }
+        }
+
+        public NetworkPacketAnalyzer(long windowSizeMs) {
+            this.window = new LinkedList<>();
+            this.windowSizeMs = windowSizeMs;
+            this.totalBytes = 0;
+        }
+
+        public void addPacket(PacketInfo packet) {
+            // Remove old packets outside window
+            long currentTime = packet.timestamp;
+            while (!window.isEmpty() &&
+                   currentTime - window.peek().timestamp > windowSizeMs) {
+                PacketInfo removed = window.poll();
+                totalBytes -= removed.size;
+            }
+
+            // Add new packet
+            window.offer(packet);
+            totalBytes += packet.size;
+        }
+
+        public double getThroughputMbps() {
+            if (window.isEmpty()) return 0.0;
+
+            long timeSpan = window.isEmpty() ? windowSizeMs :
+                           Math.min(windowSizeMs,
+                           ((LinkedList<PacketInfo>) window).peekLast().timestamp -
+                           window.peek().timestamp + 1);
+
+            return (totalBytes * 8.0) / (timeSpan * 1000.0); // Convert to Mbps
+        }
+
+        public Map<String, Integer> getTopSources(int k) {
+            Map<String, Integer> sourceBytes = new HashMap<>();
+
+            for (PacketInfo packet : window) {
+                sourceBytes.put(packet.sourceIP,
+                               sourceBytes.getOrDefault(packet.sourceIP, 0) + packet.size);
+            }
+
+            return sourceBytes.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .limit(k)
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (e1, e2) -> e1,
+                            LinkedHashMap::new));
+        }
+    }
+
+    // Stock price analysis with sliding window
+    public static class StockPriceAnalyzer {
+        private Deque<Double> prices;
+        private Deque<Long> timestamps;
+        private int windowSize;
+
+        public StockPriceAnalyzer(int windowSize) {
+            this.windowSize = windowSize;
+            this.prices = new ArrayDeque<>();
+            this.timestamps = new ArrayDeque<>();
+        }
+
+        public void addPrice(double price, long timestamp) {
+            // Maintain window size
+            if (prices.size() >= windowSize) {
+                prices.pollFirst();
+                timestamps.pollFirst();
+            }
+
+            prices.offerLast(price);
+            timestamps.offerLast(timestamp);
+        }
+
+        public double getMovingAverage() {
+            return prices.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        }
+
+        public double getVolatility() {
+            if (prices.size() < 2) return 0.0;
+
+            double mean = getMovingAverage();
+            double variance = prices.stream()
+                    .mapToDouble(price -> Math.pow(price - mean, 2))
+                    .average().orElse(0.0);
+
+            return Math.sqrt(variance);
+        }
+
+        public TrendDirection getTrend() {
+            if (prices.size() < 2) return TrendDirection.NEUTRAL;
+
+            Double first = ((ArrayDeque<Double>) prices).peekFirst();
+            Double last = ((ArrayDeque<Double>) prices).peekLast();
+
+            if (last > first * 1.02) return TrendDirection.UPWARD;
+            if (last < first * 0.98) return TrendDirection.DOWNWARD;
+            return TrendDirection.NEUTRAL;
+        }
+
+        public boolean detectAnomaly(double currentPrice) {
+            if (prices.size() < windowSize) return false;
+
+            double mean = getMovingAverage();
+            double stdDev = getVolatility();
+
+            // Anomaly if price is more than 2 standard deviations away
+            return Math.abs(currentPrice - mean) > 2 * stdDev;
+        }
+
+        enum TrendDirection {
+            UPWARD, DOWNWARD, NEUTRAL
+        }
+    }
+
+    // Database query optimization with sliding window
+    public static class QueryPerformanceAnalyzer {
+        private Queue<QueryMetric> queryWindow;
+        private long windowSizeMs;
+
+        static class QueryMetric {
+            String queryType;
+            long executionTime;
+            long timestamp;
+            int rowsAffected;
+
+            QueryMetric(String queryType, long executionTime, long timestamp, int rowsAffected) {
+                this.queryType = queryType;
+                this.executionTime = executionTime;
+                this.timestamp = timestamp;
+                this.rowsAffected = rowsAffected;
+            }
+        }
+
+        public QueryPerformanceAnalyzer(long windowSizeMs) {
+            this.queryWindow = new LinkedList<>();
+            this.windowSizeMs = windowSizeMs;
+        }
+
+        public void recordQuery(QueryMetric metric) {
+            // Remove old queries
+            long currentTime = metric.timestamp;
+            while (!queryWindow.isEmpty() &&
+                   currentTime - queryWindow.peek().timestamp > windowSizeMs) {
+                queryWindow.poll();
+            }
+
+            queryWindow.offer(metric);
+        }
+
+        public double getAverageExecutionTime() {
+            return queryWindow.stream()
+                    .mapToLong(q -> q.executionTime)
+                    .average().orElse(0.0);
+        }
+
+        public Map<String, Double> getExecutionTimeByType() {
+            Map<String, List<Long>> typeToTimes = queryWindow.stream()
+                    .collect(Collectors.groupingBy(
+                            q -> q.queryType,
+                            Collectors.mapping(q -> q.executionTime, Collectors.toList())
+                    ));
+
+            return typeToTimes.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> entry.getValue().stream().mapToLong(Long::longValue).average().orElse(0.0)
+                    ));
+        }
+
+        public List<QueryMetric> getSlowQueries(long thresholdMs) {
+            return queryWindow.stream()
+                    .filter(q -> q.executionTime > thresholdMs)
+                    .collect(Collectors.toList());
+        }
+
+        public double getQueriesPerSecond() {
+            if (queryWindow.isEmpty()) return 0.0;
+
+            long timeSpan = ((LinkedList<QueryMetric>) queryWindow).peekLast().timestamp -
+                           queryWindow.peek().timestamp + 1;
+
+            return (queryWindow.size() * 1000.0) / Math.max(timeSpan, 1);
+        }
+    }
+
+    // Log file analysis with sliding window
+    public static class LogAnalyzer {
+        private Queue<LogEntry> logWindow;
+        private long windowSizeMs;
+
+        static class LogEntry {
+            String level;
+            String message;
+            long timestamp;
+            String source;
+
+            LogEntry(String level, String message, long timestamp, String source) {
+                this.level = level;
+                this.message = message;
+                this.timestamp = timestamp;
+                this.source = source;
+            }
+        }
+
+        public LogAnalyzer(long windowSizeMs) {
+            this.logWindow = new LinkedList<>();
+            this.windowSizeMs = windowSizeMs;
+        }
+
+        public void addLogEntry(LogEntry entry) {
+            // Remove old entries
+            long currentTime = entry.timestamp;
+            while (!logWindow.isEmpty() &&
+                   currentTime - logWindow.peek().timestamp > windowSizeMs) {
+                logWindow.poll();
+            }
+
+            logWindow.offer(entry);
+        }
+
+        public Map<String, Long> getErrorFrequency() {
+            return logWindow.stream()
+                    .filter(entry -> "ERROR".equals(entry.level))
+                    .collect(Collectors.groupingBy(
+                            entry -> entry.source,
+                            Collectors.counting()
+                    ));
+        }
+
+        public boolean detectErrorSpike(double threshold) {
+            long errorCount = logWindow.stream()
+                    .mapToLong(entry -> "ERROR".equals(entry.level) ? 1 : 0)
+                    .sum();
+
+            double errorRate = (double) errorCount / Math.max(logWindow.size(), 1);
+            return errorRate > threshold;
+        }
+
+        public List<String> getFrequentErrorPatterns(int minOccurrences) {
+            Map<String, Long> patternCounts = logWindow.stream()
+                    .filter(entry -> "ERROR".equals(entry.level))
+                    .collect(Collectors.groupingBy(
+                            entry -> extractPattern(entry.message),
+                            Collectors.counting()
+                    ));
+
+            return patternCounts.entrySet().stream()
+                    .filter(entry -> entry.getValue() >= minOccurrences)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
+        }
+
+        private String extractPattern(String message) {
+            // Simplified pattern extraction - replace numbers and specific values
+            return message.replaceAll("\\d+", "X")
+                          .replaceAll("\\b\\w+@\\w+\\.\\w+\\b", "EMAIL")
+                          .replaceAll("\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b", "IP");
+        }
+    }
+
+    // Real-time metrics dashboard
+    public static class MetricsDashboard {
+        private Map<String, Queue<MetricPoint>> metricWindows;
+        private long windowSizeMs;
+
+        static class MetricPoint {
+            String metricName;
+            double value;
+            long timestamp;
+            Map<String, String> tags;
+
+            MetricPoint(String metricName, double value, long timestamp, Map<String, String> tags) {
+                this.metricName = metricName;
+                this.value = value;
+                this.timestamp = timestamp;
+                this.tags = tags != null ? tags : new HashMap<>();
+            }
+        }
+
+        public MetricsDashboard(long windowSizeMs) {
+            this.metricWindows = new ConcurrentHashMap<>();
+            this.windowSizeMs = windowSizeMs;
+        }
+
+        public void recordMetric(MetricPoint point) {
+            Queue<MetricPoint> window = metricWindows.computeIfAbsent(
+                    point.metricName, k -> new LinkedList<>());
+
+            synchronized (window) {
+                // Remove old points
+                while (!window.isEmpty() &&
+                       point.timestamp - window.peek().timestamp > windowSizeMs) {
+                    window.poll();
+                }
+
+                window.offer(point);
+            }
+        }
+
+        public double getAverageValue(String metricName) {
+            Queue<MetricPoint> window = metricWindows.get(metricName);
+            if (window == null) return 0.0;
+
+            synchronized (window) {
+                return window.stream()
+                        .mapToDouble(point -> point.value)
+                        .average().orElse(0.0);
+            }
+        }
+
+        public double getPercentile(String metricName, double percentile) {
+            Queue<MetricPoint> window = metricWindows.get(metricName);
+            if (window == null) return 0.0;
+
+            synchronized (window) {
+                List<Double> values = window.stream()
+                        .map(point -> point.value)
+                        .sorted()
+                        .collect(Collectors.toList());
+
+                if (values.isEmpty()) return 0.0;
+
+                int index = (int) Math.ceil(percentile * values.size() / 100.0) - 1;
+                return values.get(Math.max(0, Math.min(index, values.size() - 1)));
+            }
+        }
+
+        public Map<String, Double> getMetricsSummary() {
+            Map<String, Double> summary = new HashMap<>();
+
+            for (String metricName : metricWindows.keySet()) {
+                summary.put(metricName + "_avg", getAverageValue(metricName));
+                summary.put(metricName + "_p95", getPercentile(metricName, 95));
+                summary.put(metricName + "_p99", getPercentile(metricName, 99));
+            }
+
+            return summary;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Complex Sliding Window Problems
+
+### 12.1 Advanced Problem Solutions
+
+```java
+// Complex sliding window problems requiring multiple techniques
+public class ComplexSlidingWindowProblems {
+
+    // Sliding window maximum with updates
+    public static class SlidingWindowMaximumWithUpdates {
+        private TreeMap<Integer, Integer> window;
+        private int[] nums;
+        private int windowSize;
+        private int left;
+
+        public SlidingWindowMaximumWithUpdates(int[] nums, int windowSize) {
+            this.nums = nums.clone();
+            this.windowSize = windowSize;
+            this.window = new TreeMap<>();
+            this.left = 0;
+
+            // Initialize first window
+            for (int i = 0; i < Math.min(windowSize, nums.length); i++) {
+                window.put(nums[i], window.getOrDefault(nums[i], 0) + 1);
+            }
+        }
+
+        public int getMaximum() {
+            return window.isEmpty() ? Integer.MIN_VALUE : window.lastKey();
+        }
+
+        public void slideWindow() {
+            if (left + windowSize >= nums.length) return;
+
+            // Remove leftmost element
+            int outgoing = nums[left];
+            window.put(outgoing, window.get(outgoing) - 1);
+            if (window.get(outgoing) == 0) {
+                window.remove(outgoing);
+            }
+
+            // Add new element
+            int incoming = nums[left + windowSize];
+            window.put(incoming, window.getOrDefault(incoming, 0) + 1);
+
+            left++;
+        }
+
+        public void update(int index, int newValue) {
+            if (index >= left && index < left + windowSize) {
+                // Update element in current window
+                int oldValue = nums[index];
+
+                // Remove old value
+                window.put(oldValue, window.get(oldValue) - 1);
+                if (window.get(oldValue) == 0) {
+                    window.remove(oldValue);
+                }
+
+                // Add new value
+                window.put(newValue, window.getOrDefault(newValue, 0) + 1);
+            }
+
+            nums[index] = newValue;
+        }
+    }
+
+    // Minimum number of operations to make all elements in sliding windows equal
+    public int minOperationsForEqualWindows(int[] nums, int windowSize) {
+        int totalOperations = 0;
+
+        for (int i = 0; i <= nums.length - windowSize; i++) {
+            Map<Integer, Integer> frequency = new HashMap<>();
+
+            // Count frequency in current window
+            for (int j = i; j < i + windowSize; j++) {
+                frequency.put(nums[j], frequency.getOrDefault(nums[j], 0) + 1);
+            }
+
+            // Find most frequent element
+            int maxFreq = frequency.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+
+            // Operations needed = window size - max frequency
+            totalOperations += windowSize - maxFreq;
+        }
+
+        return totalOperations;
+    }
+
+    // Sliding window with multiple constraints
+    public int longestWindowMultipleConstraints(int[] nums, int maxSum, int maxRange, int maxDistinct) {
+        int left = 0, maxLength = 0;
+        int sum = 0;
+        Map<Integer, Integer> frequency = new HashMap<>();
+        TreeMap<Integer, Integer> sortedElements = new TreeMap<>();
+
+        for (int right = 0; right < nums.length; right++) {
+            // Add current element
+            sum += nums[right];
+            frequency.put(nums[right], frequency.getOrDefault(nums[right], 0) + 1);
+            sortedElements.put(nums[right], sortedElements.getOrDefault(nums[right], 0) + 1);
+
+            // Shrink window while violating any constraint
+            while (left <= right && (
+                    sum > maxSum ||
+                    (!sortedElements.isEmpty() && sortedElements.lastKey() - sortedElements.firstKey() > maxRange) ||
+                    frequency.size() > maxDistinct)) {
+
+                int leftElement = nums[left];
+                sum -= leftElement;
+
+                frequency.put(leftElement, frequency.get(leftElement) - 1);
+                if (frequency.get(leftElement) == 0) {
+                    frequency.remove(leftElement);
+                }
+
+                sortedElements.put(leftElement, sortedElements.get(leftElement) - 1);
+                if (sortedElements.get(leftElement) == 0) {
+                    sortedElements.remove(leftElement);
+                }
+
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Sliding window with dynamic window size based on content
+    public List<Integer> dynamicWindowAnalysis(int[] nums, Function<Integer, Integer> sizeFunction) {
+        List<Integer> results = new ArrayList<>();
+        int i = 0;
+
+        while (i < nums.length) {
+            int windowSize = sizeFunction.apply(nums[i]);
+            int sum = 0;
+            int actualSize = 0;
+
+            // Calculate sum for dynamic window
+            for (int j = i; j < Math.min(i + windowSize, nums.length); j++) {
+                sum += nums[j];
+                actualSize++;
+            }
+
+            results.add(sum);
+            i += actualSize;
+        }
+
+        return results;
+    }
+
+    // Hierarchical sliding window (windows within windows)
+    public int maxSumHierarchicalWindows(int[] nums, int outerWindowSize, int innerWindowSize) {
+        if (outerWindowSize < innerWindowSize || nums.length < outerWindowSize) {
+            return Integer.MIN_VALUE;
+        }
+
+        int maxSum = Integer.MIN_VALUE;
+
+        // For each outer window position
+        for (int outerStart = 0; outerStart <= nums.length - outerWindowSize; outerStart++) {
+            int maxInnerSum = Integer.MIN_VALUE;
+
+            // Find maximum inner window sum within current outer window
+            for (int innerStart = outerStart;
+                 innerStart <= outerStart + outerWindowSize - innerWindowSize;
+                 innerStart++) {
+
+                int innerSum = 0;
+                for (int k = innerStart; k < innerStart + innerWindowSize; k++) {
+                    innerSum += nums[k];
+                }
+
+                maxInnerSum = Math.max(maxInnerSum, innerSum);
+            }
+
+            maxSum = Math.max(maxSum, maxInnerSum);
+        }
+
+        return maxSum;
+    }
+
+    // Sliding window with gap allowance
+    public int longestIncreasingWindowWithGaps(int[] nums, int maxGaps) {
+        int left = 0, maxLength = 0, gaps = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            // Check if we need a gap
+            if (right > 0 && nums[right] <= nums[right - 1]) {
+                gaps++;
+            }
+
+            // Shrink window while gaps exceed limit
+            while (gaps > maxGaps) {
+                left++;
+                if (left < nums.length && nums[left] <= nums[left - 1]) {
+                    gaps--;
+                }
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+
+    // Multi-dimensional sliding window
+    public int maxSumIn2DWindow(int[][] matrix, int windowHeight, int windowWidth) {
+        if (matrix.length < windowHeight || matrix[0].length < windowWidth) {
+            return Integer.MIN_VALUE;
+        }
+
+        int maxSum = Integer.MIN_VALUE;
+
+        // Build 2D prefix sum
+        int m = matrix.length, n = matrix[0].length;
+        int[][] prefixSum = new int[m + 1][n + 1];
+
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                prefixSum[i][j] = matrix[i - 1][j - 1] +
+                                  prefixSum[i - 1][j] +
+                                  prefixSum[i][j - 1] -
+                                  prefixSum[i - 1][j - 1];
+            }
+        }
+
+        // Check all possible window positions
+        for (int i = 0; i <= m - windowHeight; i++) {
+            for (int j = 0; j <= n - windowWidth; j++) {
+                int windowSum = prefixSum[i + windowHeight][j + windowWidth] -
+                               prefixSum[i][j + windowWidth] -
+                               prefixSum[i + windowHeight][j] +
+                               prefixSum[i][j];
+
+                maxSum = Math.max(maxSum, windowSum);
+            }
+        }
+
+        return maxSum;
+    }
+
+    // Sliding window with conditional elements
+    public int longestConditionalWindow(int[] nums, Predicate<Integer> condition) {
+        int left = 0, maxLength = 0;
+        int validElements = 0, totalElements = 0;
+
+        for (int right = 0; right < nums.length; right++) {
+            totalElements++;
+            if (condition.test(nums[right])) {
+                validElements++;
+            }
+
+            // Shrink window while valid ratio < 50%
+            while (totalElements > 0 && (double) validElements / totalElements < 0.5) {
+                if (condition.test(nums[left])) {
+                    validElements--;
+                }
+                totalElements--;
+                left++;
+            }
+
+            maxLength = Math.max(maxLength, right - left + 1);
+        }
+
+        return maxLength;
+    }
+}
+```
+
+
+### Common Pitfalls to Avoid
+
+1. **Off-by-one errors**: Careful with window boundaries and indices
+2. **Not handling edge cases**: Empty arrays, single elements, oversized windows
+3. **Wrong loop conditions**: Ensure proper window expansion/contraction
+4. **Integer overflow**: Use `long` for large sum calculations
+5. **Inefficient data structures**: Choose HashMap vs Array based on constraints
+6. **Not maintaining invariants**: Keep window properties consistent
+
+### Interview Tips
+
+- **Start with brute force**: Explain O(n²) solution first, then optimize
+- **Identify the pattern**: Look for keywords like "subarray", "window", "contiguous"
+- **Choose right technique**: Fixed vs variable window based on problem
+- **Draw examples**: Visualize window movement on sample inputs
+- **Handle edge cases**: Discuss boundary conditions upfront
+- **Optimize step by step**: Show progression from basic to optimized solution
+
+***
+
+## Summary and Conclusion
+
+### Sliding Window Pattern Recognition
+
+The sliding window technique is one of the most powerful and frequently used patterns in algorithm design. Here's a comprehensive summary:
+
+**When to Use Sliding Window:**
+
+- Problems involving contiguous subarrays or substrings
+- Need to find optimal window (maximum, minimum, longest, shortest)
+- Questions with "subarray", "substring", "window" keywords
+- Range-based queries on arrays or strings
+
+**Common Variations:**
+
+1. **Fixed Size Window**: Window size is constant
+2. **Variable Size Window**: Window expands/shrinks based on conditions
+3. **Two Pointers**: Multiple pointers moving in coordination
+4. **Deque-based**: Using deque for maintaining order in window
+5. **HashMap Window**: Tracking frequencies or unique elements

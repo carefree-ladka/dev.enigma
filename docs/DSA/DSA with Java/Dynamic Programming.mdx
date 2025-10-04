@@ -1,0 +1,1948 @@
+# Dynamic Programming
+
+## Table of Contents
+
+1. [DP Fundamentals \& Templates](#dp-fundamentals--templates)
+2. [Pattern 1: Linear DP (1D)](#pattern-1-linear-dp-1d)
+3. [Pattern 2: Grid DP (2D)](#pattern-2-grid-dp-2d)
+4. [Pattern 3: Knapsack Patterns](#pattern-3-knapsack-patterns)
+5. [Pattern 4: Subsequence DP](#pattern-4-subsequence-dp)
+6. [Pattern 5: String DP](#pattern-5-string-dp)
+7. [Pattern 6: Decision Making DP](#pattern-6-decision-making-dp)
+8. [Pattern 7: Interval DP](#pattern-7-interval-dp)
+9. [Pattern 8: Tree DP](#pattern-8-tree-dp)
+10. [Pattern 9: Digit DP](#pattern-9-digit-dp)
+11. [Pattern 10: Bitmask DP](#pattern-10-bitmask-dp)
+12. [Pattern 11: State Machine DP](#pattern-11-state-machine-dp)
+13. [Pattern 12: Optimization DP](#pattern-12-optimization-dp)
+14. [Pattern 13: Probability DP](#pattern-13-probability-dp)
+15. [Pattern 14: Game Theory DP](#pattern-14-game-theory-dp)
+
+***
+
+## DP Fundamentals \& Templates
+
+### Core DP Characteristics
+
+```java
+// Dynamic Programming Requirements:
+// 1. Optimal Substructure: Optimal solution can be constructed from optimal solutions of subproblems
+// 2. Overlapping Subproblems: Same subproblems are solved multiple times
+
+// DP Template Structure
+class DPTemplate {
+    // 1. Top-Down Approach (Memoization)
+    Map<String, Integer> memo = new HashMap<>();
+
+    int topDown(int[] params) {
+        String key = Arrays.toString(params);
+        if (memo.containsKey(key)) return memo.get(key);
+
+        // Base case
+        if (isBaseCase(params)) {
+            return baseValue(params);
+        }
+
+        // Recurrence relation
+        int result = Integer.MIN_VALUE; // or MAX_VALUE for min problems
+        for (int choice : getChoices(params)) {
+            result = Math.max(result, topDown(makeChoice(params, choice)));
+        }
+
+        memo.put(key, result);
+        return result;
+    }
+
+    // 2. Bottom-Up Approach (Tabulation)
+    int bottomUp(int n) {
+        int[] dp = new int[n + 1];
+
+        // Initialize base cases
+        dp[0] = baseCase0();
+        if (n > 0) dp[1] = baseCase1();
+
+        // Fill table using recurrence relation
+        for (int i = 2; i <= n; i++) {
+            dp[i] = recurrenceRelation(dp, i);
+        }
+
+        return dp[n];
+    }
+
+    // Helper methods
+    boolean isBaseCase(int[] params) { return /* condition */; }
+    int baseValue(int[] params) { return /* base value */; }
+    int[] getChoices(int[] params) { return /* available choices */; }
+    int[] makeChoice(int[] params, int choice) { return /* new state */; }
+    int baseCase0() { return /* base case value */; }
+    int baseCase1() { return /* base case value */; }
+    int recurrenceRelation(int[] dp, int i) { return /* recurrence */; }
+}
+```
+
+
+### Seven Steps to Solve Any DP Problem
+
+```java
+class DPSolutionFramework {
+    /*
+    Step 1: Identify if it's a DP problem
+    - Optimal substructure + Overlapping subproblems
+    - Keywords: "maximum", "minimum", "count ways", "longest", "shortest"
+
+    Step 2: Identify the state
+    - What parameters uniquely identify a subproblem?
+    - Usually 1-3 variables (index, capacity, etc.)
+
+    Step 3: Formulate state relationship
+    - How does dp[i] relate to previous states?
+    - Write the recurrence relation
+
+    Step 4: Identify base cases
+    - What are the smallest subproblems?
+    - Usually when indices are 0 or at boundaries
+
+    Step 5: Decide implementation approach
+    - Top-down (recursion + memoization) or Bottom-up (tabulation)
+
+    Step 6: Add memoization or create DP table
+    - Cache results to avoid recomputation
+
+    Step 7: Optimize space if possible
+    - Can we reduce space complexity using rolling arrays?
+    */
+}
+```
+
+
+***
+
+## Pattern 1: Linear DP (1D)
+
+### 1.1 Fibonacci Sequence
+
+```java
+// Classic DP example - each number is sum of two preceding ones
+int fibonacci(int n) {
+    if (n <= 1) return n;
+
+    // Space optimized O(1)
+    int prev2 = 0, prev1 = 1;
+    for (int i = 2; i <= n; i++) {
+        int curr = prev1 + prev2;
+        prev2 = prev1;
+        prev1 = curr;
+    }
+    return prev1;
+}
+
+// Tabulation approach O(n) space
+int fibonacciTable(int n) {
+    if (n <= 1) return n;
+
+    int[] dp = new int[n + 1];
+    dp[0] = 0;
+    dp[1] = 1;
+
+    for (int i = 2; i <= n; i++) {
+        dp[i] = dp[i - 1] + dp[i - 2];
+    }
+
+    return dp[n];
+}
+```
+
+
+### 1.2 Climbing Stairs
+
+```java
+int climbStairs(int n) {
+    if (n <= 2) return n;
+
+    // dp[i] = number of ways to reach step i
+    int[] dp = new int[n + 1];
+    dp[1] = 1; // 1 way to reach step 1
+    dp[2] = 2; // 2 ways to reach step 2 (1+1 or 2)
+
+    for (int i = 3; i <= n; i++) {
+        dp[i] = dp[i - 1] + dp[i - 2]; // Can come from step i-1 or i-2
+    }
+
+    return dp[n];
+}
+
+// Space optimized
+int climbStairsOptimized(int n) {
+    if (n <= 2) return n;
+
+    int first = 1, second = 2;
+    for (int i = 3; i <= n; i++) {
+        int third = first + second;
+        first = second;
+        second = third;
+    }
+
+    return second;
+}
+```
+
+
+### 1.3 House Robber
+
+```java
+int rob(int[] nums) {
+    if (nums.length == 0) return 0;
+    if (nums.length == 1) return nums[0];
+
+    // dp[i] = maximum money can rob up to house i
+    int[] dp = new int[nums.length];
+    dp[0] = nums[0];
+    dp[1] = Math.max(nums[0], nums[1]);
+
+    for (int i = 2; i < nums.length; i++) {
+        // Either rob current house + max from i-2, or don't rob (take i-1)
+        dp[i] = Math.max(dp[i - 1], dp[i - 2] + nums[i]);
+    }
+
+    return dp[nums.length - 1];
+}
+
+// Space optimized O(1)
+int robOptimized(int[] nums) {
+    int prev2 = 0, prev1 = 0;
+
+    for (int num : nums) {
+        int curr = Math.max(prev1, prev2 + num);
+        prev2 = prev1;
+        prev1 = curr;
+    }
+
+    return prev1;
+}
+```
+
+
+### 1.4 Maximum Subarray (Kadane's Algorithm)
+
+```java
+int maxSubArray(int[] nums) {
+    // dp[i] = maximum sum ending at index i
+    int maxSoFar = nums[0];
+    int maxEndingHere = nums[0];
+
+    for (int i = 1; i < nums.length; i++) {
+        // Either extend previous subarray or start new subarray
+        maxEndingHere = Math.max(nums[i], maxEndingHere + nums[i]);
+        maxSoFar = Math.max(maxSoFar, maxEndingHere);
+    }
+
+    return maxSoFar;
+}
+
+// With indices tracking
+class SubarrayResult {
+    int maxSum, start, end;
+    SubarrayResult(int sum, int s, int e) {
+        maxSum = sum; start = s; end = e;
+    }
+}
+
+SubarrayResult maxSubarrayWithIndices(int[] nums) {
+    int maxSum = nums[0];
+    int currentSum = nums[0];
+    int start = 0, end = 0, tempStart = 0;
+
+    for (int i = 1; i < nums.length; i++) {
+        if (currentSum < 0) {
+            currentSum = nums[i];
+            tempStart = i;
+        } else {
+            currentSum += nums[i];
+        }
+
+        if (currentSum > maxSum) {
+            maxSum = currentSum;
+            start = tempStart;
+            end = i;
+        }
+    }
+
+    return new SubarrayResult(maxSum, start, end);
+}
+```
+
+
+### 1.5 Coin Change (Minimum Coins)
+
+```java
+int coinChange(int[] coins, int amount) {
+    // dp[i] = minimum coins needed to make amount i
+    int[] dp = new int[amount + 1];
+    Arrays.fill(dp, amount + 1); // Initialize with impossible value
+    dp[0] = 0; // 0 coins needed for amount 0
+
+    for (int i = 1; i <= amount; i++) {
+        for (int coin : coins) {
+            if (coin <= i) {
+                dp[i] = Math.min(dp[i], dp[i - coin] + 1);
+            }
+        }
+    }
+
+    return dp[amount] > amount ? -1 : dp[amount];
+}
+
+// Count number of ways to make change
+int coinChangeWays(int[] coins, int amount) {
+    int[] dp = new int[amount + 1];
+    dp[0] = 1; // One way to make amount 0
+
+    for (int coin : coins) {
+        for (int i = coin; i <= amount; i++) {
+            dp[i] += dp[i - coin];
+        }
+    }
+
+    return dp[amount];
+}
+```
+
+
+***
+
+## Pattern 2: Grid DP (2D)
+
+### 2.1 Unique Paths
+
+```java
+int uniquePaths(int m, int n) {
+    // dp[i][j] = number of paths to reach cell (i,j)
+    int[][] dp = new int[m][n];
+
+    // Initialize first row and column
+    for (int i = 0; i < m; i++) dp[i][0] = 1;
+    for (int j = 0; j < n; j++) dp[0][j] = 1;
+
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[i][j] = dp[i - 1][j] + dp[i][j - 1];
+        }
+    }
+
+    return dp[m - 1][n - 1];
+}
+
+// Space optimized O(n)
+int uniquePathsOptimized(int m, int n) {
+    int[] dp = new int[n];
+    Arrays.fill(dp, 1);
+
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[j] += dp[j - 1];
+        }
+    }
+
+    return dp[n - 1];
+}
+```
+
+
+### 2.2 Minimum Path Sum
+
+```java
+int minPathSum(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[][] dp = new int[m][n];
+
+    dp[0][0] = grid[0][0];
+
+    // Initialize first row
+    for (int j = 1; j < n; j++) {
+        dp[0][j] = dp[0][j - 1] + grid[0][j];
+    }
+
+    // Initialize first column
+    for (int i = 1; i < m; i++) {
+        dp[i][0] = dp[i - 1][0] + grid[i][0];
+    }
+
+    // Fill the rest
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[i][j] = Math.min(dp[i - 1][j], dp[i][j - 1]) + grid[i][j];
+        }
+    }
+
+    return dp[m - 1][n - 1];
+}
+
+// In-place modification (if allowed)
+int minPathSumInPlace(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+
+    for (int i = 1; i < m; i++) {
+        grid[i][0] += grid[i - 1][0];
+    }
+
+    for (int j = 1; j < n; j++) {
+        grid[0][j] += grid[0][j - 1];
+    }
+
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            grid[i][j] += Math.min(grid[i - 1][j], grid[i][j - 1]);
+        }
+    }
+
+    return grid[m - 1][n - 1];
+}
+```
+
+
+### 2.3 Longest Common Subsequence (LCS)
+
+```java
+int longestCommonSubsequence(String text1, String text2) {
+    int m = text1.length(), n = text2.length();
+    int[][] dp = new int[m + 1][n + 1];
+
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (text1.charAt(i - 1) == text2.charAt(j - 1)) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    return dp[m][n];
+}
+
+// Space optimized O(min(m,n))
+int lcsOptimized(String text1, String text2) {
+    if (text1.length() < text2.length()) {
+        return lcsOptimized(text2, text1);
+    }
+
+    int n = text2.length();
+    int[] prev = new int[n + 1];
+    int[] curr = new int[n + 1];
+
+    for (int i = 1; i <= text1.length(); i++) {
+        for (int j = 1; j <= n; j++) {
+            if (text1.charAt(i - 1) == text2.charAt(j - 1)) {
+                curr[j] = prev[j - 1] + 1;
+            } else {
+                curr[j] = Math.max(prev[j], curr[j - 1]);
+            }
+        }
+        int[] temp = prev;
+        prev = curr;
+        curr = temp;
+    }
+
+    return prev[n];
+}
+```
+
+
+### 2.4 Edit Distance (Levenshtein Distance)
+
+```java
+int minDistance(String word1, String word2) {
+    int m = word1.length(), n = word2.length();
+    int[][] dp = new int[m + 1][n + 1];
+
+    // Base cases
+    for (int i = 0; i <= m; i++) dp[i][0] = i; // Delete all characters
+    for (int j = 0; j <= n; j++) dp[0][j] = j; // Insert all characters
+
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+                dp[i][j] = dp[i - 1][j - 1]; // No operation needed
+            } else {
+                dp[i][j] = 1 + Math.min(
+                    Math.min(dp[i - 1][j],     // Delete
+                            dp[i][j - 1]),     // Insert
+                    dp[i - 1][j - 1]           // Replace
+                );
+            }
+        }
+    }
+
+    return dp[m][n];
+}
+```
+
+
+### 2.5 Maximum Square
+
+```java
+int maximalSquare(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int m = matrix.length, n = matrix[0].length;
+    int[][] dp = new int[m + 1][n + 1];
+    int maxSide = 0;
+
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (matrix[i - 1][j - 1] == '1') {
+                dp[i][j] = Math.min(
+                    Math.min(dp[i - 1][j], dp[i][j - 1]),
+                    dp[i - 1][j - 1]
+                ) + 1;
+                maxSide = Math.max(maxSide, dp[i][j]);
+            }
+        }
+    }
+
+    return maxSide * maxSide;
+}
+
+// Space optimized O(n)
+int maximalSquareOptimized(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int n = matrix[0].length;
+    int[] dp = new int[n + 1];
+    int maxSide = 0, prev = 0;
+
+    for (char[] row : matrix) {
+        for (int j = 1; j <= n; j++) {
+            int temp = dp[j];
+            if (row[j - 1] == '1') {
+                dp[j] = Math.min(Math.min(dp[j], dp[j - 1]), prev) + 1;
+                maxSide = Math.max(maxSide, dp[j]);
+            } else {
+                dp[j] = 0;
+            }
+            prev = temp;
+        }
+    }
+
+    return maxSide * maxSide;
+}
+```
+
+
+***
+
+## Pattern 3: Knapsack Patterns
+
+### 3.1 0/1 Knapsack
+
+```java
+int knapsack01(int[] weights, int[] values, int capacity) {
+    int n = weights.length;
+    // dp[i][w] = maximum value using first i items with weight limit w
+    int[][] dp = new int[n + 1][capacity + 1];
+
+    for (int i = 1; i <= n; i++) {
+        for (int w = 1; w <= capacity; w++) {
+            // Don't take item i-1
+            dp[i][w] = dp[i - 1][w];
+
+            // Take item i-1 if it fits
+            if (weights[i - 1] <= w) {
+                dp[i][w] = Math.max(dp[i][w],
+                    dp[i - 1][w - weights[i - 1]] + values[i - 1]);
+            }
+        }
+    }
+
+    return dp[n][capacity];
+}
+
+// Space optimized O(capacity)
+int knapsack01Optimized(int[] weights, int[] values, int capacity) {
+    int[] dp = new int[capacity + 1];
+
+    for (int i = 0; i < weights.length; i++) {
+        // Traverse backwards to avoid using updated values
+        for (int w = capacity; w >= weights[i]; w--) {
+            dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+
+### 3.2 Unbounded Knapsack
+
+```java
+int unboundedKnapsack(int[] weights, int[] values, int capacity) {
+    int[] dp = new int[capacity + 1];
+
+    for (int w = 1; w <= capacity; w++) {
+        for (int i = 0; i < weights.length; i++) {
+            if (weights[i] <= w) {
+                dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+            }
+        }
+    }
+
+    return dp[capacity];
+}
+
+// Alternative approach - process items first
+int unboundedKnapsackAlt(int[] weights, int[] values, int capacity) {
+    int[] dp = new int[capacity + 1];
+
+    for (int i = 0; i < weights.length; i++) {
+        for (int w = weights[i]; w <= capacity; w++) {
+            dp[w] = Math.max(dp[w], dp[w - weights[i]] + values[i]);
+        }
+    }
+
+    return dp[capacity];
+}
+```
+
+
+### 3.3 Partition Equal Subset Sum
+
+```java
+boolean canPartition(int[] nums) {
+    int sum = Arrays.stream(nums).sum();
+    if (sum % 2 != 0) return false;
+
+    int target = sum / 2;
+    boolean[] dp = new boolean[target + 1];
+    dp[0] = true; // Can always make sum 0
+
+    for (int num : nums) {
+        for (int j = target; j >= num; j--) {
+            dp[j] = dp[j] || dp[j - num];
+        }
+    }
+
+    return dp[target];
+}
+
+// With path reconstruction
+List<Integer> findPartition(int[] nums) {
+    int sum = Arrays.stream(nums).sum();
+    if (sum % 2 != 0) return new ArrayList<>();
+
+    int target = sum / 2;
+    boolean[][] dp = new boolean[nums.length + 1][target + 1];
+
+    for (int i = 0; i <= nums.length; i++) {
+        dp[i][0] = true;
+    }
+
+    for (int i = 1; i <= nums.length; i++) {
+        for (int j = 1; j <= target; j++) {
+            dp[i][j] = dp[i - 1][j];
+            if (nums[i - 1] <= j) {
+                dp[i][j] = dp[i][j] || dp[i - 1][j - nums[i - 1]];
+            }
+        }
+    }
+
+    if (!dp[nums.length][target]) return new ArrayList<>();
+
+    // Reconstruct path
+    List<Integer> result = new ArrayList<>();
+    int i = nums.length, j = target;
+    while (i > 0 && j > 0) {
+        if (!dp[i - 1][j]) {
+            result.add(nums[i - 1]);
+            j -= nums[i - 1];
+        }
+        i--;
+    }
+
+    return result;
+}
+```
+
+
+### 3.4 Target Sum
+
+```java
+int findTargetSumWays(int[] nums, int target) {
+    int sum = Arrays.stream(nums).sum();
+    if (sum < Math.abs(target) || (sum + target) % 2 != 0) return 0;
+
+    int subset1Sum = (sum + target) / 2;
+    return countSubsets(nums, subset1Sum);
+}
+
+int countSubsets(int[] nums, int target) {
+    int[] dp = new int[target + 1];
+    dp[0] = 1; // One way to make sum 0
+
+    for (int num : nums) {
+        for (int j = target; j >= num; j--) {
+            dp[j] += dp[j - num];
+        }
+    }
+
+    return dp[target];
+}
+
+// Handle zeros separately
+int findTargetSumWaysWithZeros(int[] nums, int target) {
+    int sum = 0, zeros = 0;
+    for (int num : nums) {
+        if (num == 0) zeros++;
+        else sum += num;
+    }
+
+    if (sum < Math.abs(target) || (sum + target) % 2 != 0) return 0;
+
+    int subset1Sum = (sum + target) / 2;
+    int ways = countSubsetsNonZero(nums, subset1Sum);
+
+    return ways * (1 << zeros); // 2^zeros ways to assign signs to zeros
+}
+
+int countSubsetsNonZero(int[] nums, int target) {
+    int[] dp = new int[target + 1];
+    dp[0] = 1;
+
+    for (int num : nums) {
+        if (num > 0) { // Skip zeros
+            for (int j = target; j >= num; j--) {
+                dp[j] += dp[j - num];
+            }
+        }
+    }
+
+    return dp[target];
+}
+```
+
+
+***
+
+## Pattern 4: Subsequence DP
+
+### 4.1 Longest Increasing Subsequence (LIS)
+
+```java
+int lengthOfLIS(int[] nums) {
+    int[] dp = new int[nums.length];
+    Arrays.fill(dp, 1); // Each element forms LIS of length 1
+
+    int maxLength = 1;
+    for (int i = 1; i < nums.length; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                dp[i] = Math.max(dp[i], dp[j] + 1);
+            }
+        }
+        maxLength = Math.max(maxLength, dp[i]);
+    }
+
+    return maxLength;
+}
+
+// Binary Search Approach O(n log n)
+int lengthOfLISOptimal(int[] nums) {
+    List<Integer> tails = new ArrayList<>();
+
+    for (int num : nums) {
+        int pos = Collections.binarySearch(tails, num);
+        if (pos < 0) pos = -(pos + 1);
+
+        if (pos == tails.size()) {
+            tails.add(num);
+        } else {
+            tails.set(pos, num);
+        }
+    }
+
+    return tails.size();
+}
+
+// Get actual LIS sequence
+List<Integer> getLIS(int[] nums) {
+    int[] dp = new int[nums.length];
+    int[] parent = new int[nums.length];
+    Arrays.fill(dp, 1);
+    Arrays.fill(parent, -1);
+
+    int maxLength = 1, maxIndex = 0;
+
+    for (int i = 1; i < nums.length; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i] && dp[j] + 1 > dp[i]) {
+                dp[i] = dp[j] + 1;
+                parent[i] = j;
+            }
+        }
+
+        if (dp[i] > maxLength) {
+            maxLength = dp[i];
+            maxIndex = i;
+        }
+    }
+
+    // Reconstruct LIS
+    List<Integer> lis = new ArrayList<>();
+    int curr = maxIndex;
+    while (curr != -1) {
+        lis.add(nums[curr]);
+        curr = parent[curr];
+    }
+
+    Collections.reverse(lis);
+    return lis;
+}
+```
+
+
+### 4.2 Longest Decreasing Subsequence
+
+```java
+int lengthOfLDS(int[] nums) {
+    int[] dp = new int[nums.length];
+    Arrays.fill(dp, 1);
+
+    int maxLength = 1;
+    for (int i = 1; i < nums.length; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] > nums[i]) { // Changed condition for decreasing
+                dp[i] = Math.max(dp[i], dp[j] + 1);
+            }
+        }
+        maxLength = Math.max(maxLength, dp[i]);
+    }
+
+    return maxLength;
+}
+```
+
+
+### 4.3 Russian Doll Envelopes
+
+```java
+int maxEnvelopes(int[][] envelopes) {
+    // Sort by width ascending, then by height descending
+    Arrays.sort(envelopes, (a, b) ->
+        a[0] == b[0] ? b[1] - a[1] : a[0] - b[0]);
+
+    // Find LIS on heights
+    int[] heights = new int[envelopes.length];
+    for (int i = 0; i < envelopes.length; i++) {
+        heights[i] = envelopes[i][1];
+    }
+
+    return lengthOfLISOptimal(heights);
+}
+```
+
+
+### 4.4 Number of LIS
+
+```java
+int findNumberOfLIS(int[] nums) {
+    int[] lengths = new int[nums.length]; // Length of LIS ending at i
+    int[] counts = new int[nums.length];  // Number of LIS ending at i
+    Arrays.fill(lengths, 1);
+    Arrays.fill(counts, 1);
+
+    int maxLength = 1;
+    for (int i = 1; i < nums.length; i++) {
+        for (int j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                if (lengths[j] + 1 > lengths[i]) {
+                    lengths[i] = lengths[j] + 1;
+                    counts[i] = counts[j];
+                } else if (lengths[j] + 1 == lengths[i]) {
+                    counts[i] += counts[j];
+                }
+            }
+        }
+        maxLength = Math.max(maxLength, lengths[i]);
+    }
+
+    int result = 0;
+    for (int i = 0; i < nums.length; i++) {
+        if (lengths[i] == maxLength) {
+            result += counts[i];
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 5: String DP
+
+### 5.1 Palindromic Substring Problems
+
+```java
+// Longest Palindromic Substring
+String longestPalindrome(String s) {
+    int n = s.length();
+    boolean[][] dp = new boolean[n][n];
+    String result = "";
+
+    // Every single character is a palindrome
+    for (int i = 0; i < n; i++) {
+        dp[i][i] = true;
+        result = s.substring(i, i + 1);
+    }
+
+    // Check for length 2
+    for (int i = 0; i < n - 1; i++) {
+        if (s.charAt(i) == s.charAt(i + 1)) {
+            dp[i][i + 1] = true;
+            result = s.substring(i, i + 2);
+        }
+    }
+
+    // Check for lengths 3 to n
+    for (int len = 3; len <= n; len++) {
+        for (int i = 0; i < n - len + 1; i++) {
+            int j = i + len - 1;
+
+            if (s.charAt(i) == s.charAt(j) && dp[i + 1][j - 1]) {
+                dp[i][j] = true;
+                result = s.substring(i, j + 1);
+            }
+        }
+    }
+
+    return result;
+}
+
+// Count Palindromic Substrings
+int countSubstrings(String s) {
+    int n = s.length();
+    boolean[][] dp = new boolean[n][n];
+    int count = 0;
+
+    // Single characters
+    for (int i = 0; i < n; i++) {
+        dp[i][i] = true;
+        count++;
+    }
+
+    // Length 2
+    for (int i = 0; i < n - 1; i++) {
+        if (s.charAt(i) == s.charAt(i + 1)) {
+            dp[i][i + 1] = true;
+            count++;
+        }
+    }
+
+    // Length 3+
+    for (int len = 3; len <= n; len++) {
+        for (int i = 0; i < n - len + 1; i++) {
+            int j = i + len - 1;
+            if (s.charAt(i) == s.charAt(j) && dp[i + 1][j - 1]) {
+                dp[i][j] = true;
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+
+### 5.2 Word Break
+
+```java
+boolean wordBreak(String s, List<String> wordDict) {
+    Set<String> wordSet = new HashSet<>(wordDict);
+    boolean[] dp = new boolean[s.length() + 1];
+    dp[0] = true; // Empty string can always be segmented
+
+    for (int i = 1; i <= s.length(); i++) {
+        for (int j = 0; j < i; j++) {
+            if (dp[j] && wordSet.contains(s.substring(j, i))) {
+                dp[i] = true;
+                break;
+            }
+        }
+    }
+
+    return dp[s.length()];
+}
+
+// Word Break II - return all possible sentences
+List<String> wordBreakII(String s, List<String> wordDict) {
+    Set<String> wordSet = new HashSet<>(wordDict);
+    Map<String, List<String>> memo = new HashMap<>();
+    return wordBreakHelper(s, wordSet, memo);
+}
+
+List<String> wordBreakHelper(String s, Set<String> wordSet,
+                           Map<String, List<String>> memo) {
+    if (memo.containsKey(s)) return memo.get(s);
+
+    List<String> result = new ArrayList<>();
+
+    if (s.isEmpty()) {
+        result.add("");
+        return result;
+    }
+
+    for (String word : wordSet) {
+        if (s.startsWith(word)) {
+            List<String> sublist = wordBreakHelper(s.substring(word.length()),
+                                                  wordSet, memo);
+            for (String sub : sublist) {
+                result.add(word + (sub.isEmpty() ? "" : " ") + sub);
+            }
+        }
+    }
+
+    memo.put(s, result);
+    return result;
+}
+```
+
+
+### 5.3 Distinct Subsequences
+
+```java
+int numDistinct(String s, String t) {
+    int m = s.length(), n = t.length();
+    // dp[i][j] = number of ways to form t[0..j-1] using s[0..i-1]
+    int[][] dp = new int[m + 1][n + 1];
+
+    // Empty string t can be formed in 1 way from any string s
+    for (int i = 0; i <= m; i++) {
+        dp[i][0] = 1;
+    }
+
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            // Don't use s[i-1]
+            dp[i][j] = dp[i - 1][j];
+
+            // Use s[i-1] if it matches t[j-1]
+            if (s.charAt(i - 1) == t.charAt(j - 1)) {
+                dp[i][j] += dp[i - 1][j - 1];
+            }
+        }
+    }
+
+    return dp[m][n];
+}
+
+// Space optimized
+int numDistinctOptimized(String s, String t) {
+    int n = t.length();
+    int[] dp = new int[n + 1];
+    dp[0] = 1;
+
+    for (char c : s.toCharArray()) {
+        for (int j = n; j >= 1; j--) {
+            if (c == t.charAt(j - 1)) {
+                dp[j] += dp[j - 1];
+            }
+        }
+    }
+
+    return dp[n];
+}
+```
+
+
+### 5.4 Regular Expression Matching
+
+```java
+boolean isMatch(String s, String p) {
+    int m = s.length(), n = p.length();
+    boolean[][] dp = new boolean[m + 1][n + 1];
+
+    dp[0][0] = true; // Empty string matches empty pattern
+
+    // Handle patterns like a*, a*b*, a*b*c*
+    for (int j = 2; j <= n; j++) {
+        if (p.charAt(j - 1) == '*') {
+            dp[0][j] = dp[0][j - 2];
+        }
+    }
+
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            char sc = s.charAt(i - 1);
+            char pc = p.charAt(j - 1);
+
+            if (pc == '*') {
+                // Check pattern before *
+                char prevPc = p.charAt(j - 2);
+
+                // Don't use the character before *
+                dp[i][j] = dp[i][j - 2];
+
+                // Use the character before * if it matches
+                if (prevPc == '.' || prevPc == sc) {
+                    dp[i][j] = dp[i][j] || dp[i - 1][j];
+                }
+            } else if (pc == '.' || pc == sc) {
+                dp[i][j] = dp[i - 1][j - 1];
+            }
+        }
+    }
+
+    return dp[m][n];
+}
+```
+
+
+***
+
+## Pattern 6: Decision Making DP
+
+### 6.1 Best Time to Buy and Sell Stock
+
+```java
+// Single Transaction
+int maxProfit(int[] prices) {
+    int minPrice = Integer.MAX_VALUE;
+    int maxProfit = 0;
+
+    for (int price : prices) {
+        if (price < minPrice) {
+            minPrice = price;
+        } else if (price - minPrice > maxProfit) {
+            maxProfit = price - minPrice;
+        }
+    }
+
+    return maxProfit;
+}
+
+// Multiple Transactions
+int maxProfitMultiple(int[] prices) {
+    int profit = 0;
+
+    for (int i = 1; i < prices.length; i++) {
+        if (prices[i] > prices[i - 1]) {
+            profit += prices[i] - prices[i - 1];
+        }
+    }
+
+    return profit;
+}
+
+// At Most K Transactions
+int maxProfitKTransactions(int k, int[] prices) {
+    if (prices.length <= 1) return 0;
+
+    // If k is large enough, treat as unlimited transactions
+    if (k >= prices.length / 2) {
+        return maxProfitMultiple(prices);
+    }
+
+    // dp[i][j] = max profit after at most i transactions by day j
+    int[][] dp = new int[k + 1][prices.length];
+
+    for (int i = 1; i <= k; i++) {
+        int maxDiff = -prices[0]; // Max profit if we bought on day 0
+
+        for (int j = 1; j < prices.length; j++) {
+            dp[i][j] = Math.max(dp[i][j - 1], prices[j] + maxDiff);
+            maxDiff = Math.max(maxDiff, dp[i - 1][j] - prices[j]);
+        }
+    }
+
+    return dp[k][prices.length - 1];
+}
+
+// With Cooldown
+int maxProfitWithCooldown(int[] prices) {
+    if (prices.length <= 1) return 0;
+
+    // State: held[i] = max profit when holding stock on day i
+    //        sold[i] = max profit when sold stock on day i
+    //        rest[i] = max profit when resting on day i
+
+    int held = -prices[0]; // Buy on day 0
+    int sold = 0;          // Can't sell on day 0
+    int rest = 0;          // Rest on day 0
+
+    for (int i = 1; i < prices.length; i++) {
+        int prevHeld = held, prevSold = sold, prevRest = rest;
+
+        held = Math.max(prevHeld, prevRest - prices[i]); // Keep holding or buy
+        sold = prevHeld + prices[i];                     // Sell
+        rest = Math.max(prevRest, prevSold);             // Rest
+    }
+
+    return Math.max(sold, rest); // Can't hold stock at the end
+}
+```
+
+
+### 6.2 House Robber Variations
+
+```java
+// House Robber II (Circular Array)
+int robCircular(int[] nums) {
+    if (nums.length == 1) return nums[0];
+
+    // Case 1: Rob houses 0 to n-2 (exclude last house)
+    int max1 = robLinear(Arrays.copyOfRange(nums, 0, nums.length - 1));
+
+    // Case 2: Rob houses 1 to n-1 (exclude first house)
+    int max2 = robLinear(Arrays.copyOfRange(nums, 1, nums.length));
+
+    return Math.max(max1, max2);
+}
+
+int robLinear(int[] nums) {
+    int prev1 = 0, prev2 = 0;
+
+    for (int num : nums) {
+        int curr = Math.max(prev1, prev2 + num);
+        prev2 = prev1;
+        prev1 = curr;
+    }
+
+    return prev1;
+}
+
+// House Robber III (Binary Tree)
+Map<TreeNode, Integer> memo = new HashMap<>();
+
+int robTree(TreeNode root) {
+    if (root == null) return 0;
+    if (memo.containsKey(root)) return memo.get(root);
+
+    // Rob this node
+    int robThis = root.val;
+    if (root.left != null) {
+        robThis += robTree(root.left.left) + robTree(root.left.right);
+    }
+    if (root.right != null) {
+        robThis += robTree(root.right.left) + robTree(root.right.right);
+    }
+
+    // Don't rob this node
+    int dontRobThis = robTree(root.left) + robTree(root.right);
+
+    int result = Math.max(robThis, dontRobThis);
+    memo.put(root, result);
+    return result;
+}
+
+// Optimized Tree Solution
+int[] robTreeOptimized(TreeNode root) {
+    // Returns [don't rob this node, rob this node]
+    if (root == null) return new int[]{0, 0};
+
+    int[] left = robTreeOptimized(root.left);
+    int[] right = robTreeOptimized(root.right);
+
+    int dontRob = Math.max(left[0], left[1]) + Math.max(right[0], right[1]);
+    int rob = root.val + left[0] + right[0];
+
+    return new int[]{dontRob, rob};
+}
+```
+
+
+***
+
+## Pattern 7: Interval DP
+
+### 7.1 Matrix Chain Multiplication
+
+```java
+int matrixChainOrder(int[] dims) {
+    int n = dims.length - 1; // Number of matrices
+    int[][] dp = new int[n][n];
+
+    // Length of chain
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i <= n - len; i++) {
+            int j = i + len - 1;
+            dp[i][j] = Integer.MAX_VALUE;
+
+            for (int k = i; k < j; k++) {
+                int cost = dp[i][k] + dp[k + 1][j] +
+                          dims[i] * dims[k + 1] * dims[j + 1];
+                dp[i][j] = Math.min(dp[i][j], cost);
+            }
+        }
+    }
+
+    return dp[0][n - 1];
+}
+
+// With parenthesization tracking
+class MatrixChainResult {
+    int minCost;
+    String parenthesization;
+
+    MatrixChainResult(int cost, String paren) {
+        minCost = cost;
+        parenthesization = paren;
+    }
+}
+
+MatrixChainResult matrixChainWithParen(int[] dims) {
+    int n = dims.length - 1;
+    int[][] dp = new int[n][n];
+    int[][] split = new int[n][n];
+
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i <= n - len; i++) {
+            int j = i + len - 1;
+            dp[i][j] = Integer.MAX_VALUE;
+
+            for (int k = i; k < j; k++) {
+                int cost = dp[i][k] + dp[k + 1][j] +
+                          dims[i] * dims[k + 1] * dims[j + 1];
+
+                if (cost < dp[i][j]) {
+                    dp[i][j] = cost;
+                    split[i][j] = k;
+                }
+            }
+        }
+    }
+
+    String paren = buildParenthesization(split, 0, n - 1);
+    return new MatrixChainResult(dp[0][n - 1], paren);
+}
+
+String buildParenthesization(int[][] split, int i, int j) {
+    if (i == j) {
+        return "M" + i;
+    }
+
+    return "(" + buildParenthesization(split, i, split[i][j]) +
+           " × " + buildParenthesization(split, split[i][j] + 1, j) + ")";
+}
+```
+
+
+### 7.2 Burst Balloons
+
+```java
+int maxCoins(int[] nums) {
+    // Add dummy balloons with value 1 at both ends
+    int[] balloons = new int[nums.length + 2];
+    balloons[0] = balloons[balloons.length - 1] = 1;
+    System.arraycopy(nums, 0, balloons, 1, nums.length);
+
+    int n = balloons.length;
+    int[][] dp = new int[n][n];
+
+    // len is the length of the interval
+    for (int len = 2; len < n; len++) {
+        for (int left = 0; left < n - len; left++) {
+            int right = left + len;
+
+            // Try bursting each balloon k in (left, right)
+            for (int k = left + 1; k < right; k++) {
+                dp[left][right] = Math.max(dp[left][right],
+                    dp[left][k] + dp[k][right] +
+                    balloons[left] * balloons[k] * balloons[right]);
+            }
+        }
+    }
+
+    return dp[0][n - 1];
+}
+```
+
+
+### 7.3 Palindrome Partitioning II
+
+```java
+int minCut(String s) {
+    int n = s.length();
+
+    // Precompute palindrome check
+    boolean[][] isPalindrome = new boolean[n][n];
+    for (int i = 0; i < n; i++) {
+        isPalindrome[i][i] = true;
+    }
+
+    for (int i = 0; i < n - 1; i++) {
+        isPalindrome[i][i + 1] = (s.charAt(i) == s.charAt(i + 1));
+    }
+
+    for (int len = 3; len <= n; len++) {
+        for (int i = 0; i <= n - len; i++) {
+            int j = i + len - 1;
+            isPalindrome[i][j] = (s.charAt(i) == s.charAt(j)) &&
+                                isPalindrome[i + 1][j - 1];
+        }
+    }
+
+    // DP for minimum cuts
+    int[] dp = new int[n];
+    for (int i = 0; i < n; i++) {
+        if (isPalindrome[0][i]) {
+            dp[i] = 0; // No cut needed
+        } else {
+            dp[i] = i; // Worst case: i cuts
+            for (int j = 1; j <= i; j++) {
+                if (isPalindrome[j][i]) {
+                    dp[i] = Math.min(dp[i], dp[j - 1] + 1);
+                }
+            }
+        }
+    }
+
+    return dp[n - 1];
+}
+```
+
+
+***
+
+## Pattern 8: Tree DP
+
+### 8.1 Binary Tree Maximum Path Sum
+
+```java
+int maxPathSum = Integer.MIN_VALUE;
+
+int maxPathSum(TreeNode root) {
+    maxPathSum = Integer.MIN_VALUE;
+    maxPathSumHelper(root);
+    return maxPathSum;
+}
+
+int maxPathSumHelper(TreeNode node) {
+    if (node == null) return 0;
+
+    // Get maximum sum from left and right subtrees
+    int leftSum = Math.max(0, maxPathSumHelper(node.left));
+    int rightSum = Math.max(0, maxPathSumHelper(node.right));
+
+    // Current path sum including this node as the highest point
+    int currentPathSum = node.val + leftSum + rightSum;
+
+    // Update global maximum
+    maxPathSum = Math.max(maxPathSum, currentPathSum);
+
+    // Return maximum sum including this node and one subtree
+    return node.val + Math.max(leftSum, rightSum);
+}
+```
+
+
+### 8.2 Diameter of Binary Tree
+
+```java
+int diameter = 0;
+
+int diameterOfBinaryTree(TreeNode root) {
+    diameter = 0;
+    diameterHelper(root);
+    return diameter;
+}
+
+int diameterHelper(TreeNode node) {
+    if (node == null) return 0;
+
+    int leftHeight = diameterHelper(node.left);
+    int rightHeight = diameterHelper(node.right);
+
+    // Update diameter (path through this node)
+    diameter = Math.max(diameter, leftHeight + rightHeight);
+
+    // Return height of subtree rooted at this node
+    return 1 + Math.max(leftHeight, rightHeight);
+}
+```
+
+
+### 8.3 Binary Tree Cameras
+
+```java
+int cameras = 0;
+
+int minCameraCover(TreeNode root) {
+    cameras = 0;
+    int result = dfsCamera(root);
+    // If root is not covered, add a camera
+    return cameras + (result == 0 ? 1 : 0);
+}
+
+int dfsCamera(TreeNode node) {
+    if (node == null) return 1; // Null nodes are covered
+
+    int left = dfsCamera(node.left);
+    int right = dfsCamera(node.right);
+
+    // If either child is not covered, this node needs a camera
+    if (left == 0 || right == 0) {
+        cameras++;
+        return 2; // This node has a camera
+    }
+
+    // If either child has a camera, this node is covered
+    if (left == 2 || right == 2) {
+        return 1; // This node is covered
+    }
+
+    // Both children are covered but don't have cameras
+    return 0; // This node is not covered
+}
+```
+
+
+***
+
+## Pattern 9: Digit DP
+
+### 9.1 Count Numbers with Unique Digits
+
+```java
+int countNumbersWithUniqueDigits(int n) {
+    if (n == 0) return 1;
+
+    int[] dp = new int[n + 1];
+    dp[0] = 1; // Empty number
+    dp[1] = 10; // 0-9
+
+    for (int i = 2; i <= n; i++) {
+        // First digit: 9 choices (1-9)
+        // Remaining digits: decreasing choices
+        dp[i] = dp[i - 1] + (dp[i - 1] - dp[i - 2]) * (11 - i);
+    }
+
+    return dp[n];
+}
+
+// Alternative approach
+int countNumbersWithUniqueDigitsAlt(int n) {
+    if (n == 0) return 1;
+
+    int result = 10; // 1-digit numbers
+    int uniqueDigits = 9;
+    int availableNumber = 9;
+
+    while (n-- > 1 && availableNumber > 0) {
+        uniqueDigits *= availableNumber;
+        result += uniqueDigits;
+        availableNumber--;
+    }
+
+    return result;
+}
+```
+
+
+### 9.2 Numbers At Most N Given Digit Set
+
+```java
+int atMostNGivenDigitSet(String[] digits, int n) {
+    String nStr = String.valueOf(n);
+    int nLen = nStr.length();
+    int digitCount = digits.length;
+
+    // Count numbers with fewer digits
+    int result = 0;
+    for (int i = 1; i < nLen; i++) {
+        result += Math.pow(digitCount, i);
+    }
+
+    // Count numbers with same number of digits
+    for (int i = 0; i < nLen; i++) {
+        int currentDigit = nStr.charAt(i) - '0';
+        int smallerCount = 0;
+
+        // Count digits smaller than current digit
+        for (String digit : digits) {
+            if (Integer.parseInt(digit) < currentDigit) {
+                smallerCount++;
+            }
+        }
+
+        result += smallerCount * Math.pow(digitCount, nLen - i - 1);
+
+        // Check if current digit exists in the set
+        boolean found = false;
+        for (String digit : digits) {
+            if (Integer.parseInt(digit) == currentDigit) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) break;
+
+        // If we've processed all digits and all exist in set
+        if (i == nLen - 1) result++;
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 10: Bitmask DP
+
+### 10.1 Traveling Salesman Problem[1]
+
+```java
+int tsp(int[][] dist) {
+    int n = dist.length;
+    int[][] dp = new int[1 << n][n];
+
+    // Initialize with large values
+    for (int[] row : dp) {
+        Arrays.fill(row, Integer.MAX_VALUE / 2);
+    }
+
+    dp[1][0] = 0; // Start at city 0
+
+    for (int mask = 1; mask < (1 << n); mask++) {
+        for (int u = 0; u < n; u++) {
+            if ((mask & (1 << u)) == 0) continue;
+
+            for (int v = 0; v < n; v++) {
+                if ((mask & (1 << v)) != 0) continue;
+
+                int newMask = mask | (1 << v);
+                dp[newMask][v] = Math.min(dp[newMask][v],
+                                         dp[mask][u] + dist[u][v]);
+            }
+        }
+    }
+
+    int result = Integer.MAX_VALUE;
+    for (int i = 1; i < n; i++) {
+        result = Math.min(result, dp[(1 << n) - 1][i] + dist[i][0]);
+    }
+
+    return result;
+}
+```
+
+
+### 10.2 Number of Ways to Wear Different Hats
+
+```java
+int numberWaysToWearHats(List<List<Integer>> hats) {
+    int MOD = 1000000007;
+    int n = hats.size();
+
+    // Group people by their hat preferences
+    Map<Integer, List<Integer>> hatToPeople = new HashMap<>();
+    for (int person = 0; person < n; person++) {
+        for (int hat : hats.get(person)) {
+            hatToPeople.computeIfAbsent(hat, k -> new ArrayList<>()).add(person);
+        }
+    }
+
+    List<Integer> uniqueHats = new ArrayList<>(hatToPeople.keySet());
+    int[][] dp = new int[uniqueHats.size() + 1][1 << n];
+    dp[0][0] = 1;
+
+    for (int i = 1; i <= uniqueHats.size(); i++) {
+        int hat = uniqueHats.get(i - 1);
+
+        for (int mask = 0; mask < (1 << n); mask++) {
+            // Don't assign this hat to anyone
+            dp[i][mask] = dp[i - 1][mask];
+
+            // Try assigning this hat to each person who likes it
+            for (int person : hatToPeople.get(hat)) {
+                if ((mask & (1 << person)) != 0) {
+                    int prevMask = mask ^ (1 << person);
+                    dp[i][mask] = (dp[i][mask] + dp[i - 1][prevMask]) % MOD;
+                }
+            }
+        }
+    }
+
+    return dp[uniqueHats.size()][(1 << n) - 1];
+}
+```
+
+
+***
+
+## Pattern 11: State Machine DP
+
+### 11.1 Best Time to Buy and Sell Stock with Transaction Fee
+
+```java
+int maxProfitWithFee(int[] prices, int fee) {
+    // State: hold (holding stock) or sold (not holding stock)
+    int hold = -prices[0]; // Buy first stock
+    int sold = 0;          // Don't buy first stock
+
+    for (int i = 1; i < prices.length; i++) {
+        hold = Math.max(hold, sold - prices[i]);
+        sold = Math.max(sold, hold + prices[i] - fee);
+    }
+
+    return sold;
+}
+```
+
+
+### 11.2 Paint House
+
+```java
+int minCost(int[][] costs) {
+    if (costs.length == 0) return 0;
+
+    int n = costs.length;
+    // State: dp[i][j] = min cost to paint house i with color j
+    int[][] dp = new int[n][3];
+
+    // Base case
+    dp[0][0] = costs[0][0];
+    dp[0][1] = costs[0][1];
+    dp[0][2] = costs[0][2];
+
+    for (int i = 1; i < n; i++) {
+        dp[i][0] = costs[i][0] + Math.min(dp[i - 1][1], dp[i - 1][2]);
+        dp[i][1] = costs[i][1] + Math.min(dp[i - 1][0], dp[i - 1][2]);
+        dp[i][2] = costs[i][2] + Math.min(dp[i - 1][0], dp[i - 1][1]);
+    }
+
+    return Math.min(Math.min(dp[n - 1][0], dp[n - 1][1]), dp[n - 1][2]);
+}
+
+// Space optimized
+int minCostOptimized(int[][] costs) {
+    int prevRed = costs[0][0];
+    int prevBlue = costs[0][1];
+    int prevGreen = costs[0][2];
+
+    for (int i = 1; i < costs.length; i++) {
+        int currRed = costs[i][0] + Math.min(prevBlue, prevGreen);
+        int currBlue = costs[i][1] + Math.min(prevRed, prevGreen);
+        int currGreen = costs[i][2] + Math.min(prevRed, prevBlue);
+
+        prevRed = currRed;
+        prevBlue = currBlue;
+        prevGreen = currGreen;
+    }
+
+    return Math.min(Math.min(prevRed, prevBlue), prevGreen);
+}
+```
+
+
+***
+
+## Pattern 12: Optimization DP
+
+### 12.1 Maximum Rectangle in Binary Matrix
+
+```java
+int maximalRectangle(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int m = matrix.length, n = matrix[0].length;
+    int[] heights = new int[n];
+    int maxArea = 0;
+
+    for (int i = 0; i < m; i++) {
+        // Update heights array
+        for (int j = 0; j < n; j++) {
+            heights[j] = matrix[i][j] == '1' ? heights[j] + 1 : 0;
+        }
+
+        // Find max rectangle in histogram
+        maxArea = Math.max(maxArea, largestRectangleArea(heights));
+    }
+
+    return maxArea;
+}
+
+int largestRectangleArea(int[] heights) {
+    Stack<Integer> stack = new Stack<>();
+    int maxArea = 0;
+
+    for (int i = 0; i <= heights.length; i++) {
+        int currHeight = (i == heights.length) ? 0 : heights[i];
+
+        while (!stack.isEmpty() && currHeight < heights[stack.peek()]) {
+            int height = heights[stack.pop()];
+            int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+            maxArea = Math.max(maxArea, height * width);
+        }
+
+        stack.push(i);
+    }
+
+    return maxArea;
+}
+```
+
+
+***
+
+## Pattern 13: Probability DP
+
+### 13.1 Knight Probability in Chessboard
+
+```java
+double knightProbability(int n, int k, int row, int column) {
+    // 8 possible knight moves
+    int[][] directions = {{-2,-1}, {-2,1}, {-1,-2}, {-1,2},
+                         {1,-2}, {1,2}, {2,-1}, {2,1}};
+
+    // dp[i][j] = probability of being at (i,j)
+    double[][] dp = new double[n][n];
+    dp[row][column] = 1.0;
+
+    for (int step = 0; step < k; step++) {
+        double[][] newDp = new double[n][n];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (dp[i][j] > 0) {
+                    for (int[] dir : directions) {
+                        int ni = i + dir[0];
+                        int nj = j + dir[1];
+
+                        if (ni >= 0 && ni < n && nj >= 0 && nj < n) {
+                            newDp[ni][nj] += dp[i][j] / 8.0;
+                        }
+                    }
+                }
+            }
+        }
+
+        dp = newDp;
+    }
+
+    double totalProbability = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            totalProbability += dp[i][j];
+        }
+    }
+
+    return totalProbability;
+}
+```
+
+
+***
+
+## Pattern 14: Game Theory DP
+
+### 14.1 Stone Game
+
+```java
+boolean stoneGame(int[] piles) {
+    int n = piles.length;
+    // dp[i][j] = max score difference (Alex - Lee) for piles[i..j]
+    int[][] dp = new int[n][n];
+
+    // Base case: single pile
+    for (int i = 0; i < n; i++) {
+        dp[i][i] = piles[i];
+    }
+
+    // Fill for all lengths
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i <= n - len; i++) {
+            int j = i + len - 1;
+            // Alex can take piles[i] or piles[j]
+            dp[i][j] = Math.max(piles[i] - dp[i + 1][j],
+                               piles[j] - dp[i][j - 1]);
+        }
+    }
+
+    return dp[0][n - 1] > 0;
+}
+
+// Optimized: Alex always wins (mathematical proof)
+boolean stoneGameOptimal(int[] piles) {
+    return true; // Alex can always choose all even or all odd indexed piles
+}
+```
+
+
+### 14.2 Predict the Winner
+
+```java
+boolean predictTheWinner(int[] nums) {
+    int n = nums.length;
+    int[][] dp = new int[n][n];
+
+    // Base case: single element
+    for (int i = 0; i < n; i++) {
+        dp[i][i] = nums[i];
+    }
+
+    // Fill diagonal by diagonal
+    for (int len = 2; len <= n; len++) {
+        for (int i = 0; i <= n - len; i++) {
+            int j = i + len - 1;
+            dp[i][j] = Math.max(nums[i] - dp[i + 1][j],
+                               nums[j] - dp[i][j - 1]);
+        }
+    }
+
+    return dp[0][n - 1] >= 0;
+}
+```
+
+
+***
+
+## Time Complexity Reference[4][5]
+
+| Pattern | Time Complexity | Space Complexity | Key Problems |
+| :-- | :-- | :-- | :-- |
+| Linear DP | O(n) | O(1) to O(n) | Fibonacci, Climbing Stairs |
+| Grid DP | O(m×n) | O(m×n) to O(n) | Unique Paths, LCS |
+| Knapsack | O(n×W) | O(W) | 0/1 Knapsack, Coin Change |
+| Subsequence | O(n²) to O(n log n) | O(n) | LIS, LCS |
+| String DP | O(n²) to O(n×m) | O(n×m) | Edit Distance, Word Break |
+| Tree DP | O(n) | O(h) | Max Path Sum, Diameter |
+| Interval DP | O(n³) | O(n²) | Matrix Chain, Burst Balloons |
+| Bitmask DP | O(2ⁿ×n) | O(2ⁿ×n) | TSP, Assignment |
+
+
+***
+
+## Optimization Techniques[6][2]
+
+### Space Optimization Strategies
+
+```java
+// 1. Rolling Array Technique
+// From dp[i][j] = f(dp[i-1][j], dp[i][j-1])
+// To: prev[j] and curr[j]
+
+// 2. State Compression
+// Use bitmask when state space is small
+
+// 3. Memoization vs Tabulation
+// Top-down: easier to implement, uses recursion
+// Bottom-up: better space usage, iterative
+
+// 4. Coordinate Compression
+// When dealing with large coordinate ranges
+```
+
+
+### Common Pitfalls
+
+1. **Off-by-one errors** in array indexing
+2. **Integer overflow** in large sum calculations
+3. **Base case handling** - especially empty inputs
+4. **State definition** - ensure it captures all necessary information
+5. **Transition validity** - check bounds and constraints
+
+This comprehensive DP patterns guide provides the foundation for solving complex optimization problems in technical interviews, particularly valuable for your backend engineering and system design expertise.

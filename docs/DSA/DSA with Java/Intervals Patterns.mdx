@@ -1,0 +1,1874 @@
+# Intervals
+
+## Table of Contents
+
+1. [Interval Fundamentals](#interval-fundamentals)
+2. [Pattern 1: Merge Intervals](#pattern-1-merge-intervals)
+3. [Pattern 2: Insert \& Delete Intervals](#pattern-2-insert--delete-intervals)
+4. [Pattern 3: Interval Intersection](#pattern-3-interval-intersection)
+5. [Pattern 4: Non-Overlapping Intervals](#pattern-4-non-overlapping-intervals)
+6. [Pattern 5: Meeting Room Problems](#pattern-5-meeting-room-problems)
+7. [Pattern 6: Line Sweep Algorithm](#pattern-6-line-sweep-algorithm)
+8. [Pattern 7: Point Coverage](#pattern-7-point-coverage)
+9. [Pattern 8: Interval Scheduling](#pattern-8-interval-scheduling)
+10. [Pattern 9: Time-based Problems](#pattern-9-time-based-problems)
+11. [Pattern 10: Range Sum \& Query](#pattern-10-range-sum--query)
+12. [Pattern 11: Calendar Problems](#pattern-11-calendar-problems)
+13. [Pattern 12: Advanced Interval Patterns](#pattern-12-advanced-interval-patterns)
+
+***
+
+## Interval Fundamentals
+
+### Basic Interval Class
+
+```java
+class Interval {
+    int start;
+    int end;
+
+    public Interval(int start, int end) {
+        this.start = start;
+        this.end = end;
+    }
+
+    public boolean overlaps(Interval other) {
+        return this.start < other.end && other.start < this.end;
+    }
+
+    public Interval merge(Interval other) {
+        return new Interval(Math.min(this.start, other.start),
+                           Math.max(this.end, other.end));
+    }
+
+    public boolean contains(int point) {
+        return this.start <= point && point < this.end;
+    }
+
+    @Override
+    public String toString() {
+        return "[" + start + "," + end + "]";
+    }
+}
+```
+
+
+### Common Interval Operations
+
+```java
+public class IntervalUtils {
+
+    // Check if two intervals overlap
+    public static boolean overlap(int[] a, int[] b) {
+        return a[0] < b[1] && b[0] < a[1];
+    }
+
+    // Get overlap between two intervals
+    public static int[] getOverlap(int[] a, int[] b) {
+        if (!overlap(a, b)) return null;
+        return new int[]{Math.max(a[0], b[0]), Math.min(a[1], b[1])};
+    }
+
+    // Merge two overlapping intervals
+    public static int[] merge(int[] a, int[] b) {
+        return new int[]{Math.min(a[0], b[0]), Math.max(a[1], b[1])};
+    }
+
+    // Get gap between two non-overlapping intervals
+    public static int[] getGap(int[] a, int[] b) {
+        if (overlap(a, b)) return null;
+        if (a[1] <= b[0]) return new int[]{a[1], b[0]};
+        return new int[]{b[1], a[0]};
+    }
+
+    // Sort intervals by start time
+    public static void sortByStart(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+    }
+
+    // Sort intervals by end time
+    public static void sortByEnd(int[][] intervals) {
+        Arrays.sort(intervals, (a, b) -> a[1] - b[1]);
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Merge Intervals
+
+### 1.1 Basic Merge Intervals
+
+```java
+int[][] merge(int[][] intervals) {
+    if (intervals.length <= 1) return intervals;
+
+    // Sort by start time
+    Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+
+    List<int[]> result = new ArrayList<>();
+    int[] current = intervals[0];
+
+    for (int i = 1; i < intervals.length; i++) {
+        if (current[1] >= intervals[i][0]) {
+            // Overlapping, merge
+            current[1] = Math.max(current[1], intervals[i][1]);
+        } else {
+            // Non-overlapping, add current and start new
+            result.add(current);
+            current = intervals[i];
+        }
+    }
+
+    result.add(current);
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+### 1.2 Merge Intervals with Custom Object
+
+```java
+class Interval {
+    int start, end;
+    Interval(int start, int end) {
+        this.start = start;
+        this.end = end;
+    }
+}
+
+List<Interval> mergeIntervals(List<Interval> intervals) {
+    if (intervals.size() <= 1) return intervals;
+
+    intervals.sort((a, b) -> a.start - b.start);
+
+    List<Interval> result = new ArrayList<>();
+    Interval current = intervals.get(0);
+
+    for (int i = 1; i < intervals.size(); i++) {
+        Interval next = intervals.get(i);
+
+        if (current.end >= next.start) {
+            current.end = Math.max(current.end, next.end);
+        } else {
+            result.add(current);
+            current = next;
+        }
+    }
+
+    result.add(current);
+    return result;
+}
+```
+
+
+### 1.3 Merge with Employee Free Time
+
+```java
+List<Interval> employeeFreeTime(List<List<Interval>> schedule) {
+    List<Interval> allIntervals = new ArrayList<>();
+
+    // Collect all intervals
+    for (List<Interval> employee : schedule) {
+        allIntervals.addAll(employee);
+    }
+
+    // Sort by start time
+    allIntervals.sort((a, b) -> a.start - b.start);
+
+    // Merge overlapping intervals
+    List<Interval> merged = new ArrayList<>();
+    Interval current = allIntervals.get(0);
+
+    for (int i = 1; i < allIntervals.size(); i++) {
+        Interval next = allIntervals.get(i);
+
+        if (current.end >= next.start) {
+            current.end = Math.max(current.end, next.end);
+        } else {
+            merged.add(current);
+            current = next;
+        }
+    }
+    merged.add(current);
+
+    // Find free time gaps
+    List<Interval> freeTime = new ArrayList<>();
+    for (int i = 0; i < merged.size() - 1; i++) {
+        if (merged.get(i).end < merged.get(i + 1).start) {
+            freeTime.add(new Interval(merged.get(i).end, merged.get(i + 1).start));
+        }
+    }
+
+    return freeTime;
+}
+```
+
+
+### 1.4 Merge Similar Items
+
+```java
+int[][] mergeSimilarItems(int[][] items1, int[][] items2) {
+    Map<Integer, Integer> map = new HashMap<>();
+
+    for (int[] item : items1) {
+        map.put(item[0], map.getOrDefault(item[0], 0) + item[1]);
+    }
+
+    for (int[] item : items2) {
+        map.put(item[0], map.getOrDefault(item[0], 0) + item[1]);
+    }
+
+    List<int[]> result = new ArrayList<>();
+    for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+        result.add(new int[]{entry.getKey(), entry.getValue()});
+    }
+
+    result.sort((a, b) -> a[0] - b[0]);
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+***
+
+## Pattern 2: Insert \& Delete Intervals
+
+### 2.1 Insert Interval
+
+```java
+int[][] insert(int[][] intervals, int[] newInterval) {
+    List<int[]> result = new ArrayList<>();
+    int i = 0;
+
+    // Add all intervals that end before newInterval starts
+    while (i < intervals.length && intervals[i][1] < newInterval[0]) {
+        result.add(intervals[i]);
+        i++;
+    }
+
+    // Merge overlapping intervals
+    while (i < intervals.length && intervals[i][0] <= newInterval[1]) {
+        newInterval[0] = Math.min(newInterval[0], intervals[i][0]);
+        newInterval[1] = Math.max(newInterval[1], intervals[i][1]);
+        i++;
+    }
+    result.add(newInterval);
+
+    // Add remaining intervals
+    while (i < intervals.length) {
+        result.add(intervals[i]);
+        i++;
+    }
+
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+### 2.2 Remove Interval
+
+```java
+List<int[]> removeInterval(int[][] intervals, int[] toBeRemoved) {
+    List<int[]> result = new ArrayList<>();
+
+    for (int[] interval : intervals) {
+        // No overlap
+        if (interval[1] <= toBeRemoved[0] || interval[0] >= toBeRemoved[1]) {
+            result.add(interval);
+        }
+        // Partial overlap
+        else {
+            // Left part remains
+            if (interval[0] < toBeRemoved[0]) {
+                result.add(new int[]{interval[0], toBeRemoved[0]});
+            }
+
+            // Right part remains
+            if (interval[1] > toBeRemoved[1]) {
+                result.add(new int[]{toBeRemoved[1], interval[1]});
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 2.3 Insert with Merge
+
+```java
+int[][] insertAndMerge(int[][] intervals, int[] newInterval) {
+    if (intervals.length == 0) {
+        return new int[][]{newInterval};
+    }
+
+    List<int[]> result = new ArrayList<>();
+    boolean inserted = false;
+
+    for (int[] interval : intervals) {
+        if (interval[1] < newInterval[0]) {
+            // Current interval ends before new interval starts
+            result.add(interval);
+        } else if (interval[0] > newInterval[1]) {
+            // Current interval starts after new interval ends
+            if (!inserted) {
+                result.add(newInterval);
+                inserted = true;
+            }
+            result.add(interval);
+        } else {
+            // Overlapping - merge
+            newInterval[0] = Math.min(newInterval[0], interval[0]);
+            newInterval[1] = Math.max(newInterval[1], interval[1]);
+        }
+    }
+
+    if (!inserted) {
+        result.add(newInterval);
+    }
+
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+### 2.4 Replace Interval
+
+```java
+int[][] replaceInterval(int[][] intervals, int[] oldInterval, int[] newInterval) {
+    List<int[]> result = new ArrayList<>();
+    boolean replaced = false;
+
+    for (int[] interval : intervals) {
+        if (!replaced && Arrays.equals(interval, oldInterval)) {
+            result.add(newInterval);
+            replaced = true;
+        } else {
+            result.add(interval);
+        }
+    }
+
+    if (!replaced) {
+        result.add(newInterval);
+    }
+
+    // Sort and merge if necessary
+    result.sort((a, b) -> a[0] - b[0]);
+    return merge(result.toArray(new int[result.size()][]));
+}
+```
+
+
+***
+
+## Pattern 3: Interval Intersection
+
+### 3.1 Interval List Intersections
+
+```java
+int[][] intervalIntersection(int[][] firstList, int[][] secondList) {
+    List<int[]> result = new ArrayList<>();
+    int i = 0, j = 0;
+
+    while (i < firstList.length && j < secondList.length) {
+        int[] first = firstList[i];
+        int[] second = secondList[j];
+
+        // Check if they overlap
+        int start = Math.max(first[0], second[0]);
+        int end = Math.min(first[1], second[1]);
+
+        if (start <= end) {
+            result.add(new int[]{start, end});
+        }
+
+        // Move the pointer of interval that ends first
+        if (first[1] <= second[1]) {
+            i++;
+        } else {
+            j++;
+        }
+    }
+
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+### 3.2 Multiple Interval Intersections
+
+```java
+List<int[]> intersectMultipleIntervals(List<List<int[]>> intervalLists) {
+    if (intervalLists.isEmpty()) return new ArrayList<>();
+
+    List<int[]> result = Arrays.asList(intervalLists.get(0).toArray(new int[0][]));
+
+    for (int i = 1; i < intervalLists.size(); i++) {
+        result = intersectTwoLists(result, intervalLists.get(i));
+        if (result.isEmpty()) break;
+    }
+
+    return result;
+}
+
+List<int[]> intersectTwoLists(List<int[]> list1, List<int[]> list2) {
+    List<int[]> result = new ArrayList<>();
+    int i = 0, j = 0;
+
+    while (i < list1.size() && j < list2.size()) {
+        int[] first = list1.get(i);
+        int[] second = list2.get(j);
+
+        int start = Math.max(first[0], second[0]);
+        int end = Math.min(first[1], second[1]);
+
+        if (start <= end) {
+            result.add(new int[]{start, end});
+        }
+
+        if (first[1] <= second[1]) {
+            i++;
+        } else {
+            j++;
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 3.3 Find Intersection Points
+
+```java
+List<Integer> findIntersectionPoints(int[][] intervals1, int[][] intervals2) {
+    Set<Integer> points = new HashSet<>();
+
+    for (int[] interval1 : intervals1) {
+        for (int[] interval2 : intervals2) {
+            int start = Math.max(interval1[0], interval2[0]);
+            int end = Math.min(interval1[1], interval2[1]);
+
+            if (start <= end) {
+                points.add(start);
+                points.add(end);
+            }
+        }
+    }
+
+    List<Integer> result = new ArrayList<>(points);
+    Collections.sort(result);
+    return result;
+}
+```
+
+
+### 3.4 Intersect and Count
+
+```java
+int countIntersections(int[][] intervals1, int[][] intervals2) {
+    int count = 0;
+
+    for (int[] interval1 : intervals1) {
+        for (int[] interval2 : intervals2) {
+            if (interval1[0] < interval2[1] && interval2[0] < interval1[1]) {
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+
+***
+
+## Pattern 4: Non-Overlapping Intervals
+
+### 4.1 Minimum Intervals to Remove
+
+```java
+int eraseOverlapIntervals(int[][] intervals) {
+    if (intervals.length <= 1) return 0;
+
+    // Sort by end time for greedy approach
+    Arrays.sort(intervals, (a, b) -> a[1] - b[1]);
+
+    int count = 0;
+    int lastEnd = intervals[0][1];
+
+    for (int i = 1; i < intervals.length; i++) {
+        if (intervals[i][0] < lastEnd) {
+            // Overlapping interval, remove it
+            count++;
+        } else {
+            // Non-overlapping, update lastEnd
+            lastEnd = intervals[i][1];
+        }
+    }
+
+    return count;
+}
+```
+
+
+### 4.2 Maximum Non-Overlapping Intervals
+
+```java
+int maxNonOverlapping(int[][] intervals) {
+    if (intervals.length == 0) return 0;
+
+    Arrays.sort(intervals, (a, b) -> a[1] - b[1]);
+
+    int count = 1;
+    int lastEnd = intervals[0][1];
+
+    for (int i = 1; i < intervals.length; i++) {
+        if (intervals[i][0] >= lastEnd) {
+            count++;
+            lastEnd = intervals[i][1];
+        }
+    }
+
+    return count;
+}
+```
+
+
+### 4.3 Minimum Arrows to Burst Balloons
+
+```java
+int findMinArrowShots(int[][] points) {
+    if (points.length == 0) return 0;
+
+    Arrays.sort(points, (a, b) -> Integer.compare(a[1], b[1]));
+
+    int arrows = 1;
+    int arrowPos = points[0][1];
+
+    for (int i = 1; i < points.length; i++) {
+        if (points[i][0] > arrowPos) {
+            arrows++;
+            arrowPos = points[i][1];
+        }
+    }
+
+    return arrows;
+}
+```
+
+
+### 4.4 Non-Overlapping Activity Selection
+
+```java
+List<int[]> activitySelection(int[][] activities) {
+    Arrays.sort(activities, (a, b) -> a[1] - b[1]);
+
+    List<int[]> selected = new ArrayList<>();
+    selected.add(activities[0]);
+    int lastEnd = activities[0][1];
+
+    for (int i = 1; i < activities.length; i++) {
+        if (activities[i][0] >= lastEnd) {
+            selected.add(activities[i]);
+            lastEnd = activities[i][1];
+        }
+    }
+
+    return selected;
+}
+```
+
+
+***
+
+## Pattern 5: Meeting Room Problems
+
+### 5.1 Meeting Rooms I
+
+```java
+boolean canAttendMeetings(int[][] intervals) {
+    Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+
+    for (int i = 1; i < intervals.length; i++) {
+        if (intervals[i][0] < intervals[i - 1][1]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 5.2 Meeting Rooms II
+
+```java
+int minMeetingRooms(int[][] intervals) {
+    if (intervals.length == 0) return 0;
+
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+    Arrays.sort(intervals, (a, b) -> a[0] - b[0]);
+
+    for (int[] interval : intervals) {
+        if (!minHeap.isEmpty() && minHeap.peek() <= interval[0]) {
+            minHeap.poll();
+        }
+        minHeap.offer(interval[1]);
+    }
+
+    return minHeap.size();
+}
+```
+
+
+### 5.3 Meeting Rooms III
+
+```java
+int mostBooked(int n, int[][] meetings) {
+    Arrays.sort(meetings, (a, b) -> a[0] - b[0]);
+
+    PriorityQueue<Integer> availableRooms = new PriorityQueue<>();
+    PriorityQueue<long[]> busyRooms = new PriorityQueue<>((a, b) -> {
+        if (a[0] != b[0]) return Long.compare(a[0], b[0]);
+        return Long.compare(a[1], b[1]);
+    });
+
+    for (int i = 0; i < n; i++) {
+        availableRooms.offer(i);
+    }
+
+    int[] count = new int[n];
+
+    for (int[] meeting : meetings) {
+        long start = meeting[0];
+        long duration = meeting[1] - meeting[0];
+
+        // Free up rooms
+        while (!busyRooms.isEmpty() && busyRooms.peek()[0] <= start) {
+            availableRooms.offer((int) busyRooms.poll()[1]);
+        }
+
+        if (!availableRooms.isEmpty()) {
+            int room = availableRooms.poll();
+            count[room]++;
+            busyRooms.offer(new long[]{start + duration, room});
+        } else {
+            long[] earliest = busyRooms.poll();
+            int room = (int) earliest[1];
+            count[room]++;
+            busyRooms.offer(new long[]{earliest[0] + duration, room});
+        }
+    }
+
+    int maxCount = 0;
+    int result = 0;
+    for (int i = 0; i < n; i++) {
+        if (count[i] > maxCount) {
+            maxCount = count[i];
+            result = i;
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 5.4 Conference Room Allocation
+
+```java
+int[][] allocateConferenceRooms(int[][] meetings, int numRooms) {
+    Arrays.sort(meetings, (a, b) -> a[0] - b[0]);
+
+    PriorityQueue<Integer> availableRooms = new PriorityQueue<>();
+    PriorityQueue<int[]> busyRooms = new PriorityQueue<>((a, b) -> a[0] - b[0]);
+
+    for (int i = 0; i < numRooms; i++) {
+        availableRooms.offer(i);
+    }
+
+    List<int[]> result = new ArrayList<>();
+
+    for (int i = 0; i < meetings.length; i++) {
+        int[] meeting = meetings[i];
+
+        // Free up rooms
+        while (!busyRooms.isEmpty() && busyRooms.peek()[0] <= meeting[0]) {
+            availableRooms.offer(busyRooms.poll()[1]);
+        }
+
+        if (!availableRooms.isEmpty()) {
+            int room = availableRooms.poll();
+            result.add(new int[]{i, room}); // meeting index, room number
+            busyRooms.offer(new int[]{meeting[1], room});
+        } else {
+            result.add(new int[]{i, -1}); // cannot allocate
+        }
+    }
+
+    return result.toArray(new int[result.size()][]);
+}
+```
+
+
+***
+
+## Pattern 6: Line Sweep Algorithm
+
+### 6.1 Basic Line Sweep Template
+
+```java
+class Event {
+    int time;
+    int type; // 1 for start, -1 for end
+    int index;
+
+    Event(int time, int type, int index) {
+        this.time = time;
+        this.type = type;
+        this.index = index;
+    }
+}
+
+List<Event> createEvents(int[][] intervals) {
+    List<Event> events = new ArrayList<>();
+
+    for (int i = 0; i < intervals.length; i++) {
+        events.add(new Event(intervals[i][0], 1, i));  // start
+        events.add(new Event(intervals[i][1], -1, i)); // end
+    }
+
+    // Sort events by time, then by type (start before end)
+    events.sort((a, b) -> {
+        if (a.time != b.time) return a.time - b.time;
+        return b.type - a.type; // start (1) before end (-1)
+    });
+
+    return events;
+}
+```
+
+
+### 6.2 Maximum Overlap Count
+
+```java
+int maxOverlapCount(int[][] intervals) {
+    List<Event> events = createEvents(intervals);
+
+    int maxOverlap = 0;
+    int currentOverlap = 0;
+
+    for (Event event : events) {
+        currentOverlap += event.type;
+        maxOverlap = Math.max(maxOverlap, currentOverlap);
+    }
+
+    return maxOverlap;
+}
+```
+
+
+### 6.3 Find All Overlap Points
+
+```java
+List<int[]> findOverlapRanges(int[][] intervals) {
+    List<Event> events = createEvents(intervals);
+
+    List<int[]> overlaps = new ArrayList<>();
+    int activeCount = 0;
+    int lastTime = -1;
+
+    for (Event event : events) {
+        if (activeCount > 1 && lastTime != event.time) {
+            overlaps.add(new int[]{lastTime, event.time});
+        }
+
+        activeCount += event.type;
+        lastTime = event.time;
+    }
+
+    return overlaps;
+}
+```
+
+
+### 6.4 Line Sweep for Rectangle Area
+
+```java
+class Rectangle {
+    int x1, y1, x2, y2;
+    Rectangle(int x1, int y1, int x2, int y2) {
+        this.x1 = x1; this.y1 = y1;
+        this.x2 = x2; this.y2 = y2;
+    }
+}
+
+long rectangleArea(Rectangle[] rectangles) {
+    List<int[]> events = new ArrayList<>();
+
+    for (Rectangle rect : rectangles) {
+        events.add(new int[]{rect.x1, 1, rect.y1, rect.y2}); // start
+        events.add(new int[]{rect.x2, -1, rect.y1, rect.y2}); // end
+    }
+
+    events.sort((a, b) -> {
+        if (a[0] != b[0]) return a[0] - b[0];
+        return b[1] - a[1];
+    });
+
+    long totalArea = 0;
+    List<int[]> activeY = new ArrayList<>();
+    int lastX = 0;
+
+    for (int[] event : events) {
+        int x = event[0];
+        int type = event[1];
+        int y1 = event[2];
+        int y2 = event[3];
+
+        // Calculate area with current active Y ranges
+        if (!activeY.isEmpty()) {
+            totalArea += (long)(x - lastX) * getTotalLength(activeY);
+        }
+
+        // Update active Y ranges
+        if (type == 1) {
+            addYRange(activeY, y1, y2);
+        } else {
+            removeYRange(activeY, y1, y2);
+        }
+
+        lastX = x;
+    }
+
+    return totalArea;
+}
+
+void addYRange(List<int[]> ranges, int y1, int y2) {
+    ranges.add(new int[]{y1, y2});
+    mergeYRanges(ranges);
+}
+
+void removeYRange(List<int[]> ranges, int y1, int y2) {
+    List<int[]> newRanges = new ArrayList<>();
+
+    for (int[] range : ranges) {
+        if (range[0] >= y2 || range[1] <= y1) {
+            newRanges.add(range);
+        } else {
+            if (range[0] < y1) {
+                newRanges.add(new int[]{range[0], y1});
+            }
+            if (range[1] > y2) {
+                newRanges.add(new int[]{y2, range[1]});
+            }
+        }
+    }
+
+    ranges.clear();
+    ranges.addAll(newRanges);
+    mergeYRanges(ranges);
+}
+
+void mergeYRanges(List<int[]> ranges) {
+    ranges.sort((a, b) -> a[0] - b[0]);
+
+    List<int[]> merged = new ArrayList<>();
+    for (int[] range : ranges) {
+        if (merged.isEmpty() || merged.get(merged.size() - 1)[1] < range[0]) {
+            merged.add(range);
+        } else {
+            merged.get(merged.size() - 1)[1] = Math.max(merged.get(merged.size() - 1)[1], range[1]);
+        }
+    }
+
+    ranges.clear();
+    ranges.addAll(merged);
+}
+
+int getTotalLength(List<int[]> ranges) {
+    int total = 0;
+    for (int[] range : ranges) {
+        total += range[1] - range[0];
+    }
+    return total;
+}
+```
+
+
+### 6.5 Closest Pair Using Line Sweep
+
+```java
+class Point {
+    int x, y, index;
+    Point(int x, int y, int index) {
+        this.x = x; this.y = y; this.index = index;
+    }
+}
+
+double closestPair(int[][] points) {
+    Point[] pts = new Point[points.length];
+    for (int i = 0; i < points.length; i++) {
+        pts[i] = new Point(points[i][0], points[i][1], i);
+    }
+
+    Arrays.sort(pts, (a, b) -> a.x - b.x);
+
+    return closestPairRec(pts, 0, pts.length - 1);
+}
+
+double closestPairRec(Point[] points, int left, int right) {
+    if (right - left <= 3) {
+        return bruteForce(points, left, right);
+    }
+
+    int mid = left + (right - left) / 2;
+    Point midPoint = points[mid];
+
+    double leftMin = closestPairRec(points, left, mid);
+    double rightMin = closestPairRec(points, mid + 1, right);
+
+    double minDist = Math.min(leftMin, rightMin);
+
+    // Check points near the dividing line
+    List<Point> strip = new ArrayList<>();
+    for (int i = left; i <= right; i++) {
+        if (Math.abs(points[i].x - midPoint.x) < minDist) {
+            strip.add(points[i]);
+        }
+    }
+
+    strip.sort((a, b) -> a.y - b.y);
+
+    for (int i = 0; i < strip.size(); i++) {
+        for (int j = i + 1; j < strip.size() && (strip.get(j).y - strip.get(i).y) < minDist; j++) {
+            minDist = Math.min(minDist, distance(strip.get(i), strip.get(j)));
+        }
+    }
+
+    return minDist;
+}
+
+double bruteForce(Point[] points, int left, int right) {
+    double minDist = Double.MAX_VALUE;
+
+    for (int i = left; i <= right; i++) {
+        for (int j = i + 1; j <= right; j++) {
+            minDist = Math.min(minDist, distance(points[i], points[j]));
+        }
+    }
+
+    return minDist;
+}
+
+double distance(Point a, Point b) {
+    return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+}
+```
+
+
+***
+
+## Pattern 7: Point Coverage
+
+### 7.1 Minimum Points to Cover Intervals
+
+```java
+int minPointsToCover(int[][] intervals) {
+    Arrays.sort(intervals, (a, b) -> a[1] - b[1]);
+
+    int points = 0;
+    int lastPoint = Integer.MIN_VALUE;
+
+    for (int[] interval : intervals) {
+        if (lastPoint < interval[0]) {
+            points++;
+            lastPoint = interval[1];
+        }
+    }
+
+    return points;
+}
+```
+
+
+### 7.2 Points Covered by Intervals
+
+```java
+List<Integer> pointsCoveredByIntervals(int[][] intervals, int[] points) {
+    List<Integer> result = new ArrayList<>();
+
+    for (int point : points) {
+        boolean covered = false;
+
+        for (int[] interval : intervals) {
+            if (point >= interval[0] && point <= interval[1]) {
+                covered = true;
+                break;
+            }
+        }
+
+        if (covered) {
+            result.add(point);
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 7.3 Interval Coverage by Points
+
+```java
+int maxIntervalsCoveredByPoint(int[][] intervals) {
+    Map<Integer, Integer> pointCount = new HashMap<>();
+
+    for (int[] interval : intervals) {
+        for (int point = interval[0]; point <= interval[1]; point++) {
+            pointCount.put(point, pointCount.getOrDefault(point, 0) + 1);
+        }
+    }
+
+    return pointCount.values().stream().max(Integer::compare).orElse(0);
+}
+```
+
+
+### 7.4 Minimum Intervals to Remove for Point Coverage
+
+```java
+int minIntervalsToRemove(int[][] intervals, int point) {
+    int removeCount = 0;
+
+    for (int[] interval : intervals) {
+        if (point >= interval[0] && point <= interval[1]) {
+            removeCount++;
+        }
+    }
+
+    return removeCount;
+}
+```
+
+
+***
+
+## Pattern 8: Interval Scheduling
+
+### 8.1 Weighted Job Scheduling
+
+```java
+int jobScheduling(int[] startTime, int[] endTime, int[] profit) {
+    int n = startTime.length;
+    int[][] jobs = new int[n][3];
+
+    for (int i = 0; i < n; i++) {
+        jobs[i] = new int[]{startTime[i], endTime[i], profit[i]};
+    }
+
+    Arrays.sort(jobs, (a, b) -> a[1] - b[1]); // sort by end time
+
+    int[] dp = new int[n];
+    dp[0] = jobs[0][2];
+
+    for (int i = 1; i < n; i++) {
+        int currentProfit = jobs[i][2];
+        int latestNonOverlapping = findLatestNonOverlapping(jobs, i);
+
+        if (latestNonOverlapping != -1) {
+            currentProfit += dp[latestNonOverlapping];
+        }
+
+        dp[i] = Math.max(dp[i - 1], currentProfit);
+    }
+
+    return dp[n - 1];
+}
+
+int findLatestNonOverlapping(int[][] jobs, int index) {
+    int currentStart = jobs[index][0];
+
+    for (int i = index - 1; i >= 0; i--) {
+        if (jobs[i][1] <= currentStart) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+```
+
+
+### 8.2 Maximum CPU Load
+
+```java
+int maxCPULoad(int[][] jobs) {
+    Arrays.sort(jobs, (a, b) -> a[0] - b[0]);
+
+    PriorityQueue<int[]> minHeap = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+    int maxLoad = 0;
+    int currentLoad = 0;
+
+    for (int[] job : jobs) {
+        while (!minHeap.isEmpty() && minHeap.peek()[1] <= job[0]) {
+            currentLoad -= minHeap.poll()[2];
+        }
+
+        minHeap.offer(job);
+        currentLoad += job[2];
+        maxLoad = Math.max(maxLoad, currentLoad);
+    }
+
+    return maxLoad;
+}
+```
+
+
+### 8.3 Task Scheduler with Intervals
+
+```java
+int taskSchedulerWithIntervals(int[][] tasks, int cooldown) {
+    Arrays.sort(tasks, (a, b) -> a[0] - b[0]);
+
+    PriorityQueue<Integer> endTimes = new PriorityQueue<>();
+    int time = 0;
+
+    for (int[] task : tasks) {
+        int start = task[0];
+        int duration = task[1];
+
+        // Remove finished tasks
+        while (!endTimes.isEmpty() && endTimes.peek() + cooldown <= start) {
+            endTimes.poll();
+        }
+
+        // Schedule current task
+        time = Math.max(start, time);
+        time += duration;
+        endTimes.offer(time);
+    }
+
+    return time;
+}
+```
+
+
+### 8.4 Minimum Platforms for Trains
+
+```java
+int minPlatforms(int[] arrivals, int[] departures) {
+    Arrays.sort(arrivals);
+    Arrays.sort(departures);
+
+    int platforms = 0;
+    int maxPlatforms = 0;
+    int i = 0, j = 0;
+
+    while (i < arrivals.length && j < departures.length) {
+        if (arrivals[i] <= departures[j]) {
+            platforms++;
+            maxPlatforms = Math.max(maxPlatforms, platforms);
+            i++;
+        } else {
+            platforms--;
+            j++;
+        }
+    }
+
+    return maxPlatforms;
+}
+```
+
+
+***
+
+## Pattern 9: Time-based Problems
+
+### 9.1 Car Pooling
+
+```java
+boolean carPooling(int[][] trips, int capacity) {
+    Map<Integer, Integer> timeline = new TreeMap<>();
+
+    for (int[] trip : trips) {
+        int passengers = trip[0];
+        int start = trip[1];
+        int end = trip[2];
+
+        timeline.put(start, timeline.getOrDefault(start, 0) + passengers);
+        timeline.put(end, timeline.getOrDefault(end, 0) - passengers);
+    }
+
+    int currentPassengers = 0;
+
+    for (int change : timeline.values()) {
+        currentPassengers += change;
+        if (currentPassengers > capacity) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 9.2 Corporate Flight Bookings
+
+```java
+int[] corpFlightBookings(int[][] bookings, int n) {
+    int[] result = new int[n];
+
+    for (int[] booking : bookings) {
+        int first = booking[0] - 1;
+        int last = booking[1] - 1;
+        int seats = booking[2];
+
+        result[first] += seats;
+        if (last + 1 < n) {
+            result[last + 1] -= seats;
+        }
+    }
+
+    // Convert to actual values
+    for (int i = 1; i < n; i++) {
+        result[i] += result[i - 1];
+    }
+
+    return result;
+}
+```
+
+
+### 9.3 Process Transactions
+
+```java
+List<String> processTransactions(String[] transactions) {
+    Map<String, List<Transaction>> personTransactions = new HashMap<>();
+    List<Transaction> allTransactions = new ArrayList<>();
+
+    for (int i = 0; i < transactions.length; i++) {
+        String[] parts = transactions[i].split(",");
+        Transaction t = new Transaction(parts[0], Integer.parseInt(parts[1]),
+                                      Integer.parseInt(parts[2]), parts[3], i);
+
+        allTransactions.add(t);
+        personTransactions.computeIfAbsent(t.name, k -> new ArrayList<>()).add(t);
+    }
+
+    List<String> invalid = new ArrayList<>();
+
+    for (Transaction t1 : allTransactions) {
+        if (t1.amount > 1000) {
+            invalid.add(transactions[t1.index]);
+            continue;
+        }
+
+        boolean isInvalid = false;
+        for (Transaction t2 : personTransactions.get(t1.name)) {
+            if (Math.abs(t1.time - t2.time) <= 60 && !t1.city.equals(t2.city)) {
+                isInvalid = true;
+                break;
+            }
+        }
+
+        if (isInvalid) {
+            invalid.add(transactions[t1.index]);
+        }
+    }
+
+    return invalid;
+}
+
+class Transaction {
+    String name;
+    int time;
+    int amount;
+    String city;
+    int index;
+
+    Transaction(String name, int time, int amount, String city, int index) {
+        this.name = name;
+        this.time = time;
+        this.amount = amount;
+        this.city = city;
+        this.index = index;
+    }
+}
+```
+
+
+### 9.4 Time-based Key-Value Store
+
+```java
+class TimeMap {
+    private Map<String, List<TimeValue>> store;
+
+    public TimeMap() {
+        store = new HashMap<>();
+    }
+
+    public void set(String key, String value, int timestamp) {
+        store.computeIfAbsent(key, k -> new ArrayList<>()).add(new TimeValue(timestamp, value));
+    }
+
+    public String get(String key, int timestamp) {
+        if (!store.containsKey(key)) return "";
+
+        List<TimeValue> values = store.get(key);
+        int left = 0, right = values.size() - 1;
+        String result = "";
+
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+
+            if (values.get(mid).timestamp <= timestamp) {
+                result = values.get(mid).value;
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        return result;
+    }
+
+    class TimeValue {
+        int timestamp;
+        String value;
+
+        TimeValue(int timestamp, String value) {
+            this.timestamp = timestamp;
+            this.value = value;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 10: Range Sum \& Query
+
+### 10.1 Range Sum Query with Updates
+
+```java
+class RangeSum {
+    private int[] nums;
+    private int[] tree;
+    private int n;
+
+    public RangeSum(int[] nums) {
+        this.nums = nums.clone();
+        this.n = nums.length;
+        this.tree = new int[n * 2];
+
+        // Build segment tree
+        for (int i = n; i < 2 * n; i++) {
+            tree[i] = nums[i - n];
+        }
+
+        for (int i = n - 1; i > 0; i--) {
+            tree[i] = tree[i * 2] + tree[i * 2 + 1];
+        }
+    }
+
+    public void update(int index, int val) {
+        index += n;
+        tree[index] = val;
+
+        while (index > 0) {
+            tree[index / 2] = tree[index] + tree[index ^ 1];
+            index /= 2;
+        }
+    }
+
+    public int sumRange(int left, int right) {
+        left += n;
+        right += n;
+        int sum = 0;
+
+        while (left <= right) {
+            if (left % 2 == 1) {
+                sum += tree[left];
+                left++;
+            }
+            if (right % 2 == 0) {
+                sum += tree[right];
+                right--;
+            }
+            left /= 2;
+            right /= 2;
+        }
+
+        return sum;
+    }
+}
+```
+
+
+### 10.2 Range Addition
+
+```java
+int[] getModifiedArray(int length, int[][] updates) {
+    int[] result = new int[length];
+
+    for (int[] update : updates) {
+        int start = update[0];
+        int end = update[1];
+        int value = update[2];
+
+        result[start] += value;
+        if (end + 1 < length) {
+            result[end + 1] -= value;
+        }
+    }
+
+    // Convert to actual values
+    for (int i = 1; i < length; i++) {
+        result[i] += result[i - 1];
+    }
+
+    return result;
+}
+```
+
+
+### 10.3 My Calendar
+
+```java
+class MyCalendar {
+    private List<int[]> bookings;
+
+    public MyCalendar() {
+        bookings = new ArrayList<>();
+    }
+
+    public boolean book(int start, int end) {
+        for (int[] booking : bookings) {
+            if (start < booking[1] && end > booking[0]) {
+                return false; // Overlap found
+            }
+        }
+
+        bookings.add(new int[]{start, end});
+        return true;
+    }
+}
+```
+
+
+### 10.4 My Calendar II (Double Booking)
+
+```java
+class MyCalendarTwo {
+    private List<int[]> bookings;
+    private List<int[]> overlaps;
+
+    public MyCalendarTwo() {
+        bookings = new ArrayList<>();
+        overlaps = new ArrayList<>();
+    }
+
+    public boolean book(int start, int end) {
+        // Check if it conflicts with existing overlaps
+        for (int[] overlap : overlaps) {
+            if (start < overlap[1] && end > overlap[0]) {
+                return false; // Triple booking
+            }
+        }
+
+        // Add new overlaps
+        for (int[] booking : bookings) {
+            if (start < booking[1] && end > booking[0]) {
+                overlaps.add(new int[]{Math.max(start, booking[0]), Math.min(end, booking[1])});
+            }
+        }
+
+        bookings.add(new int[]{start, end});
+        return true;
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Calendar Problems
+
+### 11.1 My Calendar III
+
+```java
+class MyCalendarThree {
+    private Map<Integer, Integer> timeline;
+
+    public MyCalendarThree() {
+        timeline = new TreeMap<>();
+    }
+
+    public int book(int start, int end) {
+        timeline.put(start, timeline.getOrDefault(start, 0) + 1);
+        timeline.put(end, timeline.getOrDefault(end, 0) - 1);
+
+        int maxBookings = 0;
+        int currentBookings = 0;
+
+        for (int count : timeline.values()) {
+            currentBookings += count;
+            maxBookings = Math.max(maxBookings, currentBookings);
+        }
+
+        return maxBookings;
+    }
+}
+```
+
+
+### 11.2 Event Availability
+
+```java
+boolean isAvailable(List<int[]> events, int[] newEvent) {
+    for (int[] event : events) {
+        if (newEvent[0] < event[1] && newEvent[1] > event[0]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+List<int[]> findAvailableSlots(List<int[]> busyTimes, int[] workingHours, int duration) {
+    List<int[]> merged = mergeIntervals(busyTimes);
+    List<int[]> available = new ArrayList<>();
+
+    int start = workingHours[0];
+
+    for (int[] busy : merged) {
+        if (start + duration <= busy[0]) {
+            available.add(new int[]{start, busy[0]});
+        }
+        start = Math.max(start, busy[1]);
+    }
+
+    if (start + duration <= workingHours[1]) {
+        available.add(new int[]{start, workingHours[1]});
+    }
+
+    return available;
+}
+
+List<int[]> mergeIntervals(List<int[]> intervals) {
+    if (intervals.isEmpty()) return new ArrayList<>();
+
+    intervals.sort((a, b) -> a[0] - b[0]);
+
+    List<int[]> merged = new ArrayList<>();
+    int[] current = intervals.get(0);
+
+    for (int i = 1; i < intervals.size(); i++) {
+        int[] next = intervals.get(i);
+
+        if (current[1] >= next[0]) {
+            current[1] = Math.max(current[1], next[1]);
+        } else {
+            merged.add(current);
+            current = next;
+        }
+    }
+
+    merged.add(current);
+    return merged;
+}
+```
+
+
+### 11.3 Exam Room
+
+```java
+class ExamRoom {
+    private TreeSet<Integer> seats;
+    private int n;
+
+    public ExamRoom(int n) {
+        this.n = n;
+        this.seats = new TreeSet<>();
+    }
+
+    public int seat() {
+        int seatNum = 0;
+
+        if (seats.size() > 0) {
+            int maxDistance = seats.first();
+            Integer prev = null;
+
+            for (Integer seat : seats) {
+                if (prev != null) {
+                    int distance = (seat - prev) / 2;
+                    if (distance > maxDistance) {
+                        maxDistance = distance;
+                        seatNum = prev + distance;
+                    }
+                }
+                prev = seat;
+            }
+
+            if (n - 1 - seats.last() > maxDistance) {
+                seatNum = n - 1;
+            }
+        }
+
+        seats.add(seatNum);
+        return seatNum;
+    }
+
+    public void leave(int p) {
+        seats.remove(p);
+    }
+}
+```
+
+
+### 11.4 Design Hit Counter
+
+```java
+class HitCounter {
+    private Queue<Integer> hits;
+
+    public HitCounter() {
+        hits = new LinkedList<>();
+    }
+
+    public void hit(int timestamp) {
+        hits.offer(timestamp);
+    }
+
+    public int getHits(int timestamp) {
+        while (!hits.isEmpty() && hits.peek() <= timestamp - 300) {
+            hits.poll();
+        }
+        return hits.size();
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Interval Patterns
+
+### 12.1 Skyline Problem
+
+```java
+List<List<Integer>> getSkyline(int[][] buildings) {
+    List<int[]> events = new ArrayList<>();
+
+    for (int[] building : buildings) {
+        events.add(new int[]{building[0], building[2], 0}); // start
+        events.add(new int[]{building[1], building[2], 1}); // end
+    }
+
+    events.sort((a, b) -> {
+        if (a[0] != b[0]) return a[0] - b[0];
+        if (a[2] != b[2]) return a[2] - b[2]; // start before end
+        return a[2] == 0 ? b[1] - a[1] : a[1] - b[1]; // height order
+    });
+
+    List<List<Integer>> result = new ArrayList<>();
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    maxHeap.offer(0);
+
+    for (int[] event : events) {
+        int x = event[0];
+        int height = event[1];
+        int type = event[2];
+
+        if (type == 0) {
+            maxHeap.offer(height);
+        } else {
+            maxHeap.remove(height);
+        }
+
+        int maxHeight = maxHeap.peek();
+
+        if (result.isEmpty() || result.get(result.size() - 1).get(1) != maxHeight) {
+            result.add(Arrays.asList(x, maxHeight));
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 12.2 Falling Squares
+
+```java
+List<Integer> fallingSquares(int[][] positions) {
+    List<Integer> result = new ArrayList<>();
+    List<int[]> intervals = new ArrayList<>();
+
+    for (int[] pos : positions) {
+        int left = pos[0];
+        int size = pos[1];
+        int right = left + size;
+
+        int height = size;
+
+        // Find overlapping intervals and get max height
+        for (int[] interval : intervals) {
+            if (interval[0] < right && left < interval[1]) {
+                height = Math.max(height, interval[2] + size);
+            }
+        }
+
+        intervals.add(new int[]{left, right, height});
+
+        // Update result with current max height
+        int maxHeight = 0;
+        for (int[] interval : intervals) {
+            maxHeight = Math.max(maxHeight, interval[2]);
+        }
+
+        result.add(maxHeight);
+    }
+
+    return result;
+}
+```
+
+
+### 12.3 Rectangle Area II
+
+```java
+int rectangleArea(int[][] rectangles) {
+    final int MOD = 1_000_000_007;
+
+    Set<Integer> xCoords = new HashSet<>();
+    Set<Integer> yCoords = new HashSet<>();
+
+    for (int[] rect : rectangles) {
+        xCoords.add(rect[0]);
+        xCoords.add(rect[2]);
+        yCoords.add(rect[1]);
+        yCoords.add(rect[3]);
+    }
+
+    Integer[] xSorted = xCoords.toArray(new Integer[0]);
+    Integer[] ySorted = yCoords.toArray(new Integer[0]);
+    Arrays.sort(xSorted);
+    Arrays.sort(ySorted);
+
+    Map<Integer, Integer> xIndex = new HashMap<>();
+    Map<Integer, Integer> yIndex = new HashMap<>();
+
+    for (int i = 0; i < xSorted.length; i++) {
+        xIndex.put(xSorted[i], i);
+    }
+
+    for (int i = 0; i < ySorted.length; i++) {
+        yIndex.put(ySorted[i], i);
+    }
+
+    boolean[][] grid = new boolean[xSorted.length][ySorted.length];
+
+    for (int[] rect : rectangles) {
+        int x1 = xIndex.get(rect[0]);
+        int y1 = yIndex.get(rect[1]);
+        int x2 = xIndex.get(rect[2]);
+        int y2 = yIndex.get(rect[3]);
+
+        for (int i = x1; i < x2; i++) {
+            for (int j = y1; j < y2; j++) {
+                grid[i][j] = true;
+            }
+        }
+    }
+
+    long area = 0;
+
+    for (int i = 0; i < xSorted.length - 1; i++) {
+        for (int j = 0; j < ySorted.length - 1; j++) {
+            if (grid[i][j]) {
+                area += (long)(xSorted[i + 1] - xSorted[i]) * (ySorted[j + 1] - ySorted[j]);
+                area %= MOD;
+            }
+        }
+    }
+
+    return (int) area;
+}
+```
+
+
+### 12.4 Data Stream as Disjoint Intervals
+
+```java
+class SummaryRanges {
+    private TreeMap<Integer, Integer> intervals;
+
+    public SummaryRanges() {
+        intervals = new TreeMap<>();
+    }
+
+    public void addNum(int value) {
+        Integer start = intervals.floorKey(value);
+        Integer end = intervals.ceilingKey(value);
+
+        if ((start != null && intervals.get(start) >= value) ||
+            (end != null && end == value)) {
+            return; // Already covered
+        }
+
+        int newStart = value;
+        int newEnd = value;
+
+        if (start != null && intervals.get(start) == value - 1) {
+            newStart = start;
+            intervals.remove(start);
+        }
+
+        if (end != null && end == value + 1) {
+            newEnd = intervals.get(end);
+            intervals.remove(end);
+        }
+
+        intervals.put(newStart, newEnd);
+    }
+
+    public int[][] getIntervals() {
+        return intervals.entrySet().stream()
+            .map(entry -> new int[]{entry.getKey(), entry.getValue()})
+            .toArray(int[][]::new);
+    }
+}
+```
+
+
+***
+
+## Time Complexity Reference
+
+| Pattern | Best Case | Average Case | Worst Case | Space |
+| :-- | :-- | :-- | :-- | :-- |
+| Merge Intervals | O(n log n) | O(n log n) | O(n log n) | O(1) |
+| Insert Interval | O(n) | O(n) | O(n) | O(1) |
+| Intersection | O(m + n) | O(m + n) | O(m + n) | O(1) |
+| Line Sweep | O(n log n) | O(n log n) | O(n log n) | O(n) |
+| Meeting Rooms II | O(n log n) | O(n log n) | O(n log n) | O(n) |
+| Point Coverage | O(n) | O(n) | O(n²) | O(1) |
+
+## Common Interval Patterns Summary
+
+1. **Merge Intervals**: Sort by start time, then merge overlapping intervals[2][3]
+2. **Insert Interval**: Handle three cases - before, overlapping, after[4]
+3. **Line Sweep**: Process events in chronological order with active set[5][6]
+4. **Meeting Rooms**: Use priority queue to track end times[7]
+5. **Intersection**: Two-pointer technique on sorted intervals[8]
+6. **Non-Overlapping**: Greedy approach sorting by end time[9]
+7. **Scheduling**: Dynamic programming with interval constraints[10]
+8. **Calendar Problems**: Maintain sorted intervals for conflict detection[11]

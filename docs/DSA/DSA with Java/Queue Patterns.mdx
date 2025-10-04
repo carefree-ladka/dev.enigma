@@ -1,0 +1,2001 @@
+# Queue
+
+## Table of Contents
+
+1. [Queue Fundamentals](#queue-fundamentals)
+2. [Pattern 1: Basic Queue Operations](#pattern-1-basic-queue-operations)
+3. [Pattern 2: BFS \& Level Order Traversal](#pattern-2-bfs--level-order-traversal)
+4. [Pattern 3: Sliding Window with Queue](#pattern-3-sliding-window-with-queue)
+5. [Pattern 4: Monotonic Queue/Deque](#pattern-4-monotonic-queuedeque)
+6. [Pattern 5: Priority Queue Patterns](#pattern-5-priority-queue-patterns)
+7. [Pattern 6: Circular Queue \& Design](#pattern-6-circular-queue--design)
+8. [Pattern 7: Multi-level BFS](#pattern-7-multi-level-bfs)
+9. [Pattern 8: Queue-based Simulation](#pattern-8-queue-based-simulation)
+10. [Pattern 9: Queue for Tree Problems](#pattern-9-queue-for-tree-problems)
+11. [Pattern 10: Advanced Queue Applications](#pattern-10-advanced-queue-applications)
+12. [Pattern 11: Concurrent Queue Patterns](#pattern-11-concurrent-queue-patterns)
+13. [Pattern 12: Complex Queue Problems](#pattern-12-complex-queue-problems)
+
+***
+
+## Queue Fundamentals
+
+### Core Queue Implementation
+
+```java
+// Basic Queue Interface
+interface Queue<T> {
+    void enqueue(T item);
+    T dequeue();
+    T front();
+    boolean isEmpty();
+    int size();
+}
+
+// Array-based Queue Implementation
+class ArrayQueue<T> implements Queue<T> {
+    private T[] queue;
+    private int front;
+    private int rear;
+    private int size;
+    private int capacity;
+
+    @SuppressWarnings("unchecked")
+    public ArrayQueue(int capacity) {
+        this.capacity = capacity;
+        this.queue = (T[]) new Object[capacity];
+        this.front = 0;
+        this.rear = -1;
+        this.size = 0;
+    }
+
+    @Override
+    public void enqueue(T item) {
+        if (size >= capacity) {
+            throw new IllegalStateException("Queue is full");
+        }
+        rear = (rear + 1) % capacity;
+        queue[rear] = item;
+        size++;
+    }
+
+    @Override
+    public T dequeue() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Queue is empty");
+        }
+        T item = queue[front];
+        queue[front] = null; // Help GC
+        front = (front + 1) % capacity;
+        size--;
+        return item;
+    }
+
+    @Override
+    public T front() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Queue is empty");
+        }
+        return queue[front];
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    @Override
+    public int size() {
+        return size;
+    }
+}
+
+// LinkedList-based Queue Implementation
+class LinkedQueue<T> implements Queue<T> {
+    private Node<T> front;
+    private Node<T> rear;
+    private int size;
+
+    private static class Node<T> {
+        T data;
+        Node<T> next;
+
+        Node(T data) {
+            this.data = data;
+        }
+    }
+
+    @Override
+    public void enqueue(T item) {
+        Node<T> newNode = new Node<>(item);
+
+        if (rear == null) {
+            front = rear = newNode;
+        } else {
+            rear.next = newNode;
+            rear = newNode;
+        }
+        size++;
+    }
+
+    @Override
+    public T dequeue() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Queue is empty");
+        }
+
+        T data = front.data;
+        front = front.next;
+
+        if (front == null) {
+            rear = null;
+        }
+
+        size--;
+        return data;
+    }
+
+    @Override
+    public T front() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("Queue is empty");
+        }
+        return front.data;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return front == null;
+    }
+
+    @Override
+    public int size() {
+        return size;
+    }
+}
+
+// Deque (Double-ended queue) Implementation [web:180]
+class ArrayDeque<T> {
+    private T[] deque;
+    private int front;
+    private int rear;
+    private int size;
+    private int capacity;
+
+    @SuppressWarnings("unchecked")
+    public ArrayDeque(int capacity) {
+        this.capacity = capacity;
+        this.deque = (T[]) new Object[capacity];
+        this.front = 0;
+        this.rear = 0;
+        this.size = 0;
+    }
+
+    public void addFirst(T item) {
+        if (size >= capacity) throw new IllegalStateException("Deque is full");
+
+        front = (front - 1 + capacity) % capacity;
+        deque[front] = item;
+        size++;
+    }
+
+    public void addLast(T item) {
+        if (size >= capacity) throw new IllegalStateException("Deque is full");
+
+        deque[rear] = item;
+        rear = (rear + 1) % capacity;
+        size++;
+    }
+
+    public T removeFirst() {
+        if (isEmpty()) throw new NoSuchElementException("Deque is empty");
+
+        T item = deque[front];
+        deque[front] = null;
+        front = (front + 1) % capacity;
+        size--;
+        return item;
+    }
+
+    public T removeLast() {
+        if (isEmpty()) throw new NoSuchElementException("Deque is empty");
+
+        rear = (rear - 1 + capacity) % capacity;
+        T item = deque[rear];
+        deque[rear] = null;
+        size--;
+        return item;
+    }
+
+    public T peekFirst() {
+        if (isEmpty()) throw new NoSuchElementException("Deque is empty");
+        return deque[front];
+    }
+
+    public T peekLast() {
+        if (isEmpty()) throw new NoSuchElementException("Deque is empty");
+        return deque[(rear - 1 + capacity) % capacity];
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public int size() {
+        return size;
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Basic Queue Operations
+
+### 1.1 Queue Using Stacks
+
+```java
+// Implement Queue using Two Stacks
+class MyQueue {
+    private Stack<Integer> stackNewest; // For enqueue
+    private Stack<Integer> stackOldest; // For dequeue
+
+    public MyQueue() {
+        stackNewest = new Stack<>();
+        stackOldest = new Stack<>();
+    }
+
+    public void push(int x) {
+        stackNewest.push(x);
+    }
+
+    public int pop() {
+        shiftStacks();
+        return stackOldest.pop();
+    }
+
+    public int peek() {
+        shiftStacks();
+        return stackOldest.peek();
+    }
+
+    public boolean empty() {
+        return stackNewest.isEmpty() && stackOldest.isEmpty();
+    }
+
+    private void shiftStacks() {
+        if (stackOldest.isEmpty()) {
+            while (!stackNewest.isEmpty()) {
+                stackOldest.push(stackNewest.pop());
+            }
+        }
+    }
+}
+
+// Implement Queue using Single Stack (Recursive)
+class MyQueueRecursive {
+    private Stack<Integer> stack;
+
+    public MyQueueRecursive() {
+        stack = new Stack<>();
+    }
+
+    public void push(int x) {
+        stack.push(x);
+    }
+
+    public int pop() {
+        if (stack.size() == 1) {
+            return stack.pop();
+        }
+
+        int item = stack.pop();
+        int result = pop(); // Recursive call
+        stack.push(item);
+        return result;
+    }
+
+    public int peek() {
+        if (stack.size() == 1) {
+            return stack.peek();
+        }
+
+        int item = stack.pop();
+        int result = peek(); // Recursive call
+        stack.push(item);
+        return result;
+    }
+
+    public boolean empty() {
+        return stack.isEmpty();
+    }
+}
+```
+
+
+### 1.2 Stack Using Queues
+
+```java
+// Implement Stack using Two Queues
+class MyStack {
+    private Queue<Integer> queue1;
+    private Queue<Integer> queue2;
+
+    public MyStack() {
+        queue1 = new LinkedList<>();
+        queue2 = new LinkedList<>();
+    }
+
+    public void push(int x) {
+        queue2.offer(x);
+
+        // Move all elements from queue1 to queue2
+        while (!queue1.isEmpty()) {
+            queue2.offer(queue1.poll());
+        }
+
+        // Swap references
+        Queue<Integer> temp = queue1;
+        queue1 = queue2;
+        queue2 = temp;
+    }
+
+    public int pop() {
+        return queue1.poll();
+    }
+
+    public int top() {
+        return queue1.peek();
+    }
+
+    public boolean empty() {
+        return queue1.isEmpty();
+    }
+}
+
+// Implement Stack using Single Queue
+class MyStackSingleQueue {
+    private Queue<Integer> queue;
+
+    public MyStackSingleQueue() {
+        queue = new LinkedList<>();
+    }
+
+    public void push(int x) {
+        int size = queue.size();
+        queue.offer(x);
+
+        // Rotate the queue to bring the new element to front
+        for (int i = 0; i < size; i++) {
+            queue.offer(queue.poll());
+        }
+    }
+
+    public int pop() {
+        return queue.poll();
+    }
+
+    public int top() {
+        return queue.peek();
+    }
+
+    public boolean empty() {
+        return queue.isEmpty();
+    }
+}
+```
+
+
+### 1.3 Reverse Queue
+
+```java
+// Reverse Queue using Stack
+public void reverseQueue(Queue<Integer> queue) {
+    Stack<Integer> stack = new Stack<>();
+
+    // Move all elements to stack
+    while (!queue.isEmpty()) {
+        stack.push(queue.poll());
+    }
+
+    // Move all elements back to queue
+    while (!stack.isEmpty()) {
+        queue.offer(stack.pop());
+    }
+}
+
+// Reverse Queue using Recursion
+public void reverseQueueRecursive(Queue<Integer> queue) {
+    if (queue.isEmpty()) return;
+
+    int item = queue.poll();
+    reverseQueueRecursive(queue);
+    queue.offer(item);
+}
+
+// Reverse First K Elements of Queue
+public void reverseFirstK(Queue<Integer> queue, int k) {
+    if (k <= 0 || k > queue.size()) return;
+
+    Stack<Integer> stack = new Stack<>();
+
+    // Move first k elements to stack
+    for (int i = 0; i < k; i++) {
+        stack.push(queue.poll());
+    }
+
+    // Move remaining elements to temporary queue
+    Queue<Integer> temp = new LinkedList<>();
+    while (!queue.isEmpty()) {
+        temp.offer(queue.poll());
+    }
+
+    // Move elements back from stack to queue (reversed)
+    while (!stack.isEmpty()) {
+        queue.offer(stack.pop());
+    }
+
+    // Move remaining elements back
+    while (!temp.isEmpty()) {
+        queue.offer(temp.poll());
+    }
+}
+```
+
+
+***
+
+## Pattern 2: BFS \& Level Order Traversal
+
+### 2.1 Binary Tree Level Order Traversal
+
+```java
+// Basic Level Order Traversal
+public List<List<Integer>> levelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+            currentLevel.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        result.add(currentLevel);
+    }
+
+    return result;
+}
+
+// Zigzag Level Order Traversal
+public List<List<Integer>> zigzagLevelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+    boolean leftToRight = true;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+
+            if (leftToRight) {
+                currentLevel.add(node.val);
+            } else {
+                currentLevel.add(0, node.val); // Add at beginning
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        result.add(currentLevel);
+        leftToRight = !leftToRight;
+    }
+
+    return result;
+}
+
+// Level Order Bottom-Up
+public List<List<Integer>> levelOrderBottom(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            TreeNode node = queue.poll();
+            currentLevel.add(node.val);
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+
+        result.add(0, currentLevel); // Add at beginning
+    }
+
+    return result;
+}
+```
+
+
+### 2.2 Graph BFS Traversal
+
+```java
+// Basic Graph BFS
+public void bfs(List<List<Integer>> graph, int start) {
+    boolean[] visited = new boolean[graph.size()];
+    Queue<Integer> queue = new LinkedList<>();
+
+    visited[start] = true;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+        System.out.print(node + " ");
+
+        for (int neighbor : graph.get(node)) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                queue.offer(neighbor);
+            }
+        }
+    }
+}
+
+// BFS with Distance Tracking
+public int[] bfsDistance(List<List<Integer>> graph, int start) {
+    int n = graph.size();
+    int[] distance = new int[n];
+    Arrays.fill(distance, -1);
+
+    Queue<Integer> queue = new LinkedList<>();
+    distance[start] = 0;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+
+        for (int neighbor : graph.get(node)) {
+            if (distance[neighbor] == -1) {
+                distance[neighbor] = distance[node] + 1;
+                queue.offer(neighbor);
+            }
+        }
+    }
+
+    return distance;
+}
+
+// BFS Shortest Path with Path Reconstruction
+public List<Integer> bfsShortestPath(List<List<Integer>> graph, int start, int end) {
+    int n = graph.size();
+    int[] parent = new int[n];
+    boolean[] visited = new boolean[n];
+    Arrays.fill(parent, -1);
+
+    Queue<Integer> queue = new LinkedList<>();
+    visited[start] = true;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+
+        if (node == end) break;
+
+        for (int neighbor : graph.get(node)) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                parent[neighbor] = node;
+                queue.offer(neighbor);
+            }
+        }
+    }
+
+    // Reconstruct path
+    List<Integer> path = new ArrayList<>();
+    if (!visited[end]) return path; // No path found
+
+    for (int at = end; at != -1; at = parent[at]) {
+        path.add(at);
+    }
+
+    Collections.reverse(path);
+    return path;
+}
+```
+
+
+### 2.3 Grid BFS Problems
+
+```java
+// Shortest Path in Binary Matrix
+public int shortestPathBinaryMatrix(int[][] grid) {
+    int n = grid.length;
+    if (grid[0][0] != 0 || grid[n-1][n-1] != 0) return -1;
+
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[n][n];
+    int[][] directions = {{-1,-1}, {-1,0}, {-1,1}, {0,-1}, {0,1}, {1,-1}, {1,0}, {1,1}};
+
+    queue.offer(new int[]{0, 0, 1}); // row, col, distance
+    visited[0][0] = true;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1], dist = current[2];
+
+        if (row == n-1 && col == n-1) return dist;
+
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (newRow >= 0 && newRow < n && newCol >= 0 && newCol < n &&
+                grid[newRow][newCol] == 0 && !visited[newRow][newCol]) {
+
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol, dist + 1});
+            }
+        }
+    }
+
+    return -1;
+}
+
+// Rotting Oranges
+public int orangesRotting(int[][] grid) {
+    Queue<int[]> queue = new LinkedList<>();
+    int freshCount = 0;
+
+    // Find all rotten oranges and count fresh ones
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 2) {
+                queue.offer(new int[]{i, j});
+            } else if (grid[i][j] == 1) {
+                freshCount++;
+            }
+        }
+    }
+
+    if (freshCount == 0) return 0; // No fresh oranges
+
+    int[][] directions = {{-1,0}, {1,0}, {0,-1}, {0,1}};
+    int minutes = 0;
+
+    while (!queue.isEmpty() && freshCount > 0) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            int[] current = queue.poll();
+            int row = current[0], col = current[1];
+
+            for (int[] dir : directions) {
+                int newRow = row + dir[0];
+                int newCol = col + dir[1];
+
+                if (newRow >= 0 && newRow < grid.length &&
+                    newCol >= 0 && newCol < grid[0].length &&
+                    grid[newRow][newCol] == 1) {
+
+                    grid[newRow][newCol] = 2; // Rot the orange
+                    freshCount--;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+
+        minutes++;
+    }
+
+    return freshCount == 0 ? minutes : -1;
+}
+```
+
+
+***
+
+## Pattern 3: Sliding Window with Queue
+
+### 3.1 Moving Average
+
+```java
+// Moving Average from Data Stream
+class MovingAverage {
+    private Queue<Integer> queue;
+    private int size;
+    private double sum;
+
+    public MovingAverage(int size) {
+        this.queue = new LinkedList<>();
+        this.size = size;
+        this.sum = 0;
+    }
+
+    public double next(int val) {
+        queue.offer(val);
+        sum += val;
+
+        if (queue.size() > size) {
+            sum -= queue.poll();
+        }
+
+        return sum / queue.size();
+    }
+}
+
+// Sliding Window Average for Array
+public double[] slidingWindowAverage(int[] nums, int k) {
+    double[] result = new double[nums.length - k + 1];
+    Queue<Integer> queue = new LinkedList<>();
+    double sum = 0;
+
+    for (int i = 0; i < nums.length; i++) {
+        queue.offer(nums[i]);
+        sum += nums[i];
+
+        if (queue.size() > k) {
+            sum -= queue.poll();
+        }
+
+        if (queue.size() == k) {
+            result[i - k + 1] = sum / k;
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 3.2 First Unique Character in Stream
+
+```java
+// First Unique Character in Data Stream
+class FirstUnique {
+    private Queue<Integer> queue;
+    private Map<Integer, Integer> count;
+
+    public FirstUnique(int[] nums) {
+        queue = new LinkedList<>();
+        count = new HashMap<>();
+
+        for (int num : nums) {
+            add(num);
+        }
+    }
+
+    public int showFirstUnique() {
+        // Remove non-unique elements from front
+        while (!queue.isEmpty() && count.get(queue.peek()) > 1) {
+            queue.poll();
+        }
+
+        return queue.isEmpty() ? -1 : queue.peek();
+    }
+
+    public void add(int value) {
+        count.put(value, count.getOrDefault(value, 0) + 1);
+
+        if (count.get(value) == 1) {
+            queue.offer(value);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Monotonic Queue/Deque
+
+### 4.1 Sliding Window Maximum
+
+```java
+// Sliding Window Maximum using Monotonic Deque
+public int[] maxSlidingWindow(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>(); // Store indices
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside current window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k + 1) {
+            deque.pollFirst();
+        }
+
+        // Remove smaller elements from rear (maintain decreasing order)
+        while (!deque.isEmpty() && nums[deque.peekLast()] < nums[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        // Add to result when window is complete
+        if (i >= k - 1) {
+            result[i - k + 1] = nums[deque.peekFirst()];
+        }
+    }
+
+    return result;
+}
+
+// Generic Monotonic Deque Template
+public int[] monotonicDequeTemplate(int[] nums, int k, boolean findMax, boolean decreasing) {
+    Deque<Integer> deque = new ArrayDeque<>();
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k + 1) {
+            deque.pollFirst();
+        }
+
+        // Maintain monotonic property
+        while (!deque.isEmpty() && shouldRemove(nums, deque.peekLast(), i, decreasing)) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        if (i >= k - 1) {
+            result[i - k + 1] = nums[findMax ? deque.peekFirst() : deque.peekLast()];
+        }
+    }
+
+    return result;
+}
+
+private boolean shouldRemove(int[] nums, int lastIndex, int currentIndex, boolean decreasing) {
+    if (decreasing) {
+        return nums[lastIndex] < nums[currentIndex]; // For max window
+    } else {
+        return nums[lastIndex] > nums[currentIndex]; // For min window
+    }
+}
+```
+
+
+### 4.2 Sliding Window Minimum
+
+```java
+// Sliding Window Minimum using Monotonic Deque
+public int[] minSlidingWindow(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>(); // Store indices
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside current window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k + 1) {
+            deque.pollFirst();
+        }
+
+        // Remove larger elements from rear (maintain increasing order)
+        while (!deque.isEmpty() && nums[deque.peekLast()] > nums[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        if (i >= k - 1) {
+            result[i - k + 1] = nums[deque.peekFirst()];
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 4.3 Constrained Subsequence Sum
+
+```java
+// Constrained Subsequence Sum
+public int constrainedSubsetSum(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>(); // Monotonic decreasing deque
+    int[] dp = new int[nums.length];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window [i-k, i-1]
+        while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+            deque.pollFirst();
+        }
+
+        // Calculate dp[i]
+        dp[i] = nums[i];
+        if (!deque.isEmpty()) {
+            dp[i] = Math.max(dp[i], nums[i] + dp[deque.peekFirst()]);
+        }
+
+        // Maintain monotonic decreasing property
+        while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+            deque.pollLast();
+        }
+
+        // Only add positive dp values to deque
+        if (dp[i] > 0) {
+            deque.offerLast(i);
+        }
+    }
+
+    return Arrays.stream(dp).max().orElse(0);
+}
+```
+
+
+### 4.4 Shortest Subarray with Sum at Least K
+
+```java
+// Shortest Subarray with Sum at Least K
+public int shortestSubarray(int[] nums, int k) {
+    int n = nums.length;
+    long[] prefixSum = new long[n + 1];
+
+    // Calculate prefix sums
+    for (int i = 0; i < n; i++) {
+        prefixSum[i + 1] = prefixSum[i] + nums[i];
+    }
+
+    Deque<Integer> deque = new ArrayDeque<>(); // Monotonic increasing deque
+    int minLength = Integer.MAX_VALUE;
+
+    for (int i = 0; i <= n; i++) {
+        // Check if we can form a valid subarray
+        while (!deque.isEmpty() && prefixSum[i] - prefixSum[deque.peekFirst()] >= k) {
+            minLength = Math.min(minLength, i - deque.pollFirst());
+        }
+
+        // Maintain monotonic increasing property
+        while (!deque.isEmpty() && prefixSum[deque.peekLast()] >= prefixSum[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+    }
+
+    return minLength == Integer.MAX_VALUE ? -1 : minLength;
+}
+```
+
+
+### 4.5 Jump Game VI
+
+```java
+// Jump Game VI
+public int maxResult(int[] nums, int k) {
+    int n = nums.length;
+    Deque<Integer> deque = new ArrayDeque<>(); // Monotonic decreasing deque
+    int[] dp = new int[n];
+
+    dp[0] = nums[0];
+    deque.offerLast(0);
+
+    for (int i = 1; i < n; i++) {
+        // Remove elements outside jump range
+        while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+            deque.pollFirst();
+        }
+
+        // Calculate maximum score for current position
+        dp[i] = nums[i] + dp[deque.peekFirst()];
+
+        // Maintain monotonic decreasing property
+        while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+    }
+
+    return dp[n - 1];
+}
+```
+
+
+***
+
+## Pattern 5: Priority Queue Patterns
+
+### 5.1 K Closest Points to Origin
+
+```java
+// K Closest Points to Origin
+public int[][] kClosest(int[][] points, int k) {
+    PriorityQueue<int[]> maxHeap = new PriorityQueue<>((a, b) ->
+        Integer.compare(distanceSquared(b), distanceSquared(a)));
+
+    for (int[] point : points) {
+        maxHeap.offer(point);
+
+        if (maxHeap.size() > k) {
+            maxHeap.poll();
+        }
+    }
+
+    int[][] result = new int[k][2];
+    for (int i = 0; i < k; i++) {
+        result[i] = maxHeap.poll();
+    }
+
+    return result;
+}
+
+private int distanceSquared(int[] point) {
+    return point[0] * point[0] + point[1] * point[1];
+}
+```
+
+
+### 5.2 Top K Frequent Elements
+
+```java
+// Top K Frequent Elements
+public int[] topKFrequent(int[] nums, int k) {
+    Map<Integer, Integer> count = new HashMap<>();
+    for (int num : nums) {
+        count.put(num, count.getOrDefault(num, 0) + 1);
+    }
+
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>((a, b) ->
+        Integer.compare(count.get(a), count.get(b)));
+
+    for (int num : count.keySet()) {
+        minHeap.offer(num);
+        if (minHeap.size() > k) {
+            minHeap.poll();
+        }
+    }
+
+    int[] result = new int[k];
+    for (int i = k - 1; i >= 0; i--) {
+        result[i] = minHeap.poll();
+    }
+
+    return result;
+}
+```
+
+
+### 5.3 Merge K Sorted Lists
+
+```java
+// Merge K Sorted Lists
+public ListNode mergeKLists(ListNode[] lists) {
+    if (lists == null || lists.length == 0) return null;
+
+    PriorityQueue<ListNode> minHeap = new PriorityQueue<>((a, b) ->
+        Integer.compare(a.val, b.val));
+
+    // Add all non-null heads to heap
+    for (ListNode head : lists) {
+        if (head != null) {
+            minHeap.offer(head);
+        }
+    }
+
+    ListNode dummy = new ListNode(0);
+    ListNode current = dummy;
+
+    while (!minHeap.isEmpty()) {
+        ListNode node = minHeap.poll();
+        current.next = node;
+        current = current.next;
+
+        if (node.next != null) {
+            minHeap.offer(node.next);
+        }
+    }
+
+    return dummy.next;
+}
+
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode() {}
+    ListNode(int val) { this.val = val; }
+    ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+```
+
+
+***
+
+## Pattern 6: Circular Queue \& Design
+
+### 6.1 Design Circular Queue
+
+```java
+// Design Circular Queue
+class MyCircularQueue {
+    private int[] queue;
+    private int front;
+    private int rear;
+    private int size;
+    private int capacity;
+
+    public MyCircularQueue(int k) {
+        this.capacity = k;
+        this.queue = new int[k];
+        this.front = 0;
+        this.rear = -1;
+        this.size = 0;
+    }
+
+    public boolean enQueue(int value) {
+        if (isFull()) return false;
+
+        rear = (rear + 1) % capacity;
+        queue[rear] = value;
+        size++;
+        return true;
+    }
+
+    public boolean deQueue() {
+        if (isEmpty()) return false;
+
+        front = (front + 1) % capacity;
+        size--;
+        return true;
+    }
+
+    public int Front() {
+        return isEmpty() ? -1 : queue[front];
+    }
+
+    public int Rear() {
+        return isEmpty() ? -1 : queue[rear];
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public boolean isFull() {
+        return size == capacity;
+    }
+}
+```
+
+
+### 6.2 Design Circular Deque
+
+```java
+// Design Circular Deque
+class MyCircularDeque {
+    private int[] deque;
+    private int front;
+    private int rear;
+    private int size;
+    private int capacity;
+
+    public MyCircularDeque(int k) {
+        this.capacity = k;
+        this.deque = new int[k];
+        this.front = 0;
+        this.rear = k - 1; // rear points to last element
+        this.size = 0;
+    }
+
+    public boolean insertFront(int value) {
+        if (isFull()) return false;
+
+        front = (front - 1 + capacity) % capacity;
+        deque[front] = value;
+        size++;
+        return true;
+    }
+
+    public boolean insertLast(int value) {
+        if (isFull()) return false;
+
+        rear = (rear + 1) % capacity;
+        deque[rear] = value;
+        size++;
+        return true;
+    }
+
+    public boolean deleteFront() {
+        if (isEmpty()) return false;
+
+        front = (front + 1) % capacity;
+        size--;
+        return true;
+    }
+
+    public boolean deleteLast() {
+        if (isEmpty()) return false;
+
+        rear = (rear - 1 + capacity) % capacity;
+        size--;
+        return true;
+    }
+
+    public int getFront() {
+        return isEmpty() ? -1 : deque[front];
+    }
+
+    public int getRear() {
+        return isEmpty() ? -1 : deque[rear];
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public boolean isFull() {
+        return size == capacity;
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Multi-level BFS
+
+### 7.1 Word Ladder
+
+```java
+// Word Ladder
+public int ladderLength(String beginWord, String endWord, List<String> wordList) {
+    Set<String> wordSet = new HashSet<>(wordList);
+    if (!wordSet.contains(endWord)) return 0;
+
+    Queue<String> queue = new LinkedList<>();
+    Set<String> visited = new HashSet<>();
+
+    queue.offer(beginWord);
+    visited.add(beginWord);
+    int level = 1;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            String word = queue.poll();
+
+            if (word.equals(endWord)) return level;
+
+            // Generate all possible next words
+            for (int j = 0; j < word.length(); j++) {
+                char[] chars = word.toCharArray();
+
+                for (char c = 'a'; c <= 'z'; c++) {
+                    chars[j] = c;
+                    String newWord = new String(chars);
+
+                    if (wordSet.contains(newWord) && !visited.contains(newWord)) {
+                        visited.add(newWord);
+                        queue.offer(newWord);
+                    }
+                }
+            }
+        }
+
+        level++;
+    }
+
+    return 0;
+}
+```
+
+
+### 7.2 Open the Lock
+
+```java
+// Open the Lock
+public int openLock(String[] deadends, String target) {
+    Set<String> deadSet = new HashSet<>(Arrays.asList(deadends));
+    if (deadSet.contains("0000")) return -1;
+
+    Queue<String> queue = new LinkedList<>();
+    Set<String> visited = new HashSet<>();
+
+    queue.offer("0000");
+    visited.add("0000");
+    int steps = 0;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            String current = queue.poll();
+
+            if (current.equals(target)) return steps;
+
+            // Generate all possible next states
+            for (int j = 0; j < 4; j++) {
+                String next1 = turnWheel(current, j, 1);
+                String next2 = turnWheel(current, j, -1);
+
+                if (!deadSet.contains(next1) && !visited.contains(next1)) {
+                    visited.add(next1);
+                    queue.offer(next1);
+                }
+
+                if (!deadSet.contains(next2) && !visited.contains(next2)) {
+                    visited.add(next2);
+                    queue.offer(next2);
+                }
+            }
+        }
+
+        steps++;
+    }
+
+    return -1;
+}
+
+private String turnWheel(String combination, int pos, int direction) {
+    char[] chars = combination.toCharArray();
+    int digit = chars[pos] - '0';
+
+    if (direction == 1) {
+        digit = (digit + 1) % 10;
+    } else {
+        digit = (digit - 1 + 10) % 10;
+    }
+
+    chars[pos] = (char) ('0' + digit);
+    return new String(chars);
+}
+```
+
+
+***
+
+## Pattern 8: Queue-based Simulation
+
+### 8.1 Design Hit Counter
+
+```java
+// Design Hit Counter
+class HitCounter {
+    private Queue<Integer> hits;
+
+    public HitCounter() {
+        hits = new LinkedList<>();
+    }
+
+    public void hit(int timestamp) {
+        hits.offer(timestamp);
+    }
+
+    public int getHits(int timestamp) {
+        // Remove hits older than 300 seconds
+        while (!hits.isEmpty() && hits.peek() <= timestamp - 300) {
+            hits.poll();
+        }
+
+        return hits.size();
+    }
+}
+
+// Optimized Hit Counter using Buckets
+class HitCounterOptimized {
+    private int[] times;
+    private int[] hits;
+
+    public HitCounterOptimized() {
+        times = new int[300];
+        hits = new int[300];
+    }
+
+    public void hit(int timestamp) {
+        int index = timestamp % 300;
+        if (times[index] != timestamp) {
+            times[index] = timestamp;
+            hits[index] = 1;
+        } else {
+            hits[index]++;
+        }
+    }
+
+    public int getHits(int timestamp) {
+        int total = 0;
+        for (int i = 0; i < 300; i++) {
+            if (timestamp - times[i] < 300) {
+                total += hits[i];
+            }
+        }
+        return total;
+    }
+}
+```
+
+
+### 8.2 Design Snake Game
+
+```java
+// Design Snake Game
+class SnakeGame {
+    private int width;
+    private int height;
+    private int[][] food;
+    private int foodIndex;
+    private Set<String> snakeSet;
+    private Deque<int[]> snake;
+
+    public SnakeGame(int width, int height, int[][] food) {
+        this.width = width;
+        this.height = height;
+        this.food = food;
+        this.foodIndex = 0;
+        this.snakeSet = new HashSet<>();
+        this.snake = new LinkedList<>();
+
+        // Initialize snake at (0, 0)
+        snake.offerLast(new int[]{0, 0});
+        snakeSet.add("0,0");
+    }
+
+    public int move(String direction) {
+        int[] head = snake.peekFirst();
+        int newRow = head[0];
+        int newCol = head[1];
+
+        // Calculate new head position
+        switch (direction) {
+            case "U": newRow--; break;
+            case "D": newRow++; break;
+            case "L": newCol--; break;
+            case "R": newCol++; break;
+        }
+
+        // Check boundary collision
+        if (newRow < 0 || newRow >= height || newCol < 0 || newCol >= width) {
+            return -1;
+        }
+
+        // Check if eating food
+        boolean ateFood = false;
+        if (foodIndex < food.length &&
+            newRow == food[foodIndex][0] && newCol == food[foodIndex][1]) {
+            ateFood = true;
+            foodIndex++;
+        }
+
+        // Remove tail if not eating food
+        if (!ateFood) {
+            int[] tail = snake.pollLast();
+            snakeSet.remove(tail[0] + "," + tail[1]);
+        }
+
+        // Check self collision
+        if (snakeSet.contains(newRow + "," + newCol)) {
+            return -1;
+        }
+
+        // Add new head
+        snake.offerFirst(new int[]{newRow, newCol});
+        snakeSet.add(newRow + "," + newCol);
+
+        return snake.size() - 1; // Score is length - 1
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Queue for Tree Problems
+
+### 9.1 Populating Next Right Pointers
+
+```java
+// Populating Next Right Pointers in Each Node
+public Node connect(Node root) {
+    if (root == null) return null;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        Node prev = null;
+
+        for (int i = 0; i < size; i++) {
+            Node current = queue.poll();
+
+            if (prev != null) {
+                prev.next = current;
+            }
+            prev = current;
+
+            if (current.left != null) queue.offer(current.left);
+            if (current.right != null) queue.offer(current.right);
+        }
+    }
+
+    return root;
+}
+
+class Node {
+    public int val;
+    public Node left;
+    public Node right;
+    public Node next;
+
+    public Node() {}
+    public Node(int val) { this.val = val; }
+    public Node(int val, Node left, Node right, Node next) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+        this.next = next;
+    }
+}
+```
+
+
+### 9.2 Binary Tree Right Side View
+
+```java
+// Binary Tree Right Side View
+public List<Integer> rightSideView(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            TreeNode node = queue.poll();
+
+            // Add the rightmost node of each level
+            if (i == size - 1) {
+                result.add(node.val);
+            }
+
+            if (node.left != null) queue.offer(node.left);
+            if (node.right != null) queue.offer(node.right);
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 10: Advanced Queue Applications
+
+### 10.1 Shortest Bridge
+
+```java
+// Shortest Bridge
+public int shortestBridge(int[][] grid) {
+    int n = grid.length;
+    Queue<int[]> queue = new LinkedList<>();
+    boolean found = false;
+
+    // Find first island and mark it
+    for (int i = 0; i < n && !found; i++) {
+        for (int j = 0; j < n && !found; j++) {
+            if (grid[i][j] == 1) {
+                dfsMarkIsland(grid, i, j, queue);
+                found = true;
+            }
+        }
+    }
+
+    // BFS to find shortest path to second island
+    int[][] directions = {{-1,0}, {1,0}, {0,-1}, {0,1}};
+    int steps = 0;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            int[] current = queue.poll();
+            int row = current[0], col = current[1];
+
+            for (int[] dir : directions) {
+                int newRow = row + dir[0];
+                int newCol = col + dir[1];
+
+                if (newRow >= 0 && newRow < n && newCol >= 0 && newCol < n) {
+                    if (grid[newRow][newCol] == 1) {
+                        return steps; // Found second island
+                    }
+                    if (grid[newRow][newCol] == 0) {
+                        grid[newRow][newCol] = 2; // Mark as visited
+                        queue.offer(new int[]{newRow, newCol});
+                    }
+                }
+            }
+        }
+
+        steps++;
+    }
+
+    return steps;
+}
+
+private void dfsMarkIsland(int[][] grid, int row, int col, Queue<int[]> queue) {
+    if (row < 0 || row >= grid.length || col < 0 || col >= grid[0].length ||
+        grid[row][col] != 1) {
+        return;
+    }
+
+    grid[row][col] = 2; // Mark as first island
+    queue.offer(new int[]{row, col});
+
+    dfsMarkIsland(grid, row + 1, col, queue);
+    dfsMarkIsland(grid, row - 1, col, queue);
+    dfsMarkIsland(grid, row, col + 1, queue);
+    dfsMarkIsland(grid, row, col - 1, queue);
+}
+```
+
+
+### 10.2 Walls and Gates
+
+```java
+// Walls and Gates
+public void wallsAndGates(int[][] rooms) {
+    Queue<int[]> queue = new LinkedList<>();
+    int[][] directions = {{-1,0}, {1,0}, {0,-1}, {0,1}};
+
+    // Find all gates and add to queue
+    for (int i = 0; i < rooms.length; i++) {
+        for (int j = 0; j < rooms[0].length; j++) {
+            if (rooms[i][j] == 0) {
+                queue.offer(new int[]{i, j});
+            }
+        }
+    }
+
+    // Multi-source BFS
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        for (int[] dir : directions) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (newRow >= 0 && newRow < rooms.length &&
+                newCol >= 0 && newCol < rooms[0].length &&
+                rooms[newRow][newCol] == Integer.MAX_VALUE) {
+
+                rooms[newRow][newCol] = rooms[row][col] + 1;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Concurrent Queue Patterns
+
+### 11.1 Producer-Consumer with BlockingQueue
+
+```java
+// Producer-Consumer Pattern
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+class ProducerConsumerExample {
+    private BlockingQueue<Integer> queue = new LinkedBlockingQueue<>(10);
+
+    class Producer implements Runnable {
+        @Override
+        public void run() {
+            try {
+                for (int i = 0; i < 20; i++) {
+                    queue.put(i); // Blocks if queue is full
+                    System.out.println("Produced: " + i);
+                    Thread.sleep(100);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    class Consumer implements Runnable {
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    Integer item = queue.take(); // Blocks if queue is empty
+                    System.out.println("Consumed: " + item);
+                    Thread.sleep(150);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public void start() {
+        new Thread(new Producer()).start();
+        new Thread(new Consumer()).start();
+    }
+}
+```
+
+
+### 11.2 Rate Limiter with Queue
+
+```java
+// Token Bucket Rate Limiter
+class TokenBucketRateLimiter {
+    private final Queue<Long> tokens;
+    private final int capacity;
+    private final long refillRate; // tokens per second
+    private long lastRefillTime;
+
+    public TokenBucketRateLimiter(int capacity, long refillRate) {
+        this.capacity = capacity;
+        this.refillRate = refillRate;
+        this.tokens = new LinkedList<>();
+        this.lastRefillTime = System.currentTimeMillis();
+
+        // Fill initial tokens
+        for (int i = 0; i < capacity; i++) {
+            tokens.offer(System.currentTimeMillis());
+        }
+    }
+
+    public synchronized boolean tryAcquire() {
+        refillTokens();
+
+        if (!tokens.isEmpty()) {
+            tokens.poll();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void refillTokens() {
+        long now = System.currentTimeMillis();
+        long timeElapsed = now - lastRefillTime;
+        long tokensToAdd = (timeElapsed * refillRate) / 1000;
+
+        for (long i = 0; i < tokensToAdd && tokens.size() < capacity; i++) {
+            tokens.offer(now);
+        }
+
+        lastRefillTime = now;
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Complex Queue Problems
+
+### 12.1 Sliding Window Median
+
+```java
+// Sliding Window Median using Two Priority Queues
+public double[] medianSlidingWindow(int[] nums, int k) {
+    PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+    PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+    double[] result = new double[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Add number
+        if (maxHeap.isEmpty() || nums[i] <= maxHeap.peek()) {
+            maxHeap.offer(nums[i]);
+        } else {
+            minHeap.offer(nums[i]);
+        }
+
+        // Remove number outside window
+        if (i >= k) {
+            int toRemove = nums[i - k];
+            if (toRemove <= maxHeap.peek()) {
+                maxHeap.remove(toRemove);
+            } else {
+                minHeap.remove(toRemove);
+            }
+        }
+
+        // Balance heaps
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.offer(maxHeap.poll());
+        } else if (minHeap.size() > maxHeap.size() + 1) {
+            maxHeap.offer(minHeap.poll());
+        }
+
+        // Calculate median when window is complete
+        if (i >= k - 1) {
+            if (k % 2 == 1) {
+                result[i - k + 1] = maxHeap.size() > minHeap.size() ?
+                    maxHeap.peek() : minHeap.peek();
+            } else {
+                result[i - k + 1] = ((double) maxHeap.peek() + minHeap.peek()) / 2.0;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 12.2 Find Median from Data Stream
+
+```java
+// Find Median from Data Stream
+class MedianFinder {
+    private PriorityQueue<Integer> maxHeap; // Lower half
+    private PriorityQueue<Integer> minHeap; // Upper half
+
+    public MedianFinder() {
+        maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+        minHeap = new PriorityQueue<>();
+    }
+
+    public void addNum(int num) {
+        if (maxHeap.isEmpty() || num <= maxHeap.peek()) {
+            maxHeap.offer(num);
+        } else {
+            minHeap.offer(num);
+        }
+
+        // Balance heaps
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.offer(maxHeap.poll());
+        } else if (minHeap.size() > maxHeap.size() + 1) {
+            maxHeap.offer(minHeap.poll());
+        }
+    }
+
+    public double findMedian() {
+        if (maxHeap.size() == minHeap.size()) {
+            return ((double) maxHeap.peek() + minHeap.peek()) / 2.0;
+        } else {
+            return maxHeap.size() > minHeap.size() ? maxHeap.peek() : minHeap.peek();
+        }
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Pattern | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| Basic Queue Ops | O(1) per operation | O(n) | Enqueue, Dequeue in constant time |
+| BFS Traversal | O(V + E) | O(V) | Visit each vertex/edge once |
+| Level Order | O(n) | O(w) | w = maximum width of tree |
+| Monotonic Deque | O(n) | O(k) | Each element added/removed once |
+| Sliding Window | O(n) | O(k) | k = window size |
+| Priority Queue | O(log n) per operation | O(n) | Heap-based operations |
+| Multi-source BFS | O(V + E) | O(V) | Multiple starting points |
+| Circular Queue | O(1) per operation | O(k) | Fixed size, circular indexing |
+
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Queue Implementation Guidelines
+
+```java
+// Prefer ArrayDeque over LinkedList for better performance
+Deque<Integer> deque = new ArrayDeque<>(); // Faster than LinkedList
+
+// Use appropriate queue type for the use case
+Queue<Integer> queue = new LinkedList<>();     // General purpose
+PriorityQueue<Integer> pq = new PriorityQueue<>(); // Ordered processing
+BlockingQueue<Integer> bq = new LinkedBlockingQueue<>(); // Thread-safe
+
+// Monotonic Deque Template
+public int[] monotonicDequePattern(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>();
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k + 1) {
+            deque.pollFirst();
+        }
+
+        // Maintain monotonic property
+        while (!deque.isEmpty() && shouldRemove(nums, deque.peekLast(), i)) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        if (i >= k - 1) {
+            result[i - k + 1] = nums[deque.peekFirst()];
+        }
+    }
+
+    return result;
+}
+
+boolean shouldRemove(int[] nums, int lastIndex, int currentIndex) {
+    // Implement based on specific problem requirements
+    return nums[lastIndex] < nums[currentIndex]; // For maximum window
+}
+```
+
+
+### Common Optimizations
+
+```java
+// 1. Use indices instead of values for flexibility
+Deque<Integer> indices = new ArrayDeque<>();
+
+// 2. Combine operations when possible
+public void processWindow(int[] nums, int k) {
+    // Process multiple sliding window operations in single pass
+    Deque<Integer> maxDeque = new ArrayDeque<>();
+    Deque<Integer> minDeque = new ArrayDeque<>();
+
+    for (int i = 0; i < nums.length; i++) {
+        // Maintain both max and min windows simultaneously
+        updateMaxWindow(maxDeque, nums, i, k);
+        updateMinWindow(minDeque, nums, i, k);
+
+        if (i >= k - 1) {
+            int max = nums[maxDeque.peekFirst()];
+            int min = nums[minDeque.peekFirst()];
+            // Process both values
+        }
+    }
+}
+
+// 3. Early termination in BFS
+public boolean bfsEarlyTermination(int[][] grid, int target) {
+    Queue<int[]> queue = new LinkedList<>();
+    // ... initialization
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        if (current[0] == target) return true; // Early return
+
+        // Continue BFS...
+    }
+    return false;
+}
+
+void updateMaxWindow(Deque<Integer> deque, int[] nums, int i, int k) { /* Implementation */ }
+void updateMinWindow(Deque<Integer> deque, int[] nums, int i, int k) { /* Implementation */ }
+```
+
+
+### Interview Tips
+
+- **Identify the pattern** early: BFS for shortest path, monotonic deque for sliding window extremes
+- **Choose the right queue type**: ArrayDeque for general use, PriorityQueue for ordered processing
+- **Handle edge cases**: empty queues, single elements, window size edge cases
+- **Consider space optimization**: use indices instead of storing large objects
+- **Think about concurrency**: use BlockingQueue for multi-threaded scenarios

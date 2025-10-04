@@ -1,0 +1,2012 @@
+# Binary Tree Recursion
+
+## Table of Contents
+
+1. [Recursion Fundamentals](#recursion-fundamentals)
+2. [Pattern 1: Basic Traversal Recursions](#pattern-1-basic-traversal-recursions)
+3. [Pattern 2: Tree Property Recursions](#pattern-2-tree-property-recursions)
+4. [Pattern 3: Path-Based Recursions](#pattern-3-path-based-recursions)
+5. [Pattern 4: Value Aggregation Recursions](#pattern-4-value-aggregation-recursions)
+6. [Pattern 5: Tree Transformation Recursions](#pattern-5-tree-transformation-recursions)
+7. [Pattern 6: Tree Construction Recursions](#pattern-6-tree-construction-recursions)
+8. [Pattern 7: Tree Validation Recursions](#pattern-7-tree-validation-recursions)
+9. [Pattern 8: Subtree \& Comparison Recursions](#pattern-8-subtree--comparison-recursions)
+10. [Pattern 9: Advanced Path Recursions](#pattern-9-advanced-path-recursions)
+11. [Pattern 10: Dynamic Programming Recursions](#pattern-10-dynamic-programming-recursions)
+12. [Pattern 11: Multi-Tree Recursions](#pattern-11-multi-tree-recursions)
+13. [Pattern 12: Complex Recursive Problems](#pattern-12-complex-recursive-problems)
+
+***
+
+## Recursion Fundamentals
+
+### Binary Tree Node Definition
+
+```java
+// Standard Binary Tree Node
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// Enhanced Node with Parent Pointer
+class TreeNodeWithParent {
+    int val;
+    TreeNodeWithParent left;
+    TreeNodeWithParent right;
+    TreeNodeWithParent parent;
+
+    TreeNodeWithParent(int val) {
+        this.val = val;
+    }
+}
+```
+
+
+### Core Recursion Templates[2][3]
+
+```java
+class BinaryTreeRecursion {
+
+    // Template 1: Single Tree Recursion (Bottom-Up)
+    public int bottomUpRecursion(TreeNode root) {
+        // Base case
+        if (root == null) return 0;
+
+        // Recursive calls to children
+        int leftResult = bottomUpRecursion(root.left);
+        int rightResult = bottomUpRecursion(root.right);
+
+        // Process current node with children results
+        return processNode(root, leftResult, rightResult);
+    }
+
+    // Template 2: Single Tree Recursion (Top-Down)
+    public void topDownRecursion(TreeNode root, int parentValue) {
+        // Base case
+        if (root == null) return;
+
+        // Process current node with parent information
+        int currentValue = processWithParent(root, parentValue);
+
+        // Recursive calls to children
+        topDownRecursion(root.left, currentValue);
+        topDownRecursion(root.right, currentValue);
+    }
+
+    // Template 3: Path-Based Recursion
+    public void pathRecursion(TreeNode root, List<Integer> path, List<List<Integer>> result) {
+        if (root == null) return;
+
+        // Add current node to path
+        path.add(root.val);
+
+        // Check if leaf node
+        if (root.left == null && root.right == null) {
+            processPath(path, result);
+        } else {
+            // Continue recursion
+            pathRecursion(root.left, path, result);
+            pathRecursion(root.right, path, result);
+        }
+
+        // Backtrack
+        path.remove(path.size() - 1);
+    }
+
+    // Template 4: Two-Tree Recursion
+    public boolean twoTreeRecursion(TreeNode root1, TreeNode root2) {
+        // Base cases
+        if (root1 == null && root2 == null) return true;
+        if (root1 == null || root2 == null) return false;
+
+        // Process current nodes
+        if (!processNodes(root1, root2)) return false;
+
+        // Recursive calls
+        return twoTreeRecursion(root1.left, root2.left) &&
+               twoTreeRecursion(root1.right, root2.right);
+    }
+
+    // Template 5: Recursive with Global State
+    private int globalState;
+
+    public int recursionWithGlobalState(TreeNode root) {
+        globalState = initializeGlobalState();
+        recursionHelper(root);
+        return globalState;
+    }
+
+    private void recursionHelper(TreeNode root) {
+        if (root == null) return;
+
+        updateGlobalState(root);
+
+        recursionHelper(root.left);
+        recursionHelper(root.right);
+    }
+
+    // Helper methods (to be implemented by specific problems)
+    int processNode(TreeNode node, int leftResult, int rightResult) { return 0; }
+    int processWithParent(TreeNode node, int parentValue) { return 0; }
+    void processPath(List<Integer> path, List<List<Integer>> result) {}
+    boolean processNodes(TreeNode node1, TreeNode node2) { return true; }
+    int initializeGlobalState() { return 0; }
+    void updateGlobalState(TreeNode node) {}
+}
+```
+
+
+***
+
+## Pattern 1: Basic Traversal Recursions
+
+### 1.1 Classic Tree Traversals
+
+```java
+// Preorder Traversal (Root -> Left -> Right)
+public List<Integer> preorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    preorderHelper(root, result);
+    return result;
+}
+
+private void preorderHelper(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+
+    result.add(root.val);           // Process root
+    preorderHelper(root.left, result);   // Traverse left
+    preorderHelper(root.right, result);  // Traverse right
+}
+
+// Inorder Traversal (Left -> Root -> Right)
+public List<Integer> inorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    inorderHelper(root, result);
+    return result;
+}
+
+private void inorderHelper(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+
+    inorderHelper(root.left, result);    // Traverse left
+    result.add(root.val);           // Process root
+    inorderHelper(root.right, result);   // Traverse right
+}
+
+// Postorder Traversal (Left -> Right -> Root)
+public List<Integer> postorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    postorderHelper(root, result);
+    return result;
+}
+
+private void postorderHelper(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+
+    postorderHelper(root.left, result);  // Traverse left
+    postorderHelper(root.right, result); // Traverse right
+    result.add(root.val);           // Process root
+}
+
+// Generic Traversal with Function Parameter
+public void genericTraversal(TreeNode root, Consumer<Integer> processor, TraversalOrder order) {
+    if (root == null) return;
+
+    switch (order) {
+        case PREORDER:
+            processor.accept(root.val);
+            genericTraversal(root.left, processor, order);
+            genericTraversal(root.right, processor, order);
+            break;
+
+        case INORDER:
+            genericTraversal(root.left, processor, order);
+            processor.accept(root.val);
+            genericTraversal(root.right, processor, order);
+            break;
+
+        case POSTORDER:
+            genericTraversal(root.left, processor, order);
+            genericTraversal(root.right, processor, order);
+            processor.accept(root.val);
+            break;
+    }
+}
+
+enum TraversalOrder {
+    PREORDER, INORDER, POSTORDER
+}
+```
+
+
+### 1.2 Morris Traversal (Space Optimized)
+
+```java
+// Morris Inorder Traversal (O(1) space)
+public List<Integer> morrisInorder(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    TreeNode current = root;
+
+    while (current != null) {
+        if (current.left == null) {
+            result.add(current.val);
+            current = current.right;
+        } else {
+            // Find inorder predecessor
+            TreeNode predecessor = current.left;
+            while (predecessor.right != null && predecessor.right != current) {
+                predecessor = predecessor.right;
+            }
+
+            if (predecessor.right == null) {
+                // Make current the right child of predecessor
+                predecessor.right = current;
+                current = current.left;
+            } else {
+                // Revert the changes
+                predecessor.right = null;
+                result.add(current.val);
+                current = current.right;
+            }
+        }
+    }
+
+    return result;
+}
+
+// Morris Preorder Traversal
+public List<Integer> morrisPreorder(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    TreeNode current = root;
+
+    while (current != null) {
+        if (current.left == null) {
+            result.add(current.val);
+            current = current.right;
+        } else {
+            TreeNode predecessor = current.left;
+            while (predecessor.right != null && predecessor.right != current) {
+                predecessor = predecessor.right;
+            }
+
+            if (predecessor.right == null) {
+                result.add(current.val); // Process before going left
+                predecessor.right = current;
+                current = current.left;
+            } else {
+                predecessor.right = null;
+                current = current.right;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 1.3 Boundary Traversal
+
+```java
+// Print Boundary of Binary Tree
+public List<Integer> boundaryTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    if (!isLeaf(root)) result.add(root.val);
+
+    addLeftBoundary(root, result);
+    addLeaves(root, result);
+    addRightBoundary(root, result);
+
+    return result;
+}
+
+private void addLeftBoundary(TreeNode root, List<Integer> result) {
+    TreeNode current = root.left;
+    while (current != null) {
+        if (!isLeaf(current)) {
+            result.add(current.val);
+        }
+        current = current.left != null ? current.left : current.right;
+    }
+}
+
+private void addRightBoundary(TreeNode root, List<Integer> result) {
+    TreeNode current = root.right;
+    List<Integer> temp = new ArrayList<>();
+
+    while (current != null) {
+        if (!isLeaf(current)) {
+            temp.add(current.val);
+        }
+        current = current.right != null ? current.right : current.left;
+    }
+
+    // Add in reverse order
+    for (int i = temp.size() - 1; i >= 0; i--) {
+        result.add(temp.get(i));
+    }
+}
+
+private void addLeaves(TreeNode root, List<Integer> result) {
+    if (root == null) return;
+
+    if (isLeaf(root)) {
+        result.add(root.val);
+        return;
+    }
+
+    addLeaves(root.left, result);
+    addLeaves(root.right, result);
+}
+
+private boolean isLeaf(TreeNode node) {
+    return node.left == null && node.right == null;
+}
+```
+
+
+***
+
+## Pattern 2: Tree Property Recursions
+
+### 2.1 Basic Tree Properties
+
+```java
+// Maximum Depth of Binary Tree
+public int maxDepth(TreeNode root) {
+    if (root == null) return 0;
+
+    int leftDepth = maxDepth(root.left);
+    int rightDepth = maxDepth(root.right);
+
+    return 1 + Math.max(leftDepth, rightDepth);
+}
+
+// Minimum Depth of Binary Tree
+public int minDepth(TreeNode root) {
+    if (root == null) return 0;
+
+    // If one child is null, consider only the other
+    if (root.left == null) return 1 + minDepth(root.right);
+    if (root.right == null) return 1 + minDepth(root.left);
+
+    return 1 + Math.min(minDepth(root.left), minDepth(root.right));
+}
+
+// Check if Tree is Balanced
+public boolean isBalanced(TreeNode root) {
+    return checkBalance(root) != -1;
+}
+
+private int checkBalance(TreeNode root) {
+    if (root == null) return 0;
+
+    int leftHeight = checkBalance(root.left);
+    if (leftHeight == -1) return -1;
+
+    int rightHeight = checkBalance(root.right);
+    if (rightHeight == -1) return -1;
+
+    if (Math.abs(leftHeight - rightHeight) > 1) return -1;
+
+    return 1 + Math.max(leftHeight, rightHeight);
+}
+
+// Diameter of Binary Tree
+public int diameterOfBinaryTree(TreeNode root) {
+    int[] maxDiameter = {0};
+    height(root, maxDiameter);
+    return maxDiameter[0];
+}
+
+private int height(TreeNode root, int[] maxDiameter) {
+    if (root == null) return 0;
+
+    int leftHeight = height(root.left, maxDiameter);
+    int rightHeight = height(root.right, maxDiameter);
+
+    maxDiameter[0] = Math.max(maxDiameter[0], leftHeight + rightHeight);
+
+    return 1 + Math.max(leftHeight, rightHeight);
+}
+```
+
+
+### 2.2 Tree Size \& Count Properties
+
+```java
+// Count Total Nodes
+public int countNodes(TreeNode root) {
+    if (root == null) return 0;
+
+    return 1 + countNodes(root.left) + countNodes(root.right);
+}
+
+// Count Leaf Nodes
+public int countLeaves(TreeNode root) {
+    if (root == null) return 0;
+
+    if (root.left == null && root.right == null) return 1;
+
+    return countLeaves(root.left) + countLeaves(root.right);
+}
+
+// Count Nodes with One Child
+public int countNodesWithOneChild(TreeNode root) {
+    if (root == null) return 0;
+
+    int count = 0;
+
+    // Check if current node has exactly one child
+    if ((root.left == null && root.right != null) ||
+        (root.left != null && root.right == null)) {
+        count = 1;
+    }
+
+    return count + countNodesWithOneChild(root.left) +
+           countNodesWithOneChild(root.right);
+}
+
+// Count Complete Tree Nodes (Optimized for Complete Trees)
+public int countCompleteTreeNodes(TreeNode root) {
+    if (root == null) return 0;
+
+    int leftDepth = getLeftDepth(root);
+    int rightDepth = getRightDepth(root);
+
+    if (leftDepth == rightDepth) {
+        // Perfect binary tree
+        return (1 << leftDepth) - 1;
+    } else {
+        // Recursively count
+        return 1 + countCompleteTreeNodes(root.left) +
+               countCompleteTreeNodes(root.right);
+    }
+}
+
+private int getLeftDepth(TreeNode root) {
+    int depth = 0;
+    while (root != null) {
+        depth++;
+        root = root.left;
+    }
+    return depth;
+}
+
+private int getRightDepth(TreeNode root) {
+    int depth = 0;
+    while (root != null) {
+        depth++;
+        root = root.right;
+    }
+    return depth;
+}
+```
+
+
+### 2.3 Advanced Tree Properties
+
+```java
+// Check if Tree is Symmetric
+public boolean isSymmetric(TreeNode root) {
+    if (root == null) return true;
+    return isSymmetricHelper(root.left, root.right);
+}
+
+private boolean isSymmetricHelper(TreeNode left, TreeNode right) {
+    if (left == null && right == null) return true;
+    if (left == null || right == null) return false;
+
+    return left.val == right.val &&
+           isSymmetricHelper(left.left, right.right) &&
+           isSymmetricHelper(left.right, right.left);
+}
+
+// Check if Tree is Complete
+public boolean isCompleteTree(TreeNode root) {
+    if (root == null) return true;
+
+    Queue<TreeNode> queue = new LinkedList<>();
+    queue.offer(root);
+    boolean foundNull = false;
+
+    while (!queue.isEmpty()) {
+        TreeNode current = queue.poll();
+
+        if (current == null) {
+            foundNull = true;
+        } else {
+            if (foundNull) return false; // Found non-null after null
+            queue.offer(current.left);
+            queue.offer(current.right);
+        }
+    }
+
+    return true;
+}
+
+// Width of Binary Tree (Maximum nodes at any level)
+public int widthOfBinaryTree(TreeNode root) {
+    if (root == null) return 0;
+
+    return widthHelper(root, 0, 1, new ArrayList<>(), new ArrayList<>());
+}
+
+private int widthHelper(TreeNode root, int level, int order,
+                       List<Integer> start, List<Integer> end) {
+    if (root == null) return 0;
+
+    if (start.size() == level) {
+        start.add(order);
+        end.add(order);
+    } else {
+        end.set(level, order);
+    }
+
+    int currentWidth = end.get(level) - start.get(level) + 1;
+    int leftWidth = widthHelper(root.left, level + 1, 2 * order, start, end);
+    int rightWidth = widthHelper(root.right, level + 1, 2 * order + 1, start, end);
+
+    return Math.max(currentWidth, Math.max(leftWidth, rightWidth));
+}
+```
+
+
+***
+
+## Pattern 3: Path-Based Recursions
+
+### 3.1 Root-to-Leaf Paths
+
+```java
+// Binary Tree Paths
+public List<String> binaryTreePaths(TreeNode root) {
+    List<String> result = new ArrayList<>();
+    if (root != null) {
+        findPaths(root, "", result);
+    }
+    return result;
+}
+
+private void findPaths(TreeNode root, String path, List<String> result) {
+    if (root.left == null && root.right == null) {
+        result.add(path + root.val);
+        return;
+    }
+
+    if (root.left != null) {
+        findPaths(root.left, path + root.val + "->", result);
+    }
+
+    if (root.right != null) {
+        findPaths(root.right, path + root.val + "->", result);
+    }
+}
+
+// Path Sum (Root to Leaf)
+public boolean hasPathSum(TreeNode root, int targetSum) {
+    if (root == null) return false;
+
+    if (root.left == null && root.right == null) {
+        return root.val == targetSum;
+    }
+
+    return hasPathSum(root.left, targetSum - root.val) ||
+           hasPathSum(root.right, targetSum - root.val);
+}
+
+// Path Sum II (All Paths)
+public List<List<Integer>> pathSum(TreeNode root, int targetSum) {
+    List<List<Integer>> result = new ArrayList<>();
+    findPathSum(root, targetSum, new ArrayList<>(), result);
+    return result;
+}
+
+private void findPathSum(TreeNode root, int remainingSum,
+                        List<Integer> currentPath, List<List<Integer>> result) {
+    if (root == null) return;
+
+    currentPath.add(root.val);
+
+    if (root.left == null && root.right == null && remainingSum == root.val) {
+        result.add(new ArrayList<>(currentPath));
+    } else {
+        findPathSum(root.left, remainingSum - root.val, currentPath, result);
+        findPathSum(root.right, remainingSum - root.val, currentPath, result);
+    }
+
+    currentPath.remove(currentPath.size() - 1); // Backtrack
+}
+
+// Sum Root to Leaf Numbers
+public int sumNumbers(TreeNode root) {
+    return sumNumbersHelper(root, 0);
+}
+
+private int sumNumbersHelper(TreeNode root, int currentNumber) {
+    if (root == null) return 0;
+
+    currentNumber = currentNumber * 10 + root.val;
+
+    if (root.left == null && root.right == null) {
+        return currentNumber;
+    }
+
+    return sumNumbersHelper(root.left, currentNumber) +
+           sumNumbersHelper(root.right, currentNumber);
+}
+```
+
+
+### 3.2 Any Path Problems
+
+```java
+// Path Sum III (Any path, not necessarily root-to-leaf)
+public int pathSum(TreeNode root, int targetSum) {
+    if (root == null) return 0;
+
+    return pathSumFrom(root, targetSum) +
+           pathSum(root.left, targetSum) +
+           pathSum(root.right, targetSum);
+}
+
+private int pathSumFrom(TreeNode root, int targetSum) {
+    if (root == null) return 0;
+
+    int count = 0;
+    if (root.val == targetSum) count++;
+
+    count += pathSumFrom(root.left, targetSum - root.val);
+    count += pathSumFrom(root.right, targetSum - root.val);
+
+    return count;
+}
+
+// Path Sum III (Optimized with HashMap)
+public int pathSumOptimized(TreeNode root, int targetSum) {
+    Map<Integer, Integer> prefixSum = new HashMap<>();
+    prefixSum.put(0, 1); // Base case
+    return pathSumHelper(root, 0, targetSum, prefixSum);
+}
+
+private int pathSumHelper(TreeNode root, int currentSum, int targetSum,
+                         Map<Integer, Integer> prefixSum) {
+    if (root == null) return 0;
+
+    currentSum += root.val;
+    int count = prefixSum.getOrDefault(currentSum - targetSum, 0);
+
+    prefixSum.put(currentSum, prefixSum.getOrDefault(currentSum, 0) + 1);
+
+    count += pathSumHelper(root.left, currentSum, targetSum, prefixSum);
+    count += pathSumHelper(root.right, currentSum, targetSum, prefixSum);
+
+    prefixSum.put(currentSum, prefixSum.get(currentSum) - 1); // Backtrack
+
+    return count;
+}
+
+// Maximum Path Sum
+public int maxPathSum(TreeNode root) {
+    int[] maxSum = {Integer.MIN_VALUE};
+    maxPathSumHelper(root, maxSum);
+    return maxSum[0];
+}
+
+private int maxPathSumHelper(TreeNode root, int[] maxSum) {
+    if (root == null) return 0;
+
+    int leftSum = Math.max(0, maxPathSumHelper(root.left, maxSum));
+    int rightSum = Math.max(0, maxPathSumHelper(root.right, maxSum));
+
+    int currentPathSum = root.val + leftSum + rightSum;
+    maxSum[0] = Math.max(maxSum[0], currentPathSum);
+
+    return root.val + Math.max(leftSum, rightSum);
+}
+```
+
+
+### 3.3 Distance \& LCA Problems
+
+```java
+// Lowest Common Ancestor of Binary Tree
+public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
+    if (root == null || root == p || root == q) {
+        return root;
+    }
+
+    TreeNode leftLCA = lowestCommonAncestor(root.left, p, q);
+    TreeNode rightLCA = lowestCommonAncestor(root.right, p, q);
+
+    if (leftLCA != null && rightLCA != null) {
+        return root; // Current node is LCA
+    }
+
+    return leftLCA != null ? leftLCA : rightLCA;
+}
+
+// Distance Between Two Nodes
+public int findDistance(TreeNode root, int val1, int val2) {
+    TreeNode lca = findLCA(root, val1, val2);
+    return getDistance(lca, val1, 0) + getDistance(lca, val2, 0);
+}
+
+private TreeNode findLCA(TreeNode root, int val1, int val2) {
+    if (root == null) return null;
+
+    if (root.val == val1 || root.val == val2) return root;
+
+    TreeNode leftLCA = findLCA(root.left, val1, val2);
+    TreeNode rightLCA = findLCA(root.right, val1, val2);
+
+    if (leftLCA != null && rightLCA != null) return root;
+    return leftLCA != null ? leftLCA : rightLCA;
+}
+
+private int getDistance(TreeNode root, int target, int distance) {
+    if (root == null) return -1;
+    if (root.val == target) return distance;
+
+    int leftDistance = getDistance(root.left, target, distance + 1);
+    if (leftDistance != -1) return leftDistance;
+
+    return getDistance(root.right, target, distance + 1);
+}
+```
+
+
+***
+
+## Pattern 4: Value Aggregation Recursions
+
+### 4.1 Sum-Based Problems
+
+```java
+// Sum of All Nodes
+public int sumOfNodes(TreeNode root) {
+    if (root == null) return 0;
+
+    return root.val + sumOfNodes(root.left) + sumOfNodes(root.right);
+}
+
+// Sum of Left Leaves
+public int sumOfLeftLeaves(TreeNode root) {
+    return sumOfLeftLeavesHelper(root, false);
+}
+
+private int sumOfLeftLeavesHelper(TreeNode root, boolean isLeft) {
+    if (root == null) return 0;
+
+    if (root.left == null && root.right == null) {
+        return isLeft ? root.val : 0;
+    }
+
+    return sumOfLeftLeavesHelper(root.left, true) +
+           sumOfLeftLeavesHelper(root.right, false);
+}
+
+// Sum of Nodes at Even Levels
+public int sumAtEvenLevels(TreeNode root) {
+    return sumAtLevel(root, 0);
+}
+
+private int sumAtLevel(TreeNode root, int level) {
+    if (root == null) return 0;
+
+    int currentSum = (level % 2 == 0) ? root.val : 0;
+
+    return currentSum +
+           sumAtLevel(root.left, level + 1) +
+           sumAtLevel(root.right, level + 1);
+}
+
+// Sum of Nodes with Grandparent X
+public int sumOfNodesWithGrandparentX(TreeNode root, int x) {
+    return sumWithGrandparent(root, null, null, x);
+}
+
+private int sumWithGrandparent(TreeNode root, TreeNode parent, TreeNode grandparent, int x) {
+    if (root == null) return 0;
+
+    int sum = 0;
+    if (grandparent != null && grandparent.val == x) {
+        sum = root.val;
+    }
+
+    sum += sumWithGrandparent(root.left, root, parent, x);
+    sum += sumWithGrandparent(root.right, root, parent, x);
+
+    return sum;
+}
+```
+
+
+### 4.2 Min/Max Problems
+
+```java
+// Find Maximum Value in Tree
+public int findMaxValue(TreeNode root) {
+    if (root == null) return Integer.MIN_VALUE;
+
+    int leftMax = findMaxValue(root.left);
+    int rightMax = findMaxValue(root.right);
+
+    return Math.max(root.val, Math.max(leftMax, rightMax));
+}
+
+// Find Second Minimum Value
+public int findSecondMinimumValue(TreeNode root) {
+    if (root == null) return -1;
+    return findSecondMin(root, root.val);
+}
+
+private int findSecondMin(TreeNode root, int min) {
+    if (root == null) return -1;
+
+    if (root.val > min) return root.val;
+
+    int leftSecondMin = findSecondMin(root.left, min);
+    int rightSecondMin = findSecondMin(root.right, min);
+
+    if (leftSecondMin == -1) return rightSecondMin;
+    if (rightSecondMin == -1) return leftSecondMin;
+
+    return Math.min(leftSecondMin, rightSecondMin);
+}
+
+// Find Mode in BST
+public int[] findMode(TreeNode root) {
+    Map<Integer, Integer> countMap = new HashMap<>();
+    inorderCount(root, countMap);
+
+    int maxCount = Collections.max(countMap.values());
+    List<Integer> modes = new ArrayList<>();
+
+    for (Map.Entry<Integer, Integer> entry : countMap.entrySet()) {
+        if (entry.getValue() == maxCount) {
+            modes.add(entry.getKey());
+        }
+    }
+
+    return modes.stream().mapToInt(Integer::intValue).toArray();
+}
+
+private void inorderCount(TreeNode root, Map<Integer, Integer> countMap) {
+    if (root == null) return;
+
+    inorderCount(root.left, countMap);
+    countMap.put(root.val, countMap.getOrDefault(root.val, 0) + 1);
+    inorderCount(root.right, countMap);
+}
+```
+
+
+***
+
+## Pattern 5: Tree Transformation Recursions
+
+### 5.1 Tree Modification
+
+```java
+// Invert Binary Tree (Mirror)
+public TreeNode invertTree(TreeNode root) {
+    if (root == null) return null;
+
+    TreeNode temp = root.left;
+    root.left = root.right;
+    root.right = temp;
+
+    invertTree(root.left);
+    invertTree(root.right);
+
+    return root;
+}
+
+// Flatten Binary Tree to Linked List
+public void flatten(TreeNode root) {
+    flattenHelper(root);
+}
+
+private TreeNode flattenHelper(TreeNode root) {
+    if (root == null) return null;
+
+    if (root.left == null && root.right == null) return root;
+
+    TreeNode leftTail = flattenHelper(root.left);
+    TreeNode rightTail = flattenHelper(root.right);
+
+    if (leftTail != null) {
+        leftTail.right = root.right;
+        root.right = root.left;
+        root.left = null;
+    }
+
+    return rightTail != null ? rightTail : leftTail;
+}
+
+// Convert BST to Greater Sum Tree
+public TreeNode bstToGst(TreeNode root) {
+    int[] sum = {0};
+    reverseInorder(root, sum);
+    return root;
+}
+
+private void reverseInorder(TreeNode root, int[] sum) {
+    if (root == null) return;
+
+    reverseInorder(root.right, sum);
+    sum[0] += root.val;
+    root.val = sum[0];
+    reverseInorder(root.left, sum);
+}
+
+// Prune Binary Tree (Remove subtrees with no 1s)
+public TreeNode pruneTree(TreeNode root) {
+    if (root == null) return null;
+
+    root.left = pruneTree(root.left);
+    root.right = pruneTree(root.right);
+
+    if (root.val == 0 && root.left == null && root.right == null) {
+        return null;
+    }
+
+    return root;
+}
+```
+
+
+### 5.2 Tree to Other Data Structures
+
+```java
+// Convert Binary Tree to Doubly Linked List
+public Node treeToDoublyList(Node root) {
+    if (root == null) return null;
+
+    Node[] headTail = {null, null};
+    inorderDLL(root, headTail);
+
+    // Make circular
+    headTail[0].left = headTail[1];
+    headTail[1].right = headTail[0];
+
+    return headTail[0];
+}
+
+private void inorderDLL(Node root, Node[] headTail) {
+    if (root == null) return;
+
+    inorderDLL(root.left, headTail);
+
+    if (headTail[1] == null) {
+        headTail[0] = headTail[1] = root;
+    } else {
+        headTail[1].right = root;
+        root.left = headTail[1];
+        headTail[1] = root;
+    }
+
+    inorderDLL(root.right, headTail);
+}
+
+// Convert Sorted Array to BST
+public TreeNode sortedArrayToBST(int[] nums) {
+    return arrayToBST(nums, 0, nums.length - 1);
+}
+
+private TreeNode arrayToBST(int[] nums, int left, int right) {
+    if (left > right) return null;
+
+    int mid = left + (right - left) / 2;
+    TreeNode root = new TreeNode(nums[mid]);
+
+    root.left = arrayToBST(nums, left, mid - 1);
+    root.right = arrayToBST(nums, mid + 1, right);
+
+    return root;
+}
+
+// Convert Sorted List to BST
+public TreeNode sortedListToBST(ListNode head) {
+    if (head == null) return null;
+    if (head.next == null) return new TreeNode(head.val);
+
+    ListNode prev = null;
+    ListNode slow = head;
+    ListNode fast = head;
+
+    // Find middle
+    while (fast != null && fast.next != null) {
+        prev = slow;
+        slow = slow.next;
+        fast = fast.next.next;
+    }
+
+    // Break the list
+    if (prev != null) prev.next = null;
+
+    TreeNode root = new TreeNode(slow.val);
+    root.left = sortedListToBST(head);
+    root.right = sortedListToBST(slow.next);
+
+    return root;
+}
+
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode(int val) { this.val = val; }
+}
+
+class Node {
+    int val;
+    Node left;
+    Node right;
+    Node(int val) { this.val = val; }
+}
+```
+
+
+***
+
+## Pattern 6: Tree Construction Recursions
+
+### 6.1 Build Tree from Traversals
+
+```java
+// Build Tree from Preorder and Inorder
+public TreeNode buildTreePreIn(int[] preorder, int[] inorder) {
+    Map<Integer, Integer> inorderMap = new HashMap<>();
+    for (int i = 0; i < inorder.length; i++) {
+        inorderMap.put(inorder[i], i);
+    }
+
+    return buildPreIn(preorder, 0, preorder.length - 1,
+                      inorder, 0, inorder.length - 1, inorderMap);
+}
+
+private TreeNode buildPreIn(int[] preorder, int preStart, int preEnd,
+                           int[] inorder, int inStart, int inEnd,
+                           Map<Integer, Integer> inorderMap) {
+    if (preStart > preEnd || inStart > inEnd) return null;
+
+    TreeNode root = new TreeNode(preorder[preStart]);
+    int rootIndex = inorderMap.get(root.val);
+    int leftTreeSize = rootIndex - inStart;
+
+    root.left = buildPreIn(preorder, preStart + 1, preStart + leftTreeSize,
+                          inorder, inStart, rootIndex - 1, inorderMap);
+    root.right = buildPreIn(preorder, preStart + leftTreeSize + 1, preEnd,
+                           inorder, rootIndex + 1, inEnd, inorderMap);
+
+    return root;
+}
+
+// Build Tree from Postorder and Inorder
+public TreeNode buildTreePostIn(int[] postorder, int[] inorder) {
+    Map<Integer, Integer> inorderMap = new HashMap<>();
+    for (int i = 0; i < inorder.length; i++) {
+        inorderMap.put(inorder[i], i);
+    }
+
+    return buildPostIn(postorder, 0, postorder.length - 1,
+                       inorder, 0, inorder.length - 1, inorderMap);
+}
+
+private TreeNode buildPostIn(int[] postorder, int postStart, int postEnd,
+                            int[] inorder, int inStart, int inEnd,
+                            Map<Integer, Integer> inorderMap) {
+    if (postStart > postEnd || inStart > inEnd) return null;
+
+    TreeNode root = new TreeNode(postorder[postEnd]);
+    int rootIndex = inorderMap.get(root.val);
+    int leftTreeSize = rootIndex - inStart;
+
+    root.left = buildPostIn(postorder, postStart, postStart + leftTreeSize - 1,
+                           inorder, inStart, rootIndex - 1, inorderMap);
+    root.right = buildPostIn(postorder, postStart + leftTreeSize, postEnd - 1,
+                            inorder, rootIndex + 1, inEnd, inorderMap);
+
+    return root;
+}
+
+// Build Maximum Binary Tree
+public TreeNode constructMaximumBinaryTree(int[] nums) {
+    return buildMaxTree(nums, 0, nums.length - 1);
+}
+
+private TreeNode buildMaxTree(int[] nums, int left, int right) {
+    if (left > right) return null;
+
+    int maxIndex = findMaxIndex(nums, left, right);
+    TreeNode root = new TreeNode(nums[maxIndex]);
+
+    root.left = buildMaxTree(nums, left, maxIndex - 1);
+    root.right = buildMaxTree(nums, maxIndex + 1, right);
+
+    return root;
+}
+
+private int findMaxIndex(int[] nums, int left, int right) {
+    int maxIndex = left;
+    for (int i = left + 1; i <= right; i++) {
+        if (nums[i] > nums[maxIndex]) {
+            maxIndex = i;
+        }
+    }
+    return maxIndex;
+}
+```
+
+
+### 6.2 Serialize and Deserialize
+
+```java
+// Serialize and Deserialize Binary Tree (Preorder)
+public String serialize(TreeNode root) {
+    StringBuilder sb = new StringBuilder();
+    serializeHelper(root, sb);
+    return sb.toString();
+}
+
+private void serializeHelper(TreeNode root, StringBuilder sb) {
+    if (root == null) {
+        sb.append("null,");
+        return;
+    }
+
+    sb.append(root.val).append(",");
+    serializeHelper(root.left, sb);
+    serializeHelper(root.right, sb);
+}
+
+public TreeNode deserialize(String data) {
+    String[] nodes = data.split(",");
+    int[] index = {0};
+    return deserializeHelper(nodes, index);
+}
+
+private TreeNode deserializeHelper(String[] nodes, int[] index) {
+    if (index[0] >= nodes.length || "null".equals(nodes[index[0]])) {
+        index[0]++;
+        return null;
+    }
+
+    TreeNode root = new TreeNode(Integer.parseInt(nodes[index[0]++]));
+    root.left = deserializeHelper(nodes, index);
+    root.right = deserializeHelper(nodes, index);
+
+    return root;
+}
+
+// Serialize BST (Space Optimized)
+public String serializeBST(TreeNode root) {
+    StringBuilder sb = new StringBuilder();
+    serializeBSTHelper(root, sb);
+    return sb.toString();
+}
+
+private void serializeBSTHelper(TreeNode root, StringBuilder sb) {
+    if (root == null) return;
+
+    sb.append(root.val).append(",");
+    serializeBSTHelper(root.left, sb);
+    serializeBSTHelper(root.right, sb);
+}
+
+public TreeNode deserializeBST(String data) {
+    if (data.isEmpty()) return null;
+
+    String[] nodes = data.split(",");
+    int[] values = new int[nodes.length];
+    for (int i = 0; i < nodes.length; i++) {
+        values[i] = Integer.parseInt(nodes[i]);
+    }
+
+    return deserializeBSTHelper(values, 0, values.length - 1);
+}
+
+private TreeNode deserializeBSTHelper(int[] values, int left, int right) {
+    if (left > right) return null;
+
+    int rootVal = values[left];
+    TreeNode root = new TreeNode(rootVal);
+
+    int i = left + 1;
+    while (i <= right && values[i] < rootVal) {
+        i++;
+    }
+
+    root.left = deserializeBSTHelper(values, left + 1, i - 1);
+    root.right = deserializeBSTHelper(values, i, right);
+
+    return root;
+}
+```
+
+
+***
+
+## Pattern 7: Tree Validation Recursions
+
+### 7.1 BST Validation
+
+```java
+// Validate Binary Search Tree
+public boolean isValidBST(TreeNode root) {
+    return isValidBST(root, null, null);
+}
+
+private boolean isValidBST(TreeNode root, Integer min, Integer max) {
+    if (root == null) return true;
+
+    if ((min != null && root.val <= min) ||
+        (max != null && root.val >= max)) {
+        return false;
+    }
+
+    return isValidBST(root.left, min, root.val) &&
+           isValidBST(root.right, root.val, max);
+}
+
+// Inorder approach for BST validation
+public boolean isValidBSTInorder(TreeNode root) {
+    TreeNode[] prev = {null};
+    return inorderValidate(root, prev);
+}
+
+private boolean inorderValidate(TreeNode root, TreeNode[] prev) {
+    if (root == null) return true;
+
+    if (!inorderValidate(root.left, prev)) return false;
+
+    if (prev[0] != null && prev[0].val >= root.val) return false;
+    prev[0] = root;
+
+    return inorderValidate(root.right, prev);
+}
+
+// Recover BST (Two nodes swapped)
+public void recoverTree(TreeNode root) {
+    TreeNode[] first = {null};
+    TreeNode[] second = {null};
+    TreeNode[] prev = {null};
+
+    inorderRecover(root, first, second, prev);
+
+    // Swap values
+    int temp = first[0].val;
+    first[0].val = second[0].val;
+    second[0].val = temp;
+}
+
+private void inorderRecover(TreeNode root, TreeNode[] first,
+                           TreeNode[] second, TreeNode[] prev) {
+    if (root == null) return;
+
+    inorderRecover(root.left, first, second, prev);
+
+    if (prev[0] != null && prev[0].val > root.val) {
+        if (first[0] == null) {
+            first[0] = prev[0];
+        }
+        second[0] = root;
+    }
+    prev[0] = root;
+
+    inorderRecover(root.right, first, second, prev);
+}
+```
+
+
+### 7.2 Tree Structure Validation
+
+```java
+// Validate Binary Tree (General Structure)
+public boolean isValidBinaryTree(TreeNode root) {
+    return validateStructure(root, new HashSet<>());
+}
+
+private boolean validateStructure(TreeNode root, Set<TreeNode> visited) {
+    if (root == null) return true;
+
+    if (visited.contains(root)) return false; // Cycle detected
+    visited.add(root);
+
+    boolean leftValid = validateStructure(root.left, visited);
+    boolean rightValid = validateStructure(root.right, visited);
+
+    visited.remove(root); // Backtrack
+
+    return leftValid && rightValid;
+}
+
+// Check if Binary Tree is Complete
+public boolean isCompleteTreeRecursive(TreeNode root) {
+    int nodeCount = countNodes(root);
+    return isCompleteHelper(root, 0, nodeCount);
+}
+
+private boolean isCompleteHelper(TreeNode root, int index, int nodeCount) {
+    if (root == null) return true;
+
+    if (index >= nodeCount) return false;
+
+    return isCompleteHelper(root.left, 2 * index + 1, nodeCount) &&
+           isCompleteHelper(root.right, 2 * index + 2, nodeCount);
+}
+
+// Check if Binary Tree is Full
+public boolean isFullBinaryTree(TreeNode root) {
+    if (root == null) return true;
+
+    if ((root.left == null) != (root.right == null)) {
+        return false; // One child exists but not the other
+    }
+
+    return isFullBinaryTree(root.left) && isFullBinaryTree(root.right);
+}
+```
+
+
+***
+
+## Pattern 8: Subtree \& Comparison Recursions
+
+### 8.1 Tree Comparison
+
+```java
+// Same Tree
+public boolean isSameTree(TreeNode p, TreeNode q) {
+    if (p == null && q == null) return true;
+    if (p == null || q == null) return false;
+
+    return p.val == q.val &&
+           isSameTree(p.left, q.left) &&
+           isSameTree(p.right, q.right);
+}
+
+// Subtree of Another Tree
+public boolean isSubtree(TreeNode root, TreeNode subRoot) {
+    if (root == null) return false;
+
+    return isSameTree(root, subRoot) ||
+           isSubtree(root.left, subRoot) ||
+           isSubtree(root.right, subRoot);
+}
+
+// Merge Two Binary Trees
+public TreeNode mergeTrees(TreeNode root1, TreeNode root2) {
+    if (root1 == null) return root2;
+    if (root2 == null) return root1;
+
+    TreeNode merged = new TreeNode(root1.val + root2.val);
+    merged.left = mergeTrees(root1.left, root2.left);
+    merged.right = mergeTrees(root1.right, root2.right);
+
+    return merged;
+}
+
+// Find Duplicate Subtrees
+public List<TreeNode> findDuplicateSubtrees(TreeNode root) {
+    Map<String, Integer> subtreeCount = new HashMap<>();
+    List<TreeNode> result = new ArrayList<>();
+
+    serialize(root, subtreeCount, result);
+    return result;
+}
+
+private String serialize(TreeNode root, Map<String, Integer> subtreeCount,
+                        List<TreeNode> result) {
+    if (root == null) return "null";
+
+    String subtree = root.val + "," +
+                    serialize(root.left, subtreeCount, result) + "," +
+                    serialize(root.right, subtreeCount, result);
+
+    subtreeCount.put(subtree, subtreeCount.getOrDefault(subtree, 0) + 1);
+
+    if (subtreeCount.get(subtree) == 2) {
+        result.add(root);
+    }
+
+    return subtree;
+}
+```
+
+
+### 8.2 Tree Isomorphism
+
+```java
+// Check if Two Trees are Isomorphic
+public boolean isIsomorphic(TreeNode root1, TreeNode root2) {
+    if (root1 == null && root2 == null) return true;
+    if (root1 == null || root2 == null) return false;
+    if (root1.val != root2.val) return false;
+
+    // Two possibilities: no flip or flip
+    return (isIsomorphic(root1.left, root2.left) &&
+            isIsomorphic(root1.right, root2.right)) ||
+           (isIsomorphic(root1.left, root2.right) &&
+            isIsomorphic(root1.right, root2.left));
+}
+
+// Flip Equivalent Binary Trees
+public boolean flipEquiv(TreeNode root1, TreeNode root2) {
+    if (root1 == null && root2 == null) return true;
+    if (root1 == null || root2 == null || root1.val != root2.val) {
+        return false;
+    }
+
+    return (flipEquiv(root1.left, root2.left) &&
+            flipEquiv(root1.right, root2.right)) ||
+           (flipEquiv(root1.left, root2.right) &&
+            flipEquiv(root1.right, root2.left));
+}
+```
+
+
+***
+
+## Pattern 9: Advanced Path Recursions
+
+### 9.1 Complex Path Problems
+
+```java
+// Longest Univalue Path
+public int longestUnivaluePath(TreeNode root) {
+    int[] maxLength = {0};
+    longestUniHelper(root, maxLength);
+    return maxLength[0];
+}
+
+private int longestUniHelper(TreeNode root, int[] maxLength) {
+    if (root == null) return 0;
+
+    int left = longestUniHelper(root.left, maxLength);
+    int right = longestUniHelper(root.right, maxLength);
+
+    int leftPath = (root.left != null && root.left.val == root.val) ? left + 1 : 0;
+    int rightPath = (root.right != null && root.right.val == root.val) ? right + 1 : 0;
+
+    maxLength[0] = Math.max(maxLength[0], leftPath + rightPath);
+
+    return Math.max(leftPath, rightPath);
+}
+
+// Binary Tree Maximum Path Sum (Any to Any)
+public int maxPathSumAnyToAny(TreeNode root) {
+    int[] maxSum = {Integer.MIN_VALUE};
+    maxPathHelper(root, maxSum);
+    return maxSum[0];
+}
+
+private int maxPathHelper(TreeNode root, int[] maxSum) {
+    if (root == null) return 0;
+
+    int leftSum = Math.max(0, maxPathHelper(root.left, maxSum));
+    int rightSum = Math.max(0, maxPathHelper(root.right, maxSum));
+
+    int currentPathSum = root.val + leftSum + rightSum;
+    maxSum[0] = Math.max(maxSum[0], currentPathSum);
+
+    return root.val + Math.max(leftSum, rightSum);
+}
+
+// Longest ZigZag Path
+public int longestZigZag(TreeNode root) {
+    return Math.max(zigZagHelper(root, true), zigZagHelper(root, false));
+}
+
+private int zigZagHelper(TreeNode root, boolean isLeft) {
+    if (root == null) return 0;
+
+    int leftZigZag = zigZagHelper(root.left, false);
+    int rightZigZag = zigZagHelper(root.right, true);
+
+    if (isLeft) {
+        return root.left != null ? 1 + leftZigZag : 0;
+    } else {
+        return root.right != null ? 1 + rightZigZag : 0;
+    }
+}
+```
+
+
+### 9.2 Path with Constraints
+
+```java
+// Count Good Nodes (Node >= all ancestors)
+public int goodNodes(TreeNode root) {
+    return countGoodNodes(root, root.val);
+}
+
+private int countGoodNodes(TreeNode root, int maxSoFar) {
+    if (root == null) return 0;
+
+    int count = (root.val >= maxSoFar) ? 1 : 0;
+    int newMax = Math.max(maxSoFar, root.val);
+
+    count += countGoodNodes(root.left, newMax);
+    count += countGoodNodes(root.right, newMax);
+
+    return count;
+}
+
+// Pseudo-Palindromic Paths
+public int pseudoPalindromicPaths(TreeNode root) {
+    return countPseudoPalindromic(root, 0);
+}
+
+private int countPseudoPalindromic(TreeNode root, int path) {
+    if (root == null) return 0;
+
+    path ^= (1 << root.val); // Toggle bit for current value
+
+    if (root.left == null && root.right == null) {
+        // Check if at most one bit is set (palindrome possible)
+        return (path & (path - 1)) == 0 ? 1 : 0;
+    }
+
+    return countPseudoPalindromic(root.left, path) +
+           countPseudoPalindromic(root.right, path);
+}
+
+// Sum of Distances in Tree
+public int[] sumOfDistancesInTree(int n, int[][] edges) {
+    List<List<Integer>> graph = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+        graph.add(new ArrayList<>());
+    }
+
+    for (int[] edge : edges) {
+        graph.get(edge[0]).add(edge[1]);
+        graph.get(edge[1]).add(edge[0]);
+    }
+
+    int[] count = new int[n]; // Number of nodes in subtree
+    int[] result = new int[n]; // Sum of distances
+
+    dfsCount(graph, 0, -1, count, result);
+    dfsResult(graph, 0, -1, count, result, n);
+
+    return result;
+}
+
+private void dfsCount(List<List<Integer>> graph, int node, int parent,
+                     int[] count, int[] result) {
+    count[node] = 1;
+
+    for (int child : graph.get(node)) {
+        if (child != parent) {
+            dfsCount(graph, child, node, count, result);
+            count[node] += count[child];
+            result[node] += result[child] + count[child];
+        }
+    }
+}
+
+private void dfsResult(List<List<Integer>> graph, int node, int parent,
+                      int[] count, int[] result, int n) {
+    for (int child : graph.get(node)) {
+        if (child != parent) {
+            result[child] = result[node] - count[child] + (n - count[child]);
+            dfsResult(graph, child, node, count, result, n);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 10: Dynamic Programming Recursions
+
+### 10.1 Tree DP Problems
+
+```java
+// House Robber III
+public int rob(TreeNode root) {
+    int[] result = robHelper(root);
+    return Math.max(result[0], result[1]);
+}
+
+private int[] robHelper(TreeNode root) {
+    if (root == null) return new int[]{0, 0};
+
+    int[] left = robHelper(root.left);
+    int[] right = robHelper(root.right);
+
+    // result[0] = max money when root is not robbed
+    // result[1] = max money when root is robbed
+    int[] result = new int[2];
+    result[0] = Math.max(left[0], left[1]) + Math.max(right[0], right[1]);
+    result[1] = root.val + left[0] + right[0];
+
+    return result;
+}
+
+// Binary Tree Cameras
+public int minCameraCover(TreeNode root) {
+    int[] cameras = {0};
+    int state = dfsCamera(root, cameras);
+    return cameras[0] + (state == 0 ? 1 : 0);
+}
+
+private int dfsCamera(TreeNode root, int[] cameras) {
+    if (root == null) return 1; // Null nodes are covered
+
+    int left = dfsCamera(root.left, cameras);
+    int right = dfsCamera(root.right, cameras);
+
+    // State 0: not covered, State 1: covered, State 2: has camera
+    if (left == 0 || right == 0) {
+        cameras[0]++;
+        return 2;
+    }
+
+    if (left == 2 || right == 2) {
+        return 1;
+    }
+
+    return 0;
+}
+
+// Distribute Coins in Binary Tree
+public int distributeCoins(TreeNode root) {
+    int[] moves = {0};
+    dfsDistribute(root, moves);
+    return moves[0];
+}
+
+private int dfsDistribute(TreeNode root, int[] moves) {
+    if (root == null) return 0;
+
+    int leftExcess = dfsDistribute(root.left, moves);
+    int rightExcess = dfsDistribute(root.right, moves);
+
+    moves[0] += Math.abs(leftExcess) + Math.abs(rightExcess);
+
+    return root.val + leftExcess + rightExcess - 1;
+}
+```
+
+
+### 10.2 Optimization Problems
+
+```java
+// Maximum Product of Splitted Binary Tree
+public int maxProduct(TreeNode root) {
+    List<Integer> subtreeSums = new ArrayList<>();
+    int totalSum = calculateSubtreeSums(root, subtreeSums);
+
+    long maxProduct = 0;
+    for (int sum : subtreeSums) {
+        long product = (long) sum * (totalSum - sum);
+        maxProduct = Math.max(maxProduct, product);
+    }
+
+    return (int) (maxProduct % 1000000007);
+}
+
+private int calculateSubtreeSums(TreeNode root, List<Integer> subtreeSums) {
+    if (root == null) return 0;
+
+    int leftSum = calculateSubtreeSums(root.left, subtreeSums);
+    int rightSum = calculateSubtreeSums(root.right, subtreeSums);
+    int currentSum = root.val + leftSum + rightSum;
+
+    subtreeSums.add(currentSum);
+    return currentSum;
+}
+
+// Delete Nodes and Return Forest
+public List<TreeNode> delNodes(TreeNode root, int[] to_delete) {
+    Set<Integer> deleteSet = new HashSet<>();
+    for (int val : to_delete) {
+        deleteSet.add(val);
+    }
+
+    List<TreeNode> forest = new ArrayList<>();
+    if (deleteHelper(root, deleteSet, forest, true) != null) {
+        forest.add(root);
+    }
+
+    return forest;
+}
+
+private TreeNode deleteHelper(TreeNode root, Set<Integer> deleteSet,
+                             List<TreeNode> forest, boolean isRoot) {
+    if (root == null) return null;
+
+    boolean shouldDelete = deleteSet.contains(root.val);
+
+    root.left = deleteHelper(root.left, deleteSet, forest, shouldDelete);
+    root.right = deleteHelper(root.right, deleteSet, forest, shouldDelete);
+
+    if (shouldDelete) {
+        if (root.left != null) forest.add(root.left);
+        if (root.right != null) forest.add(root.right);
+        return null;
+    }
+
+    return root;
+}
+```
+
+
+***
+
+## Pattern 11: Multi-Tree Recursions
+
+### 11.1 Tree Array Operations
+
+```java
+// All Possible Full Binary Trees
+public List<TreeNode> allPossibleFBT(int n) {
+    if (n % 2 == 0) return new ArrayList<>();
+
+    Map<Integer, List<TreeNode>> memo = new HashMap<>();
+    return allPossibleFBTHelper(n, memo);
+}
+
+private List<TreeNode> allPossibleFBTHelper(int n, Map<Integer, List<TreeNode>> memo) {
+    if (memo.containsKey(n)) return memo.get(n);
+
+    List<TreeNode> result = new ArrayList<>();
+
+    if (n == 1) {
+        result.add(new TreeNode(0));
+        memo.put(n, result);
+        return result;
+    }
+
+    for (int i = 1; i < n; i += 2) {
+        List<TreeNode> leftTrees = allPossibleFBTHelper(i, memo);
+        List<TreeNode> rightTrees = allPossibleFBTHelper(n - i - 1, memo);
+
+        for (TreeNode left : leftTrees) {
+            for (TreeNode right : rightTrees) {
+                TreeNode root = new TreeNode(0);
+                root.left = left;
+                root.right = right;
+                result.add(root);
+            }
+        }
+    }
+
+    memo.put(n, result);
+    return result;
+}
+
+// Unique Binary Search Trees II
+public List<TreeNode> generateTrees(int n) {
+    return generateTreesHelper(1, n);
+}
+
+private List<TreeNode> generateTreesHelper(int start, int end) {
+    List<TreeNode> result = new ArrayList<>();
+
+    if (start > end) {
+        result.add(null);
+        return result;
+    }
+
+    for (int i = start; i <= end; i++) {
+        List<TreeNode> leftTrees = generateTreesHelper(start, i - 1);
+        List<TreeNode> rightTrees = generateTreesHelper(i + 1, end);
+
+        for (TreeNode left : leftTrees) {
+            for (TreeNode right : rightTrees) {
+                TreeNode root = new TreeNode(i);
+                root.left = left;
+                root.right = right;
+                result.add(root);
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 12: Complex Recursive Problems
+
+### 12.1 Advanced Tree Algorithms
+
+```java
+// Vertical Order Traversal
+public List<List<Integer>> verticalTraversal(TreeNode root) {
+    TreeMap<Integer, TreeMap<Integer, PriorityQueue<Integer>>> map = new TreeMap<>();
+    dfsVertical(root, 0, 0, map);
+
+    List<List<Integer>> result = new ArrayList<>();
+    for (TreeMap<Integer, PriorityQueue<Integer>> levelMap : map.values()) {
+        List<Integer> column = new ArrayList<>();
+        for (PriorityQueue<Integer> pq : levelMap.values()) {
+            while (!pq.isEmpty()) {
+                column.add(pq.poll());
+            }
+        }
+        result.add(column);
+    }
+
+    return result;
+}
+
+private void dfsVertical(TreeNode root, int x, int y,
+                        TreeMap<Integer, TreeMap<Integer, PriorityQueue<Integer>>> map) {
+    if (root == null) return;
+
+    map.computeIfAbsent(x, k -> new TreeMap<>())
+       .computeIfAbsent(y, k -> new PriorityQueue<>())
+       .add(root.val);
+
+    dfsVertical(root.left, x - 1, y + 1, map);
+    dfsVertical(root.right, x + 1, y + 1, map);
+}
+
+// Expression Tree Evaluation
+public int evalTree(TreeNode root) {
+    if (root.left == null && root.right == null) {
+        return root.val; // Leaf node (operand)
+    }
+
+    int leftVal = evalTree(root.left);
+    int rightVal = evalTree(root.right);
+
+    // Root contains operator
+    switch (root.val) {
+        case 2: return leftVal + rightVal; // Addition
+        case 3: return leftVal - rightVal; // Subtraction
+        case 4: return leftVal * rightVal; // Multiplication
+        case 5: return leftVal / rightVal; // Division
+        default: throw new IllegalArgumentException("Invalid operator");
+    }
+}
+
+// Construct Binary Tree from String with Parentheses
+public TreeNode str2tree(String s) {
+    if (s.isEmpty()) return null;
+
+    int[] index = {0};
+    return str2treeHelper(s, index);
+}
+
+private TreeNode str2treeHelper(String s, int[] index) {
+    if (index[0] >= s.length()) return null;
+
+    // Parse number (can be negative)
+    int start = index[0];
+    if (s.charAt(index[0]) == '-') index[0]++;
+
+    while (index[0] < s.length() && Character.isDigit(s.charAt(index[0]))) {
+        index[0]++;
+    }
+
+    TreeNode root = new TreeNode(Integer.parseInt(s.substring(start, index[0])));
+
+    // Parse left child
+    if (index[0] < s.length() && s.charAt(index[0]) == '(') {
+        index[0]++; // Skip '('
+        root.left = str2treeHelper(s, index);
+        index[0]++; // Skip ')'
+    }
+
+    // Parse right child
+    if (index[0] < s.length() && s.charAt(index[0]) == '(') {
+        index[0]++; // Skip '('
+        root.right = str2treeHelper(s, index);
+        index[0]++; // Skip ')'
+    }
+
+    return root;
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Pattern | Time Complexity | Space Complexity | Recursion Depth |
+| :-- | :-- | :-- | :-- |
+| Tree Traversal | O(n) | O(h) | O(h) |
+| Tree Properties | O(n) | O(h) | O(h) |
+| Path Problems | O(n) | O(h) | O(h) |
+| Tree Construction | O(n) | O(n) | O(h) |
+| Tree Comparison | O(min(n1, n2)) | O(h) | O(h) |
+| BST Operations | O(h) to O(n) | O(h) | O(h) |
+| Tree DP | O(n) | O(h) | O(h) |
+| Multi-tree Generation | O(4^n / √n) | O(4^n / √n) | O(n) |
+
+*Where n = number of nodes, h = height of tree*
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Recursion Guidelines
+
+```java
+// 1. Always handle null base case first
+public int processTree(TreeNode root) {
+    if (root == null) return 0; // Base case first
+
+    // Process current node
+    // Recurse on children
+    // Combine results
+}
+
+// 2. Use helper methods for complex recursions
+public List<String> complexOperation(TreeNode root) {
+    List<String> result = new ArrayList<>();
+    complexHelper(root, new StringBuilder(), result);
+    return result;
+}
+
+private void complexHelper(TreeNode root, StringBuilder path, List<String> result) {
+    // Implementation with additional parameters
+}
+
+// 3. Memoization for overlapping subproblems
+Map<TreeNode, Integer> memo = new HashMap<>();
+
+public int expensiveOperation(TreeNode root) {
+    if (memo.containsKey(root)) return memo.get(root);
+
+    int result = computeExpensiveResult(root);
+    memo.put(root, result);
+    return result;
+}
+
+// 4. Use arrays for pass-by-reference in Java
+public int maxValue(TreeNode root) {
+    int[] max = {Integer.MIN_VALUE}; // Wrapper for primitive
+    findMax(root, max);
+    return max[0];
+}
+
+private void findMax(TreeNode root, int[] max) {
+    if (root == null) return;
+    max[0] = Math.max(max[0], root.val);
+    findMax(root.left, max);
+    findMax(root.right, max);
+}
+
+int computeExpensiveResult(TreeNode root) { return 0; /* Implementation */ }
+```
+
+
+### Common Pitfalls to Avoid
+
+1. **Stack Overflow**: For very deep trees, consider iterative solutions
+2. **Null Pointer**: Always check for null before accessing node properties
+3. **Infinite Recursion**: Ensure base cases are handled properly
+4. **Memory Leaks**: Be careful with global state and memoization
+5. **Incorrect Backtracking**: Remember to undo changes in path-based problems
+
+### Interview Tips[13][12]
+
+- **Identify the pattern** early: traversal, property check, path problem, etc.
+- **Draw small examples** to understand the recursive relationship
+- **Start with base cases** - what happens with null, single node?
+- **Think about the recursive assumption** - assume subproblems are solved
+- **Consider iterative alternatives** for space-constrained environments
+- **Use helper functions** to maintain clean interfaces

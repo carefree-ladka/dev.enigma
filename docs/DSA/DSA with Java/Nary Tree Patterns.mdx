@@ -1,0 +1,2189 @@
+# N-ary Tree
+
+## Table of Contents
+
+1. [N-ary Tree Fundamentals](#n-ary-tree-fundamentals)
+2. [Pattern 1: Tree Traversal](#pattern-1-tree-traversal)
+3. [Pattern 2: Tree Properties \& Metrics](#pattern-2-tree-properties--metrics)
+4. [Pattern 3: Tree Construction \& Serialization](#pattern-3-tree-construction--serialization)
+5. [Pattern 4: Path \& Sum Problems](#pattern-4-path--sum-problems)
+6. [Pattern 5: Level Order Operations](#pattern-5-level-order-operations)
+7. [Pattern 6: Tree Modification](#pattern-6-tree-modification)
+8. [Pattern 7: Validation \& Verification](#pattern-7-validation--verification)
+9. [Pattern 8: Tree Comparison](#pattern-8-tree-comparison)
+10. [Pattern 9: Ancestor \& Descendant](#pattern-9-ancestor--descendant)
+11. [Pattern 10: Tree DP Problems](#pattern-10-tree-dp-problems)
+12. [Pattern 11: Multi-Tree Operations](#pattern-11-multi-tree-operations)
+13. [Pattern 12: Advanced Tree Problems](#pattern-12-advanced-tree-problems)
+
+***
+
+## N-ary Tree Fundamentals
+
+### Core Node Definitions
+
+```java
+// Standard N-ary Tree Node
+class Node {
+    public int val;
+    public List<Node> children;
+
+    public Node() {}
+
+    public Node(int val) {
+        this.val = val;
+    }
+
+    public Node(int val, List<Node> children) {
+        this.val = val;
+        this.children = children;
+    }
+}
+
+// Alternative Implementation with Dynamic Arrays
+class NaryNode {
+    int val;
+    List<NaryNode> children;
+
+    NaryNode(int val) {
+        this.val = val;
+        this.children = new ArrayList<>();
+    }
+
+    void addChild(NaryNode child) {
+        children.add(child);
+    }
+
+    boolean isLeaf() {
+        return children == null || children.isEmpty();
+    }
+}
+
+// First Child/Next Sibling Representation (Memory Efficient)
+class OptimizedNode {
+    int val;
+    OptimizedNode firstChild;
+    OptimizedNode nextSibling;
+
+    OptimizedNode(int val) {
+        this.val = val;
+    }
+
+    void addChild(OptimizedNode child) {
+        if (firstChild == null) {
+            firstChild = child;
+        } else {
+            OptimizedNode current = firstChild;
+            while (current.nextSibling != null) {
+                current = current.nextSibling;
+            }
+            current.nextSibling = child;
+        }
+    }
+}
+```
+
+
+### Basic N-ary Tree Operations Template
+
+```java
+class NaryTreeOperations {
+    // Generic traversal template
+    void traverseNary(Node root, List<Integer> result, TraversalType type) {
+        if (root == null) return;
+
+        switch (type) {
+            case PREORDER:
+                result.add(root.val);
+                if (root.children != null) {
+                    for (Node child : root.children) {
+                        traverseNary(child, result, type);
+                    }
+                }
+                break;
+
+            case POSTORDER:
+                if (root.children != null) {
+                    for (Node child : root.children) {
+                        traverseNary(child, result, type);
+                    }
+                }
+                result.add(root.val);
+                break;
+        }
+    }
+
+    enum TraversalType {
+        PREORDER, POSTORDER, LEVELORDER
+    }
+
+    // Recursive template for tree problems
+    int processNode(Node node) {
+        if (node == null) return baseCase();
+
+        // Process current node
+        int currentResult = processCurrentNode(node);
+
+        // Process children
+        int childrenResult = 0;
+        if (node.children != null) {
+            for (Node child : node.children) {
+                childrenResult = combineResults(childrenResult, processNode(child));
+            }
+        }
+
+        return combineWithCurrent(currentResult, childrenResult);
+    }
+
+    // Template methods to be implemented
+    int baseCase() { return 0; }
+    int processCurrentNode(Node node) { return 1; }
+    int combineResults(int accumulated, int current) { return accumulated + current; }
+    int combineWithCurrent(int current, int children) { return current + children; }
+}
+```
+
+
+***
+
+## Pattern 1: Tree Traversal
+
+### 1.1 Preorder Traversal
+
+```java
+// Recursive Preorder
+List<Integer> preorder(Node root) {
+    List<Integer> result = new ArrayList<>();
+    preorderHelper(root, result);
+    return result;
+}
+
+void preorderHelper(Node root, List<Integer> result) {
+    if (root == null) return;
+
+    result.add(root.val);
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            preorderHelper(child, result);
+        }
+    }
+}
+
+// Iterative Preorder
+List<Integer> preorderIterative(Node root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<Node> stack = new Stack<>();
+    stack.push(root);
+
+    while (!stack.isEmpty()) {
+        Node current = stack.pop();
+        result.add(current.val);
+
+        // Add children in reverse order for correct processing
+        if (current.children != null) {
+            for (int i = current.children.size() - 1; i >= 0; i--) {
+                stack.push(current.children.get(i));
+            }
+        }
+    }
+
+    return result;
+}
+
+// Generic Preorder with Visitor Pattern
+void preorderWithVisitor(Node root, Visitor<Integer> visitor) {
+    if (root == null) return;
+
+    visitor.visit(root.val);
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            preorderWithVisitor(child, visitor);
+        }
+    }
+}
+
+interface Visitor<T> {
+    void visit(T item);
+}
+```
+
+
+### 1.2 Postorder Traversal
+
+```java
+// Recursive Postorder
+List<Integer> postorder(Node root) {
+    List<Integer> result = new ArrayList<>();
+    postorderHelper(root, result);
+    return result;
+}
+
+void postorderHelper(Node root, List<Integer> result) {
+    if (root == null) return;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            postorderHelper(child, result);
+        }
+    }
+
+    result.add(root.val);
+}
+
+// Iterative Postorder (Using Two Stacks)
+List<Integer> postorderIterative(Node root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<Node> stack1 = new Stack<>();
+    Stack<Node> stack2 = new Stack<>();
+
+    stack1.push(root);
+
+    while (!stack1.isEmpty()) {
+        Node current = stack1.pop();
+        stack2.push(current);
+
+        if (current.children != null) {
+            for (Node child : current.children) {
+                stack1.push(child);
+            }
+        }
+    }
+
+    while (!stack2.isEmpty()) {
+        result.add(stack2.pop().val);
+    }
+
+    return result;
+}
+
+// Iterative Postorder (Single Stack with State)
+List<Integer> postorderIterativeSingleStack(Node root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<NodeState> stack = new Stack<>();
+    stack.push(new NodeState(root, 0));
+
+    while (!stack.isEmpty()) {
+        NodeState current = stack.peek();
+
+        if (current.node.children == null ||
+            current.childIndex >= current.node.children.size()) {
+            result.add(current.node.val);
+            stack.pop();
+        } else {
+            Node child = current.node.children.get(current.childIndex);
+            current.childIndex++;
+            stack.push(new NodeState(child, 0));
+        }
+    }
+
+    return result;
+}
+
+class NodeState {
+    Node node;
+    int childIndex;
+
+    NodeState(Node node, int childIndex) {
+        this.node = node;
+        this.childIndex = childIndex;
+    }
+}
+```
+
+
+### 1.3 Level Order Traversal
+
+```java
+// Basic Level Order
+List<List<Integer>> levelOrder(Node root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            currentLevel.add(current.val);
+
+            if (current.children != null) {
+                for (Node child : current.children) {
+                    queue.offer(child);
+                }
+            }
+        }
+
+        result.add(currentLevel);
+    }
+
+    return result;
+}
+
+// Level Order with Node Tracking
+List<List<Node>> levelOrderNodes(Node root) {
+    List<List<Node>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Node> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            currentLevel.add(current);
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+
+        result.add(currentLevel);
+    }
+
+    return result;
+}
+
+// Reverse Level Order
+List<List<Integer>> levelOrderReverse(Node root) {
+    List<List<Integer>> result = levelOrder(root);
+    Collections.reverse(result);
+    return result;
+}
+
+// Zigzag Level Order
+List<List<Integer>> zigzagLevelOrder(Node root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+    boolean leftToRight = true;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+
+            if (leftToRight) {
+                currentLevel.add(current.val);
+            } else {
+                currentLevel.add(0, current.val);
+            }
+
+            if (current.children != null) {
+                for (Node child : current.children) {
+                    queue.offer(child);
+                }
+            }
+        }
+
+        result.add(currentLevel);
+        leftToRight = !leftToRight;
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 2: Tree Properties \& Metrics
+
+### 2.1 Maximum Depth
+
+```java
+// Recursive Maximum Depth
+int maxDepth(Node root) {
+    if (root == null) return 0;
+
+    int maxChildDepth = 0;
+    if (root.children != null) {
+        for (Node child : root.children) {
+            maxChildDepth = Math.max(maxChildDepth, maxDepth(child));
+        }
+    }
+
+    return 1 + maxChildDepth;
+}
+
+// Iterative Maximum Depth (BFS)
+int maxDepthIterative(Node root) {
+    if (root == null) return 0;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+    int depth = 0;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        depth++;
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+
+            if (current.children != null) {
+                for (Node child : current.children) {
+                    queue.offer(child);
+                }
+            }
+        }
+    }
+
+    return depth;
+}
+
+// Depth with Path Tracking
+class DepthResult {
+    int maxDepth;
+    List<Integer> deepestPath;
+
+    DepthResult(int depth, List<Integer> path) {
+        this.maxDepth = depth;
+        this.deepestPath = new ArrayList<>(path);
+    }
+}
+
+DepthResult maxDepthWithPath(Node root) {
+    return maxDepthWithPathHelper(root, new ArrayList<>());
+}
+
+DepthResult maxDepthWithPathHelper(Node root, List<Integer> currentPath) {
+    if (root == null) {
+        return new DepthResult(0, currentPath);
+    }
+
+    currentPath.add(root.val);
+
+    DepthResult maxResult = new DepthResult(1, new ArrayList<>(currentPath));
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            DepthResult childResult = maxDepthWithPathHelper(child, currentPath);
+            if (childResult.maxDepth + 1 > maxResult.maxDepth) {
+                maxResult = new DepthResult(childResult.maxDepth + 1, childResult.deepestPath);
+            }
+        }
+    }
+
+    currentPath.remove(currentPath.size() - 1);
+    return maxResult;
+}
+```
+
+
+### 2.2 Tree Size \& Node Count
+
+```java
+// Count Total Nodes
+int countNodes(Node root) {
+    if (root == null) return 0;
+
+    int count = 1; // Current node
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            count += countNodes(child);
+        }
+    }
+
+    return count;
+}
+
+// Count Leaf Nodes
+int countLeaves(Node root) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return 1; // Leaf node
+    }
+
+    int leafCount = 0;
+    for (Node child : root.children) {
+        leafCount += countLeaves(child);
+    }
+
+    return leafCount;
+}
+
+// Count Internal Nodes
+int countInternalNodes(Node root) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return 0; // Leaf node
+    }
+
+    int internalCount = 1; // Current internal node
+    for (Node child : root.children) {
+        internalCount += countInternalNodes(child);
+    }
+
+    return internalCount;
+}
+
+// Count Nodes at Specific Level
+int countNodesAtLevel(Node root, int targetLevel) {
+    if (root == null) return 0;
+    if (targetLevel == 0) return 1;
+
+    int count = 0;
+    if (root.children != null) {
+        for (Node child : root.children) {
+            count += countNodesAtLevel(child, targetLevel - 1);
+        }
+    }
+
+    return count;
+}
+
+// Width of Tree (Maximum nodes at any level)
+int maxWidth(Node root) {
+    if (root == null) return 0;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+    int maxWidth = 0;
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        maxWidth = Math.max(maxWidth, levelSize);
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+
+            if (current.children != null) {
+                for (Node child : current.children) {
+                    queue.offer(child);
+                }
+            }
+        }
+    }
+
+    return maxWidth;
+}
+```
+
+
+### 2.3 Tree Balance \& Properties
+
+```java
+// Check if tree is balanced (difference in depths of subtrees <= 1)
+boolean isBalanced(Node root) {
+    return checkBalance(root) != -1;
+}
+
+int checkBalance(Node root) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return 1;
+    }
+
+    int minDepth = Integer.MAX_VALUE;
+    int maxDepth = 0;
+
+    for (Node child : root.children) {
+        int childDepth = checkBalance(child);
+        if (childDepth == -1) return -1; // Subtree is not balanced
+
+        minDepth = Math.min(minDepth, childDepth);
+        maxDepth = Math.max(maxDepth, childDepth);
+    }
+
+    // Check if current subtree is balanced
+    if (maxDepth - minDepth > 1) return -1;
+
+    return 1 + maxDepth;
+}
+
+// Diameter of N-ary Tree
+int diameter(Node root) {
+    int[] maxDiameter = {0};
+    diameterHelper(root, maxDiameter);
+    return maxDiameter[0];
+}
+
+int diameterHelper(Node root, int[] maxDiameter) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return 1;
+    }
+
+    // Get depths of all children
+    List<Integer> childDepths = new ArrayList<>();
+    for (Node child : root.children) {
+        childDepths.add(diameterHelper(child, maxDiameter));
+    }
+
+    // Sort to get two largest depths
+    Collections.sort(childDepths, Collections.reverseOrder());
+
+    // Update diameter (path through current node)
+    int currentDiameter = childDepths.size() >= 2 ?
+        childDepths.get(0) + childDepths.get(1) + 1 :
+        childDepths.get(0) + 1;
+
+    maxDiameter[0] = Math.max(maxDiameter[0], currentDiameter);
+
+    return 1 + childDepths.get(0);
+}
+```
+
+
+***
+
+## Pattern 3: Tree Construction \& Serialization
+
+### 3.1 Serialize and Deserialize
+
+```java
+// Serialize N-ary Tree to String
+String serialize(Node root) {
+    StringBuilder sb = new StringBuilder();
+    serializeHelper(root, sb);
+    return sb.toString();
+}
+
+void serializeHelper(Node root, StringBuilder sb) {
+    if (root == null) {
+        sb.append("null,");
+        return;
+    }
+
+    sb.append(root.val).append(",");
+
+    if (root.children == null) {
+        sb.append("0,"); // No children
+    } else {
+        sb.append(root.children.size()).append(",");
+        for (Node child : root.children) {
+            serializeHelper(child, sb);
+        }
+    }
+}
+
+// Deserialize String to N-ary Tree
+Node deserialize(String data) {
+    String[] tokens = data.split(",");
+    int[] index = {0};
+    return deserializeHelper(tokens, index);
+}
+
+Node deserializeHelper(String[] tokens, int[] index) {
+    if (index[0] >= tokens.length || "null".equals(tokens[index[0]])) {
+        index[0]++;
+        return null;
+    }
+
+    int val = Integer.parseInt(tokens[index[0]++]);
+    int childrenCount = Integer.parseInt(tokens[index[0]++]);
+
+    Node root = new Node(val);
+    root.children = new ArrayList<>();
+
+    for (int i = 0; i < childrenCount; i++) {
+        Node child = deserializeHelper(tokens, index);
+        if (child != null) {
+            root.children.add(child);
+        }
+    }
+
+    return root;
+}
+
+// Level Order Serialization (Leetcode Style)
+String serializeLevelOrder(Node root) {
+    if (root == null) return "";
+
+    StringBuilder sb = new StringBuilder();
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        Node current = queue.poll();
+
+        if (current == null) {
+            sb.append("null,");
+        } else {
+            sb.append(current.val).append(",");
+
+            if (current.children != null) {
+                for (Node child : current.children) {
+                    queue.offer(child);
+                }
+                queue.offer(null); // Separator for children group
+            }
+        }
+    }
+
+    return sb.toString();
+}
+
+Node deserializeLevelOrder(String data) {
+    if (data.isEmpty()) return null;
+
+    String[] tokens = data.split(",");
+    Node root = new Node(Integer.parseInt(tokens[0]));
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    int i = 1;
+    while (!queue.isEmpty() && i < tokens.length) {
+        Node parent = queue.poll();
+        parent.children = new ArrayList<>();
+
+        // Read children until null separator
+        while (i < tokens.length && !tokens[i].equals("null")) {
+            Node child = new Node(Integer.parseInt(tokens[i]));
+            parent.children.add(child);
+            queue.offer(child);
+            i++;
+        }
+        i++; // Skip null separator
+    }
+
+    return root;
+}
+```
+
+
+### 3.2 Clone N-ary Tree
+
+```java
+// Deep Clone N-ary Tree
+Node cloneTree(Node root) {
+    if (root == null) return null;
+
+    Node clone = new Node(root.val);
+
+    if (root.children != null) {
+        clone.children = new ArrayList<>();
+        for (Node child : root.children) {
+            clone.children.add(cloneTree(child));
+        }
+    }
+
+    return clone;
+}
+
+// Clone with HashMap (for trees with references)
+Node cloneTreeWithMap(Node root) {
+    Map<Node, Node> cloneMap = new HashMap<>();
+    return cloneHelper(root, cloneMap);
+}
+
+Node cloneHelper(Node root, Map<Node, Node> cloneMap) {
+    if (root == null) return null;
+
+    if (cloneMap.containsKey(root)) {
+        return cloneMap.get(root);
+    }
+
+    Node clone = new Node(root.val);
+    cloneMap.put(root, clone);
+
+    if (root.children != null) {
+        clone.children = new ArrayList<>();
+        for (Node child : root.children) {
+            clone.children.add(cloneHelper(child, cloneMap));
+        }
+    }
+
+    return clone;
+}
+```
+
+
+### 3.3 Build Tree from Traversals
+
+```java
+// Build N-ary Tree from Preorder and Postorder
+Node buildTree(int[] preorder, int[] postorder) {
+    Map<Integer, Integer> postMap = new HashMap<>();
+    for (int i = 0; i < postorder.length; i++) {
+        postMap.put(postorder[i], i);
+    }
+
+    return buildTreeHelper(preorder, 0, preorder.length - 1,
+                          postorder, 0, postorder.length - 1, postMap);
+}
+
+Node buildTreeHelper(int[] preorder, int preStart, int preEnd,
+                    int[] postorder, int postStart, int postEnd,
+                    Map<Integer, Integer> postMap) {
+    if (preStart > preEnd) return null;
+
+    Node root = new Node(preorder[preStart]);
+    if (preStart == preEnd) return root;
+
+    root.children = new ArrayList<>();
+
+    int childStart = preStart + 1;
+    for (int i = postStart; i < postEnd; i++) {
+        int childRootVal = postorder[i];
+
+        // Find this child in preorder
+        int childEnd = findChildEnd(preorder, childStart, preEnd,
+                                   postorder, postStart, i, postMap);
+
+        if (childEnd >= childStart) {
+            Node child = buildTreeHelper(preorder, childStart, childEnd,
+                                        postorder, postStart, i, postMap);
+            root.children.add(child);
+            childStart = childEnd + 1;
+        }
+    }
+
+    return root;
+}
+
+int findChildEnd(int[] preorder, int start, int end,
+                int[] postorder, int postStart, int postEnd,
+                Map<Integer, Integer> postMap) {
+    // Implementation depends on specific constraints
+    // This is a simplified version
+    return start;
+}
+```
+
+
+***
+
+## Pattern 4: Path \& Sum Problems
+
+### 4.1 Root to Leaf Paths
+
+```java
+// All Root-to-Leaf Paths
+List<String> binaryTreePaths(Node root) {
+    List<String> result = new ArrayList<>();
+    if (root != null) {
+        findPaths(root, "", result);
+    }
+    return result;
+}
+
+void findPaths(Node root, String path, List<String> result) {
+    if (root.children == null || root.children.isEmpty()) {
+        result.add(path + root.val);
+        return;
+    }
+
+    for (Node child : root.children) {
+        findPaths(child, path + root.val + "->", result);
+    }
+}
+
+// Paths as Lists
+List<List<Integer>> allPaths(Node root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root != null) {
+        findPathsAsList(root, new ArrayList<>(), result);
+    }
+    return result;
+}
+
+void findPathsAsList(Node root, List<Integer> currentPath,
+                    List<List<Integer>> result) {
+    currentPath.add(root.val);
+
+    if (root.children == null || root.children.isEmpty()) {
+        result.add(new ArrayList<>(currentPath));
+    } else {
+        for (Node child : root.children) {
+            findPathsAsList(child, currentPath, result);
+        }
+    }
+
+    currentPath.remove(currentPath.size() - 1); // Backtrack
+}
+```
+
+
+### 4.2 Path Sum Problems
+
+```java
+// Path Sum (Root to Leaf)
+boolean hasPathSum(Node root, int targetSum) {
+    if (root == null) return false;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return root.val == targetSum;
+    }
+
+    for (Node child : root.children) {
+        if (hasPathSum(child, targetSum - root.val)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// All Paths with Target Sum
+List<List<Integer>> pathSum(Node root, int targetSum) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root != null) {
+        findPathSum(root, targetSum, new ArrayList<>(), result);
+    }
+    return result;
+}
+
+void findPathSum(Node root, int remainingSum, List<Integer> currentPath,
+                List<List<Integer>> result) {
+    currentPath.add(root.val);
+
+    // Check if leaf node with target sum
+    if (root.children == null || root.children.isEmpty()) {
+        if (remainingSum == root.val) {
+            result.add(new ArrayList<>(currentPath));
+        }
+    } else {
+        for (Node child : root.children) {
+            findPathSum(child, remainingSum - root.val, currentPath, result);
+        }
+    }
+
+    currentPath.remove(currentPath.size() - 1); // Backtrack
+}
+
+// Sum of All Leaf Values
+int sumOfLeaves(Node root) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        return root.val;
+    }
+
+    int sum = 0;
+    for (Node child : root.children) {
+        sum += sumOfLeaves(child);
+    }
+
+    return sum;
+}
+
+// Maximum Path Sum (Any Path)
+int maxPathSum(Node root) {
+    int[] maxSum = {Integer.MIN_VALUE};
+    maxPathSumHelper(root, maxSum);
+    return maxSum[0];
+}
+
+int maxPathSumHelper(Node root, int[] maxSum) {
+    if (root == null) return 0;
+
+    if (root.children == null || root.children.isEmpty()) {
+        maxSum[0] = Math.max(maxSum[0], root.val);
+        return root.val;
+    }
+
+    // Get positive contributions from children
+    List<Integer> childSums = new ArrayList<>();
+    for (Node child : root.children) {
+        int childSum = maxPathSumHelper(child, maxSum);
+        if (childSum > 0) {
+            childSums.add(childSum);
+        }
+    }
+
+    // Sort to get largest contributions
+    Collections.sort(childSums, Collections.reverseOrder());
+
+    // Current path sum through this node
+    int currentPathSum = root.val;
+    for (int childSum : childSums) {
+        currentPathSum += childSum;
+    }
+
+    maxSum[0] = Math.max(maxSum[0], currentPathSum);
+
+    // Return max sum path ending at this node
+    return root.val + (childSums.isEmpty() ? 0 : childSums.get(0));
+}
+```
+
+
+### 4.3 Distance \& Path Queries
+
+```java
+// Find Distance Between Two Nodes
+int findDistance(Node root, int val1, int val2) {
+    Node lca = findLCA(root, val1, val2);
+    if (lca == null) return -1;
+
+    int dist1 = findDistanceFromNode(lca, val1, 0);
+    int dist2 = findDistanceFromNode(lca, val2, 0);
+
+    return dist1 + dist2;
+}
+
+int findDistanceFromNode(Node root, int target, int depth) {
+    if (root == null) return -1;
+    if (root.val == target) return depth;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            int childDist = findDistanceFromNode(child, target, depth + 1);
+            if (childDist != -1) return childDist;
+        }
+    }
+
+    return -1;
+}
+
+// Find Path Between Two Nodes
+List<Integer> findPath(Node root, int val1, int val2) {
+    Node lca = findLCA(root, val1, val2);
+    if (lca == null) return new ArrayList<>();
+
+    List<Integer> path1 = new ArrayList<>();
+    List<Integer> path2 = new ArrayList<>();
+
+    findPathFromNode(lca, val1, new ArrayList<>(), path1);
+    findPathFromNode(lca, val2, new ArrayList<>(), path2);
+
+    // Combine paths
+    Collections.reverse(path1);
+    path1.addAll(path2.subList(1, path2.size())); // Skip LCA duplication
+
+    return path1;
+}
+
+boolean findPathFromNode(Node root, int target, List<Integer> currentPath,
+                        List<Integer> result) {
+    if (root == null) return false;
+
+    currentPath.add(root.val);
+
+    if (root.val == target) {
+        result.addAll(currentPath);
+        return true;
+    }
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            if (findPathFromNode(child, target, currentPath, result)) {
+                return true;
+            }
+        }
+    }
+
+    currentPath.remove(currentPath.size() - 1);
+    return false;
+}
+```
+
+
+***
+
+## Pattern 5: Level Order Operations
+
+### 5.1 Level-wise Processing
+
+```java
+// Level Order Values
+List<List<Integer>> levelOrder(Node root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        List<Integer> level = new ArrayList<>();
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            level.add(current.val);
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+
+        result.add(level);
+    }
+
+    return result;
+}
+
+// Average of Each Level
+List<Double> averageOfLevels(Node root) {
+    List<Double> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        long sum = 0;
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            sum += current.val;
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+
+        result.add((double) sum / levelSize);
+    }
+
+    return result;
+}
+
+// Largest Value in Each Level
+List<Integer> largestValues(Node root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        int maxVal = Integer.MIN_VALUE;
+
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            maxVal = Math.max(maxVal, current.val);
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+
+        result.add(maxVal);
+    }
+
+    return result;
+}
+```
+
+
+### 5.2 Level-based Modifications
+
+```java
+// Connect Nodes at Same Level (if next pointer exists)
+class NodeWithNext {
+    int val;
+    List<NodeWithNext> children;
+    NodeWithNext next;
+
+    NodeWithNext(int val) {
+        this.val = val;
+        this.children = new ArrayList<>();
+    }
+}
+
+NodeWithNext connect(NodeWithNext root) {
+    if (root == null) return null;
+
+    Queue<NodeWithNext> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        NodeWithNext prev = null;
+
+        for (int i = 0; i < levelSize; i++) {
+            NodeWithNext current = queue.poll();
+
+            if (prev != null) {
+                prev.next = current;
+            }
+            prev = current;
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+    }
+
+    return root;
+}
+
+// Add One Row at Specific Depth
+Node addOneRow(Node root, int val, int depth) {
+    if (depth == 1) {
+        Node newRoot = new Node(val);
+        newRoot.children = Arrays.asList(root);
+        return newRoot;
+    }
+
+    addOneRowHelper(root, val, depth, 1);
+    return root;
+}
+
+void addOneRowHelper(Node root, int val, int targetDepth, int currentDepth) {
+    if (root == null) return;
+
+    if (currentDepth == targetDepth - 1) {
+        List<Node> oldChildren = root.children == null ?
+            new ArrayList<>() : new ArrayList<>(root.children);
+        root.children = new ArrayList<>();
+
+        for (Node oldChild : oldChildren) {
+            Node newNode = new Node(val);
+            newNode.children = Arrays.asList(oldChild);
+            root.children.add(newNode);
+        }
+        return;
+    }
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            addOneRowHelper(child, val, targetDepth, currentDepth + 1);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 6: Tree Modification
+
+### 6.1 Node Insertion \& Deletion
+
+```java
+// Insert Node as Child
+void insertAsChild(Node parent, Node child) {
+    if (parent.children == null) {
+        parent.children = new ArrayList<>();
+    }
+    parent.children.add(child);
+}
+
+// Insert Node at Specific Position
+void insertAtPosition(Node parent, Node child, int position) {
+    if (parent.children == null) {
+        parent.children = new ArrayList<>();
+    }
+
+    if (position < 0 || position > parent.children.size()) {
+        parent.children.add(child);
+    } else {
+        parent.children.add(position, child);
+    }
+}
+
+// Delete Node by Value
+boolean deleteNode(Node root, int val) {
+    if (root == null) return false;
+
+    if (root.children != null) {
+        for (int i = 0; i < root.children.size(); i++) {
+            Node child = root.children.get(i);
+
+            if (child.val == val) {
+                // Add child's children to current node
+                List<Node> grandChildren = child.children;
+                root.children.remove(i);
+
+                if (grandChildren != null) {
+                    root.children.addAll(i, grandChildren);
+                }
+                return true;
+            }
+
+            if (deleteNode(child, val)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// Delete All Nodes with Value
+void deleteAllNodes(Node root, int val) {
+    if (root == null || root.children == null) return;
+
+    for (int i = root.children.size() - 1; i >= 0; i--) {
+        Node child = root.children.get(i);
+
+        if (child.val == val) {
+            root.children.remove(i);
+        } else {
+            deleteAllNodes(child, val);
+        }
+    }
+}
+```
+
+
+### 6.2 Tree Transformation
+
+```java
+// Mirror N-ary Tree
+Node mirror(Node root) {
+    if (root == null) return null;
+
+    if (root.children != null) {
+        Collections.reverse(root.children);
+        for (Node child : root.children) {
+            mirror(child);
+        }
+    }
+
+    return root;
+}
+
+// Convert to Binary Tree (First Child/Next Sibling)
+class BinaryNode {
+    int val;
+    BinaryNode left;  // First child
+    BinaryNode right; // Next sibling
+
+    BinaryNode(int val) {
+        this.val = val;
+    }
+}
+
+BinaryNode convertToBinary(Node root) {
+    if (root == null) return null;
+
+    BinaryNode binaryRoot = new BinaryNode(root.val);
+
+    if (root.children != null && !root.children.isEmpty()) {
+        binaryRoot.left = convertToBinary(root.children.get(0));
+
+        BinaryNode current = binaryRoot.left;
+        for (int i = 1; i < root.children.size(); i++) {
+            current.right = convertToBinary(root.children.get(i));
+            current = current.right;
+        }
+    }
+
+    return binaryRoot;
+}
+
+// Convert Binary Tree back to N-ary
+Node convertFromBinary(BinaryNode root) {
+    if (root == null) return null;
+
+    Node naryRoot = new Node(root.val);
+    naryRoot.children = new ArrayList<>();
+
+    BinaryNode child = root.left;
+    while (child != null) {
+        naryRoot.children.add(convertFromBinary(child));
+        child = child.right;
+    }
+
+    return naryRoot;
+}
+```
+
+
+***
+
+## Pattern 7: Validation \& Verification
+
+### 7.1 Tree Structure Validation
+
+```java
+// Validate N-ary Tree Structure
+boolean validateNaryTree(Node root, int maxChildren) {
+    if (root == null) return true;
+
+    if (root.children != null && root.children.size() > maxChildren) {
+        return false;
+    }
+
+    // Check for cycles using DFS
+    Set<Node> visited = new HashSet<>();
+    Set<Node> recursionStack = new HashSet<>();
+
+    return !hasCycle(root, visited, recursionStack) &&
+           validateStructure(root, maxChildren);
+}
+
+boolean hasCycle(Node root, Set<Node> visited, Set<Node> recursionStack) {
+    if (root == null) return false;
+
+    if (recursionStack.contains(root)) return true;
+    if (visited.contains(root)) return false;
+
+    visited.add(root);
+    recursionStack.add(root);
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            if (hasCycle(child, visited, recursionStack)) {
+                return true;
+            }
+        }
+    }
+
+    recursionStack.remove(root);
+    return false;
+}
+
+boolean validateStructure(Node root, int maxChildren) {
+    if (root == null) return true;
+
+    if (root.children != null) {
+        if (root.children.size() > maxChildren) return false;
+
+        for (Node child : root.children) {
+            if (!validateStructure(child, maxChildren)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// Check if tree is complete (all levels filled except possibly last)
+boolean isCompleteTree(Node root) {
+    if (root == null) return true;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+    boolean foundNonFull = false;
+
+    while (!queue.isEmpty()) {
+        Node current = queue.poll();
+
+        if (current.children == null || current.children.isEmpty()) {
+            foundNonFull = true;
+        } else {
+            if (foundNonFull) return false; // Found non-leaf after leaf level
+
+            for (Node child : current.children) {
+                queue.offer(child);
+            }
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 7.2 Property Validation
+
+```java
+// Validate Binary Search Tree Property (for ordered n-ary tree)
+boolean isValidBST(Node root) {
+    return isValidBSTHelper(root, null, null);
+}
+
+boolean isValidBSTHelper(Node root, Integer min, Integer max) {
+    if (root == null) return true;
+
+    if ((min != null && root.val <= min) ||
+        (max != null && root.val >= max)) {
+        return false;
+    }
+
+    if (root.children != null) {
+        for (int i = 0; i < root.children.size(); i++) {
+            Node child = root.children.get(i);
+
+            // For n-ary BST, left children < root < right children
+            Integer newMin = (i < root.children.size() / 2) ? min : root.val;
+            Integer newMax = (i < root.children.size() / 2) ? root.val : max;
+
+            if (!isValidBSTHelper(child, newMin, newMax)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// Check if all paths have same sum
+boolean hasUniformPathSum(Node root) {
+    if (root == null) return true;
+
+    Set<Integer> pathSums = new HashSet<>();
+    collectPathSums(root, 0, pathSums);
+
+    return pathSums.size() <= 1;
+}
+
+void collectPathSums(Node root, int currentSum, Set<Integer> pathSums) {
+    if (root == null) return;
+
+    currentSum += root.val;
+
+    if (root.children == null || root.children.isEmpty()) {
+        pathSums.add(currentSum);
+        return;
+    }
+
+    for (Node child : root.children) {
+        collectPathSums(child, currentSum, pathSums);
+    }
+}
+```
+
+
+***
+
+## Pattern 8: Tree Comparison
+
+### 8.1 Same Tree
+
+```java
+// Check if two N-ary trees are identical
+boolean isSameTree(Node p, Node q) {
+    if (p == null && q == null) return true;
+    if (p == null || q == null) return false;
+    if (p.val != q.val) return false;
+
+    // Check children count
+    int pChildCount = (p.children == null) ? 0 : p.children.size();
+    int qChildCount = (q.children == null) ? 0 : q.children.size();
+
+    if (pChildCount != qChildCount) return false;
+
+    // Compare each child
+    for (int i = 0; i < pChildCount; i++) {
+        if (!isSameTree(p.children.get(i), q.children.get(i))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Check if two trees are isomorphic (same structure, different values allowed)
+boolean isIsomorphic(Node p, Node q) {
+    if (p == null && q == null) return true;
+    if (p == null || q == null) return false;
+
+    int pChildCount = (p.children == null) ? 0 : p.children.size();
+    int qChildCount = (q.children == null) ? 0 : q.children.size();
+
+    if (pChildCount != qChildCount) return false;
+
+    for (int i = 0; i < pChildCount; i++) {
+        if (!isIsomorphic(p.children.get(i), q.children.get(i))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 8.2 Subtree Problems
+
+```java
+// Check if one tree is subtree of another
+boolean isSubtree(Node root, Node subRoot) {
+    if (subRoot == null) return true;
+    if (root == null) return false;
+
+    return isSameTree(root, subRoot) ||
+           hasSubtreeInChildren(root, subRoot);
+}
+
+boolean hasSubtreeInChildren(Node root, Node subRoot) {
+    if (root.children == null) return false;
+
+    for (Node child : root.children) {
+        if (isSubtree(child, subRoot)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Find all occurrences of subtree
+List<Node> findAllSubtrees(Node root, Node target) {
+    List<Node> result = new ArrayList<>();
+    findSubtreesHelper(root, target, result);
+    return result;
+}
+
+void findSubtreesHelper(Node root, Node target, List<Node> result) {
+    if (root == null) return;
+
+    if (isSameTree(root, target)) {
+        result.add(root);
+    }
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            findSubtreesHelper(child, target, result);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Ancestor \& Descendant
+
+### 9.1 Lowest Common Ancestor
+
+```java
+// Find LCA of two nodes
+Node findLCA(Node root, int val1, int val2) {
+    if (root == null) return null;
+
+    if (root.val == val1 || root.val == val2) {
+        return root;
+    }
+
+    List<Node> foundAncestors = new ArrayList<>();
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            Node lca = findLCA(child, val1, val2);
+            if (lca != null) {
+                foundAncestors.add(lca);
+            }
+        }
+    }
+
+    // If found in multiple subtrees, current node is LCA
+    if (foundAncestors.size() >= 2) {
+        return root;
+    }
+
+    // If found in one subtree, return that result
+    return foundAncestors.isEmpty() ? null : foundAncestors.get(0);
+}
+
+// Find LCA with parent pointers
+Node findLCAWithParent(Node node1, Node node2) {
+    Set<Node> ancestors = new HashSet<>();
+
+    // Collect all ancestors of node1
+    Node current = node1;
+    while (current != null) {
+        ancestors.add(current);
+        current = getParent(current); // Assuming parent pointer exists
+    }
+
+    // Find first common ancestor
+    current = node2;
+    while (current != null) {
+        if (ancestors.contains(current)) {
+            return current;
+        }
+        current = getParent(current);
+    }
+
+    return null;
+}
+
+// Helper method (assuming parent pointer exists)
+Node getParent(Node node) {
+    // Implementation depends on whether parent pointer is available
+    return null; // Placeholder
+}
+```
+
+
+### 9.2 Ancestor Queries
+
+```java
+// Find all ancestors of a node
+List<Integer> findAncestors(Node root, int target) {
+    List<Integer> ancestors = new ArrayList<>();
+    findAncestorsHelper(root, target, ancestors);
+    return ancestors;
+}
+
+boolean findAncestorsHelper(Node root, int target, List<Integer> ancestors) {
+    if (root == null) return false;
+
+    if (root.val == target) return true;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            if (findAncestorsHelper(child, target, ancestors)) {
+                ancestors.add(root.val);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// Find all descendants at specific distance
+List<Integer> findDescendantsAtDistance(Node root, int distance) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    if (distance == 0) {
+        result.add(root.val);
+        return result;
+    }
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            result.addAll(findDescendantsAtDistance(child, distance - 1));
+        }
+    }
+
+    return result;
+}
+
+// Check if one node is ancestor of another
+boolean isAncestor(Node root, int ancestor, int descendant) {
+    Node ancestorNode = findNode(root, ancestor);
+    if (ancestorNode == null) return false;
+
+    return findNode(ancestorNode, descendant) != null;
+}
+
+Node findNode(Node root, int val) {
+    if (root == null) return null;
+    if (root.val == val) return root;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            Node found = findNode(child, val);
+            if (found != null) return found;
+        }
+    }
+
+    return null;
+}
+```
+
+
+***
+
+## Pattern 10: Tree DP Problems
+
+### 10.1 Dynamic Programming on Trees
+
+```java
+// Maximum sum of non-adjacent nodes (House Robber on Tree)
+int rob(Node root) {
+    int[] result = robHelper(root);
+    return Math.max(result[0], result[1]);
+}
+
+int[] robHelper(Node root) {
+    if (root == null) return new int[]{0, 0};
+
+    // result[0] = max money when root is not robbed
+    // result[1] = max money when root is robbed
+    int[] result = new int[2];
+
+    if (root.children == null || root.children.isEmpty()) {
+        result[0] = 0;
+        result[1] = root.val;
+        return result;
+    }
+
+    for (Node child : root.children) {
+        int[] childResult = robHelper(child);
+        result[0] += Math.max(childResult[0], childResult[1]);
+        result[1] += childResult[0];
+    }
+
+    result[1] += root.val;
+    return result;
+}
+
+// Minimum cameras to cover tree
+int minCameraCover(Node root) {
+    int[] cameras = {0};
+    int state = dfsCamera(root, cameras);
+    return cameras[0] + (state == 0 ? 1 : 0);
+}
+
+int dfsCamera(Node root, int[] cameras) {
+    if (root == null) return 1; // Null nodes are covered
+
+    // States: 0 = not covered, 1 = covered, 2 = has camera
+    int minState = 1; // Assume covered initially
+    boolean needCamera = false;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            int childState = dfsCamera(child, cameras);
+            if (childState == 0) {
+                needCamera = true;
+            }
+            minState = Math.min(minState, childState);
+        }
+    } else {
+        minState = 0; // Leaf nodes are not covered initially
+    }
+
+    if (needCamera || minState == 0) {
+        cameras[0]++;
+        return 2;
+    }
+
+    return minState == 2 ? 1 : 0;
+}
+```
+
+
+### 10.2 Tree Statistics
+
+```java
+// Count nodes with specific property
+int countNodesWithProperty(Node root, Predicate<Node> predicate) {
+    if (root == null) return 0;
+
+    int count = predicate.test(root) ? 1 : 0;
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            count += countNodesWithProperty(child, predicate);
+        }
+    }
+
+    return count;
+}
+
+// Example: Count nodes with even values
+int countEvenNodes(Node root) {
+    return countNodesWithProperty(root, node -> node.val % 2 == 0);
+}
+
+// Find mode (most frequent value) in tree
+List<Integer> findMode(Node root) {
+    Map<Integer, Integer> frequencyMap = new HashMap<>();
+    collectFrequencies(root, frequencyMap);
+
+    int maxFreq = Collections.max(frequencyMap.values());
+    List<Integer> modes = new ArrayList<>();
+
+    for (Map.Entry<Integer, Integer> entry : frequencyMap.entrySet()) {
+        if (entry.getValue() == maxFreq) {
+            modes.add(entry.getKey());
+        }
+    }
+
+    return modes;
+}
+
+void collectFrequencies(Node root, Map<Integer, Integer> frequencyMap) {
+    if (root == null) return;
+
+    frequencyMap.put(root.val, frequencyMap.getOrDefault(root.val, 0) + 1);
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            collectFrequencies(child, frequencyMap);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Multi-Tree Operations
+
+### 11.1 Tree Merging
+
+```java
+// Merge two N-ary trees (add values for overlapping nodes)
+Node mergeTrees(Node t1, Node t2) {
+    if (t1 == null) return t2;
+    if (t2 == null) return t1;
+
+    Node merged = new Node(t1.val + t2.val);
+
+    // Get all children from both trees
+    List<Node> children1 = t1.children != null ? t1.children : new ArrayList<>();
+    List<Node> children2 = t2.children != null ? t2.children : new ArrayList<>();
+
+    int maxChildren = Math.max(children1.size(), children2.size());
+    merged.children = new ArrayList<>();
+
+    for (int i = 0; i < maxChildren; i++) {
+        Node child1 = i < children1.size() ? children1.get(i) : null;
+        Node child2 = i < children2.size() ? children2.get(i) : null;
+        Node mergedChild = mergeTrees(child1, child2);
+        if (mergedChild != null) {
+            merged.children.add(mergedChild);
+        }
+    }
+
+    return merged;
+}
+
+// Find common subtrees between two trees
+List<Node> findCommonSubtrees(Node root1, Node root2) {
+    List<Node> commonSubtrees = new ArrayList<>();
+    findCommonSubtreesHelper(root1, root2, commonSubtrees);
+    return commonSubtrees;
+}
+
+void findCommonSubtreesHelper(Node root1, Node root2, List<Node> result) {
+    if (root1 == null || root2 == null) return;
+
+    if (isSameTree(root1, root2)) {
+        result.add(root1);
+        return; // Don't check subtrees if whole tree matches
+    }
+
+    // Check all combinations of subtrees
+    if (root1.children != null && root2.children != null) {
+        for (Node child1 : root1.children) {
+            for (Node child2 : root2.children) {
+                findCommonSubtreesHelper(child1, child2, result);
+            }
+        }
+    }
+}
+```
+
+
+### 11.2 Tree Set Operations
+
+```java
+// Find intersection of values in two trees
+Set<Integer> findIntersection(Node root1, Node root2) {
+    Set<Integer> values1 = collectValues(root1);
+    Set<Integer> values2 = collectValues(root2);
+
+    values1.retainAll(values2);
+    return values1;
+}
+
+Set<Integer> collectValues(Node root) {
+    Set<Integer> values = new HashSet<>();
+    collectValuesHelper(root, values);
+    return values;
+}
+
+void collectValuesHelper(Node root, Set<Integer> values) {
+    if (root == null) return;
+
+    values.add(root.val);
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            collectValuesHelper(child, values);
+        }
+    }
+}
+
+// Find union of values in multiple trees
+Set<Integer> findUnion(List<Node> roots) {
+    Set<Integer> union = new HashSet<>();
+
+    for (Node root : roots) {
+        union.addAll(collectValues(root));
+    }
+
+    return union;
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Tree Problems
+
+### 12.1 Tree Isomorphism
+
+```java
+// Check if two trees are isomorphic (can be made identical by swapping children)
+boolean areIsomorphic(Node root1, Node root2) {
+    if (root1 == null && root2 == null) return true;
+    if (root1 == null || root2 == null) return false;
+    if (root1.val != root2.val) return false;
+
+    int children1Count = root1.children != null ? root1.children.size() : 0;
+    int children2Count = root2.children != null ? root2.children.size() : 0;
+
+    if (children1Count != children2Count) return false;
+
+    if (children1Count == 0) return true;
+
+    // Try all permutations of children
+    List<Node> children1 = root1.children;
+    List<Node> children2 = new ArrayList<>(root2.children);
+
+    return canMatchChildren(children1, children2, 0);
+}
+
+boolean canMatchChildren(List<Node> children1, List<Node> children2, int index) {
+    if (index == children1.size()) return true;
+
+    for (int i = index; i < children2.size(); i++) {
+        Collections.swap(children2, index, i);
+
+        if (areIsomorphic(children1.get(index), children2.get(index)) &&
+            canMatchChildren(children1, children2, index + 1)) {
+            return true;
+        }
+
+        Collections.swap(children2, index, i); // Backtrack
+    }
+
+    return false;
+}
+```
+
+
+### 12.2 Tree Hashing
+
+```java
+// Generate hash for tree structure (for duplicate detection)
+String getTreeHash(Node root) {
+    if (root == null) return "null";
+
+    List<String> childHashes = new ArrayList<>();
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            childHashes.add(getTreeHash(child));
+        }
+    }
+
+    Collections.sort(childHashes); // For isomorphic trees
+    return root.val + "(" + String.join(",", childHashes) + ")";
+}
+
+// Find duplicate subtrees
+List<Node> findDuplicateSubtrees(Node root) {
+    Map<String, Integer> hashCount = new HashMap<>();
+    List<Node> duplicates = new ArrayList<>();
+
+    generateHashesAndFindDuplicates(root, hashCount, duplicates);
+    return duplicates;
+}
+
+String generateHashesAndFindDuplicates(Node root, Map<String, Integer> hashCount,
+                                     List<Node> duplicates) {
+    if (root == null) return "null";
+
+    String hash = getTreeHash(root);
+    hashCount.put(hash, hashCount.getOrDefault(hash, 0) + 1);
+
+    if (hashCount.get(hash) == 2) { // First time seeing duplicate
+        duplicates.add(root);
+    }
+
+    return hash;
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference[11]
+
+| Pattern | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| Traversal (DFS/BFS) | O(n) | O(h) to O(n) | h = height, n = nodes |
+| Tree Construction | O(n) | O(h) | Depends on input format |
+| Path Problems | O(n) | O(h) | Recursion depth = height |
+| Level Order | O(n) | O(w) | w = maximum width |
+| Tree Comparison | O(min(n1, n2)) | O(h) | Early termination possible |
+| LCA | O(n) | O(h) | Worst case visits all nodes |
+| Tree DP | O(n) | O(h) | Each node visited once |
+| Serialization | O(n) | O(n) | String/array representation |
+
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Implementation Guidelines
+
+1. **Null Safety**: Always check for null children lists
+2. **List Initialization**: Initialize children list when needed vs. keeping it null
+3. **Memory Efficiency**: Use First Child/Next Sibling for memory-constrained scenarios
+4. **Recursive Depth**: Consider iterative solutions for very deep trees
+5. **State Management**: Use helper methods to maintain clean interfaces
+
+### Common Optimizations
+
+```java
+// 1. Early termination in searches
+boolean findValue(Node root, int target) {
+    if (root == null) return false;
+    if (root.val == target) return true; // Early return
+
+    if (root.children != null) {
+        for (Node child : root.children) {
+            if (findValue(child, target)) return true; // Stop on first match
+        }
+    }
+    return false;
+}
+
+// 2. Memoization for expensive computations
+Map<Node, Integer> memo = new HashMap<>();
+
+int expensiveComputation(Node root) {
+    if (memo.containsKey(root)) return memo.get(root);
+
+    int result = computeValue(root);
+    memo.put(root, result);
+    return result;
+}
+
+// 3. Level-order processing for breadth-first problems
+void processLevelOrder(Node root) {
+    if (root == null) return;
+
+    Queue<Node> queue = new LinkedList<>();
+    queue.offer(root);
+
+    while (!queue.isEmpty()) {
+        int levelSize = queue.size();
+        // Process entire level at once
+        for (int i = 0; i < levelSize; i++) {
+            Node current = queue.poll();
+            processNode(current);
+
+            if (current.children != null) {
+                queue.addAll(current.children);
+            }
+        }
+    }
+}
+
+void processNode(Node node) { /* Implementation specific */ }
+int computeValue(Node root) { return 0; /* Implementation specific */ }
+```
+
+
+### Interview Tips
+
+- **Identify the pattern** early: traversal, path finding, tree property, etc.
+- **Ask about constraints**: maximum children per node, tree height, value ranges
+- **Consider edge cases**: empty tree, single node, all nodes same value
+- **Choose appropriate traversal**: DFS for paths, BFS for level-wise processing
+- **Think about space optimization**: can you solve iteratively or with constant extra space?

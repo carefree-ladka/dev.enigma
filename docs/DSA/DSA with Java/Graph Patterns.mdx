@@ -1,0 +1,2067 @@
+# Graph
+
+This comprehensive guide covers fundamental to advanced graph algorithms with Java implementations, organized into clear patterns for efficient learning and interview preparation.
+
+## Table of Contents
+
+1. [Graph Representation](#graph-representation)
+2. [Pattern 1: DFS Traversal](#pattern-1-dfs-traversal)
+3. [Pattern 2: BFS Traversal](#pattern-2-bfs-traversal)
+4. [Pattern 3: Connected Components](#pattern-3-connected-components)
+5. [Pattern 4: Cycle Detection](#pattern-4-cycle-detection)
+6. [Pattern 5: Topological Sort](#pattern-5-topological-sort)
+7. [Pattern 6: Shortest Path](#pattern-6-shortest-path)
+8. [Pattern 7: Minimum Spanning Tree](#pattern-7-minimum-spanning-tree)
+9. [Pattern 8: Union Find (Disjoint Set)](#pattern-8-union-find)
+10. [Pattern 9: Bipartite Graphs](#pattern-9-bipartite-graphs)
+11. [Pattern 10: Strongly Connected Components](#pattern-10-strongly-connected-components)
+12. [Pattern 11: Graph Coloring](#pattern-11-graph-coloring)
+13. [Pattern 12: Advanced Problems](#pattern-12-advanced-problems)
+14. [Pattern 13: Graph Neural Networks \& Machine Learning](#pattern-13-graph-neural-networks--machine-learning)
+15. [Pattern 14: Dynamic Graph Algorithms](#pattern-14-dynamic-graph-algorithms)
+16. [Pattern 15: Network Flow \& Matching](#pattern-15-network-flow--matching)
+
+***
+
+## Graph Representation
+
+```java
+// Adjacency List (Most Common)
+class Graph {
+    int V;
+    List<List<Integer>> adj;
+
+    Graph(int V) {
+        this.V = V;
+        adj = new ArrayList<>();
+        for (int i = 0; i < V; i++) {
+            adj.add(new ArrayList<>());
+        }
+    }
+
+    void addEdge(int u, int v) {
+        adj.get(u).add(v);
+        adj.get(v).add(u); // For undirected
+    }
+}
+
+// Weighted Graph
+class WeightedGraph {
+    int V;
+    List<List<Edge>> adj;
+
+    class Edge {
+        int dest, weight;
+        Edge(int dest, int weight) {
+            this.dest = dest;
+            this.weight = weight;
+        }
+    }
+
+    WeightedGraph(int V) {
+        this.V = V;
+        adj = new ArrayList<>();
+        for (int i = 0; i < V; i++) {
+            adj.add(new ArrayList<>());
+        }
+    }
+
+    void addEdge(int u, int v, int weight) {
+        adj.get(u).add(new Edge(v, weight));
+        adj.get(v).add(new Edge(u, weight)); // For undirected
+    }
+}
+
+// Adjacency Matrix
+class GraphMatrix {
+    int[][] matrix;
+    int V;
+
+    GraphMatrix(int V) {
+        this.V = V;
+        matrix = new int[V][V];
+    }
+
+    void addEdge(int u, int v) {
+        matrix[u][v] = 1;
+        matrix[v][u] = 1; // For undirected
+    }
+}
+
+// Edge List (for Union-Find)
+class Edge {
+    int src, dest, weight;
+    Edge(int src, int dest, int weight) {
+        this.src = src;
+        this.dest = dest;
+        this.weight = weight;
+    }
+}
+```
+
+
+***
+
+## Pattern 1: DFS Traversal
+
+### 1.1 Basic DFS (Recursive)
+
+```java
+void dfs(List<List<Integer>> graph, int node, boolean[] visited) {
+    visited[node] = true;
+    System.out.print(node + " ");
+
+    for (int neighbor : graph.get(node)) {
+        if (!visited[neighbor]) {
+            dfs(graph, neighbor, visited);
+        }
+    }
+}
+
+// All components
+void dfsAll(List<List<Integer>> graph) {
+    int n = graph.size();
+    boolean[] visited = new boolean[n];
+
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfs(graph, i, visited);
+        }
+    }
+}
+```
+
+
+### 1.2 DFS (Iterative with Stack)
+
+```java
+void dfsIterative(List<List<Integer>> graph, int start) {
+    boolean[] visited = new boolean[graph.size()];
+    Deque<Integer> stack = new ArrayDeque<>();
+
+    stack.push(start);
+
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+
+        if (visited[node]) continue;
+
+        visited[node] = true;
+        System.out.print(node + " ");
+
+        for (int neighbor : graph.get(node)) {
+            if (!visited[neighbor]) {
+                stack.push(neighbor);
+            }
+        }
+    }
+}
+```
+
+
+### 1.3 DFS with Path Tracking
+
+```java
+boolean dfsPath(List<List<Integer>> graph, int curr, int target,
+                boolean[] visited, List<Integer> path) {
+    visited[curr] = true;
+    path.add(curr);
+
+    if (curr == target) return true;
+
+    for (int neighbor : graph.get(curr)) {
+        if (!visited[neighbor]) {
+            if (dfsPath(graph, neighbor, target, visited, path)) {
+                return true;
+            }
+        }
+    }
+
+    path.remove(path.size() - 1);
+    return false;
+}
+```
+
+
+### 1.4 Count All Paths
+
+```java
+int countPaths(List<List<Integer>> graph, int curr, int target,
+               boolean[] visited) {
+    if (curr == target) return 1;
+
+    visited[curr] = true;
+    int count = 0;
+
+    for (int neighbor : graph.get(curr)) {
+        if (!visited[neighbor]) {
+            count += countPaths(graph, neighbor, target, visited);
+        }
+    }
+
+    visited[curr] = false; // Backtrack
+    return count;
+}
+```
+
+
+### 1.5 Number of Islands (DFS Grid)
+
+```java
+int numIslands(char[][] grid) {
+    if (grid == null || grid.length == 0) return 0;
+
+    int islands = 0;
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[^1_0].length; j++) {
+            if (grid[i][j] == '1') {
+                islands++;
+                dfsIsland(grid, i, j);
+            }
+        }
+    }
+    return islands;
+}
+
+void dfsIsland(char[][] grid, int i, int j) {
+    if (i < 0 || i >= grid.length || j < 0 || j >= grid[^1_0].length ||
+        grid[i][j] == '0') {
+        return;
+    }
+
+    grid[i][j] = '0'; // Mark as visited
+
+    dfsIsland(grid, i + 1, j);
+    dfsIsland(grid, i - 1, j);
+    dfsIsland(grid, i, j + 1);
+    dfsIsland(grid, i, j - 1);
+}
+```
+
+
+***
+
+## Pattern 2: BFS Traversal
+
+### 2.1 Basic BFS
+
+```java
+void bfs(List<List<Integer>> graph, int start) {
+    boolean[] visited = new boolean[graph.size()];
+    Queue<Integer> queue = new LinkedList<>();
+
+    visited[start] = true;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+        System.out.print(node + " ");
+
+        for (int neighbor : graph.get(node)) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                queue.offer(neighbor);
+            }
+        }
+    }
+}
+```
+
+
+### 2.2 BFS Level Order
+
+```java
+List<List<Integer>> bfsLevelOrder(List<List<Integer>> graph, int start) {
+    List<List<Integer>> result = new ArrayList<>();
+    boolean[] visited = new boolean[graph.size()];
+    Queue<Integer> queue = new LinkedList<>();
+
+    visited[start] = true;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> level = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            int node = queue.poll();
+            level.add(node);
+
+            for (int neighbor : graph.get(node)) {
+                if (!visited[neighbor]) {
+                    visited[neighbor] = true;
+                    queue.offer(neighbor);
+                }
+            }
+        }
+        result.add(level);
+    }
+    return result;
+}
+```
+
+
+### 2.3 Shortest Path (Unweighted)
+
+```java
+int shortestPath(List<List<Integer>> graph, int start, int end) {
+    boolean[] visited = new boolean[graph.size()];
+    Queue<Integer> queue = new LinkedList<>();
+
+    visited[start] = true;
+    queue.offer(start);
+    int distance = 0;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            int node = queue.poll();
+            if (node == end) return distance;
+
+            for (int neighbor : graph.get(node)) {
+                if (!visited[neighbor]) {
+                    visited[neighbor] = true;
+                    queue.offer(neighbor);
+                }
+            }
+        }
+        distance++;
+    }
+    return -1;
+}
+```
+
+
+### 2.4 Shortest Path with Parent Tracking
+
+```java
+List<Integer> shortestPathWithPath(List<List<Integer>> graph,
+                                   int start, int end) {
+    int n = graph.size();
+    int[] parent = new int[n];
+    Arrays.fill(parent, -1);
+
+    boolean[] visited = new boolean[n];
+    Queue<Integer> queue = new LinkedList<>();
+
+    visited[start] = true;
+    queue.offer(start);
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+        if (node == end) break;
+
+        for (int neighbor : graph.get(node)) {
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                parent[neighbor] = node;
+                queue.offer(neighbor);
+            }
+        }
+    }
+
+    // Reconstruct path
+    List<Integer> path = new ArrayList<>();
+    for (int at = end; at != -1; at = parent[at]) {
+        path.add(at);
+    }
+    Collections.reverse(path);
+    return path;
+}
+```
+
+
+### 2.5 Word Ladder (BFS Application)
+
+```java
+int ladderLength(String beginWord, String endWord, List<String> wordList) {
+    Set<String> wordSet = new HashSet<>(wordList);
+    if (!wordSet.contains(endWord)) return 0;
+
+    Queue<String> queue = new LinkedList<>();
+    queue.offer(beginWord);
+    int level = 1;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            String word = queue.poll();
+            if (word.equals(endWord)) return level;
+
+            char[] chars = word.toCharArray();
+            for (int j = 0; j < chars.length; j++) {
+                char original = chars[j];
+
+                for (char c = 'a'; c <= 'z'; c++) {
+                    chars[j] = c;
+                    String newWord = new String(chars);
+
+                    if (wordSet.contains(newWord)) {
+                        queue.offer(newWord);
+                        wordSet.remove(newWord);
+                    }
+                }
+                chars[j] = original;
+            }
+        }
+        level++;
+    }
+    return 0;
+}
+```
+
+
+***
+
+## Pattern 3: Connected Components
+
+### 3.1 Count Connected Components (DFS)
+
+```java
+int countComponents(int n, int[][] edges) {
+    List<List<Integer>> graph = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+        graph.add(new ArrayList<>());
+    }
+
+    for (int[] edge : edges) {
+        graph.get(edge[0]).add(edge[1]);
+        graph.get(edge[1]).add(edge[0]);
+    }
+
+    boolean[] visited = new boolean[n];
+    int count = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfs(graph, i, visited);
+            count++;
+        }
+    }
+    return count;
+}
+```
+
+
+### 3.2 Count Components (Union-Find)
+
+```java
+int countComponentsUF(int n, int[][] edges) {
+    UnionFind uf = new UnionFind(n);
+
+    for (int[] edge : edges) {
+        uf.union(edge[0], edge[1]);
+    }
+
+    return uf.getCount();
+}
+
+class UnionFind {
+    int[] parent, size;
+    int count;
+
+    UnionFind(int n) {
+        parent = new int[n];
+        size = new int[n];
+        count = n;
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+            size[i] = 1;
+        }
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);
+        }
+        return parent[x];
+    }
+
+    boolean union(int x, int y) {
+        int px = find(x), py = find(y);
+        if (px == py) return false;
+
+        if (size[px] < size[py]) {
+            parent[px] = py;
+            size[py] += size[px];
+        } else {
+            parent[py] = px;
+            size[px] += size[py];
+        }
+        count--;
+        return true;
+    }
+
+    int getCount() {
+        return count;
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Cycle Detection
+
+### 4.1 Cycle Detection (Undirected Graph - DFS)
+
+```java
+boolean hasCycleUndirected(List<List<Integer>> graph) {
+    boolean[] visited = new boolean[graph.size()];
+
+    for (int i = 0; i < graph.size(); i++) {
+        if (!visited[i]) {
+            if (dfsCycleUndirected(graph, i, -1, visited)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+boolean dfsCycleUndirected(List<List<Integer>> graph, int node, int parent,
+                          boolean[] visited) {
+    visited[node] = true;
+
+    for (int neighbor : graph.get(node)) {
+        if (!visited[neighbor]) {
+            if (dfsCycleUndirected(graph, neighbor, node, visited)) {
+                return true;
+            }
+        } else if (neighbor != parent) {
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+
+### 4.2 Cycle Detection (Directed Graph - DFS)
+
+```java
+boolean hasCycleDirected(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] color = new int[n]; // 0: white, 1: gray, 2: black
+
+    for (int i = 0; i < n; i++) {
+        if (color[i] == 0) {
+            if (dfsCycleDirected(graph, i, color)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+boolean dfsCycleDirected(List<List<Integer>> graph, int node, int[] color) {
+    color[node] = 1; // Gray
+
+    for (int neighbor : graph.get(node)) {
+        if (color[neighbor] == 1) {
+            return true; // Back edge
+        }
+        if (color[neighbor] == 0 && dfsCycleDirected(graph, neighbor, color)) {
+            return true;
+        }
+    }
+
+    color[node] = 2; // Black
+    return false;
+}
+```
+
+
+### 4.3 Cycle Detection (Union-Find)
+
+```java
+boolean hasCycleUF(int n, int[][] edges) {
+    UnionFind uf = new UnionFind(n);
+
+    for (int[] edge : edges) {
+        if (!uf.union(edge[0], edge[1])) {
+            return true; // Cycle detected
+        }
+    }
+    return false;
+}
+```
+
+
+***
+
+## Pattern 5: Topological Sort
+
+### 5.1 Topological Sort (DFS)
+
+```java
+List<Integer> topologicalSort(List<List<Integer>> graph) {
+    int n = graph.size();
+    boolean[] visited = new boolean[n];
+    Deque<Integer> stack = new ArrayDeque<>();
+
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfsTopological(graph, i, visited, stack);
+        }
+    }
+
+    List<Integer> result = new ArrayList<>();
+    while (!stack.isEmpty()) {
+        result.add(stack.pop());
+    }
+    return result;
+}
+
+void dfsTopological(List<List<Integer>> graph, int node, boolean[] visited,
+                   Deque<Integer> stack) {
+    visited[node] = true;
+
+    for (int neighbor : graph.get(node)) {
+        if (!visited[neighbor]) {
+            dfsTopological(graph, neighbor, visited, stack);
+        }
+    }
+
+    stack.push(node);
+}
+```
+
+
+### 5.2 Topological Sort (Kahn's Algorithm - BFS)
+
+```java
+List<Integer> topologicalSortBFS(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] indegree = new int[n];
+
+    // Calculate indegree
+    for (int u = 0; u < n; u++) {
+        for (int v : graph.get(u)) {
+            indegree[v]++;
+        }
+    }
+
+    Queue<Integer> queue = new LinkedList<>();
+    for (int i = 0; i < n; i++) {
+        if (indegree[i] == 0) {
+            queue.offer(i);
+        }
+    }
+
+    List<Integer> result = new ArrayList<>();
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+        result.add(node);
+
+        for (int neighbor : graph.get(node)) {
+            indegree[neighbor]--;
+            if (indegree[neighbor] == 0) {
+                queue.offer(neighbor);
+            }
+        }
+    }
+
+    return result.size() == n ? result : new ArrayList<>(); // Cycle exists
+}
+```
+
+
+### 5.3 Course Schedule
+
+```java
+boolean canFinish(int numCourses, int[][] prerequisites) {
+    List<List<Integer>> graph = new ArrayList<>();
+    for (int i = 0; i < numCourses; i++) {
+        graph.add(new ArrayList<>());
+    }
+
+    int[] indegree = new int[numCourses];
+    for (int[] prereq : prerequisites) {
+        graph.get(prereq[1]).add(prereq[0]);
+        indegree[prereq[0]]++;
+    }
+
+    Queue<Integer> queue = new LinkedList<>();
+    for (int i = 0; i < numCourses; i++) {
+        if (indegree[i] == 0) {
+            queue.offer(i);
+        }
+    }
+
+    int count = 0;
+    while (!queue.isEmpty()) {
+        int course = queue.poll();
+        count++;
+
+        for (int next : graph.get(course)) {
+            indegree[next]--;
+            if (indegree[next] == 0) {
+                queue.offer(next);
+            }
+        }
+    }
+
+    return count == numCourses;
+}
+```
+
+
+***
+
+## Pattern 6: Shortest Path
+
+### 6.1 Dijkstra's Algorithm
+
+```java
+int[] dijkstra(List<List<Edge>> graph, int start) {
+    int n = graph.size();
+    int[] dist = new int[n];
+    Arrays.fill(dist, Integer.MAX_VALUE);
+    dist[start] = 0;
+
+    PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> a[1] - b[1]);
+    pq.offer(new int[]{start, 0});
+
+    while (!pq.isEmpty()) {
+        int[] curr = pq.poll();
+        int node = curr[0], d = curr[1];
+
+        if (d > dist[node]) continue;
+
+        for (Edge edge : graph.get(node)) {
+            int newDist = dist[node] + edge.weight;
+            if (newDist < dist[edge.dest]) {
+                dist[edge.dest] = newDist;
+                pq.offer(new int[]{edge.dest, newDist});
+            }
+        }
+    }
+
+    return dist;
+}
+```
+
+
+### 6.2 Bellman-Ford Algorithm
+
+```java
+boolean bellmanFord(List<Edge> edges, int n, int start, int[] dist) {
+    Arrays.fill(dist, Integer.MAX_VALUE);
+    dist[start] = 0;
+
+    // Relax edges n-1 times
+    for (int i = 0; i < n - 1; i++) {
+        for (Edge edge : edges) {
+            if (dist[edge.src] != Integer.MAX_VALUE &&
+                dist[edge.src] + edge.weight < dist[edge.dest]) {
+                dist[edge.dest] = dist[edge.src] + edge.weight;
+            }
+        }
+    }
+
+    // Check for negative cycles
+    for (Edge edge : edges) {
+        if (dist[edge.src] != Integer.MAX_VALUE &&
+            dist[edge.src] + edge.weight < dist[edge.dest]) {
+            return false; // Negative cycle exists
+        }
+    }
+
+    return true;
+}
+```
+
+
+### 6.3 Floyd-Warshall Algorithm
+
+```java
+void floydWarshall(int[][] graph) {
+    int n = graph.length;
+
+    for (int k = 0; k < n; k++) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (graph[i][k] != Integer.MAX_VALUE &&
+                    graph[k][j] != Integer.MAX_VALUE &&
+                    graph[i][k] + graph[k][j] < graph[i][j]) {
+                    graph[i][j] = graph[i][k] + graph[k][j];
+                }
+            }
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Minimum Spanning Tree
+
+### 7.1 Kruskal's Algorithm
+
+```java
+List<Edge> kruskalMST(int n, List<Edge> edges) {
+    edges.sort((a, b) -> a.weight - b.weight);
+    UnionFind uf = new UnionFind(n);
+    List<Edge> mst = new ArrayList<>();
+
+    for (Edge edge : edges) {
+        if (uf.union(edge.src, edge.dest)) {
+            mst.add(edge);
+            if (mst.size() == n - 1) break;
+        }
+    }
+
+    return mst;
+}
+```
+
+
+### 7.2 Prim's Algorithm
+
+```java
+List<Edge> primMST(List<List<Edge>> graph, int start) {
+    int n = graph.size();
+    boolean[] inMST = new boolean[n];
+    PriorityQueue<Edge> pq = new PriorityQueue<>((a, b) -> a.weight - b.weight);
+    List<Edge> mst = new ArrayList<>();
+
+    inMST[start] = true;
+    for (Edge edge : graph.get(start)) {
+        pq.offer(edge);
+    }
+
+    while (!pq.isEmpty() && mst.size() < n - 1) {
+        Edge edge = pq.poll();
+
+        if (inMST[edge.dest]) continue;
+
+        inMST[edge.dest] = true;
+        mst.add(edge);
+
+        for (Edge nextEdge : graph.get(edge.dest)) {
+            if (!inMST[nextEdge.dest]) {
+                pq.offer(nextEdge);
+            }
+        }
+    }
+
+    return mst;
+}
+```
+
+
+***
+
+## Pattern 8: Union Find (Disjoint Set)
+
+### 8.1 Optimized Union-Find Implementation
+
+```java
+class UnionFind {
+    int[] parent, rank;
+    int count;
+
+    UnionFind(int n) {
+        parent = new int[n];
+        rank = new int[n];
+        count = n;
+        for (int i = 0; i < n; i++) {
+            parent[i] = i;
+        }
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // Path compression
+        }
+        return parent[x];
+    }
+
+    boolean union(int x, int y) {
+        int px = find(x), py = find(y);
+        if (px == py) return false;
+
+        // Union by rank
+        if (rank[px] < rank[py]) {
+            parent[px] = py;
+        } else if (rank[px] > rank[py]) {
+            parent[py] = px;
+        } else {
+            parent[py] = px;
+            rank[px]++;
+        }
+        count--;
+        return true;
+    }
+
+    boolean connected(int x, int y) {
+        return find(x) == find(y);
+    }
+
+    int getCount() {
+        return count;
+    }
+}
+```
+
+
+### 8.2 Redundant Connection
+
+```java
+int[] findRedundantConnection(int[][] edges) {
+    int n = edges.length;
+    UnionFind uf = new UnionFind(n + 1);
+
+    for (int[] edge : edges) {
+        if (!uf.union(edge[0], edge[1])) {
+            return edge; // This edge creates a cycle
+        }
+    }
+    return new int[^1_0];
+}
+```
+
+
+### 8.3 Number of Provinces
+
+```java
+int findCircleNum(int[][] isConnected) {
+    int n = isConnected.length;
+    UnionFind uf = new UnionFind(n);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (isConnected[i][j] == 1) {
+                uf.union(i, j);
+            }
+        }
+    }
+
+    Set<Integer> provinces = new HashSet<>();
+    for (int i = 0; i < n; i++) {
+        provinces.add(uf.find(i));
+    }
+
+    return provinces.size();
+}
+```
+
+
+***
+
+## Pattern 9: Bipartite Graphs
+
+### 9.1 Check if Bipartite (BFS)
+
+```java
+boolean isBipartite(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] color = new int[n];
+    Arrays.fill(color, -1);
+
+    for (int i = 0; i < n; i++) {
+        if (color[i] == -1) {
+            if (!bfsBipartite(graph, i, color)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+boolean bfsBipartite(List<List<Integer>> graph, int start, int[] color) {
+    Queue<Integer> queue = new LinkedList<>();
+    queue.offer(start);
+    color[start] = 0;
+
+    while (!queue.isEmpty()) {
+        int node = queue.poll();
+
+        for (int neighbor : graph.get(node)) {
+            if (color[neighbor] == -1) {
+                color[neighbor] = 1 - color[node];
+                queue.offer(neighbor);
+            } else if (color[neighbor] == color[node]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+```
+
+
+### 9.2 Check if Bipartite (DFS)
+
+```java
+boolean isBipartiteDFS(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] color = new int[n];
+    Arrays.fill(color, -1);
+
+    for (int i = 0; i < n; i++) {
+        if (color[i] == -1) {
+            if (!dfsBipartite(graph, i, 0, color)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+boolean dfsBipartite(List<List<Integer>> graph, int node,
+                    int c, int[] color) {
+    color[node] = c;
+
+    for (int neighbor : graph.get(node)) {
+        if (color[neighbor] == -1) {
+            if (!dfsBipartite(graph, neighbor, 1 - c, color)) {
+                return false;
+            }
+        } else if (color[neighbor] == color[node]) {
+            return false;
+        }
+    }
+    return true;
+}
+```
+
+
+### 9.3 Maximum Bipartite Matching
+
+```java
+int maxBipartiteMatching(List<List<Integer>> graph, int leftSize) {
+    int[] match = new int[graph.size()];
+    Arrays.fill(match, -1);
+    int result = 0;
+
+    for (int u = 0; u < leftSize; u++) {
+        boolean[] visited = new boolean[graph.size()];
+        if (dfsMatching(graph, u, visited, match)) {
+            result++;
+        }
+    }
+    return result;
+}
+
+boolean dfsMatching(List<List<Integer>> graph, int u, boolean[] visited, int[] match) {
+    for (int v : graph.get(u)) {
+        if (visited[v]) continue;
+        visited[v] = true;
+
+        if (match[v] == -1 || dfsMatching(graph, match[v], visited, match)) {
+            match[v] = u;
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+
+***
+
+## Pattern 10: Strongly Connected Components
+
+### 10.1 Kosaraju's Algorithm
+
+```java
+List<List<Integer>> kosarajuSCC(List<List<Integer>> graph) {
+    int n = graph.size();
+    boolean[] visited = new boolean[n];
+    Deque<Integer> stack = new ArrayDeque<>();
+
+    // First DFS to fill stack
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfsKosaraju1(graph, i, visited, stack);
+        }
+    }
+
+    // Create transpose graph
+    List<List<Integer>> transpose = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+        transpose.add(new ArrayList<>());
+    }
+    for (int u = 0; u < n; u++) {
+        for (int v : graph.get(u)) {
+            transpose.get(v).add(u);
+        }
+    }
+
+    // Second DFS on transpose
+    Arrays.fill(visited, false);
+    List<List<Integer>> sccs = new ArrayList<>();
+
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+        if (!visited[node]) {
+            List<Integer> scc = new ArrayList<>();
+            dfsKosaraju2(transpose, node, visited, scc);
+            sccs.add(scc);
+        }
+    }
+
+    return sccs;
+}
+
+void dfsKosaraju1(List<List<Integer>> graph, int node,
+                 boolean[] visited, Deque<Integer> stack) {
+    visited[node] = true;
+
+    for (int neighbor : graph.get(node)) {
+        if (!visited[neighbor]) {
+            dfsKosaraju1(graph, neighbor, visited, stack);
+        }
+    }
+
+    stack.push(node);
+}
+
+void dfsKosaraju2(List<List<Integer>> graph, int node,
+                 boolean[] visited, List<Integer> scc) {
+    visited[node] = true;
+    scc.add(node);
+
+    for (int neighbor : graph.get(node)) {
+        if (!visited[neighbor]) {
+            dfsKosaraju2(graph, neighbor, visited, scc);
+        }
+    }
+}
+```
+
+
+### 10.2 Tarjan's Algorithm
+
+```java
+List<List<Integer>> tarjanSCC(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] ids = new int[n];
+    int[] low = new int[n];
+    boolean[] onStack = new boolean[n];
+    Arrays.fill(ids, -1);
+
+    Deque<Integer> stack = new ArrayDeque<>();
+    List<List<Integer>> sccs = new ArrayList<>();
+    int[] id = {0};
+
+    for (int i = 0; i < n; i++) {
+        if (ids[i] == -1) {
+            dfsTarjan(graph, i, ids, low, onStack, stack, sccs, id);
+        }
+    }
+
+    return sccs;
+}
+
+void dfsTarjan(List<List<Integer>> graph, int node, int[] ids, int[] low,
+              boolean[] onStack, Deque<Integer> stack,
+              List<List<Integer>> sccs, int[] id) {
+    ids[node] = low[node] = id[^1_0]++;
+    stack.push(node);
+    onStack[node] = true;
+
+    for (int neighbor : graph.get(node)) {
+        if (ids[neighbor] == -1) {
+            dfsTarjan(graph, neighbor, ids, low, onStack, stack, sccs, id);
+        }
+        if (onStack[neighbor]) {
+            low[node] = Math.min(low[node], low[neighbor]);
+        }
+    }
+
+    if (ids[node] == low[node]) {
+        List<Integer> scc = new ArrayList<>();
+        while (true) {
+            int n = stack.pop();
+            onStack[n] = false;
+            scc.add(n);
+            if (n == node) break;
+        }
+        sccs.add(scc);
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Graph Coloring
+
+### 11.1 Graph Coloring (Greedy)
+
+```java
+int[] graphColoring(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] color = new int[n];
+    Arrays.fill(color, -1);
+
+    for (int node = 0; node < n; node++) {
+        Set<Integer> usedColors = new HashSet<>();
+
+        for (int neighbor : graph.get(node)) {
+            if (color[neighbor] != -1) {
+                usedColors.add(color[neighbor]);
+            }
+        }
+
+        int c = 0;
+        while (usedColors.contains(c)) {
+            c++;
+        }
+        color[node] = c;
+    }
+
+    return color;
+}
+```
+
+
+### 11.2 Chromatic Number (Min Colors)
+
+```java
+int chromaticNumber(List<List<Integer>> graph) {
+    int[] coloring = graphColoring(graph);
+    int maxColor = 0;
+
+    for (int c : coloring) {
+        maxColor = Math.max(maxColor, c);
+    }
+
+    return maxColor + 1;
+}
+```
+
+
+### 11.3 Graph Coloring with K Colors
+
+```java
+boolean canColorWithKColors(List<List<Integer>> graph, int k) {
+    int n = graph.size();
+    int[] color = new int[n];
+    Arrays.fill(color, -1);
+
+    return backtrackColoring(graph, 0, k, color);
+}
+
+boolean backtrackColoring(List<List<Integer>> graph, int node, int k, int[] color) {
+    if (node == graph.size()) return true;
+
+    for (int c = 0; c < k; c++) {
+        if (isColorSafe(graph, node, c, color)) {
+            color[node] = c;
+            if (backtrackColoring(graph, node + 1, k, color)) {
+                return true;
+            }
+            color[node] = -1;
+        }
+    }
+    return false;
+}
+
+boolean isColorSafe(List<List<Integer>> graph, int node, int c, int[] color) {
+    for (int neighbor : graph.get(node)) {
+        if (color[neighbor] == c) {
+            return false;
+        }
+    }
+    return true;
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Problems
+
+### 12.1 Bridge Finding (Tarjan)
+
+```java
+List<int[]> findBridges(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] ids = new int[n];
+    int[] low = new int[n];
+    boolean[] visited = new boolean[n];
+    Arrays.fill(ids, -1);
+
+    List<int[]> bridges = new ArrayList<>();
+    int[] id = {0};
+
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfsBridges(graph, i, -1, ids, low, visited, bridges, id);
+        }
+    }
+
+    return bridges;
+}
+
+void dfsBridges(List<List<Integer>> graph, int node, int parent,
+               int[] ids, int[] low, boolean[] visited,
+               List<int[]> bridges, int[] id) {
+    visited[node] = true;
+    ids[node] = low[node] = id[^1_0]++;
+
+    for (int neighbor : graph.get(node)) {
+        if (neighbor == parent) continue;
+
+        if (!visited[neighbor]) {
+            dfsBridges(graph, neighbor, node, ids, low, visited, bridges, id);
+            low[node] = Math.min(low[node], low[neighbor]);
+
+            if (ids[node] < low[neighbor]) {
+                bridges.add(new int[]{node, neighbor});
+            }
+        } else {
+            low[node] = Math.min(low[node], ids[neighbor]);
+        }
+    }
+}
+```
+
+
+### 12.2 Articulation Points
+
+```java
+List<Integer> findArticulationPoints(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] ids = new int[n];
+    int[] low = new int[n];
+    boolean[] visited = new boolean[n];
+    boolean[] isAP = new boolean[n];
+    Arrays.fill(ids, -1);
+
+    int[] id = {0};
+
+    for (int i = 0; i < n; i++) {
+        if (!visited[i]) {
+            dfsAP(graph, i, -1, ids, low, visited, isAP, id);
+        }
+    }
+
+    List<Integer> result = new ArrayList<>();
+    for (int i = 0; i < n; i++) {
+        if (isAP[i]) result.add(i);
+    }
+
+    return result;
+}
+
+void dfsAP(List<List<Integer>> graph, int node, int parent,
+          int[] ids, int[] low, boolean[] visited, boolean[] isAP, int[] id) {
+    visited[node] = true;
+    ids[node] = low[node] = id[^1_0]++;
+    int children = 0;
+
+    for (int neighbor : graph.get(node)) {
+        if (neighbor == parent) continue;
+
+        if (!visited[neighbor]) {
+            children++;
+            dfsAP(graph, neighbor, node, ids, low, visited, isAP, id);
+            low[node] = Math.min(low[node], low[neighbor]);
+
+            if (parent != -1 && ids[node] <= low[neighbor]) {
+                isAP[node] = true;
+            }
+        } else {
+            low[node] = Math.min(low[node], ids[neighbor]);
+        }
+    }
+
+    if (parent == -1 && children > 1) {
+        isAP[node] = true;
+    }
+}
+```
+
+
+### 12.3 Eulerian Path/Circuit
+
+```java
+List<Integer> findEulerianPath(List<List<Integer>> graph) {
+    int n = graph.size();
+    int[] inDegree = new int[n];
+    int[] outDegree = new int[n];
+
+    for (int u = 0; u < n; u++) {
+        outDegree[u] = graph.get(u).size();
+        for (int v : graph.get(u)) {
+            inDegree[v]++;
+        }
+    }
+
+    int startNode = 0;
+    int endNodes = 0, startNodes = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (outDegree[i] - inDegree[i] == 1) {
+            startNodes++;
+            startNode = i;
+        } else if (inDegree[i] - outDegree[i] == 1) {
+            endNodes++;
+        } else if (inDegree[i] != outDegree[i]) {
+            return new ArrayList<>(); // No Eulerian path
+        }
+    }
+
+    if ((startNodes == 0 && endNodes == 0) ||
+        (startNodes == 1 && endNodes == 1)) {
+        List<Integer> path = new ArrayList<>();
+        Deque<Integer> stack = new ArrayDeque<>();
+
+        Map<Integer, Deque<Integer>> adj = new HashMap<>();
+        for (int u = 0; u < n; u++) {
+            adj.put(u, new ArrayDeque<>(graph.get(u)));
+        }
+
+        stack.push(startNode);
+
+        while (!stack.isEmpty()) {
+            int node = stack.peek();
+            if (adj.get(node).isEmpty()) {
+                path.add(stack.pop());
+            } else {
+                stack.push(adj.get(node).poll());
+            }
+        }
+
+        Collections.reverse(path);
+        return path;
+    }
+
+    return new ArrayList<>();
+}
+```
+
+
+### 12.4 Traveling Salesman Problem (DP + Bitmask)
+
+```java
+int tsp(int[][] dist) {
+    int n = dist.length;
+    int[][] dp = new int[1 << n][n];
+
+    for (int[] row : dp) {
+        Arrays.fill(row, Integer.MAX_VALUE / 2);
+    }
+
+    dp[1][0] = 0;
+
+    for (int mask = 1; mask < (1 << n); mask++) {
+        for (int u = 0; u < n; u++) {
+            if ((mask & (1 << u)) == 0) continue;
+
+            for (int v = 0; v < n; v++) {
+                if ((mask & (1 << v)) != 0) continue;
+
+                int newMask = mask | (1 << v);
+                dp[newMask][v] = Math.min(dp[newMask][v],
+                                         dp[mask][u] + dist[u][v]);
+            }
+        }
+    }
+
+    int ans = Integer.MAX_VALUE;
+    for (int i = 1; i < n; i++) {
+        ans = Math.min(ans, dp[(1 << n) - 1][i] + dist[i][^1_0]);
+    }
+
+    return ans;
+}
+```
+
+
+***
+
+## Pattern 13: Graph Neural Networks \& Machine Learning
+
+### 13.1 Node2Vec Implementation[^1_3]
+
+```java
+class Node2Vec {
+    private final List<List<Integer>> graph;
+    private final int walkLength;
+    private final int numWalks;
+    private final double p; // Return parameter
+    private final double q; // In-out parameter
+
+    Node2Vec(List<List<Integer>> graph, int walkLength, int numWalks, double p, double q) {
+        this.graph = graph;
+        this.walkLength = walkLength;
+        this.numWalks = numWalks;
+        this.p = p;
+        this.q = q;
+    }
+
+    List<List<Integer>> generateWalks() {
+        List<List<Integer>> walks = new ArrayList<>();
+        Random random = new Random();
+
+        for (int node = 0; node < graph.size(); node++) {
+            for (int walk = 0; walk < numWalks; walk++) {
+                List<Integer> path = simulateWalk(node, random);
+                walks.add(path);
+            }
+        }
+
+        return walks;
+    }
+
+    private List<Integer> simulateWalk(int startNode, Random random) {
+        List<Integer> walk = new ArrayList<>();
+        walk.add(startNode);
+
+        int current = startNode;
+        int previous = -1;
+
+        for (int step = 1; step < walkLength; step++) {
+            List<Integer> neighbors = graph.get(current);
+            if (neighbors.isEmpty()) break;
+
+            int next = getNextNode(current, previous, neighbors, random);
+            walk.add(next);
+            previous = current;
+            current = next;
+        }
+
+        return walk;
+    }
+
+    private int getNextNode(int current, int previous, List<Integer> neighbors, Random random) {
+        List<Double> weights = new ArrayList<>();
+        double totalWeight = 0;
+
+        for (int neighbor : neighbors) {
+            double weight;
+            if (neighbor == previous) {
+                weight = 1.0 / p; // Return to previous node
+            } else if (graph.get(previous).contains(neighbor)) {
+                weight = 1.0; // Stay in neighborhood
+            } else {
+                weight = 1.0 / q; // Move away
+            }
+            weights.add(weight);
+            totalWeight += weight;
+        }
+
+        double randomValue = random.nextDouble() * totalWeight;
+        double cumulativeWeight = 0;
+
+        for (int i = 0; i < neighbors.size(); i++) {
+            cumulativeWeight += weights.get(i);
+            if (randomValue <= cumulativeWeight) {
+                return neighbors.get(i);
+            }
+        }
+
+        return neighbors.get(neighbors.size() - 1);
+    }
+}
+```
+
+
+### 13.2 Graph Embedding with Random Walks
+
+```java
+class GraphEmbedding {
+    private final Map<Integer, double[]> embeddings;
+    private final int dimensions;
+
+    GraphEmbedding(int dimensions) {
+        this.dimensions = dimensions;
+        this.embeddings = new HashMap<>();
+    }
+
+    void trainEmbeddings(List<List<Integer>> walks, int epochs) {
+        initializeEmbeddings(walks);
+
+        for (int epoch = 0; epoch < epochs; epoch++) {
+            for (List<Integer> walk : walks) {
+                for (int i = 0; i < walk.size(); i++) {
+                    int centerNode = walk.get(i);
+                    updateEmbedding(centerNode, walk, i);
+                }
+            }
+        }
+    }
+
+    private void initializeEmbeddings(List<List<Integer>> walks) {
+        Set<Integer> nodes = new HashSet<>();
+        for (List<Integer> walk : walks) {
+            nodes.addAll(walk);
+        }
+
+        Random random = new Random();
+        for (int node : nodes) {
+            double[] embedding = new double[dimensions];
+            for (int i = 0; i < dimensions; i++) {
+                embedding[i] = (random.nextGaussian() - 0.5) / dimensions;
+            }
+            embeddings.put(node, embedding);
+        }
+    }
+
+    private void updateEmbedding(int centerNode, List<Integer> walk, int position) {
+        int windowSize = 5;
+        double learningRate = 0.025;
+
+        for (int i = Math.max(0, position - windowSize);
+             i < Math.min(walk.size(), position + windowSize + 1); i++) {
+            if (i == position) continue;
+
+            int contextNode = walk.get(i);
+            double[] centerEmb = embeddings.get(centerNode);
+            double[] contextEmb = embeddings.get(contextNode);
+
+            // Skip-gram with negative sampling (simplified)
+            double dotProduct = 0;
+            for (int d = 0; d < dimensions; d++) {
+                dotProduct += centerEmb[d] * contextEmb[d];
+            }
+
+            double sigmoid = 1.0 / (1.0 + Math.exp(-dotProduct));
+            double gradient = learningRate * (1 - sigmoid);
+
+            for (int d = 0; d < dimensions; d++) {
+                centerEmb[d] += gradient * contextEmb[d];
+                contextEmb[d] += gradient * centerEmb[d];
+            }
+        }
+    }
+
+    double[] getEmbedding(int node) {
+        return embeddings.get(node);
+    }
+
+    double cosineSimilarity(int node1, int node2) {
+        double[] emb1 = embeddings.get(node1);
+        double[] emb2 = embeddings.get(node2);
+
+        if (emb1 == null || emb2 == null) return 0;
+
+        double dotProduct = 0, norm1 = 0, norm2 = 0;
+        for (int i = 0; i < dimensions; i++) {
+            dotProduct += emb1[i] * emb2[i];
+            norm1 += emb1[i] * emb1[i];
+            norm2 += emb2[i] * emb2[i];
+        }
+
+        return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+    }
+}
+```
+
+
+***
+
+## Pattern 14: Dynamic Graph Algorithms
+
+### 14.1 Dynamic Connectivity[^1_3]
+
+```java
+class DynamicConnectivity {
+    private final UnionFind uf;
+    private final Map<String, Boolean> edges;
+
+    DynamicConnectivity(int n) {
+        this.uf = new UnionFind(n);
+        this.edges = new HashMap<>();
+    }
+
+    void addEdge(int u, int v) {
+        String edge = getEdgeKey(u, v);
+        if (!edges.containsKey(edge)) {
+            edges.put(edge, true);
+            uf.union(u, v);
+        }
+    }
+
+    void removeEdge(int u, int v) {
+        String edge = getEdgeKey(u, v);
+        if (edges.containsKey(edge)) {
+            edges.remove(edge);
+            // For deletion, we need to rebuild the union-find structure
+            rebuildUnionFind();
+        }
+    }
+
+    boolean isConnected(int u, int v) {
+        return uf.connected(u, v);
+    }
+
+    int getComponents() {
+        return uf.getCount();
+    }
+
+    private String getEdgeKey(int u, int v) {
+        return Math.min(u, v) + "-" + Math.max(u, v);
+    }
+
+    private void rebuildUnionFind() {
+        uf.reset();
+        for (String edgeKey : edges.keySet()) {
+            String[] parts = edgeKey.split("-");
+            int u = Integer.parseInt(parts[0]);
+            int v = Integer.parseInt(parts[1]);
+            uf.union(u, v);
+        }
+    }
+}
+```
+
+
+### 14.2 Dynamic PageRank[^1_3]
+
+```java
+class DynamicPageRank {
+    private final Map<Integer, Double> pagerank;
+    private final Map<Integer, Set<Integer>> graph;
+    private final Map<Integer, Set<Integer>> reverseGraph;
+    private final double dampingFactor;
+    private final double epsilon;
+
+    DynamicPageRank(double dampingFactor, double epsilon) {
+        this.pagerank = new HashMap<>();
+        this.graph = new HashMap<>();
+        this.reverseGraph = new HashMap<>();
+        this.dampingFactor = dampingFactor;
+        this.epsilon = epsilon;
+    }
+
+    void addNode(int node) {
+        if (!pagerank.containsKey(node)) {
+            pagerank.put(node, 1.0);
+            graph.put(node, new HashSet<>());
+            reverseGraph.put(node, new HashSet<>());
+        }
+    }
+
+    void addEdge(int from, int to) {
+        addNode(from);
+        addNode(to);
+
+        if (!graph.get(from).contains(to)) {
+            graph.get(from).add(to);
+            reverseGraph.get(to).add(from);
+            updatePageRankIncremental(from, to);
+        }
+    }
+
+    void removeEdge(int from, int to) {
+        if (graph.containsKey(from) && graph.get(from).contains(to)) {
+            graph.get(from).remove(to);
+            reverseGraph.get(to).remove(from);
+            updatePageRankIncremental(from, to);
+        }
+    }
+
+    private void updatePageRankIncremental(int affectedFrom, int affectedTo) {
+        Set<Integer> nodesToUpdate = new HashSet<>();
+        nodesToUpdate.add(affectedTo);
+
+        // BFS to find nodes that might be affected
+        Queue<Integer> queue = new LinkedList<>();
+        queue.offer(affectedTo);
+
+        while (!queue.isEmpty()) {
+            int node = queue.poll();
+            for (int neighbor : graph.getOrDefault(node, new HashSet<>())) {
+                if (!nodesToUpdate.contains(neighbor)) {
+                    nodesToUpdate.add(neighbor);
+                    queue.offer(neighbor);
+                }
+            }
+        }
+
+        // Update PageRank for affected nodes
+        for (int iterations = 0; iterations < 10; iterations++) {
+            Map<Integer, Double> newRanks = new HashMap<>(pagerank);
+
+            for (int node : nodesToUpdate) {
+                double rank = (1 - dampingFactor);
+                for (int predecessor : reverseGraph.getOrDefault(node, new HashSet<>())) {
+                    int outDegree = graph.get(predecessor).size();
+                    if (outDegree > 0) {
+                        rank += dampingFactor * pagerank.get(predecessor) / outDegree;
+                    }
+                }
+                newRanks.put(node, rank);
+            }
+
+            // Check convergence
+            boolean converged = true;
+            for (int node : nodesToUpdate) {
+                if (Math.abs(newRanks.get(node) - pagerank.get(node)) > epsilon) {
+                    converged = false;
+                    break;
+                }
+            }
+
+            pagerank.putAll(newRanks);
+            if (converged) break;
+        }
+    }
+
+    double getPageRank(int node) {
+        return pagerank.getOrDefault(node, 0.0);
+    }
+
+    Map<Integer, Double> getAllPageRanks() {
+        return new HashMap<>(pagerank);
+    }
+}
+```
+
+
+***
+
+## Pattern 15: Network Flow \& Matching
+
+### 15.1 Maximum Flow (Ford-Fulkerson with Edmonds-Karp)
+
+```java
+class MaxFlow {
+    private final int[][] capacity;
+    private final int n;
+
+    MaxFlow(int n) {
+        this.n = n;
+        this.capacity = new int[n][n];
+    }
+
+    void addEdge(int from, int to, int cap) {
+        capacity[from][to] += cap;
+    }
+
+    int maxFlow(int source, int sink) {
+        int[][] residual = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(capacity[i], 0, residual[i], 0, n);
+        }
+
+        int maxFlow = 0;
+        int[] parent = new int[n];
+
+        while (bfsFlow(residual, source, sink, parent)) {
+            int pathFlow = Integer.MAX_VALUE;
+
+            for (int v = sink; v != source; v = parent[v]) {
+                int u = parent[v];
+                pathFlow = Math.min(pathFlow, residual[u][v]);
+            }
+
+            for (int v = sink; v != source; v = parent[v]) {
+                int u = parent[v];
+                residual[u][v] -= pathFlow;
+                residual[v][u] += pathFlow;
+            }
+
+            maxFlow += pathFlow;
+        }
+
+        return maxFlow;
+    }
+
+    private boolean bfsFlow(int[][] residual, int source, int sink, int[] parent) {
+        boolean[] visited = new boolean[n];
+        Queue<Integer> queue = new LinkedList<>();
+
+        queue.offer(source);
+        visited[source] = true;
+        parent[source] = -1;
+
+        while (!queue.isEmpty()) {
+            int u = queue.poll();
+
+            for (int v = 0; v < n; v++) {
+                if (!visited[v] && residual[u][v] > 0) {
+                    queue.offer(v);
+                    visited[v] = true;
+                    parent[v] = u;
+                    if (v == sink) return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    List<int[]> getMinCut(int source, int sink) {
+        maxFlow(source, sink); // Run max flow first
+
+        int[][] residual = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(capacity[i], 0, residual[i], 0, n);
+        }
+
+        // Find reachable nodes from source
+        boolean[] reachable = new boolean[n];
+        dfsReachable(residual, source, reachable);
+
+        List<int[]> minCutEdges = new ArrayList<>();
+        for (int u = 0; u < n; u++) {
+            for (int v = 0; v < n; v++) {
+                if (reachable[u] && !reachable[v] && capacity[u][v] > 0) {
+                    minCutEdges.add(new int[]{u, v});
+                }
+            }
+        }
+
+        return minCutEdges;
+    }
+
+    private void dfsReachable(int[][] residual, int u, boolean[] reachable) {
+        reachable[u] = true;
+        for (int v = 0; v < n; v++) {
+            if (!reachable[v] && residual[u][v] > 0) {
+                dfsReachable(residual, v, reachable);
+            }
+        }
+    }
+}
+```
+
+
+### 15.2 Hungarian Algorithm for Assignment Problem
+
+```java
+class HungarianAlgorithm {
+    private final int[][] cost;
+    private final int n;
+
+    HungarianAlgorithm(int[][] cost) {
+        this.n = cost.length;
+        this.cost = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(cost[i], 0, this.cost[i], 0, n);
+        }
+    }
+
+    int[] solve() {
+        // Step 1: Subtract row minimums
+        for (int i = 0; i < n; i++) {
+            int minVal = Arrays.stream(cost[i]).min().orElse(0);
+            for (int j = 0; j < n; j++) {
+                cost[i][j] -= minVal;
+            }
+        }
+
+        // Step 2: Subtract column minimums
+        for (int j = 0; j < n; j++) {
+            int minVal = Integer.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                minVal = Math.min(minVal, cost[i][j]);
+            }
+            for (int i = 0; i < n; i++) {
+                cost[i][j] -= minVal;
+            }
+        }
+
+        // Step 3: Find optimal assignment using augmenting paths
+        int[] assignment = new int[n];
+        Arrays.fill(assignment, -1);
+
+        for (int worker = 0; worker < n; worker++) {
+            boolean[] visited = new boolean[n];
+            augment(worker, visited, assignment);
+        }
+
+        return assignment;
+    }
+
+    private boolean augment(int worker, boolean[] visited, int[] assignment) {
+        for (int job = 0; job < n; job++) {
+            if (cost[worker][job] == 0 && !visited[job]) {
+                visited[job] = true;
+
+                if (assignment[job] == -1 ||
+                    augment(assignment[job], visited, assignment)) {
+                    assignment[job] = worker;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    int getMinCost(int[] assignment) {
+        int totalCost = 0;
+        for (int job = 0; job < n; job++) {
+            if (assignment[job] != -1) {
+                totalCost += cost[assignment[job]][job];
+            }
+        }
+        return totalCost;
+    }
+}
+```
+
+
+***
+
+## Time Complexity Cheat Sheet
+
+| Algorithm | Time Complexity | Space Complexity | Use Case |
+| :-- | :-- | :-- | :-- |
+| DFS | O(V + E) | O(V) | Path finding, cycle detection |
+| BFS | O(V + E) | O(V) | Shortest path (unweighted) |
+| Dijkstra | O((V + E) log V) | O(V) | Shortest path (weighted) |
+| Bellman-Ford | O(V × E) | O(V) | Negative weight edges |
+| Floyd-Warshall | O(V³) | O(V²) | All-pairs shortest paths |
+| Kruskal's MST | O(E log E) | O(V) | Minimum spanning tree |
+| Prim's MST | O((V + E) log V) | O(V) | Minimum spanning tree (dense) |
+| Topological Sort | O(V + E) | O(V) | Dependency resolution |
+| Tarjan's SCC | O(V + E) | O(V) | Strongly connected components |
+| Union-Find | O(α(n)) per op | O(n) | Dynamic connectivity |
+| Max Flow | O(V × E²) | O(V²) | Network flow problems |
+| Hungarian | O(n³) | O(n²) | Assignment problems |
+
+
+***
+
+## Advanced Applications
+
+### Real-World Use Cases
+
+**Social Networks**: Community detection, influence analysis, recommendation systems[^1_4][^1_3]
+
+**Transportation**: Route optimization, traffic flow analysis, logistics planning[^1_5]
+
+**Biology**: Protein interaction networks, gene regulatory networks, phylogenetic analysis[^1_6]
+
+**Finance**: Risk assessment, fraud detection, market analysis[^1_3]
+
+**Machine Learning**: Graph neural networks, knowledge graphs, recommendation engines[^1_4][^1_3]
+
+***
+
+## Common Tricks \& Tips
+
+### Implementation Guidelines
+
+1. **Visited Array**: Always use for avoiding infinite loops
+2. **Parent Tracking**: Essential for path reconstruction
+3. **Distance Array**: Required for shortest path algorithms
+4. **Indegree Array**: Critical for topological sort
+5. **Dummy Source/Sink**: Simplifies multi-source problems
+6. **Reverse Graph**: Used in Kosaraju's algorithm
+7. **Bitmask DP**: For state compression in TSP-like problems
+8. **Union-Find**: Optimal for dynamic connectivity queries
+9. **Priority Queue**: Essential for Dijkstra and Prim's algorithms
+10. **Level-Order BFS**: Use queue size for level tracking
+
+### Interview Preparation
+
+**Most Important Patterns**: DFS/BFS traversals, shortest path algorithms, and Union-Find are fundamental for technical interviews
+
+**System Design Applications**: Understanding graph algorithms is crucial for designing scalable backend systems, especially for social networks, recommendation systems, and distributed systems
+
+**Java-Specific**: Focus on ArrayList representations, PriorityQueue usage, and efficient data structure choices for competitive programming
+
+This comprehensive reference provides both fundamental concepts and advanced techniques essential for mastering graph algorithms in technical interviews and real-world applications.

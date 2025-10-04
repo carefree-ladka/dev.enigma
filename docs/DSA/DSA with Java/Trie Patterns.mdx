@@ -1,0 +1,2231 @@
+# Trie Patterns
+
+## Table of Contents
+
+1. [Trie Fundamentals](#trie-fundamentals)
+2. [Pattern 1: Basic Trie Operations](#pattern-1-basic-trie-operations)
+3. [Pattern 2: Word Search \& Dictionary](#pattern-2-word-search--dictionary)
+4. [Pattern 3: Prefix-Based Queries](#pattern-3-prefix-based-queries)
+5. [Pattern 4: Auto-Complete \& Suggestions](#pattern-4-auto-complete--suggestions)
+6. [Pattern 5: Word Frequency \& Counting](#pattern-5-word-frequency--counting)
+7. [Pattern 6: Longest Common Prefix](#pattern-6-longest-common-prefix)
+8. [Pattern 7: Trie with Backtracking](#pattern-7-trie-with-backtracking)
+9. [Pattern 8: Compressed Trie (Patricia Tree)](#pattern-8-compressed-trie-patricia-tree)
+10. [Pattern 9: Trie for Number Storage](#pattern-9-trie-for-number-storage)
+11. [Pattern 10: Suffix Trie](#pattern-10-suffix-trie)
+12. [Pattern 11: Advanced Trie Applications](#pattern-11-advanced-trie-applications)
+13. [Pattern 12: Trie Optimization Techniques](#pattern-12-trie-optimization-techniques)
+
+***
+
+## Trie Fundamentals
+
+### Core Trie Concepts
+
+```java
+// Basic Trie Node Structure
+class TrieNode {
+    Map<Character, TrieNode> children;
+    boolean isEndOfWord;
+    int frequency; // For counting word occurrences
+    String word;   // Optional: store complete word at end nodes
+
+    public TrieNode() {
+        children = new HashMap<>();
+        isEndOfWord = false;
+        frequency = 0;
+        word = null;
+    }
+}
+
+// Alternative Array-based Node (for English letters only)
+class ArrayTrieNode {
+    ArrayTrieNode[] children;
+    boolean isEndOfWord;
+    int frequency;
+    static final int ALPHABET_SIZE = 26;
+
+    public ArrayTrieNode() {
+        children = new ArrayTrieNode[ALPHABET_SIZE];
+        isEndOfWord = false;
+        frequency = 0;
+    }
+
+    // Helper method to get index for character
+    private int getIndex(char c) {
+        return c - 'a';
+    }
+
+    // Check if character exists
+    public boolean hasChild(char c) {
+        return children[getIndex(c)] != null;
+    }
+
+    // Get child node for character
+    public ArrayTrieNode getChild(char c) {
+        return children[getIndex(c)];
+    }
+
+    // Set child node for character
+    public void setChild(char c, ArrayTrieNode node) {
+        children[getIndex(c)] = node;
+    }
+}
+
+// Enhanced Trie Node with additional features
+class EnhancedTrieNode {
+    Map<Character, EnhancedTrieNode> children;
+    boolean isEndOfWord;
+    int frequency;
+    int prefixCount; // Count of words with this prefix
+    String word;
+    Set<String> wordSet; // All words passing through this node
+
+    public EnhancedTrieNode() {
+        children = new HashMap<>();
+        isEndOfWord = false;
+        frequency = 0;
+        prefixCount = 0;
+        word = null;
+        wordSet = new HashSet<>();
+    }
+}
+
+// Trie Interface for different implementations
+interface Trie {
+    void insert(String word);
+    boolean search(String word);
+    boolean startsWith(String prefix);
+    void delete(String word);
+    List<String> getAllWords();
+    List<String> getWordsWithPrefix(String prefix);
+    int countWords();
+    int countWordsWithPrefix(String prefix);
+}
+```
+
+
+### Basic Trie Implementation
+
+```java
+// Standard Trie Implementation
+public class StandardTrie implements Trie {
+    private TrieNode root;
+
+    public StandardTrie() {
+        root = new TrieNode();
+    }
+
+    @Override
+    public void insert(String word) {
+        if (word == null || word.isEmpty()) return;
+
+        TrieNode current = root;
+
+        for (char c : word.toCharArray()) {
+            current.children.putIfAbsent(c, new TrieNode());
+            current = current.children.get(c);
+        }
+
+        current.isEndOfWord = true;
+        current.frequency++;
+        current.word = word; // Store complete word
+    }
+
+    @Override
+    public boolean search(String word) {
+        if (word == null) return false;
+
+        TrieNode node = searchNode(word);
+        return node != null && node.isEndOfWord;
+    }
+
+    @Override
+    public boolean startsWith(String prefix) {
+        if (prefix == null) return false;
+
+        return searchNode(prefix) != null;
+    }
+
+    // Helper method to find node for given string
+    private TrieNode searchNode(String str) {
+        TrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return null;
+            }
+            current = current.children.get(c);
+        }
+
+        return current;
+    }
+
+    @Override
+    public void delete(String word) {
+        if (word == null || !search(word)) return;
+
+        deleteHelper(root, word, 0);
+    }
+
+    private boolean deleteHelper(TrieNode current, String word, int index) {
+        if (index == word.length()) {
+            // We're at the end of the word
+            if (!current.isEndOfWord) return false;
+
+            current.isEndOfWord = false;
+            current.frequency = 0;
+            current.word = null;
+
+            // Return true if current has no children (can be deleted)
+            return current.children.isEmpty();
+        }
+
+        char c = word.charAt(index);
+        TrieNode node = current.children.get(c);
+
+        if (node == null) return false;
+
+        boolean shouldDeleteChild = deleteHelper(node, word, index + 1);
+
+        if (shouldDeleteChild) {
+            current.children.remove(c);
+
+            // Return true if current has no children and is not end of another word
+            return !current.isEndOfWord && current.children.isEmpty();
+        }
+
+        return false;
+    }
+
+    @Override
+    public List<String> getAllWords() {
+        List<String> words = new ArrayList<>();
+        getAllWordsHelper(root, words);
+        return words;
+    }
+
+    private void getAllWordsHelper(TrieNode node, List<String> words) {
+        if (node.isEndOfWord) {
+            words.add(node.word);
+        }
+
+        for (TrieNode child : node.children.values()) {
+            getAllWordsHelper(child, words);
+        }
+    }
+
+    @Override
+    public List<String> getWordsWithPrefix(String prefix) {
+        List<String> words = new ArrayList<>();
+        TrieNode prefixNode = searchNode(prefix);
+
+        if (prefixNode != null) {
+            getAllWordsHelper(prefixNode, words);
+        }
+
+        return words;
+    }
+
+    @Override
+    public int countWords() {
+        return countWordsHelper(root);
+    }
+
+    private int countWordsHelper(TrieNode node) {
+        int count = node.isEndOfWord ? 1 : 0;
+
+        for (TrieNode child : node.children.values()) {
+            count += countWordsHelper(child);
+        }
+
+        return count;
+    }
+
+    @Override
+    public int countWordsWithPrefix(String prefix) {
+        TrieNode prefixNode = searchNode(prefix);
+        return prefixNode != null ? countWordsHelper(prefixNode) : 0;
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Basic Trie Operations
+
+### 1.1 Enhanced Trie with Frequency
+
+```java
+// Trie with word frequency tracking
+public class FrequencyTrie {
+    private TrieNode root;
+
+    public FrequencyTrie() {
+        root = new TrieNode();
+    }
+
+    // Insert word and increment frequency
+    public void insert(String word) {
+        TrieNode current = root;
+
+        for (char c : word.toCharArray()) {
+            current.children.putIfAbsent(c, new TrieNode());
+            current = current.children.get(c);
+        }
+
+        current.isEndOfWord = true;
+        current.frequency++;
+        current.word = word;
+    }
+
+    // Get frequency of a word
+    public int getWordFrequency(String word) {
+        TrieNode node = searchNode(word);
+        return (node != null && node.isEndOfWord) ? node.frequency : 0;
+    }
+
+    // Count words starting with prefix
+    public int countWordsStartingWith(String prefix) {
+        TrieNode prefixNode = searchNode(prefix);
+        return prefixNode != null ? countWordsInSubtree(prefixNode) : 0;
+    }
+
+    private int countWordsInSubtree(TrieNode node) {
+        int count = node.isEndOfWord ? node.frequency : 0;
+
+        for (TrieNode child : node.children.values()) {
+            count += countWordsInSubtree(child);
+        }
+
+        return count;
+    }
+
+    // Erase one occurrence of word
+    public void eraseWord(String word) {
+        TrieNode node = searchNode(word);
+        if (node != null && node.isEndOfWord && node.frequency > 0) {
+            node.frequency--;
+            if (node.frequency == 0) {
+                node.isEndOfWord = false;
+                node.word = null;
+            }
+        }
+    }
+
+    // Get most frequent words with given prefix
+    public List<String> getMostFrequentWithPrefix(String prefix, int k) {
+        TrieNode prefixNode = searchNode(prefix);
+        if (prefixNode == null) return new ArrayList<>();
+
+        PriorityQueue<WordFrequency> maxHeap = new PriorityQueue<>(
+            (a, b) -> Integer.compare(b.frequency, a.frequency)
+        );
+
+        collectWordsWithFrequency(prefixNode, maxHeap);
+
+        List<String> result = new ArrayList<>();
+        while (k > 0 && !maxHeap.isEmpty()) {
+            result.add(maxHeap.poll().word);
+            k--;
+        }
+
+        return result;
+    }
+
+    private void collectWordsWithFrequency(TrieNode node, PriorityQueue<WordFrequency> heap) {
+        if (node.isEndOfWord) {
+            heap.offer(new WordFrequency(node.word, node.frequency));
+        }
+
+        for (TrieNode child : node.children.values()) {
+            collectWordsWithFrequency(child, heap);
+        }
+    }
+
+    private TrieNode searchNode(String str) {
+        TrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return null;
+            }
+            current = current.children.get(c);
+        }
+
+        return current;
+    }
+
+    static class WordFrequency {
+        String word;
+        int frequency;
+
+        WordFrequency(String word, int frequency) {
+            this.word = word;
+            this.frequency = frequency;
+        }
+    }
+}
+```
+
+
+### 1.2 Case-Insensitive Trie
+
+```java
+// Case-insensitive Trie implementation
+public class CaseInsensitiveTrie {
+    private TrieNode root;
+
+    public CaseInsensitiveTrie() {
+        root = new TrieNode();
+    }
+
+    public void insert(String word) {
+        if (word == null) return;
+
+        String normalizedWord = normalize(word);
+        TrieNode current = root;
+
+        for (char c : normalizedWord.toCharArray()) {
+            current.children.putIfAbsent(c, new TrieNode());
+            current = current.children.get(c);
+        }
+
+        current.isEndOfWord = true;
+        current.word = word; // Store original case
+    }
+
+    public boolean search(String word) {
+        if (word == null) return false;
+
+        String normalizedWord = normalize(word);
+        TrieNode node = searchNode(normalizedWord);
+        return node != null && node.isEndOfWord;
+    }
+
+    public boolean startsWith(String prefix) {
+        if (prefix == null) return false;
+
+        String normalizedPrefix = normalize(prefix);
+        return searchNode(normalizedPrefix) != null;
+    }
+
+    public List<String> getWordsWithPrefix(String prefix) {
+        if (prefix == null) return new ArrayList<>();
+
+        String normalizedPrefix = normalize(prefix);
+        TrieNode prefixNode = searchNode(normalizedPrefix);
+
+        if (prefixNode == null) return new ArrayList<>();
+
+        List<String> words = new ArrayList<>();
+        collectWords(prefixNode, words);
+        return words;
+    }
+
+    private String normalize(String str) {
+        return str.toLowerCase().trim();
+    }
+
+    private TrieNode searchNode(String str) {
+        TrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return null;
+            }
+            current = current.children.get(c);
+        }
+
+        return current;
+    }
+
+    private void collectWords(TrieNode node, List<String> words) {
+        if (node.isEndOfWord) {
+            words.add(node.word);
+        }
+
+        for (TrieNode child : node.children.values()) {
+            collectWords(child, words);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 2: Word Search \& Dictionary
+
+### 2.1 Word Search II (Trie + Backtracking)
+
+```java
+// Word Search II - Find all words in board using Trie
+public class WordSearchII {
+
+    public List<String> findWords(char[][] board, String[] words) {
+        // Build Trie from words
+        TrieNode root = buildTrie(words);
+
+        Set<String> result = new HashSet<>();
+        int m = board.length, n = board[_0].length;
+        boolean[][] visited = new boolean[m][n];
+
+        // Start DFS from each cell
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                dfs(board, i, j, root, visited, result);
+            }
+        }
+
+        return new ArrayList<>(result);
+    }
+
+    private void dfs(char[][] board, int row, int col, TrieNode node,
+                    boolean[][] visited, Set<String> result) {
+        if (row < 0 || row >= board.length || col < 0 || col >= board[_0].length ||
+            visited[row][col] || !node.children.containsKey(board[row][col])) {
+            return;
+        }
+
+        visited[row][col] = true;
+        TrieNode nextNode = node.children.get(board[row][col]);
+
+        // Found a word
+        if (nextNode.isEndOfWord) {
+            result.add(nextNode.word);
+            // Optional: remove word from Trie to avoid duplicates
+            nextNode.isEndOfWord = false;
+        }
+
+        // Explore all 4 directions
+        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        for (int[] dir : directions) {
+            dfs(board, row + dir[_0], col + dir[_1], nextNode, visited, result);
+        }
+
+        visited[row][col] = false; // Backtrack
+    }
+
+    private TrieNode buildTrie(String[] words) {
+        TrieNode root = new TrieNode();
+
+        for (String word : words) {
+            TrieNode current = root;
+
+            for (char c : word.toCharArray()) {
+                current.children.putIfAbsent(c, new TrieNode());
+                current = current.children.get(c);
+            }
+
+            current.isEndOfWord = true;
+            current.word = word;
+        }
+
+        return root;
+    }
+}
+```
+
+
+### 2.2 Dictionary and Word Validation
+
+```java
+// Dictionary with spell checking and suggestions
+public class SpellChecker {
+    private StandardTrie dictionary;
+
+    public SpellChecker() {
+        dictionary = new StandardTrie();
+    }
+
+    // Load dictionary words
+    public void loadDictionary(List<String> words) {
+        for (String word : words) {
+            dictionary.insert(word.toLowerCase());
+        }
+    }
+
+    // Check if word is correctly spelled
+    public boolean isCorrect(String word) {
+        return dictionary.search(word.toLowerCase());
+    }
+
+    // Get spelling suggestions using edit distance
+    public List<String> getSuggestions(String word, int maxDistance) {
+        List<String> suggestions = new ArrayList<>();
+        String normalizedWord = word.toLowerCase();
+
+        // Get all words from dictionary
+        List<String> allWords = dictionary.getAllWords();
+
+        for (String dictWord : allWords) {
+            if (editDistance(normalizedWord, dictWord) <= maxDistance) {
+                suggestions.add(dictWord);
+            }
+        }
+
+        return suggestions;
+    }
+
+    // Get suggestions based on prefix matching
+    public List<String> getPrefixSuggestions(String prefix, int limit) {
+        List<String> suggestions = dictionary.getWordsWithPrefix(prefix.toLowerCase());
+
+        return suggestions.stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    // Calculate edit distance between two strings
+    private int editDistance(String word1, String word2) {
+        int m = word1.length(), n = word2.length();
+        int[][] dp = new int[m + 1][n + 1];
+
+        // Initialize base cases
+        for (int i = 0; i <= m; i++) dp[i][_0] = i;
+        for (int j = 0; j <= n; j++) dp[_0][j] = j;
+
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (word1.charAt(i - 1) == word2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(Math.min(dp[i - 1][j], dp[i][j - 1]),
+                                           dp[i - 1][j - 1]);
+                }
+            }
+        }
+
+        return dp[m][n];
+    }
+
+    // Find anagrams of a word
+    public List<String> findAnagrams(String word) {
+        String sortedWord = sortString(word.toLowerCase());
+        List<String> anagrams = new ArrayList<>();
+
+        for (String dictWord : dictionary.getAllWords()) {
+            if (dictWord.length() == word.length() &&
+                !dictWord.equals(word.toLowerCase()) &&
+                sortString(dictWord).equals(sortedWord)) {
+                anagrams.add(dictWord);
+            }
+        }
+
+        return anagrams;
+    }
+
+    private String sortString(String str) {
+        char[] chars = str.toCharArray();
+        Arrays.sort(chars);
+        return new String(chars);
+    }
+}
+```
+
+
+***
+
+## Pattern 3: Prefix-Based Queries
+
+### 3.1 Longest Common Prefix
+
+```java
+// Find longest common prefix among all words in Trie
+public class LongestCommonPrefix {
+
+    public String longestCommonPrefix(String[] strs) {
+        if (strs == null || strs.length == 0) return "";
+
+        StandardTrie trie = new StandardTrie();
+
+        // Insert all strings into Trie
+        for (String str : strs) {
+            trie.insert(str);
+        }
+
+        return findLCP(trie);
+    }
+
+    private String findLCP(StandardTrie trie) {
+        StringBuilder lcp = new StringBuilder();
+        TrieNode current = trie.root;
+
+        while (current.children.size() == 1 && !current.isEndOfWord) {
+            Map.Entry<Character, TrieNode> entry = current.children.entrySet().iterator().next();
+            lcp.append(entry.getKey());
+            current = entry.getValue();
+        }
+
+        return lcp.toString();
+    }
+
+    // Find longest common prefix between two specific words
+    public String longestCommonPrefixBetween(String word1, String word2) {
+        int minLength = Math.min(word1.length(), word2.length());
+        StringBuilder lcp = new StringBuilder();
+
+        for (int i = 0; i < minLength; i++) {
+            if (word1.charAt(i) == word2.charAt(i)) {
+                lcp.append(word1.charAt(i));
+            } else {
+                break;
+            }
+        }
+
+        return lcp.toString();
+    }
+
+    // Get all pairs with longest common prefix of given length
+    public List<String[]> getPairsWithLCPLength(String[] words, int targetLength) {
+        List<String[]> pairs = new ArrayList<>();
+
+        for (int i = 0; i < words.length; i++) {
+            for (int j = i + 1; j < words.length; j++) {
+                String lcp = longestCommonPrefixBetween(words[i], words[j]);
+                if (lcp.length() == targetLength) {
+                    pairs.add(new String[]{words[i], words[j]});
+                }
+            }
+        }
+
+        return pairs;
+    }
+}
+```
+
+
+### 3.2 Prefix Count and Queries
+
+```java
+// Trie with efficient prefix counting
+public class PrefixCountTrie {
+    private EnhancedTrieNode root;
+
+    public PrefixCountTrie() {
+        root = new EnhancedTrieNode();
+    }
+
+    public void insert(String word) {
+        EnhancedTrieNode current = root;
+
+        for (char c : word.toCharArray()) {
+            current.children.putIfAbsent(c, new EnhancedTrieNode());
+            current = current.children.get(c);
+            current.prefixCount++; // Increment prefix count
+        }
+
+        current.isEndOfWord = true;
+        current.frequency++;
+        current.word = word;
+    }
+
+    public int countWordsWithPrefix(String prefix) {
+        EnhancedTrieNode node = searchNode(prefix);
+        return node != null ? node.prefixCount : 0;
+    }
+
+    public boolean search(String word) {
+        EnhancedTrieNode node = searchNode(word);
+        return node != null && node.isEndOfWord;
+    }
+
+    public boolean startsWith(String prefix) {
+        return searchNode(prefix) != null;
+    }
+
+    // Erase word and update prefix counts
+    public void erase(String word) {
+        if (!search(word)) return;
+
+        EnhancedTrieNode current = root;
+        List<EnhancedTrieNode> path = new ArrayList<>();
+        path.add(current);
+
+        // Build path to word
+        for (char c : word.toCharArray()) {
+            current = current.children.get(c);
+            path.add(current);
+        }
+
+        // Update counts along the path
+        for (int i = 1; i < path.size(); i++) {
+            path.get(i).prefixCount--;
+        }
+
+        // Mark as not end of word
+        current.isEndOfWord = false;
+        current.frequency = 0;
+        current.word = null;
+    }
+
+    private EnhancedTrieNode searchNode(String str) {
+        EnhancedTrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return null;
+            }
+            current = current.children.get(c);
+        }
+
+        return current;
+    }
+
+    // Get all prefixes of a word that exist in Trie
+    public List<String> getAllPrefixes(String word) {
+        List<String> prefixes = new ArrayList<>();
+        EnhancedTrieNode current = root;
+        StringBuilder prefix = new StringBuilder();
+
+        for (char c : word.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                break;
+            }
+
+            current = current.children.get(c);
+            prefix.append(c);
+
+            if (current.isEndOfWord) {
+                prefixes.add(prefix.toString());
+            }
+        }
+
+        return prefixes;
+    }
+}
+```
+
+
+***
+
+## Pattern 4: Auto-Complete \& Suggestions
+
+### 4.1 Auto-Complete System
+
+```java
+// Auto-complete system with ranking
+public class AutocompleteSystem {
+    private TrieNode root;
+    private TrieNode currentNode;
+    private StringBuilder currentPrefix;
+
+    public AutocompleteSystem(String[] sentences, int[] times) {
+        root = new TrieNode();
+        currentNode = root;
+        currentPrefix = new StringBuilder();
+
+        // Build initial Trie with historical data
+        for (int i = 0; i < sentences.length; i++) {
+            insert(sentences[i], times[i]);
+        }
+    }
+
+    public List<String> input(char c) {
+        if (c == '#') {
+            // End of input - store the sentence
+            String sentence = currentPrefix.toString();
+            insert(sentence, 1);
+
+            // Reset for next input
+            currentNode = root;
+            currentPrefix = new StringBuilder();
+            return new ArrayList<>();
+        }
+
+        currentPrefix.append(c);
+
+        if (currentNode != null && currentNode.children.containsKey(c)) {
+            currentNode = currentNode.children.get(c);
+            return getTop3Suggestions(currentNode);
+        } else {
+            currentNode = null; // No matching prefix
+            return new ArrayList<>();
+        }
+    }
+
+    private void insert(String sentence, int frequency) {
+        TrieNode current = root;
+
+        for (char c : sentence.toCharArray()) {
+            current.children.putIfAbsent(c, new TrieNode());
+            current = current.children.get(c);
+        }
+
+        current.isEndOfWord = true;
+        current.frequency += frequency;
+        current.word = sentence;
+    }
+
+    private List<String> getTop3Suggestions(TrieNode node) {
+        List<SentenceFrequency> candidates = new ArrayList<>();
+        collectSentences(node, candidates);
+
+        // Sort by frequency (desc) then lexicographically (asc)
+        candidates.sort((a, b) -> {
+            if (a.frequency != b.frequency) {
+                return Integer.compare(b.frequency, a.frequency);
+            }
+            return a.sentence.compareTo(b.sentence);
+        });
+
+        return candidates.stream()
+                .limit(3)
+                .map(sf -> sf.sentence)
+                .collect(Collectors.toList());
+    }
+
+    private void collectSentences(TrieNode node, List<SentenceFrequency> candidates) {
+        if (node.isEndOfWord) {
+            candidates.add(new SentenceFrequency(node.word, node.frequency));
+        }
+
+        for (TrieNode child : node.children.values()) {
+            collectSentences(child, candidates);
+        }
+    }
+
+    static class SentenceFrequency {
+        String sentence;
+        int frequency;
+
+        SentenceFrequency(String sentence, int frequency) {
+            this.sentence = sentence;
+            this.frequency = frequency;
+        }
+    }
+}
+```
+
+
+### 4.2 Word Suggestions with Fuzzy Matching
+
+```java
+// Auto-complete with fuzzy matching (allows typos)
+public class FuzzyAutoComplete {
+    private StandardTrie trie;
+
+    public FuzzyAutoComplete() {
+        trie = new StandardTrie();
+    }
+
+    public void addWord(String word) {
+        trie.insert(word.toLowerCase());
+    }
+
+    // Get suggestions allowing up to maxEdits character edits
+    public List<String> getSuggestions(String prefix, int maxEdits, int limit) {
+        List<SuggestionScore> suggestions = new ArrayList<>();
+        String normalizedPrefix = prefix.toLowerCase();
+
+        // Get all words and calculate edit distance
+        List<String> allWords = trie.getAllWords();
+
+        for (String word : allWords) {
+            int editDist = calculateEditDistance(normalizedPrefix, word.substring(0,
+                Math.min(word.length(), normalizedPrefix.length())));
+
+            if (editDist <= maxEdits) {
+                int score = calculateScore(word, normalizedPrefix, editDist);
+                suggestions.add(new SuggestionScore(word, score, editDist));
+            }
+        }
+
+        // Sort by score (higher is better)
+        suggestions.sort((a, b) -> Integer.compare(b.score, a.score));
+
+        return suggestions.stream()
+                .limit(limit)
+                .map(s -> s.word)
+                .collect(Collectors.toList());
+    }
+
+    private int calculateScore(String word, String prefix, int editDistance) {
+        int score = 1000 - editDistance * 10; // Penalize edit distance
+
+        // Bonus for exact prefix match
+        if (word.startsWith(prefix)) {
+            score += 100;
+        }
+
+        // Bonus for shorter words (more likely to be what user wants)
+        score += Math.max(0, 50 - word.length());
+
+        return score;
+    }
+
+    private int calculateEditDistance(String s1, String s2) {
+        int m = s1.length(), n = s2.length();
+        int[][] dp = new int[m + 1][n + 1];
+
+        for (int i = 0; i <= m; i++) dp[i][_0] = i;
+        for (int j = 0; j <= n; j++) dp[_0][j] = j;
+
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (s1.charAt(i - 1) == s2.charAt(j - 1)) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = 1 + Math.min(Math.min(dp[i - 1][j], dp[i][j - 1]),
+                                           dp[i - 1][j - 1]);
+                }
+            }
+        }
+
+        return dp[m][n];
+    }
+
+    static class SuggestionScore {
+        String word;
+        int score;
+        int editDistance;
+
+        SuggestionScore(String word, int score, int editDistance) {
+            this.word = word;
+            this.score = score;
+            this.editDistance = editDistance;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 5: Word Frequency \& Counting
+
+### 5.1 Top K Frequent Words
+
+```java
+// Find top K frequent words with Trie
+public class TopKFrequentWords {
+
+    public List<String> topKFrequent(String[] words, int k) {
+        FrequencyTrie trie = new FrequencyTrie();
+
+        // Insert all words
+        for (String word : words) {
+            trie.insert(word);
+        }
+
+        // Get all words with frequencies
+        List<WordFrequency> wordFreqs = new ArrayList<>();
+        collectWordFrequencies(trie.root, wordFreqs);
+
+        // Sort by frequency (desc) then lexicographically (asc)
+        wordFreqs.sort((a, b) -> {
+            if (a.frequency != b.frequency) {
+                return Integer.compare(b.frequency, a.frequency);
+            }
+            return a.word.compareTo(b.word);
+        });
+
+        return wordFreqs.stream()
+                .limit(k)
+                .map(wf -> wf.word)
+                .collect(Collectors.toList());
+    }
+
+    private void collectWordFrequencies(TrieNode node, List<WordFrequency> wordFreqs) {
+        if (node.isEndOfWord) {
+            wordFreqs.add(new WordFrequency(node.word, node.frequency));
+        }
+
+        for (TrieNode child : node.children.values()) {
+            collectWordFrequencies(child, wordFreqs);
+        }
+    }
+
+    // Alternative using heap for large datasets
+    public List<String> topKFrequentHeap(String[] words, int k) {
+        FrequencyTrie trie = new FrequencyTrie();
+
+        for (String word : words) {
+            trie.insert(word);
+        }
+
+        // Use min-heap to maintain top k elements
+        PriorityQueue<WordFrequency> minHeap = new PriorityQueue<>((a, b) -> {
+            if (a.frequency != b.frequency) {
+                return Integer.compare(a.frequency, b.frequency);
+            }
+            return b.word.compareTo(a.word); // Reverse lexicographic for min-heap
+        });
+
+        collectTopK(trie.root, minHeap, k);
+
+        List<String> result = new ArrayList<>();
+        while (!minHeap.isEmpty()) {
+            result.add(0, minHeap.poll().word); // Add at beginning to reverse order
+        }
+
+        return result;
+    }
+
+    private void collectTopK(TrieNode node, PriorityQueue<WordFrequency> minHeap, int k) {
+        if (node.isEndOfWord) {
+            if (minHeap.size() < k) {
+                minHeap.offer(new WordFrequency(node.word, node.frequency));
+            } else if (shouldReplace(minHeap.peek(), node)) {
+                minHeap.poll();
+                minHeap.offer(new WordFrequency(node.word, node.frequency));
+            }
+        }
+
+        for (TrieNode child : node.children.values()) {
+            collectTopK(child, minHeap, k);
+        }
+    }
+
+    private boolean shouldReplace(WordFrequency current, TrieNode newNode) {
+        if (newNode.frequency > current.frequency) return true;
+        if (newNode.frequency < current.frequency) return false;
+        return newNode.word.compareTo(current.word) < 0;
+    }
+}
+```
+
+
+***
+
+## Pattern 6: Longest Common Prefix
+
+### 6.1 LCP with Trie Construction
+
+```java
+// Find longest common prefix using Trie
+public class TrieLongestCommonPrefix {
+
+    public String longestCommonPrefix(String[] strs) {
+        if (strs == null || strs.length == 0) return "";
+        if (strs.length == 1) return strs[_0];
+
+        TrieNode root = buildTrie(strs);
+        return findLongestCommonPrefix(root, strs.length);
+    }
+
+    private TrieNode buildTrie(String[] strs) {
+        TrieNode root = new TrieNode();
+
+        for (String str : strs) {
+            TrieNode current = root;
+
+            for (char c : str.toCharArray()) {
+                current.children.putIfAbsent(c, new TrieNode());
+                current = current.children.get(c);
+                current.frequency++; // Count how many strings pass through this node
+            }
+
+            current.isEndOfWord = true;
+        }
+
+        return root;
+    }
+
+    private String findLongestCommonPrefix(TrieNode root, int totalStrings) {
+        StringBuilder lcp = new StringBuilder();
+        TrieNode current = root;
+
+        while (current.children.size() == 1 && !current.isEndOfWord) {
+            Map.Entry<Character, TrieNode> entry = current.children.entrySet().iterator().next();
+            TrieNode child = entry.getValue();
+
+            // Check if all strings pass through this node
+            if (child.frequency == totalStrings) {
+                lcp.append(entry.getKey());
+                current = child;
+            } else {
+                break;
+            }
+        }
+
+        return lcp.toString();
+    }
+
+    // Find longest common prefix of any two strings in array
+    public String longestCommonPrefixAnyTwo(String[] strs) {
+        String maxLCP = "";
+
+        for (int i = 0; i < strs.length; i++) {
+            for (int j = i + 1; j < strs.length; j++) {
+                String lcp = longestCommonPrefixTwo(strs[i], strs[j]);
+                if (lcp.length() > maxLCP.length()) {
+                    maxLCP = lcp;
+                }
+            }
+        }
+
+        return maxLCP;
+    }
+
+    private String longestCommonPrefixTwo(String str1, String str2) {
+        int minLength = Math.min(str1.length(), str2.length());
+        StringBuilder lcp = new StringBuilder();
+
+        for (int i = 0; i < minLength; i++) {
+            if (str1.charAt(i) == str2.charAt(i)) {
+                lcp.append(str1.charAt(i));
+            } else {
+                break;
+            }
+        }
+
+        return lcp.toString();
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Trie with Backtracking
+
+### 7.1 Word Break with Trie
+
+```java
+// Word Break problem using Trie
+public class WordBreakTrie {
+
+    public boolean wordBreak(String s, List<String> wordDict) {
+        StandardTrie trie = new StandardTrie();
+
+        // Build Trie from dictionary
+        for (String word : wordDict) {
+            trie.insert(word);
+        }
+
+        Boolean[] memo = new Boolean[s.length()];
+        return wordBreakHelper(s, 0, trie, memo);
+    }
+
+    private boolean wordBreakHelper(String s, int start, StandardTrie trie, Boolean[] memo) {
+        if (start == s.length()) return true;
+
+        if (memo[start] != null) return memo[start];
+
+        TrieNode current = trie.root;
+
+        for (int end = start; end < s.length(); end++) {
+            char c = s.charAt(end);
+
+            if (!current.children.containsKey(c)) {
+                break; // No word in dictionary starts with this prefix
+            }
+
+            current = current.children.get(c);
+
+            // Found a complete word
+            if (current.isEndOfWord) {
+                if (wordBreakHelper(s, end + 1, trie, memo)) {
+                    memo[start] = true;
+                    return true;
+                }
+            }
+        }
+
+        memo[start] = false;
+        return false;
+    }
+
+    // Word Break II - Return all possible sentences
+    public List<String> wordBreakII(String s, List<String> wordDict) {
+        StandardTrie trie = new StandardTrie();
+
+        for (String word : wordDict) {
+            trie.insert(word);
+        }
+
+        Map<Integer, List<String>> memo = new HashMap<>();
+        return wordBreakAllHelper(s, 0, trie, memo);
+    }
+
+    private List<String> wordBreakAllHelper(String s, int start, StandardTrie trie,
+                                           Map<Integer, List<String>> memo) {
+        if (memo.containsKey(start)) {
+            return memo.get(start);
+        }
+
+        List<String> result = new ArrayList<>();
+
+        if (start == s.length()) {
+            result.add("");
+            return result;
+        }
+
+        TrieNode current = trie.root;
+
+        for (int end = start; end < s.length(); end++) {
+            char c = s.charAt(end);
+
+            if (!current.children.containsKey(c)) {
+                break;
+            }
+
+            current = current.children.get(c);
+
+            if (current.isEndOfWord) {
+                String word = s.substring(start, end + 1);
+                List<String> suffixes = wordBreakAllHelper(s, end + 1, trie, memo);
+
+                for (String suffix : suffixes) {
+                    result.add(word + (suffix.isEmpty() ? "" : " " + suffix));
+                }
+            }
+        }
+
+        memo.put(start, result);
+        return result;
+    }
+}
+```
+
+
+***
+
+## Pattern 8: Compressed Trie (Patricia Tree)
+
+### 8.1 Patricia Tree Implementation
+
+```java
+// Compressed Trie (Patricia Tree) - stores strings more efficiently
+public class PatriciaTree {
+
+    static class PatriciaNode {
+        Map<String, PatriciaNode> children;
+        boolean isEndOfWord;
+        String word;
+
+        PatriciaNode() {
+            children = new HashMap<>();
+            isEndOfWord = false;
+        }
+    }
+
+    private PatriciaNode root;
+
+    public PatriciaTree() {
+        root = new PatriciaNode();
+    }
+
+    public void insert(String word) {
+        insertHelper(root, word, 0);
+    }
+
+    private void insertHelper(PatriciaNode node, String word, int index) {
+        if (index >= word.length()) {
+            node.isEndOfWord = true;
+            node.word = word;
+            return;
+        }
+
+        String remainingWord = word.substring(index);
+
+        // Look for existing edge that shares prefix
+        for (Map.Entry<String, PatriciaNode> entry : node.children.entrySet()) {
+            String edge = entry.getKey();
+            PatriciaNode child = entry.getValue();
+
+            int commonLength = findCommonPrefixLength(edge, remainingWord);
+
+            if (commonLength > 0) {
+                if (commonLength == edge.length()) {
+                    // Current edge is completely matched
+                    insertHelper(child, word, index + commonLength);
+                    return;
+                } else {
+                    // Need to split the edge
+                    splitEdge(node, edge, child, commonLength);
+                    insertHelper(node, word, index);
+                    return;
+                }
+            }
+        }
+
+        // No matching edge found, create new edge
+        PatriciaNode newChild = new PatriciaNode();
+        node.children.put(remainingWord, newChild);
+        newChild.isEndOfWord = true;
+        newChild.word = word;
+    }
+
+    private void splitEdge(PatriciaNode parent, String edge, PatriciaNode child, int splitIndex) {
+        String commonPrefix = edge.substring(0, splitIndex);
+        String remainingSuffix = edge.substring(splitIndex);
+
+        // Remove old edge
+        parent.children.remove(edge);
+
+        // Create intermediate node
+        PatriciaNode intermediateNode = new PatriciaNode();
+        parent.children.put(commonPrefix, intermediateNode);
+
+        // Connect intermediate node to original child
+        intermediateNode.children.put(remainingSuffix, child);
+    }
+
+    private int findCommonPrefixLength(String s1, String s2) {
+        int minLength = Math.min(s1.length(), s2.length());
+        int commonLength = 0;
+
+        for (int i = 0; i < minLength; i++) {
+            if (s1.charAt(i) == s2.charAt(i)) {
+                commonLength++;
+            } else {
+                break;
+            }
+        }
+
+        return commonLength;
+    }
+
+    public boolean search(String word) {
+        PatriciaNode node = searchHelper(root, word, 0);
+        return node != null && node.isEndOfWord;
+    }
+
+    private PatriciaNode searchHelper(PatriciaNode node, String word, int index) {
+        if (index >= word.length()) {
+            return node;
+        }
+
+        String remainingWord = word.substring(index);
+
+        for (Map.Entry<String, PatriciaNode> entry : node.children.entrySet()) {
+            String edge = entry.getKey();
+            PatriciaNode child = entry.getValue();
+
+            if (remainingWord.startsWith(edge)) {
+                return searchHelper(child, word, index + edge.length());
+            }
+        }
+
+        return null;
+    }
+
+    public boolean startsWith(String prefix) {
+        return searchHelper(root, prefix, 0) != null;
+    }
+
+    public List<String> getAllWords() {
+        List<String> words = new ArrayList<>();
+        getAllWordsHelper(root, words);
+        return words;
+    }
+
+    private void getAllWordsHelper(PatriciaNode node, List<String> words) {
+        if (node.isEndOfWord) {
+            words.add(node.word);
+        }
+
+        for (PatriciaNode child : node.children.values()) {
+            getAllWordsHelper(child, words);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 9: Trie for Number Storage
+
+### 9.1 XOR Trie for Maximum XOR
+
+```java
+// Trie for storing binary representations of numbers
+public class XORTrie {
+
+    static class XORTrieNode {
+        XORTrieNode[] children;
+
+        XORTrieNode() {
+            children = new XORTrieNode[_2]; // 0 and 1
+        }
+    }
+
+    private XORTrieNode root;
+    private static final int MAX_BITS = 31; // For 32-bit integers
+
+    public XORTrie() {
+        root = new XORTrieNode();
+    }
+
+    // Insert number into XOR Trie
+    public void insert(int num) {
+        XORTrieNode current = root;
+
+        // Process bits from most significant to least significant
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+
+            if (current.children[bit] == null) {
+                current.children[bit] = new XORTrieNode();
+            }
+
+            current = current.children[bit];
+        }
+    }
+
+    // Find maximum XOR with given number
+    public int findMaxXOR(int num) {
+        XORTrieNode current = root;
+        int maxXOR = 0;
+
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+            int oppositeBit = 1 - bit;
+
+            // Try to go in opposite direction for maximum XOR
+            if (current.children[oppositeBit] != null) {
+                maxXOR |= (1 << i);
+                current = current.children[oppositeBit];
+            } else {
+                current = current.children[bit];
+            }
+        }
+
+        return maxXOR;
+    }
+
+    // Find maximum XOR pair in array
+    public int findMaximumXOR(int[] nums) {
+        if (nums.length < 2) return 0;
+
+        // Insert all numbers into Trie
+        for (int num : nums) {
+            insert(num);
+        }
+
+        int maxXOR = 0;
+
+        // Find maximum XOR for each number
+        for (int num : nums) {
+            maxXOR = Math.max(maxXOR, findMaxXOR(num));
+        }
+
+        return maxXOR;
+    }
+
+    // Remove number from XOR Trie
+    public void remove(int num) {
+        removeHelper(root, num, MAX_BITS);
+    }
+
+    private boolean removeHelper(XORTrieNode node, int num, int bitIndex) {
+        if (bitIndex < 0) {
+            return true; // Reached end, can remove
+        }
+
+        int bit = (num >> bitIndex) & 1;
+        XORTrieNode child = node.children[bit];
+
+        if (child == null) return false; // Number not in Trie
+
+        boolean shouldRemoveChild = removeHelper(child, num, bitIndex - 1);
+
+        if (shouldRemoveChild) {
+            node.children[bit] = null;
+
+            // Check if current node can be removed
+            return node.children[_0] == null && node.children[_1] == null;
+        }
+
+        return false;
+    }
+}
+```
+
+
+### 9.2 Range XOR Queries
+
+```java
+// XOR Trie with range queries
+public class RangeXORTrie {
+
+    static class XORNode {
+        XORNode[] children;
+        int count; // Number of elements in this subtree
+
+        XORNode() {
+            children = new XORNode[_2];
+            count = 0;
+        }
+    }
+
+    private XORNode root;
+    private static final int MAX_BITS = 31;
+
+    public RangeXORTrie() {
+        root = new XORNode();
+    }
+
+    public void insert(int num) {
+        XORNode current = root;
+        current.count++;
+
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+
+            if (current.children[bit] == null) {
+                current.children[bit] = new XORNode();
+            }
+
+            current = current.children[bit];
+            current.count++;
+        }
+    }
+
+    public void remove(int num) {
+        if (!contains(num)) return;
+
+        XORNode current = root;
+        current.count--;
+
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+            current = current.children[bit];
+            current.count--;
+        }
+    }
+
+    public boolean contains(int num) {
+        XORNode current = root;
+
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+
+            if (current.children[bit] == null || current.children[bit].count == 0) {
+                return false;
+            }
+
+            current = current.children[bit];
+        }
+
+        return current.count > 0;
+    }
+
+    // Count numbers in range [left, right] that give maximum XOR with x
+    public int countMaxXORInRange(int x, int left, int right) {
+        int maxXOR = findMaxXORInRange(x, left, right);
+        return countWithXOR(x, maxXOR, left, right);
+    }
+
+    private int findMaxXORInRange(int x, int left, int right) {
+        // Implementation would involve checking range constraints
+        // This is a simplified version
+        return findMaxXOR(x);
+    }
+
+    private int findMaxXOR(int num) {
+        XORNode current = root;
+        int maxXOR = 0;
+
+        for (int i = MAX_BITS; i >= 0; i--) {
+            int bit = (num >> i) & 1;
+            int oppositeBit = 1 - bit;
+
+            if (current.children[oppositeBit] != null &&
+                current.children[oppositeBit].count > 0) {
+                maxXOR |= (1 << i);
+                current = current.children[oppositeBit];
+            } else {
+                current = current.children[bit];
+            }
+        }
+
+        return maxXOR;
+    }
+
+    private int countWithXOR(int x, int targetXOR, int left, int right) {
+        // Count numbers that XOR with x to give targetXOR and are in range [left, right]
+        int target = x ^ targetXOR;
+        return contains(target) && target >= left && target <= right ? 1 : 0;
+    }
+}
+```
+
+
+***
+
+## Pattern 10: Suffix Trie
+
+### 10.1 Suffix Trie Implementation
+
+```java
+// Suffix Trie for pattern matching
+public class SuffixTrie {
+
+    static class SuffixTrieNode {
+        Map<Character, SuffixTrieNode> children;
+        Set<Integer> positions; // Starting positions of suffixes
+        boolean isEndOfString;
+
+        SuffixTrieNode() {
+            children = new HashMap<>();
+            positions = new HashSet<>();
+            isEndOfString = false;
+        }
+    }
+
+    private SuffixTrieNode root;
+    private String text;
+
+    public SuffixTrie(String text) {
+        this.text = text;
+        this.root = new SuffixTrieNode();
+        buildSuffixTrie();
+    }
+
+    private void buildSuffixTrie() {
+        // Insert all suffixes
+        for (int i = 0; i < text.length(); i++) {
+            insertSuffix(text.substring(i), i);
+        }
+    }
+
+    private void insertSuffix(String suffix, int startPosition) {
+        SuffixTrieNode current = root;
+
+        for (int i = 0; i < suffix.length(); i++) {
+            char c = suffix.charAt(i);
+            current.children.putIfAbsent(c, new SuffixTrieNode());
+            current = current.children.get(c);
+            current.positions.add(startPosition);
+        }
+
+        current.isEndOfString = true;
+    }
+
+    // Search for pattern and return all starting positions
+    public List<Integer> searchPattern(String pattern) {
+        SuffixTrieNode current = root;
+
+        for (char c : pattern.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return new ArrayList<>(); // Pattern not found
+            }
+            current = current.children.get(c);
+        }
+
+        return new ArrayList<>(current.positions);
+    }
+
+    // Check if pattern exists in text
+    public boolean contains(String pattern) {
+        return !searchPattern(pattern).isEmpty();
+    }
+
+    // Count occurrences of pattern
+    public int countOccurrences(String pattern) {
+        return searchPattern(pattern).size();
+    }
+
+    // Find longest repeated substring
+    public String longestRepeatedSubstring() {
+        String longest = "";
+        findLongestRepeated(root, new StringBuilder(), longest);
+        return longest;
+    }
+
+    private String findLongestRepeated(SuffixTrieNode node, StringBuilder current, String longest) {
+        // If this node has multiple positions, it's a repeated substring
+        if (node.positions.size() > 1 && current.length() > longest.length()) {
+            longest = current.toString();
+        }
+
+        for (Map.Entry<Character, SuffixTrieNode> entry : node.children.entrySet()) {
+            current.append(entry.getKey());
+            longest = findLongestRepeated(entry.getValue(), current, longest);
+            current.deleteCharAt(current.length() - 1);
+        }
+
+        return longest;
+    }
+
+    // Find all substrings that occur at least k times
+    public List<String> findFrequentSubstrings(int k) {
+        List<String> result = new ArrayList<>();
+        findFrequentHelper(root, new StringBuilder(), k, result);
+        return result;
+    }
+
+    private void findFrequentHelper(SuffixTrieNode node, StringBuilder current,
+                                   int k, List<String> result) {
+        if (node.positions.size() >= k && current.length() > 0) {
+            result.add(current.toString());
+        }
+
+        for (Map.Entry<Character, SuffixTrieNode> entry : node.children.entrySet()) {
+            current.append(entry.getKey());
+            findFrequentHelper(entry.getValue(), current, k, result);
+            current.deleteCharAt(current.length() - 1);
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 11: Advanced Trie Applications
+
+### 11.1 Replace Words
+
+```java
+// Replace Words problem using Trie
+public class ReplaceWords {
+
+    public String replaceWords(List<String> dictionary, String sentence) {
+        StandardTrie trie = new StandardTrie();
+
+        // Build Trie with dictionary roots
+        for (String root : dictionary) {
+            trie.insert(root);
+        }
+
+        String[] words = sentence.split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) result.append(" ");
+
+            String replacement = findRoot(trie, words[i]);
+            result.append(replacement != null ? replacement : words[i]);
+        }
+
+        return result.toString();
+    }
+
+    private String findRoot(StandardTrie trie, String word) {
+        TrieNode current = trie.root;
+        StringBuilder root = new StringBuilder();
+
+        for (char c : word.toCharArray()) {
+            if (!current.children.containsKey(c)) {
+                return null; // No root found
+            }
+
+            root.append(c);
+            current = current.children.get(c);
+
+            if (current.isEndOfWord) {
+                return root.toString(); // Found shortest root
+            }
+        }
+
+        return null; // No complete root found
+    }
+}
+```
+
+
+### 11.2 Concatenated Words
+
+```java
+// Find all concatenated words using Trie
+public class ConcatenatedWords {
+
+    public List<String> findAllConcatenatedWordsInADict(String[] words) {
+        StandardTrie trie = new StandardTrie();
+
+        // Sort words by length to process shorter words first
+        Arrays.sort(words, (a, b) -> Integer.compare(a.length(), b.length()));
+
+        List<String> result = new ArrayList<>();
+
+        for (String word : words) {
+            if (canFormWord(word, trie)) {
+                result.add(word);
+            }
+            trie.insert(word); // Add to Trie after checking
+        }
+
+        return result;
+    }
+
+    private boolean canFormWord(String word, StandardTrie trie) {
+        if (word.isEmpty()) return false;
+
+        Boolean[] memo = new Boolean[word.length()];
+        return canFormHelper(word, 0, trie, memo);
+    }
+
+    private boolean canFormHelper(String word, int start, StandardTrie trie, Boolean[] memo) {
+        if (start == word.length()) return true;
+
+        if (memo[start] != null) return memo[start];
+
+        TrieNode current = trie.root;
+
+        for (int end = start; end < word.length(); end++) {
+            char c = word.charAt(end);
+
+            if (!current.children.containsKey(c)) {
+                break;
+            }
+
+            current = current.children.get(c);
+
+            if (current.isEndOfWord) {
+                if (canFormHelper(word, end + 1, trie, memo)) {
+                    memo[start] = true;
+                    return true;
+                }
+            }
+        }
+
+        memo[start] = false;
+        return false;
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Trie Optimization Techniques
+
+### 12.1 Memory-Optimized Trie
+
+```java
+// Memory-optimized Trie using arrays instead of HashMap
+public class OptimizedTrie {
+
+    static class OptimizedTrieNode {
+        OptimizedTrieNode[] children;
+        boolean isEndOfWord;
+        String word;
+        static final int ALPHABET_SIZE = 26;
+
+        OptimizedTrieNode() {
+            children = new OptimizedTrieNode[ALPHABET_SIZE];
+            isEndOfWord = false;
+        }
+
+        private int getIndex(char c) {
+            return Character.toLowerCase(c) - 'a';
+        }
+
+        OptimizedTrieNode getChild(char c) {
+            int index = getIndex(c);
+            return index >= 0 && index < ALPHABET_SIZE ? children[index] : null;
+        }
+
+        void setChild(char c, OptimizedTrieNode node) {
+            int index = getIndex(c);
+            if (index >= 0 && index < ALPHABET_SIZE) {
+                children[index] = node;
+            }
+        }
+
+        boolean hasChild(char c) {
+            return getChild(c) != null;
+        }
+
+        int getChildCount() {
+            int count = 0;
+            for (OptimizedTrieNode child : children) {
+                if (child != null) count++;
+            }
+            return count;
+        }
+    }
+
+    private OptimizedTrieNode root;
+
+    public OptimizedTrie() {
+        root = new OptimizedTrieNode();
+    }
+
+    public void insert(String word) {
+        if (word == null || word.isEmpty()) return;
+
+        OptimizedTrieNode current = root;
+
+        for (char c : word.toCharArray()) {
+            if (!current.hasChild(c)) {
+                current.setChild(c, new OptimizedTrieNode());
+            }
+            current = current.getChild(c);
+        }
+
+        current.isEndOfWord = true;
+        current.word = word;
+    }
+
+    public boolean search(String word) {
+        OptimizedTrieNode node = searchNode(word);
+        return node != null && node.isEndOfWord;
+    }
+
+    public boolean startsWith(String prefix) {
+        return searchNode(prefix) != null;
+    }
+
+    private OptimizedTrieNode searchNode(String str) {
+        OptimizedTrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            current = current.getChild(c);
+            if (current == null) return null;
+        }
+
+        return current;
+    }
+
+    // Delete with node cleanup
+    public void delete(String word) {
+        deleteHelper(root, word, 0);
+    }
+
+    private boolean deleteHelper(OptimizedTrieNode current, String word, int index) {
+        if (index == word.length()) {
+            if (!current.isEndOfWord) return false;
+
+            current.isEndOfWord = false;
+            current.word = null;
+
+            return current.getChildCount() == 0;
+        }
+
+        char c = word.charAt(index);
+        OptimizedTrieNode node = current.getChild(c);
+
+        if (node == null) return false;
+
+        boolean shouldDeleteChild = deleteHelper(node, word, index + 1);
+
+        if (shouldDeleteChild) {
+            current.setChild(c, null);
+            return !current.isEndOfWord && current.getChildCount() == 0;
+        }
+
+        return false;
+    }
+}
+```
+
+
+### 12.2 Persistent Trie (Immutable)
+
+```java
+// Persistent Trie - creates new versions without modifying existing ones
+public class PersistentTrie {
+
+    static class PersistentTrieNode {
+        Map<Character, PersistentTrieNode> children;
+        boolean isEndOfWord;
+        String word;
+
+        PersistentTrieNode() {
+            children = new HashMap<>();
+            isEndOfWord = false;
+        }
+
+        // Copy constructor
+        PersistentTrieNode(PersistentTrieNode other) {
+            children = new HashMap<>(other.children);
+            isEndOfWord = other.isEndOfWord;
+            word = other.word;
+        }
+    }
+
+    private PersistentTrieNode root;
+
+    public PersistentTrie() {
+        root = new PersistentTrieNode();
+    }
+
+    private PersistentTrie(PersistentTrieNode root) {
+        this.root = root;
+    }
+
+    // Insert returns new Trie version
+    public PersistentTrie insert(String word) {
+        PersistentTrieNode newRoot = insertHelper(root, word, 0);
+        return new PersistentTrie(newRoot);
+    }
+
+    private PersistentTrieNode insertHelper(PersistentTrieNode node, String word, int index) {
+        PersistentTrieNode newNode = new PersistentTrieNode(node);
+
+        if (index == word.length()) {
+            newNode.isEndOfWord = true;
+            newNode.word = word;
+            return newNode;
+        }
+
+        char c = word.charAt(index);
+        PersistentTrieNode child = node.children.get(c);
+
+        if (child == null) {
+            child = new PersistentTrieNode();
+        }
+
+        PersistentTrieNode newChild = insertHelper(child, word, index + 1);
+        newNode.children.put(c, newChild);
+
+        return newNode;
+    }
+
+    public boolean search(String word) {
+        PersistentTrieNode node = searchNode(word);
+        return node != null && node.isEndOfWord;
+    }
+
+    public boolean startsWith(String prefix) {
+        return searchNode(prefix) != null;
+    }
+
+    private PersistentTrieNode searchNode(String str) {
+        PersistentTrieNode current = root;
+
+        for (char c : str.toCharArray()) {
+            current = current.children.get(c);
+            if (current == null) return null;
+        }
+
+        return current;
+    }
+
+    // Delete returns new Trie version
+    public PersistentTrie delete(String word) {
+        if (!search(word)) return this; // Word doesn't exist, return same version
+
+        PersistentTrieNode newRoot = deleteHelper(root, word, 0);
+        return new PersistentTrie(newRoot);
+    }
+
+    private PersistentTrieNode deleteHelper(PersistentTrieNode node, String word, int index) {
+        PersistentTrieNode newNode = new PersistentTrieNode(node);
+
+        if (index == word.length()) {
+            newNode.isEndOfWord = false;
+            newNode.word = null;
+            return newNode;
+        }
+
+        char c = word.charAt(index);
+        PersistentTrieNode child = node.children.get(c);
+
+        if (child != null) {
+            PersistentTrieNode newChild = deleteHelper(child, word, index + 1);
+
+            // If child becomes empty, remove it
+            if (!newChild.isEndOfWord && newChild.children.isEmpty()) {
+                newNode.children.remove(c);
+            } else {
+                newNode.children.put(c, newChild);
+            }
+        }
+
+        return newNode;
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Operation | Time Complexity | Space Complexity | Notes |
+| :-- | :-- | :-- | :-- |
+| Insert | O(m) | O(ALPHABET_SIZE × N × M) | m = word length |
+| Search | O(m) | O(1) | m = word length |
+| Delete | O(m) | O(1) | m = word length |
+| Prefix Search | O(p) | O(1) | p = prefix length |
+| Get All Words | O(N × M) | O(N × M) | N = words, M = avg length |
+| Space Total | - | O(ALPHABET_SIZE × N × M) | Worst case |
+
+*Where N = number of words, M = average word length, ALPHABET_SIZE = character set size*
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Trie Implementation Guidelines
+
+```java
+// 1. Choose appropriate node structure
+// For English only: Use array of size 26
+class ArrayNode {
+    ArrayNode[] children = new ArrayNode[_26];
+    boolean isEndOfWord;
+}
+
+// For general characters: Use HashMap
+class MapNode {
+    Map<Character, MapNode> children = new HashMap<>();
+    boolean isEndOfWord;
+}
+
+// 2. Memory optimization techniques
+public class MemoryOptimizedTrie {
+    // Use lazy initialization
+    class LazyTrieNode {
+        Map<Character, LazyTrieNode> children; // Initialize only when needed
+        boolean isEndOfWord;
+
+        void addChild(char c) {
+            if (children == null) {
+                children = new HashMap<>();
+            }
+            children.putIfAbsent(c, new LazyTrieNode());
+        }
+    }
+
+    // Compress single-child paths (Patricia Tree)
+    class CompressedNode {
+        Map<String, CompressedNode> children; // Store string edges
+        boolean isEndOfWord;
+        String word;
+    }
+}
+
+// 3. Handle edge cases
+public void robustInsert(String word) {
+    if (word == null || word.isEmpty()) return;
+
+    // Normalize input
+    word = word.toLowerCase().trim();
+
+    // Validate characters if needed
+    if (!isValidWord(word)) return;
+
+    // Proceed with insertion
+    insertHelper(word);
+}
+
+private boolean isValidWord(String word) {
+    return word.matches("[a-zA-Z]+"); // Only letters
+}
+
+// 4. Batch operations for efficiency
+public void insertBatch(List<String> words) {
+    for (String word : words) {
+        insert(word);
+    }
+}
+
+void insertHelper(String word) { /* Implementation */ }
+```
+
+
+### Common Pitfalls to Avoid
+
+1. **Memory Usage**: Tries can be memory-intensive for large datasets
+2. **Character Set**: Consider the character set size when choosing node structure
+3. **Case Sensitivity**: Decide early whether to be case-sensitive or not
+4. **Null Handling**: Always validate input strings
+5. **Deletion Complexity**: Implement proper cleanup to avoid memory leaks
+
+### Interview Tips
+
+- **Identify Trie use cases**: Prefix matching, dictionary operations, auto-complete
+- **Discuss trade-offs**: Time vs space complexity
+- **Consider alternatives**: Hash tables for exact matching, suffix arrays for advanced string operations
+- **Optimize for the specific problem**: Array vs HashMap based on character set
+- **Think about scalability**: How will the solution perform with large datasets?

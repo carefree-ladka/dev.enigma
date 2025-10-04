@@ -1,0 +1,2197 @@
+# Grid-Based Graph
+
+## Table of Contents
+
+1. [Grid Fundamentals \& Templates](#grid-fundamentals--templates)
+2. [Pattern 1: Basic Grid Traversal](#pattern-1-basic-grid-traversal)
+3. [Pattern 2: Island \& Connected Components](#pattern-2-island--connected-components)
+4. [Pattern 3: Path Finding](#pattern-3-path-finding)
+5. [Pattern 4: Flood Fill \& Coloring](#pattern-4-flood-fill--coloring)
+6. [Pattern 5: Grid Validation \& Constraints](#pattern-5-grid-validation--constraints)
+7. [Pattern 6: Multi-Source BFS](#pattern-6-multi-source-bfs)
+8. [Pattern 7: Grid DP \& Optimization](#pattern-7-grid-dp--optimization)
+9. [Pattern 8: Binary Matrix Problems](#pattern-8-binary-matrix-problems)
+10. [Pattern 9: Grid Transformation](#pattern-9-grid-transformation)
+11. [Pattern 10: Pattern Matching in Grids](#pattern-10-pattern-matching-in-grids)
+12. [Pattern 11: Game Board Problems](#pattern-11-game-board-problems)
+13. [Pattern 12: Advanced Grid Problems](#pattern-12-advanced-grid-problems)
+
+***
+
+## Grid Fundamentals \& Templates
+
+### Core Grid Concepts[1][2]
+
+```java
+class GridTraversalFramework {
+    // Direction vectors for 4-directional movement
+    int[][] directions4 = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // Up, Down, Left, Right
+
+    // Direction vectors for 8-directional movement
+    int[][] directions8 = {{-1,-1}, {-1,0}, {-1,1}, {0,-1}, {0,1}, {1,-1}, {1,0}, {1,1}};
+
+    // Alternative representation
+    int[] dx = {-1, 1, 0, 0}; // Row directions
+    int[] dy = {0, 0, -1, 1}; // Column directions
+
+    // Boundary check helper
+    boolean isValid(int[][] grid, int row, int col) {
+        return row >= 0 && row < grid.length &&
+               col >= 0 && col < grid[0].length;
+    }
+
+    // Boundary check with additional constraints
+    boolean isValidWithConstraints(int[][] grid, int row, int col, boolean[][] visited) {
+        return isValid(grid, row, col) &&
+               !visited[row][col] &&
+               grid[row][col] != 0; // Example: non-zero cells only
+    }
+
+    // Get all valid neighbors
+    List<int[]> getNeighbors(int[][] grid, int row, int col) {
+        List<int[]> neighbors = new ArrayList<>();
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+            if (isValid(grid, newRow, newCol)) {
+                neighbors.add(new int[]{newRow, newCol});
+            }
+        }
+        return neighbors;
+    }
+}
+```
+
+
+### Universal Grid Templates
+
+```java
+// DFS Template for Grid
+void dfsGrid(int[][] grid, int row, int col, boolean[][] visited) {
+    // Base case checks
+    if (!isValid(grid, row, col) || visited[row][col]) {
+        return;
+    }
+
+    // Mark current cell as visited
+    visited[row][col] = true;
+
+    // Process current cell
+    processCell(grid, row, col);
+
+    // Explore all 4 directions
+    for (int[] dir : directions4) {
+        int newRow = row + dir[0];
+        int newCol = col + dir[1];
+        dfsGrid(grid, newRow, newCol, visited);
+    }
+}
+
+// BFS Template for Grid
+void bfsGrid(int[][] grid, int startRow, int startCol) {
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    queue.offer(new int[]{startRow, startCol});
+    visited[startRow][startCol] = true;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        // Process current cell
+        processCell(grid, row, col);
+
+        // Add valid neighbors
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) && !visited[newRow][newCol]) {
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+}
+
+// Multi-level BFS Template
+void bfsLevels(int[][] grid, int startRow, int startCol) {
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    queue.offer(new int[]{startRow, startCol});
+    visited[startRow][startCol] = true;
+    int level = 0;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+
+        // Process all nodes at current level
+        for (int i = 0; i < size; i++) {
+            int[] current = queue.poll();
+            int row = current[0], col = current[1];
+
+            processCell(grid, row, col, level);
+
+            // Add neighbors for next level
+            for (int[] dir : directions4) {
+                int newRow = row + dir[0];
+                int newCol = col + dir[1];
+
+                if (isValid(grid, newRow, newCol) && !visited[newRow][newCol]) {
+                    visited[newRow][newCol] = true;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+        level++;
+    }
+}
+
+// Placeholder methods
+void processCell(int[][] grid, int row, int col) { /* Implementation specific */ }
+void processCell(int[][] grid, int row, int col, int level) { /* Implementation specific */ }
+```
+
+
+***
+
+## Pattern 1: Basic Grid Traversal
+
+### 1.1 Matrix Traversal (All Cells)
+
+```java
+// Row-wise traversal
+void traverseRowWise(int[][] matrix) {
+    for (int i = 0; i < matrix.length; i++) {
+        for (int j = 0; j < matrix[0].length; j++) {
+            System.out.print(matrix[i][j] + " ");
+        }
+        System.out.println();
+    }
+}
+
+// Column-wise traversal
+void traverseColumnWise(int[][] matrix) {
+    for (int j = 0; j < matrix[0].length; j++) {
+        for (int i = 0; i < matrix.length; i++) {
+            System.out.print(matrix[i][j] + " ");
+        }
+        System.out.println();
+    }
+}
+
+// Diagonal traversal (main diagonal)
+void traverseMainDiagonal(int[][] matrix) {
+    int n = Math.min(matrix.length, matrix[0].length);
+    for (int i = 0; i < n; i++) {
+        System.out.print(matrix[i][i] + " ");
+    }
+}
+
+// Anti-diagonal traversal
+void traverseAntiDiagonal(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    for (int i = 0; i < m; i++) {
+        if (n - 1 - i >= 0) {
+            System.out.print(matrix[i][n - 1 - i] + " ");
+        }
+    }
+}
+
+// Spiral traversal
+List<Integer> spiralOrder(int[][] matrix) {
+    List<Integer> result = new ArrayList<>();
+    if (matrix.length == 0) return result;
+
+    int top = 0, bottom = matrix.length - 1;
+    int left = 0, right = matrix[0].length - 1;
+
+    while (top <= bottom && left <= right) {
+        // Traverse right
+        for (int col = left; col <= right; col++) {
+            result.add(matrix[top][col]);
+        }
+        top++;
+
+        // Traverse down
+        for (int row = top; row <= bottom; row++) {
+            result.add(matrix[row][right]);
+        }
+        right--;
+
+        // Traverse left (if still valid)
+        if (top <= bottom) {
+            for (int col = right; col >= left; col--) {
+                result.add(matrix[bottom][col]);
+            }
+            bottom--;
+        }
+
+        // Traverse up (if still valid)
+        if (left <= right) {
+            for (int row = bottom; row >= top; row--) {
+                result.add(matrix[row][left]);
+            }
+            left++;
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 1.2 Grid BFS from Multiple Sources
+
+```java
+// Level-order BFS starting from (0,0)
+List<List<Integer>> gridBFS(int[][] grid) {
+    List<List<Integer>> levels = new ArrayList<>();
+    if (grid.length == 0) return levels;
+
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    queue.offer(new int[]{0, 0});
+    visited[0][0] = true;
+
+    while (!queue.isEmpty()) {
+        int size = queue.size();
+        List<Integer> currentLevel = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            int[] cell = queue.poll();
+            int row = cell[0], col = cell[1];
+            currentLevel.add(grid[row][col]);
+
+            for (int[] dir : directions4) {
+                int newRow = row + dir[0];
+                int newCol = col + dir[1];
+
+                if (isValid(grid, newRow, newCol) && !visited[newRow][newCol]) {
+                    visited[newRow][newCol] = true;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+
+        levels.add(currentLevel);
+    }
+
+    return levels;
+}
+
+// Grid DFS with path tracking
+List<int[]> dfsPath(int[][] grid, int startRow, int startCol, int targetRow, int targetCol) {
+    List<int[]> path = new ArrayList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    if (dfsPathHelper(grid, startRow, startCol, targetRow, targetCol, visited, path)) {
+        return path;
+    }
+
+    return new ArrayList<>(); // No path found
+}
+
+boolean dfsPathHelper(int[][] grid, int row, int col, int targetRow, int targetCol,
+                     boolean[][] visited, List<int[]> path) {
+    if (!isValid(grid, row, col) || visited[row][col]) {
+        return false;
+    }
+
+    visited[row][col] = true;
+    path.add(new int[]{row, col});
+
+    if (row == targetRow && col == targetCol) {
+        return true; // Found target
+    }
+
+    // Try all directions
+    for (int[] dir : directions4) {
+        int newRow = row + dir[0];
+        int newCol = col + dir[1];
+
+        if (dfsPathHelper(grid, newRow, newCol, targetRow, targetCol, visited, path)) {
+            return true;
+        }
+    }
+
+    path.remove(path.size() - 1); // Backtrack
+    return false;
+}
+```
+
+
+### 1.3 Grid Search Patterns
+
+```java
+// Find all occurrences of a value
+List<int[]> findAllOccurrences(int[][] grid, int target) {
+    List<int[]> positions = new ArrayList<>();
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == target) {
+                positions.add(new int[]{i, j});
+            }
+        }
+    }
+
+    return positions;
+}
+
+// Find first occurrence using BFS
+int[] findFirstBFS(int[][] grid, int target) {
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    // Start from all corners
+    queue.offer(new int[]{0, 0});
+    visited[0][0] = true;
+
+    while (!queue.isEmpty()) {
+        int[] cell = queue.poll();
+        int row = cell[0], col = cell[1];
+
+        if (grid[row][col] == target) {
+            return new int[]{row, col};
+        }
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) && !visited[newRow][newCol]) {
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+
+    return new int[]{-1, -1}; // Not found
+}
+
+// Check if path exists between two points
+boolean hasPath(int[][] grid, int[] start, int[] end) {
+    if (grid[start[0]][start[1]] == 0 || grid[end[0]][end[1]] == 0) {
+        return false; // Blocked cells
+    }
+
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    queue.offer(start);
+    visited[start[0]][start[1]] = true;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+
+        if (current[0] == end[0] && current[1] == end[1]) {
+            return true;
+        }
+
+        for (int[] dir : directions4) {
+            int newRow = current[0] + dir[0];
+            int newCol = current[1] + dir[1];
+
+            if (isValid(grid, newRow, newCol) &&
+                !visited[newRow][newCol] &&
+                grid[newRow][newCol] != 0) {
+
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+
+    return false;
+}
+```
+
+
+***
+
+## Pattern 2: Island \& Connected Components
+
+### 2.1 Number of Islands
+
+```java
+int numIslands(char[][] grid) {
+    if (grid == null || grid.length == 0) return 0;
+
+    int count = 0;
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == '1') {
+                count++;
+                dfsMarkIsland(grid, i, j);
+            }
+        }
+    }
+
+    return count;
+}
+
+void dfsMarkIsland(char[][] grid, int row, int col) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        grid[row][col] != '1') {
+        return;
+    }
+
+    grid[row][col] = '0'; // Mark as visited
+
+    // Explore all 4 directions
+    dfsMarkIsland(grid, row + 1, col);
+    dfsMarkIsland(grid, row - 1, col);
+    dfsMarkIsland(grid, row, col + 1);
+    dfsMarkIsland(grid, row, col - 1);
+}
+
+// Without modifying original grid
+int numIslandsPreserveGrid(char[][] grid) {
+    if (grid == null || grid.length == 0) return 0;
+
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+    int count = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == '1' && !visited[i][j]) {
+                count++;
+                dfsVisitIsland(grid, i, j, visited);
+            }
+        }
+    }
+
+    return count;
+}
+
+void dfsVisitIsland(char[][] grid, int row, int col, boolean[][] visited) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        visited[row][col] || grid[row][col] != '1') {
+        return;
+    }
+
+    visited[row][col] = true;
+
+    dfsVisitIsland(grid, row + 1, col, visited);
+    dfsVisitIsland(grid, row - 1, col, visited);
+    dfsVisitIsland(grid, row, col + 1, visited);
+    dfsVisitIsland(grid, row, col - 1, visited);
+}
+```
+
+
+### 2.2 Max Area of Island
+
+```java
+int maxAreaOfIsland(int[][] grid) {
+    int maxArea = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1) {
+                maxArea = Math.max(maxArea, dfsAreaCalculation(grid, i, j));
+            }
+        }
+    }
+
+    return maxArea;
+}
+
+int dfsAreaCalculation(int[][] grid, int row, int col) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        grid[row][col] != 1) {
+        return 0;
+    }
+
+    grid[row][col] = 0; // Mark as visited
+
+    return 1 + dfsAreaCalculation(grid, row + 1, col) +
+               dfsAreaCalculation(grid, row - 1, col) +
+               dfsAreaCalculation(grid, row, col + 1) +
+               dfsAreaCalculation(grid, row, col - 1);
+}
+
+// BFS version for area calculation
+int maxAreaOfIslandBFS(int[][] grid) {
+    int maxArea = 0;
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1 && !visited[i][j]) {
+                maxArea = Math.max(maxArea, bfsAreaCalculation(grid, i, j, visited));
+            }
+        }
+    }
+
+    return maxArea;
+}
+
+int bfsAreaCalculation(int[][] grid, int startRow, int startCol, boolean[][] visited) {
+    Queue<int[]> queue = new LinkedList<>();
+    queue.offer(new int[]{startRow, startCol});
+    visited[startRow][startCol] = true;
+
+    int area = 0;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+        area++;
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) &&
+                !visited[newRow][newCol] &&
+                grid[newRow][newCol] == 1) {
+
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+
+    return area;
+}
+```
+
+
+### 2.3 Island Perimeter
+
+```java
+int islandPerimeter(int[][] grid) {
+    int perimeter = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1) {
+                perimeter += 4; // Each land cell contributes 4 sides
+
+                // Subtract shared edges with adjacent land cells
+                if (i > 0 && grid[i - 1][j] == 1) perimeter--;
+                if (i < grid.length - 1 && grid[i + 1][j] == 1) perimeter--;
+                if (j > 0 && grid[i][j - 1] == 1) perimeter--;
+                if (j < grid[0].length - 1 && grid[i][j + 1] == 1) perimeter--;
+            }
+        }
+    }
+
+    return perimeter;
+}
+
+// Alternative approach - count water/boundary neighbors
+int islandPerimeterAlt(int[][] grid) {
+    int perimeter = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1) {
+                // Check all 4 directions
+                for (int[] dir : directions4) {
+                    int newRow = i + dir[0];
+                    int newCol = j + dir[1];
+
+                    // Count if neighbor is water or out of bounds
+                    if (!isValid(grid, newRow, newCol) || grid[newRow][newCol] == 0) {
+                        perimeter++;
+                    }
+                }
+            }
+        }
+    }
+
+    return perimeter;
+}
+```
+
+
+### 2.4 Number of Distinct Islands
+
+```java
+int numDistinctIslands(int[][] grid) {
+    Set<String> distinctShapes = new HashSet<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1 && !visited[i][j]) {
+                StringBuilder shape = new StringBuilder();
+                dfsGetShape(grid, i, j, i, j, visited, shape);
+                distinctShapes.add(shape.toString());
+            }
+        }
+    }
+
+    return distinctShapes.size();
+}
+
+void dfsGetShape(int[][] grid, int row, int col, int baseRow, int baseCol,
+                boolean[][] visited, StringBuilder shape) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        visited[row][col] || grid[row][col] != 1) {
+        return;
+    }
+
+    visited[row][col] = true;
+    shape.append(row - baseRow).append(",").append(col - baseCol).append(";");
+
+    dfsGetShape(grid, row + 1, col, baseRow, baseCol, visited, shape);
+    dfsGetShape(grid, row - 1, col, baseRow, baseCol, visited, shape);
+    dfsGetShape(grid, row, col + 1, baseRow, baseCol, visited, shape);
+    dfsGetShape(grid, row, col - 1, baseRow, baseCol, visited, shape);
+}
+
+// Alternative with direction encoding
+int numDistinctIslandsDirection(int[][] grid) {
+    Set<String> shapes = new HashSet<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 1 && !visited[i][j]) {
+                StringBuilder shape = new StringBuilder();
+                dfsGetShapeDirection(grid, i, j, visited, shape, 'S'); // Start
+                shapes.add(shape.toString());
+            }
+        }
+    }
+
+    return shapes.size();
+}
+
+void dfsGetShapeDirection(int[][] grid, int row, int col, boolean[][] visited,
+                         StringBuilder shape, char direction) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        visited[row][col] || grid[row][col] != 1) {
+        return;
+    }
+
+    visited[row][col] = true;
+    shape.append(direction);
+
+    dfsGetShapeDirection(grid, row + 1, col, visited, shape, 'D'); // Down
+    dfsGetShapeDirection(grid, row - 1, col, visited, shape, 'U'); // Up
+    dfsGetShapeDirection(grid, row, col + 1, visited, shape, 'R'); // Right
+    dfsGetShapeDirection(grid, row, col - 1, visited, shape, 'L'); // Left
+
+    shape.append('B'); // Back (for proper encoding)
+}
+```
+
+
+***
+
+## Pattern 3: Path Finding
+
+### 3.1 Shortest Path in Binary Matrix
+
+```java
+int shortestPathBinaryMatrix(int[][] grid) {
+    int n = grid.length;
+    if (grid[0][0] != 0 || grid[n-1][n-1] != 0) return -1;
+
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[n][n];
+
+    queue.offer(new int[]{0, 0, 1}); // row, col, distance
+    visited[0][0] = true;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1], dist = current[2];
+
+        if (row == n-1 && col == n-1) return dist;
+
+        // Check all 8 directions
+        for (int[] dir : directions8) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) &&
+                !visited[newRow][newCol] &&
+                grid[newRow][newCol] == 0) {
+
+                visited[newRow][newCol] = true;
+                queue.offer(new int[]{newRow, newCol, dist + 1});
+            }
+        }
+    }
+
+    return -1;
+}
+
+// With path reconstruction
+List<int[]> shortestPathWithRoute(int[][] grid) {
+    int n = grid.length;
+    if (grid[0][0] != 0 || grid[n-1][n-1] != 0) return new ArrayList<>();
+
+    Queue<int[]> queue = new LinkedList<>();
+    int[][][] parent = new int[n][n][2];
+    boolean[][] visited = new boolean[n][n];
+
+    queue.offer(new int[]{0, 0});
+    visited[0][0] = true;
+    parent[0][0] = new int[]{-1, -1}; // No parent for start
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        if (row == n-1 && col == n-1) {
+            return reconstructPath(parent, n-1, n-1);
+        }
+
+        for (int[] dir : directions8) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) &&
+                !visited[newRow][newCol] &&
+                grid[newRow][newCol] == 0) {
+
+                visited[newRow][newCol] = true;
+                parent[newRow][newCol] = new int[]{row, col};
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+
+    return new ArrayList<>();
+}
+
+List<int[]> reconstructPath(int[][][] parent, int endRow, int endCol) {
+    List<int[]> path = new ArrayList<>();
+    int row = endRow, col = endCol;
+
+    while (row != -1 && col != -1) {
+        path.add(new int[]{row, col});
+        int[] p = parent[row][col];
+        row = p[0];
+        col = p[1];
+    }
+
+    Collections.reverse(path);
+    return path;
+}
+```
+
+
+### 3.2 Path with Minimum Effort
+
+```java
+int minimumEffortPath(int[][] heights) {
+    int m = heights.length, n = heights[0].length;
+    int[][] effort = new int[m][n];
+
+    // Initialize with max values
+    for (int[] row : effort) {
+        Arrays.fill(row, Integer.MAX_VALUE);
+    }
+
+    // Priority queue: {effort, row, col}
+    PriorityQueue<int[]> pq = new PriorityQueue<>((a, b) -> a[0] - b[0]);
+    pq.offer(new int[]{0, 0, 0});
+    effort[0][0] = 0;
+
+    while (!pq.isEmpty()) {
+        int[] current = pq.poll();
+        int currentEffort = current[0];
+        int row = current[1], col = current[2];
+
+        if (row == m-1 && col == n-1) return currentEffort;
+
+        if (currentEffort > effort[row][col]) continue;
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(heights, newRow, newCol)) {
+                int newEffort = Math.max(currentEffort,
+                    Math.abs(heights[newRow][newCol] - heights[row][col]));
+
+                if (newEffort < effort[newRow][newCol]) {
+                    effort[newRow][newCol] = newEffort;
+                    pq.offer(new int[]{newEffort, newRow, newCol});
+                }
+            }
+        }
+    }
+
+    return effort[m-1][n-1];
+}
+
+// Binary search approach
+int minimumEffortPathBinarySearch(int[][] heights) {
+    int left = 0, right = 1000000;
+
+    while (left < right) {
+        int mid = left + (right - left) / 2;
+
+        if (canReachWithEffort(heights, mid)) {
+            right = mid;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    return left;
+}
+
+boolean canReachWithEffort(int[][] heights, int maxEffort) {
+    int m = heights.length, n = heights[0].length;
+    boolean[][] visited = new boolean[m][n];
+
+    return dfsEffortCheck(heights, 0, 0, m-1, n-1, maxEffort, visited);
+}
+
+boolean dfsEffortCheck(int[][] heights, int row, int col, int targetRow, int targetCol,
+                      int maxEffort, boolean[][] visited) {
+    if (row == targetRow && col == targetCol) return true;
+
+    visited[row][col] = true;
+
+    for (int[] dir : directions4) {
+        int newRow = row + dir[0];
+        int newCol = col + dir[1];
+
+        if (isValid(heights, newRow, newCol) && !visited[newRow][newCol]) {
+            int effort = Math.abs(heights[newRow][newCol] - heights[row][col]);
+
+            if (effort <= maxEffort &&
+                dfsEffortCheck(heights, newRow, newCol, targetRow, targetCol, maxEffort, visited)) {
+                return true;
+            }
+        }
+    }
+
+    visited[row][col] = false; // Backtrack for other paths
+    return false;
+}
+```
+
+
+### 3.3 Unique Paths with Obstacles
+
+```java
+int uniquePathsWithObstacles(int[][] obstacleGrid) {
+    int m = obstacleGrid.length, n = obstacleGrid[0].length;
+
+    if (obstacleGrid[0][0] == 1 || obstacleGrid[m-1][n-1] == 1) return 0;
+
+    int[][] dp = new int[m][n];
+    dp[0][0] = 1;
+
+    // Fill first row
+    for (int j = 1; j < n; j++) {
+        dp[0][j] = obstacleGrid[0][j] == 1 ? 0 : dp[0][j-1];
+    }
+
+    // Fill first column
+    for (int i = 1; i < m; i++) {
+        dp[i][0] = obstacleGrid[i][0] == 1 ? 0 : dp[i-1][0];
+    }
+
+    // Fill the rest
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            if (obstacleGrid[i][j] == 1) {
+                dp[i][j] = 0;
+            } else {
+                dp[i][j] = dp[i-1][j] + dp[i][j-1];
+            }
+        }
+    }
+
+    return dp[m-1][n-1];
+}
+
+// Space optimized
+int uniquePathsWithObstaclesOptimized(int[][] obstacleGrid) {
+    int n = obstacleGrid[0].length;
+    int[] dp = new int[n];
+
+    dp[0] = obstacleGrid[0][0] == 1 ? 0 : 1;
+
+    for (int i = 0; i < obstacleGrid.length; i++) {
+        for (int j = 0; j < n; j++) {
+            if (obstacleGrid[i][j] == 1) {
+                dp[j] = 0;
+            } else if (j > 0) {
+                dp[j] += dp[j-1];
+            }
+        }
+    }
+
+    return dp[n-1];
+}
+```
+
+
+***
+
+## Pattern 4: Flood Fill \& Coloring
+
+### 4.1 Classic Flood Fill
+
+```java
+int[][] floodFill(int[][] image, int sr, int sc, int color) {
+    int originalColor = image[sr][sc];
+    if (originalColor != color) {
+        dfsFloodFill(image, sr, sc, originalColor, color);
+    }
+    return image;
+}
+
+void dfsFloodFill(int[][] image, int row, int col, int originalColor, int newColor) {
+    if (row < 0 || row >= image.length ||
+        col < 0 || col >= image[0].length ||
+        image[row][col] != originalColor) {
+        return;
+    }
+
+    image[row][col] = newColor;
+
+    dfsFloodFill(image, row + 1, col, originalColor, newColor);
+    dfsFloodFill(image, row - 1, col, originalColor, newColor);
+    dfsFloodFill(image, row, col + 1, originalColor, newColor);
+    dfsFloodFill(image, row, col - 1, originalColor, newColor);
+}
+
+// BFS version
+int[][] floodFillBFS(int[][] image, int sr, int sc, int color) {
+    int originalColor = image[sr][sc];
+    if (originalColor == color) return image;
+
+    Queue<int[]> queue = new LinkedList<>();
+    queue.offer(new int[]{sr, sc});
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        if (row < 0 || row >= image.length ||
+            col < 0 || col >= image[0].length ||
+            image[row][col] != originalColor) {
+            continue;
+        }
+
+        image[row][col] = color;
+
+        queue.offer(new int[]{row + 1, col});
+        queue.offer(new int[]{row - 1, col});
+        queue.offer(new int[]{row, col + 1});
+        queue.offer(new int[]{row, col - 1});
+    }
+
+    return image;
+}
+```
+
+
+### 4.2 Surrounded Regions
+
+```java
+void solve(char[][] board) {
+    if (board.length == 0) return;
+
+    int m = board.length, n = board[0].length;
+
+    // Mark boundary-connected 'O's as safe
+    for (int i = 0; i < m; i++) {
+        if (board[i][0] == 'O') dfsSafeRegion(board, i, 0);
+        if (board[i][n-1] == 'O') dfsSafeRegion(board, i, n-1);
+    }
+
+    for (int j = 0; j < n; j++) {
+        if (board[0][j] == 'O') dfsSafeRegion(board, 0, j);
+        if (board[m-1][j] == 'O') dfsSafeRegion(board, m-1, j);
+    }
+
+    // Convert remaining 'O' to 'X' and restore safe regions
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (board[i][j] == 'O') {
+                board[i][j] = 'X';
+            } else if (board[i][j] == 'S') {
+                board[i][j] = 'O';
+            }
+        }
+    }
+}
+
+void dfsSafeRegion(char[][] board, int row, int col) {
+    if (row < 0 || row >= board.length ||
+        col < 0 || col >= board[0].length ||
+        board[row][col] != 'O') {
+        return;
+    }
+
+    board[row][col] = 'S'; // Mark as safe
+
+    dfsSafeRegion(board, row + 1, col);
+    dfsSafeRegion(board, row - 1, col);
+    dfsSafeRegion(board, row, col + 1);
+    dfsSafeRegion(board, row, col - 1);
+}
+```
+
+
+### 4.3 Pacific Atlantic Water Flow
+
+```java
+List<List<Integer>> pacificAtlantic(int[][] heights) {
+    int m = heights.length, n = heights[0].length;
+    boolean[][] pacific = new boolean[m][n];
+    boolean[][] atlantic = new boolean[m][n];
+
+    // Start from Pacific edges (top and left)
+    for (int i = 0; i < m; i++) {
+        dfsWaterFlow(heights, i, 0, pacific, heights[i][0]);
+    }
+    for (int j = 0; j < n; j++) {
+        dfsWaterFlow(heights, 0, j, pacific, heights[0][j]);
+    }
+
+    // Start from Atlantic edges (bottom and right)
+    for (int i = 0; i < m; i++) {
+        dfsWaterFlow(heights, i, n-1, atlantic, heights[i][n-1]);
+    }
+    for (int j = 0; j < n; j++) {
+        dfsWaterFlow(heights, m-1, j, atlantic, heights[m-1][j]);
+    }
+
+    // Find cells reachable by both oceans
+    List<List<Integer>> result = new ArrayList<>();
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (pacific[i][j] && atlantic[i][j]) {
+                result.add(Arrays.asList(i, j));
+            }
+        }
+    }
+
+    return result;
+}
+
+void dfsWaterFlow(int[][] heights, int row, int col, boolean[][] visited, int prevHeight) {
+    if (row < 0 || row >= heights.length ||
+        col < 0 || col >= heights[0].length ||
+        visited[row][col] ||
+        heights[row][col] < prevHeight) {
+        return;
+    }
+
+    visited[row][col] = true;
+
+    for (int[] dir : directions4) {
+        dfsWaterFlow(heights, row + dir[0], col + dir[1], visited, heights[row][col]);
+    }
+}
+```
+
+
+***
+
+## Pattern 5: Grid Validation \& Constraints
+
+### 5.1 Valid Sudoku
+
+```java
+boolean isValidSudoku(char[][] board) {
+    Set<String> seen = new HashSet<>();
+
+    for (int i = 0; i < 9; i++) {
+        for (int j = 0; j < 9; j++) {
+            char value = board[i][j];
+            if (value != '.') {
+                // Check if value already exists in row, column, or box
+                if (!seen.add(value + " in row " + i) ||
+                    !seen.add(value + " in col " + j) ||
+                    !seen.add(value + " in box " + i/3 + "-" + j/3)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+// Alternative approach with separate validation
+boolean isValidSudokuAlt(char[][] board) {
+    // Validate rows
+    for (int i = 0; i < 9; i++) {
+        if (!isValidUnit(board[i])) return false;
+    }
+
+    // Validate columns
+    for (int j = 0; j < 9; j++) {
+        char[] column = new char[9];
+        for (int i = 0; i < 9; i++) {
+            column[i] = board[i][j];
+        }
+        if (!isValidUnit(column)) return false;
+    }
+
+    // Validate 3x3 boxes
+    for (int box = 0; box < 9; box++) {
+        char[] boxArray = new char[9];
+        int idx = 0;
+        int startRow = (box / 3) * 3;
+        int startCol = (box % 3) * 3;
+
+        for (int i = startRow; i < startRow + 3; i++) {
+            for (int j = startCol; j < startCol + 3; j++) {
+                boxArray[idx++] = board[i][j];
+            }
+        }
+        if (!isValidUnit(boxArray)) return false;
+    }
+
+    return true;
+}
+
+boolean isValidUnit(char[] unit) {
+    Set<Character> seen = new HashSet<>();
+    for (char ch : unit) {
+        if (ch != '.' && !seen.add(ch)) {
+            return false;
+        }
+    }
+    return true;
+}
+```
+
+
+### 5.2 Word Search
+
+```java
+boolean exist(char[][] board, String word) {
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            if (dfsWordSearch(board, word, i, j, 0)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+boolean dfsWordSearch(char[][] board, String word, int row, int col, int index) {
+    if (index == word.length()) return true;
+
+    if (row < 0 || row >= board.length ||
+        col < 0 || col >= board[0].length ||
+        board[row][col] != word.charAt(index)) {
+        return false;
+    }
+
+    char temp = board[row][col];
+    board[row][col] = '#'; // Mark as visited
+
+    boolean found = dfsWordSearch(board, word, row + 1, col, index + 1) ||
+                   dfsWordSearch(board, word, row - 1, col, index + 1) ||
+                   dfsWordSearch(board, word, row, col + 1, index + 1) ||
+                   dfsWordSearch(board, word, row, col - 1, index + 1);
+
+    board[row][col] = temp; // Restore
+    return found;
+}
+
+// Word Search II (Multiple words)
+List<String> findWords(char[][] board, String[] words) {
+    TrieNode root = buildTrie(words);
+    List<String> result = new ArrayList<>();
+
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            dfsTrieSearch(board, i, j, root, result);
+        }
+    }
+
+    return result;
+}
+
+class TrieNode {
+    TrieNode[] children = new TrieNode[26];
+    String word;
+}
+
+TrieNode buildTrie(String[] words) {
+    TrieNode root = new TrieNode();
+    for (String word : words) {
+        TrieNode curr = root;
+        for (char c : word.toCharArray()) {
+            int index = c - 'a';
+            if (curr.children[index] == null) {
+                curr.children[index] = new TrieNode();
+            }
+            curr = curr.children[index];
+        }
+        curr.word = word;
+    }
+    return root;
+}
+
+void dfsTrieSearch(char[][] board, int row, int col, TrieNode node, List<String> result) {
+    if (row < 0 || row >= board.length || col < 0 || col >= board[0].length) return;
+
+    char c = board[row][col];
+    if (c == '#' || node.children[c - 'a'] == null) return;
+
+    node = node.children[c - 'a'];
+    if (node.word != null) {
+        result.add(node.word);
+        node.word = null; // Avoid duplicates
+    }
+
+    board[row][col] = '#';
+    for (int[] dir : directions4) {
+        dfsTrieSearch(board, row + dir[0], col + dir[1], node, result);
+    }
+    board[row][col] = c;
+}
+```
+
+
+***
+
+## Pattern 6: Multi-Source BFS
+
+### 6.1 Rotting Oranges
+
+```java
+int orangesRotting(int[][] grid) {
+    Queue<int[]> queue = new LinkedList<>();
+    int freshCount = 0;
+
+    // Find all initially rotten oranges and count fresh ones
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] == 2) {
+                queue.offer(new int[]{i, j});
+            } else if (grid[i][j] == 1) {
+                freshCount++;
+            }
+        }
+    }
+
+    if (freshCount == 0) return 0; // No fresh oranges
+
+    int minutes = 0;
+
+    while (!queue.isEmpty() && freshCount > 0) {
+        int size = queue.size();
+
+        for (int i = 0; i < size; i++) {
+            int[] current = queue.poll();
+            int row = current[0], col = current[1];
+
+            for (int[] dir : directions4) {
+                int newRow = row + dir[0];
+                int newCol = col + dir[1];
+
+                if (isValid(grid, newRow, newCol) && grid[newRow][newCol] == 1) {
+                    grid[newRow][newCol] = 2; // Rot the orange
+                    freshCount--;
+                    queue.offer(new int[]{newRow, newCol});
+                }
+            }
+        }
+
+        minutes++;
+    }
+
+    return freshCount == 0 ? minutes : -1;
+}
+```
+
+
+### 6.2 Walls and Gates
+
+```java
+void wallsAndGates(int[][] rooms) {
+    Queue<int[]> queue = new LinkedList<>();
+
+    // Find all gates
+    for (int i = 0; i < rooms.length; i++) {
+        for (int j = 0; j < rooms[0].length; j++) {
+            if (rooms[i][j] == 0) {
+                queue.offer(new int[]{i, j});
+            }
+        }
+    }
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(rooms, newRow, newCol) &&
+                rooms[newRow][newCol] == Integer.MAX_VALUE) {
+
+                rooms[newRow][newCol] = rooms[row][col] + 1;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+}
+```
+
+
+### 6.3 01 Matrix (Distance to Nearest 0)
+
+```java
+int[][] updateMatrix(int[][] mat) {
+    int m = mat.length, n = mat[0].length;
+    Queue<int[]> queue = new LinkedList<>();
+
+    // Initialize distances and find all 0s
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (mat[i][j] == 0) {
+                queue.offer(new int[]{i, j});
+            } else {
+                mat[i][j] = Integer.MAX_VALUE;
+            }
+        }
+    }
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1];
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(mat, newRow, newCol) &&
+                mat[newRow][newCol] > mat[row][col] + 1) {
+
+                mat[newRow][newCol] = mat[row][col] + 1;
+                queue.offer(new int[]{newRow, newCol});
+            }
+        }
+    }
+
+    return mat;
+}
+
+// DP approach (alternative)
+int[][] updateMatrixDP(int[][] mat) {
+    int m = mat.length, n = mat[0].length;
+    int INF = m + n; // Maximum possible distance
+
+    // Initialize
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (mat[i][j] != 0) {
+                mat[i][j] = INF;
+            }
+        }
+    }
+
+    // Top-left to bottom-right
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i > 0) mat[i][j] = Math.min(mat[i][j], mat[i-1][j] + 1);
+            if (j > 0) mat[i][j] = Math.min(mat[i][j], mat[i][j-1] + 1);
+        }
+    }
+
+    // Bottom-right to top-left
+    for (int i = m-1; i >= 0; i--) {
+        for (int j = n-1; j >= 0; j--) {
+            if (i < m-1) mat[i][j] = Math.min(mat[i][j], mat[i+1][j] + 1);
+            if (j < n-1) mat[i][j] = Math.min(mat[i][j], mat[i][j+1] + 1);
+        }
+    }
+
+    return mat;
+}
+```
+
+
+***
+
+## Pattern 7: Grid DP \& Optimization
+
+### 7.1 Minimum Path Sum
+
+```java
+int minPathSum(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+
+    // Initialize first row
+    for (int j = 1; j < n; j++) {
+        grid[0][j] += grid[0][j-1];
+    }
+
+    // Initialize first column
+    for (int i = 1; i < m; i++) {
+        grid[i][0] += grid[i-1][0];
+    }
+
+    // Fill the rest
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            grid[i][j] += Math.min(grid[i-1][j], grid[i][j-1]);
+        }
+    }
+
+    return grid[m-1][n-1];
+}
+
+// Without modifying input
+int minPathSumPreserve(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[][] dp = new int[m][n];
+
+    dp[0][0] = grid[0][0];
+
+    // First row
+    for (int j = 1; j < n; j++) {
+        dp[0][j] = dp[0][j-1] + grid[0][j];
+    }
+
+    // First column
+    for (int i = 1; i < m; i++) {
+        dp[i][0] = dp[i-1][0] + grid[i][0];
+    }
+
+    // Fill remaining cells
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[i][j] = Math.min(dp[i-1][j], dp[i][j-1]) + grid[i][j];
+        }
+    }
+
+    return dp[m-1][n-1];
+}
+```
+
+
+### 7.2 Maximum Gold Collection
+
+```java
+int getMaximumGold(int[][] grid) {
+    int maxGold = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] != 0) {
+                maxGold = Math.max(maxGold, dfsGoldCollection(grid, i, j));
+            }
+        }
+    }
+
+    return maxGold;
+}
+
+int dfsGoldCollection(int[][] grid, int row, int col) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        grid[row][col] == 0) {
+        return 0;
+    }
+
+    int gold = grid[row][col];
+    grid[row][col] = 0; // Mark as visited
+
+    int maxPath = 0;
+    for (int[] dir : directions4) {
+        maxPath = Math.max(maxPath,
+            dfsGoldCollection(grid, row + dir[0], col + dir[1]));
+    }
+
+    grid[row][col] = gold; // Backtrack
+    return gold + maxPath;
+}
+
+// With memoization (if grid doesn't change)
+Map<String, Integer> memo = new HashMap<>();
+
+int getMaximumGoldMemo(int[][] grid) {
+    int maxGold = 0;
+
+    for (int i = 0; i < grid.length; i++) {
+        for (int j = 0; j < grid[0].length; j++) {
+            if (grid[i][j] != 0) {
+                boolean[][] visited = new boolean[grid.length][grid[0].length];
+                maxGold = Math.max(maxGold, dfsGoldMemo(grid, i, j, visited));
+            }
+        }
+    }
+
+    return maxGold;
+}
+
+int dfsGoldMemo(int[][] grid, int row, int col, boolean[][] visited) {
+    if (row < 0 || row >= grid.length ||
+        col < 0 || col >= grid[0].length ||
+        grid[row][col] == 0 || visited[row][col]) {
+        return 0;
+    }
+
+    String key = row + "," + col + "," + Arrays.deepToString(visited);
+    if (memo.containsKey(key)) return memo.get(key);
+
+    visited[row][col] = true;
+    int maxPath = 0;
+
+    for (int[] dir : directions4) {
+        maxPath = Math.max(maxPath,
+            dfsGoldMemo(grid, row + dir[0], col + dir[1], visited));
+    }
+
+    visited[row][col] = false;
+    int result = grid[row][col] + maxPath;
+    memo.put(key, result);
+    return result;
+}
+```
+
+
+***
+
+## Pattern 8: Binary Matrix Problems
+
+### 8.1 Largest Rectangle in Binary Matrix
+
+```java
+int maximalRectangle(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int n = matrix[0].length;
+    int[] heights = new int[n];
+    int maxArea = 0;
+
+    for (char[] row : matrix) {
+        // Update heights array
+        for (int j = 0; j < n; j++) {
+            heights[j] = row[j] == '1' ? heights[j] + 1 : 0;
+        }
+
+        // Find max rectangle in histogram
+        maxArea = Math.max(maxArea, largestRectangleArea(heights));
+    }
+
+    return maxArea;
+}
+
+int largestRectangleArea(int[] heights) {
+    Stack<Integer> stack = new Stack<>();
+    int maxArea = 0;
+
+    for (int i = 0; i <= heights.length; i++) {
+        int h = (i == heights.length) ? 0 : heights[i];
+
+        while (!stack.isEmpty() && h < heights[stack.peek()]) {
+            int height = heights[stack.pop()];
+            int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+            maxArea = Math.max(maxArea, height * width);
+        }
+
+        stack.push(i);
+    }
+
+    return maxArea;
+}
+```
+
+
+### 8.2 Count Square Submatrices
+
+```java
+int countSquares(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    int[][] dp = new int[m][n];
+    int count = 0;
+
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (matrix[i][j] == 1) {
+                if (i == 0 || j == 0) {
+                    dp[i][j] = 1;
+                } else {
+                    dp[i][j] = Math.min(Math.min(dp[i-1][j], dp[i][j-1]), dp[i-1][j-1]) + 1;
+                }
+                count += dp[i][j];
+            }
+        }
+    }
+
+    return count;
+}
+
+// Space optimized
+int countSquaresOptimized(int[][] matrix) {
+    int n = matrix[0].length;
+    int[] dp = new int[n];
+    int count = 0, prev = 0;
+
+    for (int[] row : matrix) {
+        for (int j = 0; j < n; j++) {
+            int temp = dp[j];
+
+            if (row[j] == 1) {
+                if (j == 0) {
+                    dp[j] = 1;
+                } else {
+                    dp[j] = Math.min(Math.min(dp[j], dp[j-1]), prev) + 1;
+                }
+                count += dp[j];
+            } else {
+                dp[j] = 0;
+            }
+
+            prev = temp;
+        }
+    }
+
+    return count;
+}
+```
+
+
+***
+
+## Pattern 9: Grid Transformation
+
+### 9.1 Game of Life
+
+```java
+void gameOfLife(int[][] board) {
+    int m = board.length, n = board[0].length;
+
+    // Use encoding: 0->1 (encoded as 2), 1->0 (encoded as 3)
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            int liveNeighbors = countLiveNeighbors(board, i, j);
+
+            if (board[i][j] == 1) {
+                // Live cell
+                if (liveNeighbors < 2 || liveNeighbors > 3) {
+                    board[i][j] = 3; // Dies
+                }
+            } else {
+                // Dead cell
+                if (liveNeighbors == 3) {
+                    board[i][j] = 2; // Becomes alive
+                }
+            }
+        }
+    }
+
+    // Decode
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (board[i][j] == 2) board[i][j] = 1;
+            else if (board[i][j] == 3) board[i][j] = 0;
+        }
+    }
+}
+
+int countLiveNeighbors(int[][] board, int row, int col) {
+    int count = 0;
+
+    for (int[] dir : directions8) {
+        int newRow = row + dir[0];
+        int newCol = col + dir[1];
+
+        if (isValid(board, newRow, newCol)) {
+            // Count original live cells (1 or 3)
+            if (board[newRow][newCol] == 1 || board[newRow][newCol] == 3) {
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+```
+
+
+### 9.2 Set Matrix Zeroes
+
+```java
+void setZeroes(int[][] matrix) {
+    int m = matrix.length, n = matrix[0].length;
+    boolean firstRowZero = false, firstColZero = false;
+
+    // Check if first row should be zero
+    for (int j = 0; j < n; j++) {
+        if (matrix[0][j] == 0) {
+            firstRowZero = true;
+            break;
+        }
+    }
+
+    // Check if first column should be zero
+    for (int i = 0; i < m; i++) {
+        if (matrix[i][0] == 0) {
+            firstColZero = true;
+            break;
+        }
+    }
+
+    // Use first row and column as markers
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            if (matrix[i][j] == 0) {
+                matrix[i][0] = 0;
+                matrix[0][j] = 0;
+            }
+        }
+    }
+
+    // Set zeros based on markers
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            if (matrix[i][0] == 0 || matrix[0][j] == 0) {
+                matrix[i][j] = 0;
+            }
+        }
+    }
+
+    // Handle first row and column
+    if (firstRowZero) {
+        for (int j = 0; j < n; j++) {
+            matrix[0][j] = 0;
+        }
+    }
+
+    if (firstColZero) {
+        for (int i = 0; i < m; i++) {
+            matrix[i][0] = 0;
+        }
+    }
+}
+```
+
+
+***
+
+## Pattern 10: Pattern Matching in Grids
+
+### 10.1 Word Search in Grid
+
+```java
+// Already covered in Pattern 5.2, but here's an optimized version
+boolean existOptimized(char[][] board, String word) {
+    // Early termination: count characters
+    int[] boardCount = new int[128];
+    for (char[] row : board) {
+        for (char c : row) {
+            boardCount[c]++;
+        }
+    }
+
+    int[] wordCount = new int[128];
+    for (char c : word.toCharArray()) {
+        wordCount[c]++;
+        if (wordCount[c] > boardCount[c]) {
+            return false; // Not enough characters in board
+        }
+    }
+
+    // Start from less frequent character end if beneficial
+    if (boardCount[word.charAt(0)] > boardCount[word.charAt(word.length()-1)]) {
+        return existReverse(board, new StringBuilder(word).reverse().toString());
+    }
+
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            if (dfsWordSearch(board, word, i, j, 0)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+boolean existReverse(char[][] board, String word) {
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            if (dfsWordSearch(board, word, i, j, 0)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+```
+
+
+### 10.2 Count Paths in Grid
+
+```java
+// Count all paths from top-left to bottom-right
+int uniquePaths(int m, int n) {
+    int[][] dp = new int[m][n];
+
+    // Initialize first row and column
+    for (int i = 0; i < m; i++) dp[i][0] = 1;
+    for (int j = 0; j < n; j++) dp[0][j] = 1;
+
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[i][j] = dp[i-1][j] + dp[i][j-1];
+        }
+    }
+
+    return dp[m-1][n-1];
+}
+
+// Count paths with obstacles
+int uniquePathsWithObstacles(int[][] obstacleGrid) {
+    int m = obstacleGrid.length, n = obstacleGrid[0].length;
+    if (obstacleGrid[0][0] == 1) return 0;
+
+    int[][] dp = new int[m][n];
+    dp[0][0] = 1;
+
+    // Fill first column
+    for (int i = 1; i < m; i++) {
+        dp[i][0] = obstacleGrid[i][0] == 1 ? 0 : dp[i-1][0];
+    }
+
+    // Fill first row
+    for (int j = 1; j < n; j++) {
+        dp[0][j] = obstacleGrid[0][j] == 1 ? 0 : dp[0][j-1];
+    }
+
+    // Fill remaining cells
+    for (int i = 1; i < m; i++) {
+        for (int j = 1; j < n; j++) {
+            dp[i][j] = obstacleGrid[i][j] == 1 ? 0 : dp[i-1][j] + dp[i][j-1];
+        }
+    }
+
+    return dp[m-1][n-1];
+}
+```
+
+
+***
+
+## Pattern 11: Game Board Problems
+
+### 11.1 Tic-Tac-Toe Winner
+
+```java
+class TicTacToe {
+    int[] rows, cols;
+    int diagonal, antiDiagonal;
+    int n;
+
+    public TicTacToe(int n) {
+        this.n = n;
+        rows = new int[n];
+        cols = new int[n];
+    }
+
+    public int move(int row, int col, int player) {
+        int toAdd = player == 1 ? 1 : -1;
+
+        rows[row] += toAdd;
+        cols[col] += toAdd;
+
+        if (row == col) diagonal += toAdd;
+        if (row + col == n - 1) antiDiagonal += toAdd;
+
+        if (Math.abs(rows[row]) == n || Math.abs(cols[col]) == n ||
+            Math.abs(diagonal) == n || Math.abs(antiDiagonal) == n) {
+            return player;
+        }
+
+        return 0;
+    }
+}
+
+// Check winner in completed board
+String tictactoe(int[][] moves) {
+    char[][] board = new char[3][3];
+
+    for (int i = 0; i < moves.length; i++) {
+        int row = moves[i][0], col = moves[i][1];
+        board[row][col] = i % 2 == 0 ? 'X' : 'O';
+    }
+
+    // Check winner
+    char winner = checkWinner(board);
+    if (winner != ' ') return String.valueOf(winner);
+
+    return moves.length == 9 ? "Draw" : "Pending";
+}
+
+char checkWinner(char[][] board) {
+    // Check rows and columns
+    for (int i = 0; i < 3; i++) {
+        if (board[i][0] != '\0' && board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
+            return board[i][0];
+        }
+        if (board[0][i] != '\0' && board[0][i] == board[1][i] && board[1][i] == board[2][i]) {
+            return board[0][i];
+        }
+    }
+
+    // Check diagonals
+    if (board[0][0] != '\0' && board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+        return board[0][0];
+    }
+    if (board[0][2] != '\0' && board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+        return board[0][2];
+    }
+
+    return ' ';
+}
+```
+
+
+### 11.2 Valid Battleship Placement
+
+```java
+int countBattleships(char[][] board) {
+    int count = 0;
+
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            if (board[i][j] == 'X') {
+                // Only count top-left corner of each battleship
+                if ((i == 0 || board[i-1][j] == '.') &&
+                    (j == 0 || board[i][j-1] == '.')) {
+                    count++;
+                }
+            }
+        }
+    }
+
+    return count;
+}
+
+// Validate battleship placement rules
+boolean isValidBattleshipPlacement(char[][] board) {
+    for (int i = 0; i < board.length; i++) {
+        for (int j = 0; j < board[0].length; j++) {
+            if (board[i][j] == 'X') {
+                if (!isValidBattleshipAt(board, i, j)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+boolean isValidBattleshipAt(char[][] board, int row, int col) {
+    // Check that battleship is either horizontal or vertical, not diagonal
+    boolean hasUp = row > 0 && board[row-1][col] == 'X';
+    boolean hasDown = row < board.length-1 && board[row+1][col] == 'X';
+    boolean hasLeft = col > 0 && board[row][col-1] == 'X';
+    boolean hasRight = col < board[0].length-1 && board[row][col+1] == 'X';
+
+    // Invalid if diagonal connections exist
+    if ((hasUp || hasDown) && (hasLeft || hasRight)) {
+        return false;
+    }
+
+    return true;
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Grid Problems
+
+### 12.1 Robot Room Cleaner
+
+```java
+// Interface given
+interface Robot {
+    boolean move();
+    void turnLeft();
+    void turnRight();
+    void clean();
+}
+
+void cleanRoom(Robot robot) {
+    Set<String> visited = new HashSet<>();
+    dfsClean(robot, 0, 0, 0, visited); // Start at (0,0) facing up
+}
+
+void dfsClean(Robot robot, int row, int col, int direction, Set<String> visited) {
+    String key = row + "," + col;
+    if (visited.contains(key)) return;
+
+    visited.add(key);
+    robot.clean();
+
+    // Try all 4 directions
+    for (int i = 0; i < 4; i++) {
+        if (robot.move()) {
+            int[] newPos = getNewPosition(row, col, direction);
+            dfsClean(robot, newPos[0], newPos[1], direction, visited);
+
+            // Go back
+            robot.turnLeft();
+            robot.turnLeft();
+            robot.move();
+            robot.turnLeft();
+            robot.turnLeft();
+        }
+
+        // Turn to next direction
+        robot.turnRight();
+        direction = (direction + 1) % 4;
+    }
+}
+
+int[] getNewPosition(int row, int col, int direction) {
+    int[][] directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}}; // up, right, down, left
+    return new int[]{row + directions[direction][0], col + directions[direction][1]};
+}
+```
+
+
+### 12.2 Shortest Distance from All Buildings
+
+```java
+int shortestDistance(int[][] grid) {
+    int m = grid.length, n = grid[0].length;
+    int[][] distances = new int[m][n];
+    int[][] reachable = new int[m][n];
+    int buildings = 0;
+
+    // Count total buildings
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (grid[i][j] == 1) buildings++;
+        }
+    }
+
+    // BFS from each building
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (grid[i][j] == 1) {
+                bfsFromBuilding(grid, i, j, distances, reachable);
+            }
+        }
+    }
+
+    // Find minimum distance
+    int minDistance = Integer.MAX_VALUE;
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (grid[i][j] == 0 && reachable[i][j] == buildings) {
+                minDistance = Math.min(minDistance, distances[i][j]);
+            }
+        }
+    }
+
+    return minDistance == Integer.MAX_VALUE ? -1 : minDistance;
+}
+
+void bfsFromBuilding(int[][] grid, int startRow, int startCol,
+                    int[][] distances, int[][] reachable) {
+    Queue<int[]> queue = new LinkedList<>();
+    boolean[][] visited = new boolean[grid.length][grid[0].length];
+
+    queue.offer(new int[]{startRow, startCol, 0});
+    visited[startRow][startCol] = true;
+
+    while (!queue.isEmpty()) {
+        int[] current = queue.poll();
+        int row = current[0], col = current[1], dist = current[2];
+
+        for (int[] dir : directions4) {
+            int newRow = row + dir[0];
+            int newCol = col + dir[1];
+
+            if (isValid(grid, newRow, newCol) &&
+                !visited[newRow][newCol] &&
+                grid[newRow][newCol] == 0) {
+
+                visited[newRow][newCol] = true;
+                distances[newRow][newCol] += dist + 1;
+                reachable[newRow][newCol]++;
+                queue.offer(new int[]{newRow, newCol, dist + 1});
+            }
+        }
+    }
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference[5][2]
+
+| Pattern | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| Basic Traversal | O(m × n) | O(1) to O(m × n) | Visit each cell once |
+| DFS/BFS | O(m × n) | O(m × n) | Recursion/queue space |
+| Connected Components | O(m × n) | O(m × n) | Union-Find alternative: O(m × n × α(m × n)) |
+| Flood Fill | O(m × n) | O(m × n) | Worst case: all cells same color |
+| Multi-source BFS | O(m × n) | O(m × n) | Process all sources simultaneously |
+| Path Finding | O(m × n) to O(m × n × log(m × n)) | O(m × n) | Dijkstra for weighted paths |
+| Dynamic Programming | O(m × n) | O(m × n) to O(n) | Space can often be optimized |
+
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Implementation Guidelines
+
+1. **Direction Arrays**: Always use consistent direction vectors for clean code
+2. **Boundary Checking**: Create helper methods to avoid repetitive bounds checking
+3. **State Management**: Use visited arrays or modify input when possible
+4. **Early Termination**: Add pruning conditions in DFS/BFS
+5. **Space Optimization**: Consider in-place modifications vs. auxiliary space
+
+### Common Optimizations
+
+```java
+// 1. Direction vector reuse
+private static final int[][] DIRS = {{-1,0}, {1,0}, {0,-1}, {0,1}};
+
+// 2. Inline boundary checking
+private boolean inBounds(int[][] grid, int r, int c) {
+    return r >= 0 && r < grid.length && c >= 0 && c < grid[0].length;
+}
+
+// 3. State encoding for multiple conditions
+// Use bit manipulation or encoding schemes
+
+// 4. Early pruning in backtracking
+if (currentCost > bestSoFar) return; // Prune
+
+// 5. Memoization for overlapping subproblems
+Map<String, Integer> memo = new HashMap<>();
+```
+
+
+### Interview Tips
+
+- **Draw the grid** and trace through examples
+- **Identify the pattern** early (BFS for shortest path, DFS for all paths)
+- **Consider edge cases**: empty grid, single cell, all same values
+- **Optimize space** when possible using rolling arrays or in-place modification
+- **Handle directions** consistently throughout the solution

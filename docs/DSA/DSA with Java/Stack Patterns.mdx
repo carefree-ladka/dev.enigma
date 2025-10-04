@@ -1,0 +1,2151 @@
+# Stack
+
+## Table of Contents
+
+1. [Stack Fundamentals](#stack-fundamentals)
+2. [Pattern 1: Basic Stack Operations](#pattern-1-basic-stack-operations)
+3. [Pattern 2: Expression Evaluation](#pattern-2-expression-evaluation)
+4. [Pattern 3: Parentheses \& Bracket Matching](#pattern-3-parentheses--bracket-matching)
+5. [Pattern 4: Monotonic Stack - Next Greater/Smaller](#pattern-4-monotonic-stack---next-greatersmaller)
+6. [Pattern 5: Monotonic Stack - Advanced Problems](#pattern-5-monotonic-stack---advanced-problems)
+7. [Pattern 6: Stack with Enhanced Operations](#pattern-6-stack-with-enhanced-operations)
+8. [Pattern 7: Function Call Stack Simulation](#pattern-7-function-call-stack-simulation)
+9. [Pattern 8: Stack-Based String Processing](#pattern-8-stack-based-string-processing)
+10. [Pattern 9: Stack for Tree \& Graph Problems](#pattern-9-stack-for-tree--graph-problems)
+11. [Pattern 10: Stack-Based Optimization](#pattern-10-stack-based-optimization)
+12. [Pattern 11: Multi-Stack Problems](#pattern-11-multi-stack-problems)
+13. [Pattern 12: Advanced Stack Applications](#pattern-12-advanced-stack-applications)
+
+***
+
+## Stack Fundamentals
+
+### Core Stack Implementation
+
+```java
+// Basic Stack Interface
+interface Stack<T> {
+    void push(T item);
+    T pop();
+    T peek();
+    boolean isEmpty();
+    int size();
+}
+
+// Array-based Stack Implementation
+class ArrayStack<T> implements Stack<T> {
+    private T[] stack;
+    private int top;
+    private int capacity;
+
+    @SuppressWarnings("unchecked")
+    public ArrayStack(int capacity) {
+        this.capacity = capacity;
+        this.stack = (T[]) new Object[capacity];
+        this.top = -1;
+    }
+
+    @Override
+    public void push(T item) {
+        if (top >= capacity - 1) {
+            throw new StackOverflowError("Stack is full");
+        }
+        stack[++top] = item;
+    }
+
+    @Override
+    public T pop() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        T item = stack[top];
+        stack[top--] = null; // Help GC
+        return item;
+    }
+
+    @Override
+    public T peek() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        return stack[top];
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return top == -1;
+    }
+
+    @Override
+    public int size() {
+        return top + 1;
+    }
+}
+
+// LinkedList-based Stack Implementation
+class LinkedStack<T> implements Stack<T> {
+    private Node<T> top;
+    private int size;
+
+    private static class Node<T> {
+        T data;
+        Node<T> next;
+
+        Node(T data) {
+            this.data = data;
+        }
+    }
+
+    @Override
+    public void push(T item) {
+        Node<T> newNode = new Node<>(item);
+        newNode.next = top;
+        top = newNode;
+        size++;
+    }
+
+    @Override
+    public T pop() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        T data = top.data;
+        top = top.next;
+        size--;
+        return data;
+    }
+
+    @Override
+    public T peek() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        return top.data;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return top == null;
+    }
+
+    @Override
+    public int size() {
+        return size;
+    }
+}
+
+// Dynamic Array Stack (Resizable)
+class DynamicStack<T> implements Stack<T> {
+    private T[] stack;
+    private int top;
+    private int capacity;
+
+    @SuppressWarnings("unchecked")
+    public DynamicStack() {
+        this.capacity = 10;
+        this.stack = (T[]) new Object[capacity];
+        this.top = -1;
+    }
+
+    @Override
+    public void push(T item) {
+        if (top >= capacity - 1) {
+            resize();
+        }
+        stack[++top] = item;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void resize() {
+        capacity *= 2;
+        T[] newStack = (T[]) new Object[capacity];
+        System.arraycopy(stack, 0, newStack, 0, top + 1);
+        stack = newStack;
+    }
+
+    @Override
+    public T pop() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        T item = stack[top];
+        stack[top--] = null;
+
+        // Shrink if necessary
+        if (top > 0 && top == capacity / 4) {
+            shrink();
+        }
+
+        return item;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void shrink() {
+        capacity /= 2;
+        T[] newStack = (T[]) new Object[capacity];
+        System.arraycopy(stack, 0, newStack, 0, top + 1);
+        stack = newStack;
+    }
+
+    @Override
+    public T peek() {
+        if (isEmpty()) {
+            throw new EmptyStackException();
+        }
+        return stack[top];
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return top == -1;
+    }
+
+    @Override
+    public int size() {
+        return top + 1;
+    }
+}
+```
+
+
+***
+
+## Pattern 1: Basic Stack Operations
+
+### 1.1 Stack Using Queues
+
+```java
+// Implement Stack using Two Queues
+class MyStack {
+    private Queue<Integer> queue1;
+    private Queue<Integer> queue2;
+
+    public MyStack() {
+        queue1 = new LinkedList<>();
+        queue2 = new LinkedList<>();
+    }
+
+    public void push(int x) {
+        queue2.offer(x);
+
+        // Move all elements from queue1 to queue2
+        while (!queue1.isEmpty()) {
+            queue2.offer(queue1.poll());
+        }
+
+        // Swap names of two queues
+        Queue<Integer> temp = queue1;
+        queue1 = queue2;
+        queue2 = temp;
+    }
+
+    public int pop() {
+        return queue1.poll();
+    }
+
+    public int top() {
+        return queue1.peek();
+    }
+
+    public boolean empty() {
+        return queue1.isEmpty();
+    }
+}
+
+// Implement Stack using Single Queue
+class MyStackSingleQueue {
+    private Queue<Integer> queue;
+
+    public MyStackSingleQueue() {
+        queue = new LinkedList<>();
+    }
+
+    public void push(int x) {
+        int size = queue.size();
+        queue.offer(x);
+
+        // Rotate the queue
+        for (int i = 0; i < size; i++) {
+            queue.offer(queue.poll());
+        }
+    }
+
+    public int pop() {
+        return queue.poll();
+    }
+
+    public int top() {
+        return queue.peek();
+    }
+
+    public boolean empty() {
+        return queue.isEmpty();
+    }
+}
+```
+
+
+### 1.2 Queue Using Stacks
+
+```java
+// Implement Queue using Two Stacks
+class MyQueue {
+    private Stack<Integer> input;
+    private Stack<Integer> output;
+
+    public MyQueue() {
+        input = new Stack<>();
+        output = new Stack<>();
+    }
+
+    public void push(int x) {
+        input.push(x);
+    }
+
+    public int pop() {
+        peek(); // Ensure output stack has elements
+        return output.pop();
+    }
+
+    public int peek() {
+        if (output.isEmpty()) {
+            while (!input.isEmpty()) {
+                output.push(input.pop());
+            }
+        }
+        return output.peek();
+    }
+
+    public boolean empty() {
+        return input.isEmpty() && output.isEmpty();
+    }
+}
+```
+
+
+### 1.3 Stack Sorting
+
+```java
+// Sort Stack using Temporary Stack
+public Stack<Integer> sortStack(Stack<Integer> stack) {
+    Stack<Integer> tempStack = new Stack<>();
+
+    while (!stack.isEmpty()) {
+        int temp = stack.pop();
+
+        // Move elements from tempStack back to stack while temp > tempStack.peek()
+        while (!tempStack.isEmpty() && tempStack.peek() > temp) {
+            stack.push(tempStack.pop());
+        }
+
+        tempStack.push(temp);
+    }
+
+    return tempStack; // Returns sorted stack (smallest on top)
+}
+
+// Sort Stack using Recursion
+public void sortStackRecursive(Stack<Integer> stack) {
+    if (!stack.isEmpty()) {
+        int temp = stack.pop();
+        sortStackRecursive(stack);
+        insertInSorted(stack, temp);
+    }
+}
+
+private void insertInSorted(Stack<Integer> stack, int element) {
+    if (stack.isEmpty() || stack.peek() <= element) {
+        stack.push(element);
+        return;
+    }
+
+    int temp = stack.pop();
+    insertInSorted(stack, element);
+    stack.push(temp);
+}
+```
+
+
+***
+
+## Pattern 2: Expression Evaluation
+
+### 2.1 Arithmetic Expression Evaluation
+
+```java
+// Evaluate Postfix Expression
+public int evalRPN(String[] tokens) {
+    Stack<Integer> stack = new Stack<>();
+
+    for (String token : tokens) {
+        if (isOperator(token)) {
+            int b = stack.pop();
+            int a = stack.pop();
+            int result = performOperation(a, b, token);
+            stack.push(result);
+        } else {
+            stack.push(Integer.parseInt(token));
+        }
+    }
+
+    return stack.pop();
+}
+
+private boolean isOperator(String token) {
+    return token.equals("+") || token.equals("-") ||
+           token.equals("*") || token.equals("/");
+}
+
+private int performOperation(int a, int b, String operator) {
+    switch (operator) {
+        case "+": return a + b;
+        case "-": return a - b;
+        case "*": return a * b;
+        case "/": return a / b;
+        default: throw new IllegalArgumentException("Invalid operator");
+    }
+}
+
+// Infix to Postfix Conversion
+public String infixToPostfix(String infix) {
+    StringBuilder result = new StringBuilder();
+    Stack<Character> stack = new Stack<>();
+
+    for (char c : infix.toCharArray()) {
+        if (Character.isLetterOrDigit(c)) {
+            result.append(c);
+        } else if (c == '(') {
+            stack.push(c);
+        } else if (c == ')') {
+            while (!stack.isEmpty() && stack.peek() != '(') {
+                result.append(stack.pop());
+            }
+            stack.pop(); // Remove '('
+        } else if (isOperator(String.valueOf(c))) {
+            while (!stack.isEmpty() &&
+                   getPrecedence(c) <= getPrecedence(stack.peek())) {
+                result.append(stack.pop());
+            }
+            stack.push(c);
+        }
+    }
+
+    while (!stack.isEmpty()) {
+        result.append(stack.pop());
+    }
+
+    return result.toString();
+}
+
+private int getPrecedence(char operator) {
+    switch (operator) {
+        case '+':
+        case '-': return 1;
+        case '*':
+        case '/': return 2;
+        case '^': return 3;
+        default: return -1;
+    }
+}
+```
+
+
+### 2.2 Calculator Implementation
+
+```java
+// Basic Calculator (with +, -, (, ))
+public int calculate(String s) {
+    Stack<Integer> stack = new Stack<>();
+    int result = 0;
+    int number = 0;
+    int sign = 1;
+
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+
+        if (Character.isDigit(c)) {
+            number = 10 * number + (c - '0');
+        } else if (c == '+') {
+            result += sign * number;
+            number = 0;
+            sign = 1;
+        } else if (c == '-') {
+            result += sign * number;
+            number = 0;
+            sign = -1;
+        } else if (c == '(') {
+            stack.push(result);
+            stack.push(sign);
+            result = 0;
+            sign = 1;
+        } else if (c == ')') {
+            result += sign * number;
+            number = 0;
+            result *= stack.pop(); // sign
+            result += stack.pop(); // previous result
+        }
+    }
+
+    return result + (sign * number);
+}
+
+// Basic Calculator II (with +, -, *, /)
+public int calculateII(String s) {
+    Stack<Integer> stack = new Stack<>();
+    int number = 0;
+    char operation = '+';
+
+    for (int i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+
+        if (Character.isDigit(c)) {
+            number = (number * 10) + (c - '0');
+        }
+
+        if (c == '+' || c == '-' || c == '*' || c == '/' || i == s.length() - 1) {
+            if (operation == '+') {
+                stack.push(number);
+            } else if (operation == '-') {
+                stack.push(-number);
+            } else if (operation == '*') {
+                stack.push(stack.pop() * number);
+            } else if (operation == '/') {
+                stack.push(stack.pop() / number);
+            }
+
+            operation = c;
+            number = 0;
+        }
+    }
+
+    int result = 0;
+    while (!stack.isEmpty()) {
+        result += stack.pop();
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 3: Parentheses \& Bracket Matching
+
+### 3.1 Valid Parentheses
+
+```java
+// Basic Valid Parentheses
+public boolean isValid(String s) {
+    Stack<Character> stack = new Stack<>();
+
+    for (char c : s.toCharArray()) {
+        if (c == '(' || c == '[' || c == '{') {
+            stack.push(c);
+        } else {
+            if (stack.isEmpty()) return false;
+
+            char top = stack.pop();
+            if ((c == ')' && top != '(') ||
+                (c == ']' && top != '[') ||
+                (c == '}' && top != '{')) {
+                return false;
+            }
+        }
+    }
+
+    return stack.isEmpty();
+}
+
+// Valid Parentheses with Map
+public boolean isValidWithMap(String s) {
+    Map<Character, Character> mapping = new HashMap<>();
+    mapping.put(')', '(');
+    mapping.put(']', '[');
+    mapping.put('}', '{');
+
+    Stack<Character> stack = new Stack<>();
+
+    for (char c : s.toCharArray()) {
+        if (mapping.containsKey(c)) {
+            if (stack.isEmpty() || stack.pop() != mapping.get(c)) {
+                return false;
+            }
+        } else {
+            stack.push(c);
+        }
+    }
+
+    return stack.isEmpty();
+}
+```
+
+
+### 3.2 Advanced Parentheses Problems
+
+```java
+// Longest Valid Parentheses
+public int longestValidParentheses(String s) {
+    Stack<Integer> stack = new Stack<>();
+    stack.push(-1); // Base for valid substring
+    int maxLen = 0;
+
+    for (int i = 0; i < s.length(); i++) {
+        if (s.charAt(i) == '(') {
+            stack.push(i);
+        } else {
+            stack.pop();
+            if (stack.isEmpty()) {
+                stack.push(i); // New base
+            } else {
+                maxLen = Math.max(maxLen, i - stack.peek());
+            }
+        }
+    }
+
+    return maxLen;
+}
+
+// Generate Parentheses
+public List<String> generateParenthesis(int n) {
+    List<String> result = new ArrayList<>();
+    backtrack(result, "", 0, 0, n);
+    return result;
+}
+
+private void backtrack(List<String> result, String current, int open, int close, int max) {
+    if (current.length() == max * 2) {
+        result.add(current);
+        return;
+    }
+
+    if (open < max) {
+        backtrack(result, current + "(", open + 1, close, max);
+    }
+
+    if (close < open) {
+        backtrack(result, current + ")", open, close + 1, max);
+    }
+}
+
+// Remove Invalid Parentheses
+public List<String> removeInvalidParentheses(String s) {
+    List<String> result = new ArrayList<>();
+    if (s == null) return result;
+
+    Set<String> visited = new HashSet<>();
+    Queue<String> queue = new LinkedList<>();
+
+    queue.offer(s);
+    visited.add(s);
+    boolean found = false;
+
+    while (!queue.isEmpty()) {
+        String str = queue.poll();
+
+        if (isValidParentheses(str)) {
+            result.add(str);
+            found = true;
+        }
+
+        if (found) continue; // Only find minimum removals
+
+        for (int i = 0; i < str.length(); i++) {
+            if (str.charAt(i) != '(' && str.charAt(i) != ')') continue;
+
+            String t = str.substring(0, i) + str.substring(i + 1);
+            if (!visited.contains(t)) {
+                queue.offer(t);
+                visited.add(t);
+            }
+        }
+    }
+
+    return result;
+}
+
+private boolean isValidParentheses(String s) {
+    int count = 0;
+    for (char c : s.toCharArray()) {
+        if (c == '(') count++;
+        else if (c == ')') count--;
+        if (count < 0) return false;
+    }
+    return count == 0;
+}
+```
+
+
+***
+
+## Pattern 4: Monotonic Stack - Next Greater/Smaller
+
+### 4.1 Next Greater Element
+
+```java
+// Next Greater Element I
+public int[] nextGreaterElement(int[] nums1, int[] nums2) {
+    Map<Integer, Integer> map = new HashMap<>();
+    Stack<Integer> stack = new Stack<>();
+
+    // Build next greater mapping for nums2
+    for (int num : nums2) {
+        while (!stack.isEmpty() && stack.peek() < num) {
+            map.put(stack.pop(), num);
+        }
+        stack.push(num);
+    }
+
+    int[] result = new int[nums1.length];
+    for (int i = 0; i < nums1.length; i++) {
+        result[i] = map.getOrDefault(nums1[i], -1);
+    }
+
+    return result;
+}
+
+// Next Greater Element II (Circular Array)
+public int[] nextGreaterElements(int[] nums) {
+    int n = nums.length;
+    int[] result = new int[n];
+    Arrays.fill(result, -1);
+    Stack<Integer> stack = new Stack<>(); // Store indices
+
+    // Process array twice for circular behavior
+    for (int i = 0; i < 2 * n; i++) {
+        while (!stack.isEmpty() && nums[stack.peek()] < nums[i % n]) {
+            result[stack.pop()] = nums[i % n];
+        }
+
+        if (i < n) {
+            stack.push(i);
+        }
+    }
+
+    return result;
+}
+
+// Generic Next Greater Element Template
+public int[] nextGreater(int[] arr) {
+    int n = arr.length;
+    int[] result = new int[n];
+    Arrays.fill(result, -1);
+    Stack<Integer> stack = new Stack<>(); // Monotonic decreasing stack
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] < arr[i]) {
+            result[stack.pop()] = arr[i];
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+
+### 4.2 Next Smaller Element
+
+```java
+// Next Smaller Element
+public int[] nextSmallerElement(int[] arr) {
+    int n = arr.length;
+    int[] result = new int[n];
+    Arrays.fill(result, -1);
+    Stack<Integer> stack = new Stack<>(); // Monotonic increasing stack
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] > arr[i]) {
+            result[stack.pop()] = arr[i];
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+
+// Previous Smaller Element
+public int[] previousSmallerElement(int[] arr) {
+    int n = arr.length;
+    int[] result = new int[n];
+    Arrays.fill(result, -1);
+    Stack<Integer> stack = new Stack<>(); // Monotonic increasing stack
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] >= arr[i]) {
+            stack.pop();
+        }
+
+        if (!stack.isEmpty()) {
+            result[i] = arr[stack.peek()];
+        }
+
+        stack.push(i);
+    }
+
+    return result;
+}
+
+// Previous Greater Element
+public int[] previousGreaterElement(int[] arr) {
+    int n = arr.length;
+    int[] result = new int[n];
+    Arrays.fill(result, -1);
+    Stack<Integer> stack = new Stack<>(); // Monotonic decreasing stack
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] <= arr[i]) {
+            stack.pop();
+        }
+
+        if (!stack.isEmpty()) {
+            result[i] = arr[stack.peek()];
+        }
+
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+
+### 4.3 Daily Temperatures
+
+```java
+// Daily Temperatures (Next Warmer Day)
+public int[] dailyTemperatures(int[] temperatures) {
+    int n = temperatures.length;
+    int[] result = new int[n];
+    Stack<Integer> stack = new Stack<>(); // Store indices
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && temperatures[stack.peek()] < temperatures[i]) {
+            int idx = stack.pop();
+            result[idx] = i - idx; // Days to wait
+        }
+        stack.push(i);
+    }
+
+    return result;
+}
+
+// Optimized Daily Temperatures (Backward Pass)
+public int[] dailyTemperaturesOptimized(int[] temperatures) {
+    int n = temperatures.length;
+    int[] result = new int[n];
+
+    for (int i = n - 2; i >= 0; i--) {
+        int j = i + 1;
+        while (j < n && temperatures[j] <= temperatures[i]) {
+            if (result[j] > 0) {
+                j += result[j];
+            } else {
+                j = n; // No warmer day found
+            }
+        }
+
+        if (j < n) {
+            result[i] = j - i;
+        }
+    }
+
+    return result;
+}
+```
+
+
+***
+
+## Pattern 5: Monotonic Stack - Advanced Problems
+
+### 5.1 Largest Rectangle in Histogram
+
+```java
+// Largest Rectangle in Histogram
+public int largestRectangleArea(int[] heights) {
+    Stack<Integer> stack = new Stack<>(); // Store indices
+    int maxArea = 0;
+
+    for (int i = 0; i <= heights.length; i++) {
+        int currentHeight = (i == heights.length) ? 0 : heights[i];
+
+        while (!stack.isEmpty() && heights[stack.peek()] > currentHeight) {
+            int height = heights[stack.pop()];
+            int width = stack.isEmpty() ? i : i - stack.peek() - 1;
+            maxArea = Math.max(maxArea, height * width);
+        }
+
+        stack.push(i);
+    }
+
+    return maxArea;
+}
+
+// Largest Rectangle using Previous/Next Smaller
+public int largestRectangleAreaAlternative(int[] heights) {
+    int n = heights.length;
+    int[] prevSmaller = previousSmallerIndices(heights);
+    int[] nextSmaller = nextSmallerIndices(heights);
+
+    int maxArea = 0;
+    for (int i = 0; i < n; i++) {
+        int width = nextSmaller[i] - prevSmaller[i] - 1;
+        maxArea = Math.max(maxArea, heights[i] * width);
+    }
+
+    return maxArea;
+}
+
+private int[] previousSmallerIndices(int[] heights) {
+    int n = heights.length;
+    int[] result = new int[n];
+    Stack<Integer> stack = new Stack<>();
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && heights[stack.peek()] >= heights[i]) {
+            stack.pop();
+        }
+        result[i] = stack.isEmpty() ? -1 : stack.peek();
+        stack.push(i);
+    }
+
+    return result;
+}
+
+private int[] nextSmallerIndices(int[] heights) {
+    int n = heights.length;
+    int[] result = new int[n];
+    Stack<Integer> stack = new Stack<>();
+
+    for (int i = n - 1; i >= 0; i--) {
+        while (!stack.isEmpty() && heights[stack.peek()] >= heights[i]) {
+            stack.pop();
+        }
+        result[i] = stack.isEmpty() ? n : stack.peek();
+        stack.push(i);
+    }
+
+    return result;
+}
+```
+
+
+### 5.2 Maximal Rectangle
+
+```java
+// Maximal Rectangle in Binary Matrix
+public int maximalRectangle(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int m = matrix.length, n = matrix[0].length;
+    int[] heights = new int[n];
+    int maxArea = 0;
+
+    for (int i = 0; i < m; i++) {
+        // Update heights array
+        for (int j = 0; j < n; j++) {
+            heights[j] = matrix[i][j] == '1' ? heights[j] + 1 : 0;
+        }
+
+        // Find max rectangle in current histogram
+        maxArea = Math.max(maxArea, largestRectangleArea(heights));
+    }
+
+    return maxArea;
+}
+
+// Using DP approach for Maximal Rectangle
+public int maximalRectangleDP(char[][] matrix) {
+    if (matrix.length == 0) return 0;
+
+    int m = matrix.length, n = matrix[0].length;
+    int[] left = new int[n];  // Left boundary of rectangle ending at current row
+    int[] right = new int[n]; // Right boundary of rectangle ending at current row
+    int[] height = new int[n]; // Height of rectangle ending at current row
+
+    Arrays.fill(right, n);
+    int maxArea = 0;
+
+    for (int i = 0; i < m; i++) {
+        int curLeft = 0, curRight = n;
+
+        // Update height
+        for (int j = 0; j < n; j++) {
+            height[j] = matrix[i][j] == '1' ? height[j] + 1 : 0;
+        }
+
+        // Update left
+        for (int j = 0; j < n; j++) {
+            if (matrix[i][j] == '1') {
+                left[j] = Math.max(left[j], curLeft);
+            } else {
+                left[j] = 0;
+                curLeft = j + 1;
+            }
+        }
+
+        // Update right
+        for (int j = n - 1; j >= 0; j--) {
+            if (matrix[i][j] == '1') {
+                right[j] = Math.min(right[j], curRight);
+            } else {
+                right[j] = n;
+                curRight = j;
+            }
+        }
+
+        // Calculate area
+        for (int j = 0; j < n; j++) {
+            maxArea = Math.max(maxArea, (right[j] - left[j]) * height[j]);
+        }
+    }
+
+    return maxArea;
+}
+```
+
+
+### 5.3 Trapping Rain Water
+
+```java
+// Trapping Rain Water using Monotonic Stack
+public int trap(int[] height) {
+    Stack<Integer> stack = new Stack<>();
+    int water = 0;
+
+    for (int i = 0; i < height.length; i++) {
+        while (!stack.isEmpty() && height[i] > height[stack.peek()]) {
+            int top = stack.pop();
+
+            if (stack.isEmpty()) break;
+
+            int distance = i - stack.peek() - 1;
+            int boundedHeight = Math.min(height[i], height[stack.peek()]) - height[top];
+            water += distance * boundedHeight;
+        }
+
+        stack.push(i);
+    }
+
+    return water;
+}
+
+// Two Pointer Approach
+public int trapTwoPointer(int[] height) {
+    if (height.length == 0) return 0;
+
+    int left = 0, right = height.length - 1;
+    int leftMax = 0, rightMax = 0;
+    int water = 0;
+
+    while (left < right) {
+        if (height[left] < height[right]) {
+            if (height[left] >= leftMax) {
+                leftMax = height[left];
+            } else {
+                water += leftMax - height[left];
+            }
+            left++;
+        } else {
+            if (height[right] >= rightMax) {
+                rightMax = height[right];
+            } else {
+                water += rightMax - height[right];
+            }
+            right--;
+        }
+    }
+
+    return water;
+}
+```
+
+
+### 5.4 Stock Span Problem
+
+```java
+// Stock Span Problem
+class StockSpanner {
+    private Stack<int[]> stack; // [price, span]
+
+    public StockSpanner() {
+        stack = new Stack<>();
+    }
+
+    public int next(int price) {
+        int span = 1;
+
+        while (!stack.isEmpty() && stack.peek()[0] <= price) {
+            span += stack.pop()[1];
+        }
+
+        stack.push(new int[]{price, span});
+        return span;
+    }
+}
+
+// Stock Span for Array
+public int[] stockSpan(int[] prices) {
+    int n = prices.length;
+    int[] spans = new int[n];
+    Stack<Integer> stack = new Stack<>(); // Store indices
+
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && prices[stack.peek()] <= prices[i]) {
+            stack.pop();
+        }
+
+        spans[i] = stack.isEmpty() ? i + 1 : i - stack.peek();
+        stack.push(i);
+    }
+
+    return spans;
+}
+```
+
+
+***
+
+## Pattern 6: Stack with Enhanced Operations
+
+### 6.1 Min Stack
+
+```java
+// Min Stack Implementation
+class MinStack {
+    private Stack<Integer> stack;
+    private Stack<Integer> minStack;
+
+    public MinStack() {
+        stack = new Stack<>();
+        minStack = new Stack<>();
+    }
+
+    public void push(int val) {
+        stack.push(val);
+
+        if (minStack.isEmpty() || val <= minStack.peek()) {
+            minStack.push(val);
+        }
+    }
+
+    public void pop() {
+        if (!stack.isEmpty()) {
+            int popped = stack.pop();
+            if (popped == minStack.peek()) {
+                minStack.pop();
+            }
+        }
+    }
+
+    public int top() {
+        return stack.peek();
+    }
+
+    public int getMin() {
+        return minStack.peek();
+    }
+}
+
+// Space Optimized Min Stack
+class MinStackOptimized {
+    private Stack<Long> stack;
+    private long min;
+
+    public MinStackOptimized() {
+        stack = new Stack<>();
+    }
+
+    public void push(int val) {
+        if (stack.isEmpty()) {
+            min = val;
+            stack.push(0L);
+        } else {
+            stack.push(val - min);
+            if (val < min) {
+                min = val;
+            }
+        }
+    }
+
+    public void pop() {
+        if (!stack.isEmpty()) {
+            long pop = stack.pop();
+            if (pop < 0) {
+                min = min - pop;
+            }
+        }
+    }
+
+    public int top() {
+        long top = stack.peek();
+        return (int) (top < 0 ? min : top + min);
+    }
+
+    public int getMin() {
+        return (int) min;
+    }
+}
+```
+
+
+### 6.2 Max Stack
+
+```java
+// Max Stack Implementation
+class MaxStack {
+    private Stack<Integer> stack;
+    private Stack<Integer> maxStack;
+
+    public MaxStack() {
+        stack = new Stack<>();
+        maxStack = new Stack<>();
+    }
+
+    public void push(int x) {
+        stack.push(x);
+
+        if (maxStack.isEmpty() || x >= maxStack.peek()) {
+            maxStack.push(x);
+        }
+    }
+
+    public int pop() {
+        if (!stack.isEmpty()) {
+            int popped = stack.pop();
+            if (popped == maxStack.peek()) {
+                maxStack.pop();
+            }
+            return popped;
+        }
+        return -1;
+    }
+
+    public int top() {
+        return stack.peek();
+    }
+
+    public int peekMax() {
+        return maxStack.peek();
+    }
+
+    public int popMax() {
+        int max = maxStack.peek();
+        Stack<Integer> buffer = new Stack<>();
+
+        while (!stack.isEmpty() && stack.peek() != max) {
+            buffer.push(pop());
+        }
+
+        pop(); // Remove the max element
+
+        while (!buffer.isEmpty()) {
+            push(buffer.pop());
+        }
+
+        return max;
+    }
+}
+```
+
+
+### 6.3 Stack with Middle Operations
+
+```java
+// Stack with Middle Element Operations
+class StackWithMiddle {
+    private class Node {
+        int data;
+        Node next, prev;
+
+        Node(int data) {
+            this.data = data;
+        }
+    }
+
+    private Node head, mid;
+    private int count;
+
+    public void push(int x) {
+        Node newNode = new Node(x);
+
+        if (count == 0) {
+            head = mid = newNode;
+        } else {
+            newNode.next = head;
+            head.prev = newNode;
+            head = newNode;
+
+            if (count % 2 == 1) {
+                mid = mid.prev;
+            }
+        }
+        count++;
+    }
+
+    public int pop() {
+        if (count == 0) return -1;
+
+        Node temp = head;
+        int data = temp.data;
+
+        if (count == 1) {
+            head = mid = null;
+        } else {
+            head = head.next;
+            head.prev = null;
+
+            if (count % 2 == 0) {
+                mid = mid.next;
+            }
+        }
+
+        count--;
+        return data;
+    }
+
+    public int findMiddle() {
+        return count == 0 ? -1 : mid.data;
+    }
+
+    public void deleteMiddle() {
+        if (count == 0) return;
+
+        if (count == 1) {
+            head = mid = null;
+        } else if (count == 2) {
+            head = head.next;
+            mid = head;
+            head.prev = null;
+        } else {
+            mid.next.prev = mid.prev;
+            mid.prev.next = mid.next;
+
+            if (count % 2 == 0) {
+                mid = mid.prev;
+            } else {
+                mid = mid.next;
+            }
+        }
+
+        count--;
+    }
+}
+```
+
+
+***
+
+## Pattern 7: Function Call Stack Simulation
+
+### 7.1 Iterative Tree Traversal
+
+```java
+// Iterative Preorder Traversal
+public List<Integer> preorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<TreeNode> stack = new Stack<>();
+    stack.push(root);
+
+    while (!stack.isEmpty()) {
+        TreeNode node = stack.pop();
+        result.add(node.val);
+
+        if (node.right != null) stack.push(node.right);
+        if (node.left != null) stack.push(node.left);
+    }
+
+    return result;
+}
+
+// Iterative Inorder Traversal
+public List<Integer> inorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    Stack<TreeNode> stack = new Stack<>();
+    TreeNode current = root;
+
+    while (current != null || !stack.isEmpty()) {
+        while (current != null) {
+            stack.push(current);
+            current = current.left;
+        }
+
+        current = stack.pop();
+        result.add(current.val);
+        current = current.right;
+    }
+
+    return result;
+}
+
+// Iterative Postorder Traversal
+public List<Integer> postorderTraversal(TreeNode root) {
+    List<Integer> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<TreeNode> stack = new Stack<>();
+    TreeNode lastVisited = null;
+
+    while (root != null || !stack.isEmpty()) {
+        if (root != null) {
+            stack.push(root);
+            root = root.left;
+        } else {
+            TreeNode peekNode = stack.peek();
+
+            if (peekNode.right != null && lastVisited != peekNode.right) {
+                root = peekNode.right;
+            } else {
+                result.add(peekNode.val);
+                lastVisited = stack.pop();
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 7.2 DFS Graph Traversal
+
+```java
+// Iterative DFS for Graph
+public void dfsIterative(List<List<Integer>> graph, int start) {
+    boolean[] visited = new boolean[graph.size()];
+    Stack<Integer> stack = new Stack<>();
+
+    stack.push(start);
+
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+
+        if (visited[node]) continue;
+
+        visited[node] = true;
+        System.out.print(node + " ");
+
+        // Add neighbors in reverse order for consistent traversal
+        List<Integer> neighbors = graph.get(node);
+        for (int i = neighbors.size() - 1; i >= 0; i--) {
+            if (!visited[neighbors.get(i)]) {
+                stack.push(neighbors.get(i));
+            }
+        }
+    }
+}
+
+// Path Finding with Stack
+public boolean hasPath(List<List<Integer>> graph, int start, int target) {
+    if (start == target) return true;
+
+    boolean[] visited = new boolean[graph.size()];
+    Stack<Integer> stack = new Stack<>();
+
+    stack.push(start);
+    visited[start] = true;
+
+    while (!stack.isEmpty()) {
+        int node = stack.pop();
+
+        for (int neighbor : graph.get(node)) {
+            if (neighbor == target) return true;
+
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                stack.push(neighbor);
+            }
+        }
+    }
+
+    return false;
+}
+```
+
+
+***
+
+## Pattern 8: Stack-Based String Processing
+
+### 8.1 String Manipulation
+
+```java
+// Remove Duplicate Letters
+public String removeDuplicateLetters(String s) {
+    int[] count = new int[26];
+    boolean[] visited = new boolean[26];
+
+    // Count frequency of each character
+    for (char c : s.toCharArray()) {
+        count[c - 'a']++;
+    }
+
+    Stack<Character> stack = new Stack<>();
+
+    for (char c : s.toCharArray()) {
+        count[c - 'a']--;
+
+        if (visited[c - 'a']) continue;
+
+        // Remove characters that are lexicographically larger and appear later
+        while (!stack.isEmpty() &&
+               stack.peek() > c &&
+               count[stack.peek() - 'a'] > 0) {
+            visited[stack.pop() - 'a'] = false;
+        }
+
+        stack.push(c);
+        visited[c - 'a'] = true;
+    }
+
+    StringBuilder result = new StringBuilder();
+    for (char c : stack) {
+        result.append(c);
+    }
+
+    return result.toString();
+}
+
+// Remove K Digits
+public String removeKdigits(String num, int k) {
+    Stack<Character> stack = new Stack<>();
+
+    for (char digit : num.toCharArray()) {
+        while (k > 0 && !stack.isEmpty() && stack.peek() > digit) {
+            stack.pop();
+            k--;
+        }
+        stack.push(digit);
+    }
+
+    // Remove remaining digits from the end
+    while (k > 0) {
+        stack.pop();
+        k--;
+    }
+
+    // Build result
+    StringBuilder result = new StringBuilder();
+    for (char digit : stack) {
+        if (!(result.length() == 0 && digit == '0')) {
+            result.append(digit);
+        }
+    }
+
+    return result.length() == 0 ? "0" : result.toString();
+}
+```
+
+
+### 8.2 String Decoding
+
+```java
+// Decode String
+public String decodeString(String s) {
+    Stack<Integer> countStack = new Stack<>();
+    Stack<StringBuilder> stringStack = new Stack<>();
+    StringBuilder current = new StringBuilder();
+    int k = 0;
+
+    for (char c : s.toCharArray()) {
+        if (Character.isDigit(c)) {
+            k = k * 10 + (c - '0');
+        } else if (c == '[') {
+            countStack.push(k);
+            stringStack.push(current);
+            current = new StringBuilder();
+            k = 0;
+        } else if (c == ']') {
+            StringBuilder temp = current;
+            current = stringStack.pop();
+            int count = countStack.pop();
+
+            for (int i = 0; i < count; i++) {
+                current.append(temp);
+            }
+        } else {
+            current.append(c);
+        }
+    }
+
+    return current.toString();
+}
+
+// Simplify Path
+public String simplifyPath(String path) {
+    Stack<String> stack = new Stack<>();
+    String[] components = path.split("/");
+
+    for (String component : components) {
+        if (component.equals("") || component.equals(".")) {
+            continue;
+        } else if (component.equals("..")) {
+            if (!stack.isEmpty()) {
+                stack.pop();
+            }
+        } else {
+            stack.push(component);
+        }
+    }
+
+    StringBuilder result = new StringBuilder();
+    for (String dir : stack) {
+        result.append("/").append(dir);
+    }
+
+    return result.length() > 0 ? result.toString() : "/";
+}
+```
+
+
+***
+
+## Pattern 9: Stack for Tree \& Graph Problems
+
+### 9.1 Binary Tree Problems
+
+```java
+// Flatten Binary Tree to Linked List
+public void flatten(TreeNode root) {
+    if (root == null) return;
+
+    Stack<TreeNode> stack = new Stack<>();
+    stack.push(root);
+
+    while (!stack.isEmpty()) {
+        TreeNode current = stack.pop();
+
+        if (current.right != null) {
+            stack.push(current.right);
+        }
+        if (current.left != null) {
+            stack.push(current.left);
+        }
+
+        if (!stack.isEmpty()) {
+            current.right = stack.peek();
+        }
+        current.left = null;
+    }
+}
+
+// Binary Tree Zigzag Level Order Traversal
+public List<List<Integer>> zigzagLevelOrder(TreeNode root) {
+    List<List<Integer>> result = new ArrayList<>();
+    if (root == null) return result;
+
+    Stack<TreeNode> currentLevel = new Stack<>();
+    Stack<TreeNode> nextLevel = new Stack<>();
+    boolean leftToRight = true;
+
+    currentLevel.push(root);
+    List<Integer> level = new ArrayList<>();
+
+    while (!currentLevel.isEmpty()) {
+        TreeNode node = currentLevel.pop();
+        level.add(node.val);
+
+        if (leftToRight) {
+            if (node.left != null) nextLevel.push(node.left);
+            if (node.right != null) nextLevel.push(node.right);
+        } else {
+            if (node.right != null) nextLevel.push(node.right);
+            if (node.left != null) nextLevel.push(node.left);
+        }
+
+        if (currentLevel.isEmpty()) {
+            result.add(level);
+            level = new ArrayList<>();
+            Stack<TreeNode> temp = currentLevel;
+            currentLevel = nextLevel;
+            nextLevel = temp;
+            leftToRight = !leftToRight;
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 9.2 Graph Algorithms
+
+```java
+// Topological Sort using DFS
+public int[] findOrder(int numCourses, int[][] prerequisites) {
+    List<List<Integer>> graph = new ArrayList<>();
+    for (int i = 0; i < numCourses; i++) {
+        graph.add(new ArrayList<>());
+    }
+
+    for (int[] prereq : prerequisites) {
+        graph.get(prereq[1]).add(prereq[0]);
+    }
+
+    int[] color = new int[numCourses]; // 0: white, 1: gray, 2: black
+    Stack<Integer> stack = new Stack<>();
+
+    for (int i = 0; i < numCourses; i++) {
+        if (color[i] == 0 && !dfsTopSort(graph, i, color, stack)) {
+            return new int[0]; // Cycle detected
+        }
+    }
+
+    int[] result = new int[numCourses];
+    for (int i = 0; i < numCourses; i++) {
+        result[i] = stack.pop();
+    }
+
+    return result;
+}
+
+private boolean dfsTopSort(List<List<Integer>> graph, int node, int[] color, Stack<Integer> stack) {
+    if (color[node] == 1) return false; // Cycle detected
+    if (color[node] == 2) return true;  // Already processed
+
+    color[node] = 1; // Mark as processing
+
+    for (int neighbor : graph.get(node)) {
+        if (!dfsTopSort(graph, neighbor, color, stack)) {
+            return false;
+        }
+    }
+
+    color[node] = 2; // Mark as processed
+    stack.push(node);
+    return true;
+}
+```
+
+
+***
+
+## Pattern 10: Stack-Based Optimization
+
+### 10.1 Sliding Window Maximum
+
+```java
+// Sliding Window Maximum using Deque (Stack-like operations)
+public int[] maxSlidingWindow(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>(); // Store indices
+    int[] result = new int[nums.length - k + 1];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k + 1) {
+            deque.pollFirst();
+        }
+
+        // Remove smaller elements from rear
+        while (!deque.isEmpty() && nums[deque.peekLast()] < nums[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+
+        if (i >= k - 1) {
+            result[i - k + 1] = nums[deque.peekFirst()];
+        }
+    }
+
+    return result;
+}
+```
+
+
+### 10.2 Constrained Subsequence Sum
+
+```java
+// Constrained Subsequence Sum
+public int constrainedSubsetSum(int[] nums, int k) {
+    Deque<Integer> deque = new ArrayDeque<>(); // Monotonic decreasing deque
+    int[] dp = new int[nums.length];
+
+    for (int i = 0; i < nums.length; i++) {
+        // Remove elements outside window
+        while (!deque.isEmpty() && deque.peekFirst() < i - k) {
+            deque.pollFirst();
+        }
+
+        // Calculate current sum
+        dp[i] = nums[i] + (deque.isEmpty() ? 0 : Math.max(0, dp[deque.peekFirst()]));
+
+        // Maintain monotonic decreasing property
+        while (!deque.isEmpty() && dp[deque.peekLast()] <= dp[i]) {
+            deque.pollLast();
+        }
+
+        deque.offerLast(i);
+    }
+
+    return Arrays.stream(dp).max().orElse(0);
+}
+```
+
+
+***
+
+## Pattern 11: Multi-Stack Problems
+
+### 11.1 Three Stacks in Array
+
+```java
+// Three Stacks in One Array
+class ThreeStacks {
+    private int[] array;
+    private int[] tops;
+    private int stackSize;
+
+    public ThreeStacks(int stackSize) {
+        this.stackSize = stackSize;
+        this.array = new int[stackSize * 3];
+        this.tops = new int[]{-1, -1, -1};
+    }
+
+    public void push(int stackNum, int value) {
+        if (tops[stackNum] + 1 >= stackSize) {
+            throw new StackOverflowError();
+        }
+
+        tops[stackNum]++;
+        array[absTopOfStack(stackNum)] = value;
+    }
+
+    public int pop(int stackNum) {
+        if (tops[stackNum] == -1) {
+            throw new EmptyStackException();
+        }
+
+        int value = array[absTopOfStack(stackNum)];
+        array[absTopOfStack(stackNum)] = 0;
+        tops[stackNum]--;
+        return value;
+    }
+
+    public int peek(int stackNum) {
+        if (tops[stackNum] == -1) {
+            throw new EmptyStackException();
+        }
+        return array[absTopOfStack(stackNum)];
+    }
+
+    public boolean isEmpty(int stackNum) {
+        return tops[stackNum] == -1;
+    }
+
+    private int absTopOfStack(int stackNum) {
+        return stackNum * stackSize + tops[stackNum];
+    }
+}
+```
+
+
+### 11.2 Set of Stacks
+
+```java
+// Set of Stacks (Stack of Plates)
+class SetOfStacks {
+    private List<Stack<Integer>> stacks;
+    private int capacity;
+
+    public SetOfStacks(int capacity) {
+        this.capacity = capacity;
+        this.stacks = new ArrayList<>();
+    }
+
+    public void push(int value) {
+        Stack<Integer> last = getLastStack();
+        if (last != null && last.size() < capacity) {
+            last.push(value);
+        } else {
+            Stack<Integer> stack = new Stack<>();
+            stack.push(value);
+            stacks.add(stack);
+        }
+    }
+
+    public int pop() {
+        Stack<Integer> last = getLastStack();
+        if (last == null) throw new EmptyStackException();
+
+        int value = last.pop();
+        if (last.size() == 0) {
+            stacks.remove(stacks.size() - 1);
+        }
+        return value;
+    }
+
+    public int popAt(int index) {
+        return leftShift(index, true);
+    }
+
+    private int leftShift(int index, boolean removeTop) {
+        Stack<Integer> stack = stacks.get(index);
+        int removedItem;
+
+        if (removeTop) {
+            removedItem = stack.pop();
+        } else {
+            removedItem = removeBottom(stack);
+        }
+
+        if (stack.isEmpty()) {
+            stacks.remove(index);
+        } else if (stacks.size() > index + 1) {
+            int v = leftShift(index + 1, false);
+            stack.push(v);
+        }
+
+        return removedItem;
+    }
+
+    private int removeBottom(Stack<Integer> stack) {
+        if (stack.isEmpty()) return 0;
+
+        int top = stack.pop();
+        if (stack.isEmpty()) {
+            return top;
+        } else {
+            int bottom = removeBottom(stack);
+            stack.push(top);
+            return bottom;
+        }
+    }
+
+    private Stack<Integer> getLastStack() {
+        if (stacks.isEmpty()) return null;
+        return stacks.get(stacks.size() - 1);
+    }
+}
+```
+
+
+***
+
+## Pattern 12: Advanced Stack Applications
+
+### 12.1 Asteroid Collision
+
+```java
+// Asteroid Collision
+public int[] asteroidCollision(int[] asteroids) {
+    Stack<Integer> stack = new Stack<>();
+
+    for (int asteroid : asteroids) {
+        boolean exploded = false;
+
+        while (!stack.isEmpty() && asteroid < 0 && stack.peek() > 0) {
+            if (stack.peek() < -asteroid) {
+                stack.pop();
+                continue;
+            } else if (stack.peek() == -asteroid) {
+                stack.pop();
+            }
+            exploded = true;
+            break;
+        }
+
+        if (!exploded) {
+            stack.push(asteroid);
+        }
+    }
+
+    return stack.stream().mapToInt(Integer::intValue).toArray();
+}
+```
+
+
+### 12.2 Car Fleet
+
+```java
+// Car Fleet
+public int carFleet(int target, int[] position, int[] speed) {
+    int n = position.length;
+    double[][] cars = new double[n][2];
+
+    for (int i = 0; i < n; i++) {
+        cars[i][0] = position[i];
+        cars[i][1] = (double) (target - position[i]) / speed[i]; // Time to reach target
+    }
+
+    Arrays.sort(cars, (a, b) -> Double.compare(a[0], b[0])); // Sort by position
+
+    Stack<Double> stack = new Stack<>();
+
+    for (int i = n - 1; i >= 0; i--) { // Process from closest to target
+        double time = cars[i][1];
+
+        if (stack.isEmpty() || time > stack.peek()) {
+            stack.push(time);
+        }
+        // If current car is faster, it will catch up to the fleet ahead
+    }
+
+    return stack.size();
+}
+```
+
+
+### 12.3 Sum of Subarray Minimums
+
+```java
+// Sum of Subarray Minimums
+public int sumSubarrayMins(int[] arr) {
+    int MOD = 1000000007;
+    int n = arr.length;
+
+    // Find previous less element and next less element for each element
+    int[] prevLess = new int[n];
+    int[] nextLess = new int[n];
+
+    Arrays.fill(prevLess, -1);
+    Arrays.fill(nextLess, n);
+
+    Stack<Integer> stack = new Stack<>();
+
+    // Find previous less elements
+    for (int i = 0; i < n; i++) {
+        while (!stack.isEmpty() && arr[stack.peek()] >= arr[i]) {
+            stack.pop();
+        }
+        if (!stack.isEmpty()) {
+            prevLess[i] = stack.peek();
+        }
+        stack.push(i);
+    }
+
+    stack.clear();
+
+    // Find next less elements
+    for (int i = n - 1; i >= 0; i--) {
+        while (!stack.isEmpty() && arr[stack.peek()] > arr[i]) {
+            stack.pop();
+        }
+        if (!stack.isEmpty()) {
+            nextLess[i] = stack.peek();
+        }
+        stack.push(i);
+    }
+
+    long result = 0;
+    for (int i = 0; i < n; i++) {
+        long left = i - prevLess[i];
+        long right = nextLess[i] - i;
+        result = (result + (left * right * arr[i]) % MOD) % MOD;
+    }
+
+    return (int) result;
+}
+```
+
+
+***
+
+## Time \& Space Complexity Reference
+
+| Pattern | Time Complexity | Space Complexity | Key Characteristics |
+| :-- | :-- | :-- | :-- |
+| Basic Stack Ops | O(1) per operation | O(n) | Push, Pop, Peek in constant time |
+| Expression Evaluation | O(n) | O(n) | Single pass with operator stack |
+| Parentheses Matching | O(n) | O(n) | Stack depth = max nesting |
+| Monotonic Stack | O(n) | O(n) | Each element pushed/popped once |
+| Next Greater/Smaller | O(n) | O(n) | Amortized O(1) per element |
+| Histogram Problems | O(n) | O(n) | Stack stores indices |
+| Tree Traversal | O(n) | O(h) | Height-dependent space |
+| String Processing | O(n) | O(n) | Character-by-character processing |
+
+
+***
+
+## Best Practices \& Optimization Tips
+
+### Monotonic Stack Guidelines
+
+```java
+// Template for Monotonic Stack Problems
+public int[] monotonicStackTemplate(int[] arr) {
+    int n = arr.length;
+    int[] result = new int[n];
+    Stack<Integer> stack = new Stack<>(); // Usually store indices
+
+    for (int i = 0; i < n; i++) {
+        // Maintain monotonic property
+        while (!stack.isEmpty() && shouldPop(arr, stack.peek(), i)) {
+            int index = stack.pop();
+            result[index] = processElement(arr, index, i);
+        }
+
+        // Process current element if needed
+        if (!stack.isEmpty()) {
+            processCurrentElement(arr, stack.peek(), i, result);
+        }
+
+        stack.push(i);
+    }
+
+    return result;
+}
+
+// Helper methods (implement based on specific problem)
+boolean shouldPop(int[] arr, int stackTop, int current) {
+    // For next greater: arr[stackTop] < arr[current]
+    // For next smaller: arr[stackTop] > arr[current]
+    return false;
+}
+
+int processElement(int[] arr, int index, int currentIndex) {
+    return arr[currentIndex]; // Or currentIndex for distance
+}
+
+void processCurrentElement(int[] arr, int stackTop, int current, int[] result) {
+    // Process relationship between current and stack top
+}
+```
+
+
+### Common Optimizations
+
+```java
+// 1. Use ArrayDeque instead of Stack for better performance
+Deque<Integer> stack = new ArrayDeque<>();
+
+// 2. Store indices instead of values for flexibility
+Stack<Integer> indices = new Stack<>();
+
+// 3. Combine multiple passes when possible
+public int[] combineOperations(int[] arr) {
+    // Process next greater and previous smaller in same loop
+    Stack<Integer> stack = new Stack<>();
+    int[] nextGreater = new int[arr.length];
+    int[] prevSmaller = new int[arr.length];
+
+    for (int i = 0; i < arr.length; i++) {
+        // Process next greater
+        while (!stack.isEmpty() && arr[stack.peek()] < arr[i]) {
+            nextGreater[stack.pop()] = arr[i];
+        }
+
+        // Process previous smaller
+        while (!stack.isEmpty() && arr[stack.peek()] >= arr[i]) {
+            stack.pop();
+        }
+        prevSmaller[i] = stack.isEmpty() ? -1 : arr[stack.peek()];
+
+        stack.push(i);
+    }
+
+    return nextGreater; // or combine results as needed
+}
+```
+
+
+### Interview Tips
+
+- **Identify the pattern** early: expression evaluation, matching, or monotonic properties
+- **Choose the right approach**: recursive problems often benefit from iterative stack solutions
+- **Handle edge cases**: empty stack, single elements, duplicate values
+- **Optimize space**: use indices instead of storing entire objects when possible
+- **Consider alternative data structures**: sometimes deque or list can be more efficient

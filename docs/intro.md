@@ -2,12 +2,12 @@
 sidebar_position: 1
 ---
 
-# JSEnigma | Learn & Practice
+# DevEnigma | Learn & Practice
 
 
 The purpose of this application is to help you revise coding patterns and problems efficiently for last-minute preparation.
 
-## JavaScript 
+## JavaScript
 
 1. https://www.w3schools.com/js/
 2. https://developer.mozilla.org/en-US/docs/Web/JavaScript
@@ -45,7 +45,7 @@ The purpose of this application is to help you revise coding patterns and proble
 1. https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/First_steps/Website_security
 2. https://developer.mozilla.org/en-US/docs/Web/Security
 
-## More DSA 
+## More DSA
 1. [BigO Cheat Sheet](https://bigocheatsheet.io/)
 2. [Download PDF](https://www.bigocheatsheet.com/pdf/big-o-cheatsheet.pdf)
 3. [Blind 75](https://leetcode.com/discuss/general-discussion/460599/blind-75-leetcode-questions)
