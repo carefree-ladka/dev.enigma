@@ -1,0 +1,780 @@
+# Java Multithreading & Thread Safety
+
+## Table of Contents
+1. [Thread Fundamentals](#thread-fundamentals)
+2. [Thread Safety Problems](#thread-safety-problems)
+3. [Synchronization Mechanisms](#synchronization-mechanisms)
+4. [Lock Types](#lock-types)
+5. [Thread-Safe Collections](#thread-safe-collections)
+6. [Atomic Variables](#atomic-variables)
+7. [Thread Pool & Executors](#thread-pool--executors)
+8. [Best Practices](#best-practices)
+9. [Progressive Example: Making Code Thread-Safe](#progressive-example)
+
+---
+
+## Thread Fundamentals
+
+### What is a Thread?
+A thread is the smallest unit of execution within a process. Java supports multithreading, allowing concurrent execution of multiple threads.
+
+### Creating Threads
+
+**Method 1: Extending Thread class**
+```java
+class MyThread extends Thread {
+    public void run() {
+        System.out.println("Thread running: " + Thread.currentThread().getName());
+    }
+}
+
+// Usage
+MyThread thread = new MyThread();
+thread.start();
+```
+
+**Method 2: Implementing Runnable (Preferred)**
+```java
+class MyRunnable implements Runnable {
+    public void run() {
+        System.out.println("Thread running: " + Thread.currentThread().getName());
+    }
+}
+
+// Usage
+Thread thread = new Thread(new MyRunnable());
+thread.start();
+```
+
+**Method 3: Lambda Expression (Java 8+)**
+```java
+Thread thread = new Thread(() -> {
+    System.out.println("Thread running: " + Thread.currentThread().getName());
+});
+thread.start();
+```
+
+### Thread Lifecycle
+1. **NEW** - Thread created but not started
+2. **RUNNABLE** - Thread ready to run or running
+3. **BLOCKED** - Waiting for monitor lock
+4. **WAITING** - Waiting indefinitely for another thread
+5. **TIMED_WAITING** - Waiting for specified time
+6. **TERMINATED** - Thread completed execution
+
+---
+
+## Thread Safety Problems
+
+### Race Condition
+Multiple threads accessing shared data simultaneously, leading to unpredictable results.
+
+### Example: Unsafe Counter
+```java
+class UnsafeCounter {
+    private int count = 0;
+
+    public void increment() {
+        count++;  // NOT atomic! (read, modify, write)
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
+```
+
+**Problem**: If 1000 threads call `increment()`, the final count might be less than 1000 due to race conditions.
+
+---
+
+## Synchronization Mechanisms
+
+### 1. Synchronized Keyword
+
+**Synchronized Method**
+```java
+class SafeCounter {
+    private int count = 0;
+
+    public synchronized void increment() {
+        count++;
+    }
+
+    public synchronized int getCount() {
+        return count;
+    }
+}
+```
+
+**Synchronized Block**
+```java
+class SafeCounter {
+    private int count = 0;
+    private final Object lock = new Object();
+
+    public void increment() {
+        synchronized(lock) {
+            count++;
+        }
+    }
+}
+```
+
+**Key Points:**
+- Only one thread can execute synchronized code at a time
+- Every object has an intrinsic lock (monitor)
+- Synchronized methods lock on `this`
+- Static synchronized methods lock on the Class object
+
+---
+
+## Lock Types
+
+### 1. ReentrantLock (Explicit Locking)
+
+**Basic Usage**
+```java
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+class SafeCounterWithLock {
+    private int count = 0;
+    private final Lock lock = new ReentrantLock();
+
+    public void increment() {
+        lock.lock();
+        try {
+            count++;
+        } finally {
+            lock.unlock();  // Always unlock in finally block
+        }
+    }
+
+    public int getCount() {
+        lock.lock();
+        try {
+            return count;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+**Advantages over Synchronized:**
+- Try to acquire lock without blocking: `tryLock()`
+- Interruptible lock acquisition: `lockInterruptibly()`
+- Fair lock ordering
+- Multiple condition variables
+
+**Advanced Features**
+```java
+Lock lock = new ReentrantLock(true);  // Fair lock
+
+if (lock.tryLock()) {
+    try {
+        // Critical section
+    } finally {
+        lock.unlock();
+    }
+} else {
+    // Couldn't acquire lock
+}
+
+// Try with timeout
+if (lock.tryLock(1, TimeUnit.SECONDS)) {
+    // Got the lock
+}
+```
+
+### 2. ReadWriteLock
+
+Allows multiple readers or one writer at a time.
+
+```java
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+class ReadWriteCache {
+    private final Map<String, String> cache = new HashMap<>();
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+    public String get(String key) {
+        rwLock.readLock().lock();
+        try {
+            return cache.get(key);
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    public void put(String key, String value) {
+        rwLock.writeLock().lock();
+        try {
+            cache.put(key, value);
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+}
+```
+
+### 3. StampedLock (Java 8+)
+
+Optimistic reading lock for better performance.
+
+```java
+import java.util.concurrent.locks.StampedLock;
+
+class OptimisticCounter {
+    private int count = 0;
+    private final StampedLock lock = new StampedLock();
+
+    public void increment() {
+        long stamp = lock.writeLock();
+        try {
+            count++;
+        } finally {
+            lock.unlockWrite(stamp);
+        }
+    }
+
+    public int getCount() {
+        long stamp = lock.tryOptimisticRead();
+        int currentCount = count;
+
+        if (!lock.validate(stamp)) {
+            // Someone modified data, acquire read lock
+            stamp = lock.readLock();
+            try {
+                currentCount = count;
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+        return currentCount;
+    }
+}
+```
+
+---
+
+## Thread-Safe Collections
+
+### Built-in Thread-Safe Collections
+
+```java
+// Legacy synchronized collections (avoid in new code)
+List<String> syncList = Collections.synchronizedList(new ArrayList<>());
+Map<String, String> syncMap = Collections.synchronizedMap(new HashMap<>());
+
+// Modern concurrent collections (preferred)
+ConcurrentHashMap<String, String> concurrentMap = new ConcurrentHashMap<>();
+CopyOnWriteArrayList<String> cowList = new CopyOnWriteArrayList<>();
+ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
+BlockingQueue<String> blockingQueue = new LinkedBlockingQueue<>();
+```
+
+### ConcurrentHashMap Features
+
+```java
+ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
+
+// Atomic operations
+map.putIfAbsent("key", 1);
+map.computeIfAbsent("key", k -> expensiveComputation(k));
+map.computeIfPresent("key", (k, v) -> v + 1);
+map.merge("key", 1, Integer::sum);
+
+// Bulk operations (parallel processing)
+map.forEach(10, (k, v) -> System.out.println(k + ":" + v));
+map.reduceValues(10, Integer::sum);
+```
+
+---
+
+## Atomic Variables
+
+### AtomicInteger, AtomicLong, AtomicReference
+
+```java
+import java.util.concurrent.atomic.*;
+
+class AtomicCounter {
+    private AtomicInteger count = new AtomicInteger(0);
+
+    public void increment() {
+        count.incrementAndGet();  // Atomic operation
+    }
+
+    public int getCount() {
+        return count.get();
+    }
+
+    public void add(int delta) {
+        count.addAndGet(delta);
+    }
+
+    // Compare and swap
+    public boolean compareAndSet(int expect, int update) {
+        return count.compareAndSet(expect, update);
+    }
+}
+```
+
+### AtomicReference Example
+
+```java
+class AtomicCache<T> {
+    private AtomicReference<T> cache = new AtomicReference<>();
+
+    public T get() {
+        return cache.get();
+    }
+
+    public void set(T value) {
+        cache.set(value);
+    }
+
+    public boolean compareAndSet(T expect, T update) {
+        return cache.compareAndSet(expect, update);
+    }
+}
+```
+
+---
+
+## Thread Pool & Executors
+
+### ExecutorService
+
+```java
+import java.util.concurrent.*;
+
+// Fixed thread pool
+ExecutorService executor = Executors.newFixedThreadPool(10);
+
+// Submit tasks
+Future<Integer> future = executor.submit(() -> {
+    return 42;
+});
+
+// Get result
+Integer result = future.get();  // Blocks until complete
+
+// Shutdown
+executor.shutdown();
+executor.awaitTermination(1, TimeUnit.MINUTES);
+```
+
+### ThreadPoolExecutor (Custom Configuration)
+
+```java
+ThreadPoolExecutor executor = new ThreadPoolExecutor(
+    5,                      // corePoolSize
+    10,                     // maximumPoolSize
+    60L,                    // keepAliveTime
+    TimeUnit.SECONDS,
+    new LinkedBlockingQueue<>(100),  // workQueue
+    new ThreadPoolExecutor.CallerRunsPolicy()  // rejection policy
+);
+```
+
+---
+
+## Best Practices
+
+### 1. Immutability (Best Thread Safety)
+
+```java
+public final class ImmutablePerson {
+    private final String name;
+    private final int age;
+
+    public ImmutablePerson(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() { return name; }
+    public int getAge() { return age; }
+}
+```
+
+### 2. Minimize Synchronization Scope
+
+```java
+// BAD - Entire method synchronized
+public synchronized void process() {
+    doSomethingExpensive();  // No shared state
+    updateSharedState();     // Shared state
+}
+
+// GOOD - Only critical section synchronized
+public void process() {
+    doSomethingExpensive();
+    synchronized(this) {
+        updateSharedState();
+    }
+}
+```
+
+### 3. Use Higher-Level Concurrency Utilities
+
+```java
+// Instead of wait/notify
+CountDownLatch latch = new CountDownLatch(3);
+Semaphore semaphore = new Semaphore(5);
+CyclicBarrier barrier = new CyclicBarrier(3);
+```
+
+### 4. Volatile for Simple Flags
+
+```java
+class FlagExample {
+    private volatile boolean running = true;
+
+    public void stop() {
+        running = false;  // Visible to all threads immediately
+    }
+
+    public void run() {
+        while (running) {
+            // Do work
+        }
+    }
+}
+```
+
+---
+
+## Progressive Example
+
+### Version 1: Unsafe Bank Account
+
+```java
+class BankAccount {
+    private double balance;
+
+    public BankAccount(double initialBalance) {
+        this.balance = initialBalance;
+    }
+
+    public void deposit(double amount) {
+        balance += amount;  // RACE CONDITION
+    }
+
+    public void withdraw(double amount) {
+        if (balance >= amount) {  // RACE CONDITION
+            balance -= amount;
+        }
+    }
+
+    public double getBalance() {
+        return balance;  // RACE CONDITION
+    }
+}
+```
+
+**Problems:**
+- Multiple threads can read/modify balance simultaneously
+- Check-then-act pattern in withdraw() is not atomic
+- Lost updates possible
+
+---
+
+### Version 2: Synchronized Methods
+
+```java
+class BankAccount {
+    private double balance;
+
+    public BankAccount(double initialBalance) {
+        this.balance = initialBalance;
+    }
+
+    public synchronized void deposit(double amount) {
+        balance += amount;
+    }
+
+    public synchronized void withdraw(double amount) {
+        if (balance >= amount) {
+            balance -= amount;
+        }
+    }
+
+    public synchronized double getBalance() {
+        return balance;
+    }
+}
+```
+
+**Improvements:**
+- Thread-safe operations
+- Simple to implement
+
+**Drawbacks:**
+- Locks entire object for every operation
+- Poor scalability
+
+---
+
+### Version 3: ReentrantLock
+
+```java
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+class BankAccount {
+    private double balance;
+    private final Lock lock = new ReentrantLock();
+
+    public BankAccount(double initialBalance) {
+        this.balance = initialBalance;
+    }
+
+    public void deposit(double amount) {
+        lock.lock();
+        try {
+            balance += amount;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean withdraw(double amount) {
+        lock.lock();
+        try {
+            if (balance >= amount) {
+                balance -= amount;
+                return true;
+            }
+            return false;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public double getBalance() {
+        lock.lock();
+        try {
+            return balance;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    // Try to withdraw with timeout
+    public boolean tryWithdraw(double amount, long timeout, TimeUnit unit)
+            throws InterruptedException {
+        if (lock.tryLock(timeout, unit)) {
+            try {
+                if (balance >= amount) {
+                    balance -= amount;
+                    return true;
+                }
+                return false;
+            } finally {
+                lock.unlock();
+            }
+        }
+        return false;  // Couldn't acquire lock
+    }
+}
+```
+
+**Improvements:**
+- More flexible than synchronized
+- Can timeout on lock acquisition
+- Fair lock option available
+
+---
+
+### Version 4: ReadWriteLock (Optimal)
+
+```java
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+class BankAccount {
+    private double balance;
+    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+    public BankAccount(double initialBalance) {
+        this.balance = initialBalance;
+    }
+
+    public void deposit(double amount) {
+        rwLock.writeLock().lock();
+        try {
+            balance += amount;
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public boolean withdraw(double amount) {
+        rwLock.writeLock().lock();
+        try {
+            if (balance >= amount) {
+                balance -= amount;
+                return true;
+            }
+            return false;
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public double getBalance() {
+        rwLock.readLock().lock();
+        try {
+            return balance;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+
+    // Multiple threads can check balance simultaneously
+    public boolean hasEnoughBalance(double amount) {
+        rwLock.readLock().lock();
+        try {
+            return balance >= amount;
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+}
+```
+
+**Improvements:**
+- Multiple threads can read balance concurrently
+- Only write operations block each other
+- Best performance for read-heavy workloads
+
+---
+
+### Version 5: Atomic with Optimistic Locking (Advanced)
+
+```java
+import java.util.concurrent.atomic.AtomicReference;
+
+class BankAccount {
+    private static class Balance {
+        final double amount;
+
+        Balance(double amount) {
+            this.amount = amount;
+        }
+    }
+
+    private final AtomicReference<Balance> balance;
+
+    public BankAccount(double initialBalance) {
+        this.balance = new AtomicReference<>(new Balance(initialBalance));
+    }
+
+    public void deposit(double amount) {
+        Balance current, updated;
+        do {
+            current = balance.get();
+            updated = new Balance(current.amount + amount);
+        } while (!balance.compareAndSet(current, updated));
+    }
+
+    public boolean withdraw(double amount) {
+        Balance current, updated;
+        do {
+            current = balance.get();
+            if (current.amount < amount) {
+                return false;
+            }
+            updated = new Balance(current.amount - amount);
+        } while (!balance.compareAndSet(current, updated));
+        return true;
+    }
+
+    public double getBalance() {
+        return balance.get().amount;
+    }
+}
+```
+
+**Improvements:**
+- Lock-free implementation
+- Compare-and-swap (CAS) operations
+- Better performance under high contention
+- No thread blocking
+
+**Best for:**
+- High-concurrency scenarios
+- Low contention environments
+- When operations are fast
+
+---
+
+## Summary: Which Approach to Use?
+
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Simple counter | `AtomicInteger` |
+| Read-heavy operations | `ReadWriteLock` or `StampedLock` |
+| Complex critical sections | `ReentrantLock` |
+| Legacy code / Simple cases | `synchronized` |
+| No shared mutable state | Immutable objects |
+| Collections | `ConcurrentHashMap`, `CopyOnWriteArrayList` |
+| Producer-Consumer | `BlockingQueue` |
+| High contention | Lock-free with `Atomic*` classes |
+
+### Performance Hierarchy (Fastest to Slowest)
+1. Immutable objects (no synchronization needed)
+2. Atomic variables with CAS
+3. `ReadWriteLock` (for read-heavy workloads)
+4. `StampedLock` optimistic reads
+5. `ReentrantLock`
+6. `synchronized`
+7. Synchronized collections (legacy)
+
+---
+
+## Testing Thread Safety
+
+```java
+import java.util.concurrent.*;
+
+class ThreadSafetyTest {
+    public static void main(String[] args) throws InterruptedException {
+        BankAccount account = new BankAccount(1000);
+        ExecutorService executor = Executors.newFixedThreadPool(100);
+
+        // Submit 1000 deposits of $1
+        for (int i = 0; i < 1000; i++) {
+            executor.submit(() -> account.deposit(1));
+        }
+
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.MINUTES);
+
+        // Should be exactly 2000
+        System.out.println("Final balance: " + account.getBalance());
+    }
+}
+```
+
+---
+
+## Key Takeaways
+
+1. **Prefer immutability** - No synchronization needed
+2. **Use concurrent collections** - Better than manual synchronization
+3. **Minimize lock scope** - Lock only what's necessary
+4. **Use `java.util.concurrent` utilities** - Higher-level abstractions
+5. **Atomic variables for counters** - Simple and fast
+6. **ReadWriteLock for reads** - Allow concurrent reads
+7. **Always unlock in finally** - Prevent deadlocks
+8. **Test with concurrent load** - Race conditions are hard to spot
+
+---
+
+**Remember:** The best thread-safe code is code that doesn't share mutable state!

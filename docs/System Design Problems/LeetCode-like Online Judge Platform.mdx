@@ -1,0 +1,1686 @@
+# LeetCode-like Online Judge Platform
+
+## Table of Contents
+1. [Requirements](#requirements)
+2. [Capacity Estimation](#capacity-estimation)
+3. [High-Level Design (HLD)](#high-level-design)
+4. [Deep Dives](#deep-dives)
+5. [Database Schema](#database-schema)
+6. [API Design](#api-design)
+7. [Scalability & Optimization](#scalability-optimization)
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+**Core Features:**
+1. **User Management**
+   - User registration, login, authentication
+   - User profiles with submission history
+   - Premium/free tier management
+
+2. **Problem Management**
+   - Browse problems by difficulty, topic, company tags
+   - View problem description, examples, constraints
+   - Search and filter problems
+
+3. **Code Submission & Execution**
+   - Submit code in multiple languages (Java, Python, C++, JavaScript)
+   - Execute code against test cases
+   - Return results (Accepted, Wrong Answer, TLE, MLE, Runtime Error)
+   - Show execution time and memory usage
+
+4. **Test Cases**
+   - Run against hidden test cases
+   - Allow users to run custom test cases
+   - Support edge cases and performance tests
+
+5. **Leaderboard & Statistics**
+   - Track user rankings
+   - Show submission statistics
+   - Display acceptance rate
+
+6. **Discussion Forum**
+   - Post and view solutions
+   - Comment and upvote discussions
+
+### Non-Functional Requirements
+
+1. **Performance**
+   - Code execution < 10 seconds
+   - API response time < 200ms
+   - Support concurrent submissions
+
+2. **Scalability**
+   - Handle 10M+ users
+   - Process 100K+ submissions/hour during peak
+
+3. **Security**
+   - Sandbox code execution
+   - Prevent malicious code
+   - Rate limiting on submissions
+
+4. **Availability**
+   - 99.9% uptime
+   - Fault-tolerant architecture
+
+5. **Consistency**
+   - Strong consistency for submission results
+   - Eventual consistency for leaderboards
+
+---
+
+## Capacity Estimation
+
+### Traffic Estimates
+
+**Assumptions:**
+- Total users: 10 million
+- Daily Active Users (DAU): 1 million (10%)
+- Average submissions per active user: 5/day
+- Read:Write ratio: 80:20
+
+**Daily Metrics:**
+```
+Daily Submissions = 1M users × 5 submissions = 5M submissions/day
+Submissions per second (avg) = 5M / 86400 = ~58 submissions/sec
+Peak submissions (3x avg) = 174 submissions/sec
+
+Problem views per day = 1M users × 20 views = 20M views/day
+Views per second (avg) = 20M / 86400 = ~231 views/sec
+Peak views = 693 views/sec
+```
+
+### Storage Estimates
+
+**Code Submissions:**
+```
+Average code size = 2 KB
+Daily submissions = 5M
+Daily storage = 5M × 2 KB = 10 GB/day
+Annual storage = 10 GB × 365 = 3.65 TB/year
+With 3-year retention = ~11 TB
+```
+
+**Test Cases:**
+```
+Total problems = 3000
+Average test cases per problem = 100
+Average test case size = 1 KB
+Total test case storage = 3000 × 100 × 1 KB = 300 MB
+```
+
+**User Data:**
+```
+User profile = 10 KB per user
+10M users × 10 KB = 100 GB
+```
+
+**Total Storage (3 years):**
+```
+Submissions: 11 TB
+Test Cases: 300 MB
+User Data: 100 GB
+Problem Descriptions: 10 GB
+Total: ~11.2 TB
+```
+
+### Bandwidth Estimates
+
+**Incoming (Write):**
+```
+Submissions: 58 req/sec × 2 KB = 116 KB/sec
+Peak: 174 req/sec × 2 KB = 348 KB/sec = ~2.8 Mbps
+```
+
+**Outgoing (Read):**
+```
+Problem views: 231 req/sec × 50 KB = 11.5 MB/sec
+Results: 58 req/sec × 5 KB = 290 KB/sec
+Total: ~12 MB/sec = ~96 Mbps
+Peak: ~288 Mbps
+```
+
+### Memory Estimates
+
+**Cache Requirements:**
+```
+Popular problems (top 100): 100 × 50 KB = 5 MB
+User sessions (100K concurrent): 100K × 1 KB = 100 MB
+Leaderboard data: 50 MB
+Total cache: ~200 MB (with overhead: 500 MB)
+```
+
+### Server Estimates
+
+**Application Servers:**
+```
+Requests per second (total): 289 req/sec (avg), 867 req/sec (peak)
+Requests per server: 100 req/sec
+Required servers: 867 / 100 = ~9 servers (with redundancy: 12 servers)
+```
+
+**Execution Workers:**
+```
+Peak submissions: 174 submissions/sec
+Execution time per submission: 5 sec average
+Concurrent executions needed: 174 × 5 = 870 workers
+With safety margin: 1000 workers
+```
+
+---
+
+## High-Level Design
+
+### Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        WEB[Web Browser]
+        MOBILE[Mobile App]
+    end
+
+    subgraph "CDN & Load Balancer"
+        CDN[CDN<br/>Static Content]
+        LB[Load Balancer<br/>Nginx/HAProxy]
+    end
+
+    subgraph "Application Layer"
+        API1[API Server 1]
+        API2[API Server 2]
+        API3[API Server N]
+    end
+
+    subgraph "Service Layer"
+        AUTH[Auth Service]
+        PROBLEM[Problem Service]
+        SUBMISSION[Submission Service]
+        EXECUTION[Execution Service]
+        LEADERBOARD[Leaderboard Service]
+    end
+
+    subgraph "Message Queue"
+        QUEUE[Message Queue<br/>Kafka/RabbitMQ]
+    end
+
+    subgraph "Execution Workers"
+        WORKER1[Worker Pool 1<br/>Docker Containers]
+        WORKER2[Worker Pool 2<br/>Docker Containers]
+        WORKER3[Worker Pool N<br/>Docker Containers]
+    end
+
+    subgraph "Cache Layer"
+        REDIS1[Redis Cluster]
+        REDIS2[Redis - Leaderboard]
+    end
+
+    subgraph "Database Layer"
+        POSTGRES[(PostgreSQL<br/>Primary)]
+        REPLICA1[(Read Replica 1)]
+        REPLICA2[(Read Replica 2)]
+        MONGO[(MongoDB<br/>Submissions)]
+    end
+
+    subgraph "Storage Layer"
+        S3[Object Storage<br/>S3/MinIO]
+    end
+
+    subgraph "Monitoring"
+        METRICS[Metrics<br/>Prometheus]
+        LOGS[Logs<br/>ELK Stack]
+    end
+
+    WEB --> CDN
+    MOBILE --> CDN
+    CDN --> LB
+    LB --> API1
+    LB --> API2
+    LB --> API3
+
+    API1 --> AUTH
+    API1 --> PROBLEM
+    API1 --> SUBMISSION
+    API2 --> AUTH
+    API2 --> PROBLEM
+    API2 --> SUBMISSION
+    API3 --> LEADERBOARD
+
+    SUBMISSION --> QUEUE
+    QUEUE --> EXECUTION
+    EXECUTION --> WORKER1
+    EXECUTION --> WORKER2
+    EXECUTION --> WORKER3
+
+    AUTH --> REDIS1
+    PROBLEM --> REDIS1
+    LEADERBOARD --> REDIS2
+
+    PROBLEM --> POSTGRES
+    AUTH --> POSTGRES
+    SUBMISSION --> MONGO
+    POSTGRES --> REPLICA1
+    POSTGRES --> REPLICA2
+
+    WORKER1 --> S3
+    WORKER2 --> S3
+    WORKER3 --> S3
+
+    API1 --> METRICS
+    API2 --> METRICS
+    API3 --> METRICS
+    EXECUTION --> LOGS
+    WORKER1 --> LOGS
+```
+
+### Component Description
+
+**1. Client Layer**
+- Web application (React/Vue)
+- Mobile apps (iOS/Android)
+- Code editor integration
+
+**2. Load Balancer**
+- Distributes traffic across API servers
+- Health checks and failover
+- SSL termination
+
+**3. API Gateway/Application Servers**
+- RESTful API endpoints
+- Request validation
+- Rate limiting
+- Authentication/Authorization
+
+**4. Service Layer**
+- Microservices architecture
+- Independent scaling
+- Service mesh for communication
+
+**5. Message Queue**
+- Async processing of submissions
+- Decouples submission from execution
+- Ensures reliability
+
+**6. Execution Workers**
+- Containerized execution environment
+- Sandboxed code execution
+- Resource limits (CPU, memory, time)
+
+**7. Cache Layer**
+- Redis for session management
+- Cache problem data
+- Store leaderboard in sorted sets
+
+**8. Database Layer**
+- PostgreSQL for relational data
+- MongoDB for submissions (document store)
+- Read replicas for scaling reads
+
+**9. Object Storage**
+- Store test case files
+- Store large submission outputs
+
+---
+
+## Deep Dives
+
+### Deep Dive 1: Code Execution Service
+
+#### Architecture
+
+```mermaid
+graph LR
+    subgraph "Submission Flow"
+        USER[User Submits Code] --> API[API Server]
+        API --> VALIDATE[Validate Request]
+        VALIDATE --> QUEUE[Kafka Queue]
+        QUEUE --> DISPATCHER[Job Dispatcher]
+        DISPATCHER --> POOL[Worker Pool Manager]
+        POOL --> WORKER1[Worker Container 1]
+        POOL --> WORKER2[Worker Container 2]
+        POOL --> WORKER3[Worker Container N]
+
+        WORKER1 --> SANDBOX[Sandbox Environment<br/>Docker/gVisor]
+        SANDBOX --> COMPILE[Compile Code]
+        COMPILE --> EXECUTE[Run Test Cases]
+        EXECUTE --> RESULT[Collect Results]
+        RESULT --> DB[(Store Results)]
+        RESULT --> NOTIFY[Notify User<br/>WebSocket]
+    end
+
+    subgraph "Security Layers"
+        SANDBOX --> SECCOMP[Seccomp Filters]
+        SANDBOX --> CGROUP[CGroups Limits]
+        SANDBOX --> NAMESPACE[Namespace Isolation]
+    end
+```
+
+#### Implementation Details
+
+**1. Submission Processing**
+
+```python
+# Pseudo-code for submission service
+class SubmissionService:
+    def submit_code(self, user_id, problem_id, code, language):
+        # 1. Validate submission
+        if not self.validate_submission(code, language):
+            return {"error": "Invalid submission"}
+
+        # 2. Create submission record
+        submission = {
+            "submission_id": generate_uuid(),
+            "user_id": user_id,
+            "problem_id": problem_id,
+            "code": code,
+            "language": language,
+            "status": "QUEUED",
+            "created_at": timestamp()
+        }
+
+        # 3. Store in database
+        db.submissions.insert(submission)
+
+        # 4. Publish to message queue
+        kafka.publish("code-execution", {
+            "submission_id": submission["submission_id"],
+            "problem_id": problem_id,
+            "code": code,
+            "language": language,
+            "test_cases": self.get_test_cases(problem_id)
+        })
+
+        return {"submission_id": submission["submission_id"]}
+```
+
+**2. Worker Execution**
+
+```python
+# Pseudo-code for execution worker
+class ExecutionWorker:
+    def execute_submission(self, job):
+        submission_id = job["submission_id"]
+
+        try:
+            # 1. Create isolated container
+            container = docker.create_container(
+                image=f"judge-{job['language']}",
+                mem_limit="256m",
+                cpu_quota=50000,  # 50% of one core
+                network_disabled=True,
+                security_opt=["no-new-privileges"],
+                user="nobody"
+            )
+
+            # 2. Copy code into container
+            container.put_archive("/workspace/", job["code"])
+
+            # 3. Compile code (if needed)
+            if job["language"] in ["java", "cpp", "c"]:
+                compile_result = container.exec_run(
+                    cmd=f"compile.sh",
+                    timeout=10
+                )
+                if compile_result.exit_code != 0:
+                    return self.save_result(submission_id, "COMPILATION_ERROR")
+
+            # 4. Run test cases
+            results = []
+            for test_case in job["test_cases"]:
+                result = self.run_test_case(container, test_case)
+                results.append(result)
+
+                # Early exit on wrong answer
+                if result["status"] != "ACCEPTED":
+                    break
+
+            # 5. Aggregate results
+            final_status = self.aggregate_results(results)
+            self.save_result(submission_id, final_status, results)
+
+        finally:
+            # Clean up container
+            container.remove(force=True)
+
+    def run_test_case(self, container, test_case):
+        start_time = time.time()
+
+        # Execute with timeout
+        exec_result = container.exec_run(
+            cmd=f"python /workspace/solution.py",
+            stdin=test_case["input"],
+            timeout=test_case["time_limit"]
+        )
+
+        execution_time = time.time() - start_time
+
+        # Check result
+        if execution_time > test_case["time_limit"]:
+            return {"status": "TIME_LIMIT_EXCEEDED"}
+
+        if exec_result.exit_code != 0:
+            return {"status": "RUNTIME_ERROR"}
+
+        if self.compare_output(exec_result.output, test_case["expected"]):
+            return {
+                "status": "ACCEPTED",
+                "time": execution_time,
+                "memory": exec_result.memory_used
+            }
+        else:
+            return {"status": "WRONG_ANSWER"}
+```
+
+**3. Security Measures**
+
+```yaml
+# Docker container security configuration
+container_config:
+  # Resource limits
+  memory: 256MB
+  cpu_quota: 0.5 cores
+  pids_limit: 50
+
+  # Security options
+  security_opt:
+    - no-new-privileges
+    - seccomp=strict.json
+
+  # Capabilities (drop all, add only needed)
+  cap_drop:
+    - ALL
+
+  # Read-only root filesystem
+  read_only: true
+
+  # Temporary filesystem for /tmp
+  tmpfs:
+    /tmp: size=10M
+
+  # Network disabled
+  network_mode: none
+
+  # User namespace
+  user: 1000:1000
+
+  # Time limit
+  timeout: 10s
+```
+
+---
+
+### Deep Dive 2: Leaderboard Service
+
+#### Architecture
+
+```mermaid
+graph TB
+    subgraph "Leaderboard System"
+        EVENT[Submission Event] --> PROCESSOR[Event Processor]
+        PROCESSOR --> REDIS[Redis Sorted Set]
+        REDIS --> RANK[Rank Calculator]
+
+        subgraph "Redis Data Structure"
+            GLOBAL[Global Leaderboard<br/>ZSET: score → user_id]
+            DAILY[Daily Leaderboard<br/>ZSET with TTL]
+            PROBLEM[Problem-wise<br/>ZSET per problem]
+        end
+
+        RANK --> GLOBAL
+        RANK --> DAILY
+        RANK --> PROBLEM
+
+        API[API Request] --> CACHE{Cache Hit?}
+        CACHE -->|Yes| RETURN[Return Cached]
+        CACHE -->|No| COMPUTE[Compute from Redis]
+        COMPUTE --> UPDATE_CACHE[Update Cache]
+        UPDATE_CACHE --> RETURN
+    end
+```
+
+#### Implementation
+
+```python
+# Leaderboard service implementation
+class LeaderboardService:
+    def __init__(self):
+        self.redis = RedisClient()
+        self.cache = Cache()
+
+    def update_user_score(self, user_id, problem_id, solved):
+        """Update user score when they solve a problem"""
+        if solved:
+            # 1. Update global leaderboard
+            current_score = self.redis.zscore("leaderboard:global", user_id) or 0
+            new_score = current_score + self.calculate_points(problem_id)
+            self.redis.zadd("leaderboard:global", {user_id: new_score})
+
+            # 2. Update daily leaderboard (with 24h TTL)
+            self.redis.zadd(
+                f"leaderboard:daily:{today()}",
+                {user_id: new_score}
+            )
+            self.redis.expire(f"leaderboard:daily:{today()}", 86400)
+
+            # 3. Update problem-specific leaderboard
+            self.redis.zadd(
+                f"leaderboard:problem:{problem_id}",
+                {user_id: time.time()}  # Score = submission time
+            )
+
+            # 4. Invalidate cache
+            self.cache.delete(f"rank:{user_id}")
+
+    def get_top_users(self, limit=100, offset=0):
+        """Get top N users from leaderboard"""
+        # Check cache first
+        cache_key = f"leaderboard:top:{limit}:{offset}"
+        cached = self.cache.get(cache_key)
+        if cached:
+            return cached
+
+        # Get from Redis
+        result = self.redis.zrevrange(
+            "leaderboard:global",
+            offset,
+            offset + limit - 1,
+            withscores=True
+        )
+
+        # Format response
+        leaderboard = [
+            {
+                "rank": offset + i + 1,
+                "user_id": user_id,
+                "score": score,
+                "user_info": self.get_user_info(user_id)
+            }
+            for i, (user_id, score) in enumerate(result)
+        ]
+
+        # Cache for 1 minute
+        self.cache.set(cache_key, leaderboard, ttl=60)
+        return leaderboard
+
+    def get_user_rank(self, user_id):
+        """Get rank of a specific user"""
+        cache_key = f"rank:{user_id}"
+        cached = self.cache.get(cache_key)
+        if cached:
+            return cached
+
+        # Get rank from Redis (0-indexed, so add 1)
+        rank = self.redis.zrevrank("leaderboard:global", user_id)
+        if rank is None:
+            return None
+
+        rank_info = {
+            "rank": rank + 1,
+            "score": self.redis.zscore("leaderboard:global", user_id),
+            "total_users": self.redis.zcard("leaderboard:global")
+        }
+
+        self.cache.set(cache_key, rank_info, ttl=300)
+        return rank_info
+```
+
+---
+
+### Deep Dive 3: Rate Limiting & Anti-Cheating
+
+#### Rate Limiting Strategy
+
+```mermaid
+graph LR
+    REQUEST[User Request] --> LIMITER{Rate Limiter}
+
+    subgraph "Multi-Level Rate Limiting"
+        LIMITER --> IP[IP-based<br/>100 req/min]
+        LIMITER --> USER[User-based<br/>10 submissions/min]
+        LIMITER --> GLOBAL[Global<br/>10K req/sec]
+    end
+
+    IP -->|Allowed| PROCESS[Process Request]
+    USER -->|Allowed| PROCESS
+    GLOBAL -->|Allowed| PROCESS
+
+    IP -->|Exceeded| REJECT[429 Too Many Requests]
+    USER -->|Exceeded| REJECT
+    GLOBAL -->|Exceeded| REJECT
+```
+
+#### Implementation
+
+```python
+# Token bucket rate limiter
+class RateLimiter:
+    def __init__(self):
+        self.redis = RedisClient()
+
+    def is_allowed(self, key, max_requests, window_seconds):
+        """Token bucket algorithm using Redis"""
+        current = time.time()
+        window_key = f"rate_limit:{key}:{int(current // window_seconds)}"
+
+        # Atomic increment
+        pipe = self.redis.pipeline()
+        pipe.incr(window_key)
+        pipe.expire(window_key, window_seconds)
+        result = pipe.execute()
+
+        request_count = result[0]
+        return request_count <= max_requests
+
+    def check_submission_limit(self, user_id):
+        """Check multiple rate limits for submission"""
+        checks = [
+            ("submission", 10, 60),      # 10 per minute
+            ("submission", 50, 3600),    # 50 per hour
+            ("submission", 200, 86400)   # 200 per day
+        ]
+
+        for prefix, limit, window in checks:
+            if not self.is_allowed(f"{prefix}:{user_id}", limit, window):
+                return False, f"Rate limit exceeded: {limit} per {window}s"
+
+        return True, None
+
+# Anti-cheating measures
+class AntiCheatService:
+    def detect_plagiarism(self, submission):
+        """Detect code plagiarism"""
+        # 1. Normalize code (remove comments, whitespace)
+        normalized = self.normalize_code(submission.code)
+
+        # 2. Generate hash
+        code_hash = hashlib.sha256(normalized.encode()).hexdigest()
+
+        # 3. Check against recent submissions
+        recent_key = f"submissions:recent:{submission.problem_id}"
+        recent_hashes = self.redis.lrange(recent_key, 0, 1000)
+
+        if code_hash in recent_hashes:
+            return True, "Potential plagiarism detected"
+
+        # 4. Store hash
+        self.redis.lpush(recent_key, code_hash)
+        self.redis.ltrim(recent_key, 0, 1000)
+        self.redis.expire(recent_key, 86400)
+
+        return False, None
+
+    def detect_cheating_patterns(self, user_id):
+        """Detect suspicious patterns"""
+        patterns = []
+
+        # 1. Too fast submissions
+        submissions = self.get_recent_submissions(user_id, minutes=10)
+        if len(submissions) > 20:
+            patterns.append("Suspiciously high submission rate")
+
+        # 2. Instant correct solutions
+        instant_solves = [s for s in submissions
+                         if s.first_attempt and s.time < 10]
+        if len(instant_solves) > 5:
+            patterns.append("Multiple instant solutions")
+
+        # 3. Identical submission from multiple accounts
+        # (check using code hash similarity)
+
+        return patterns
+```
+
+---
+
+### Deep Dive 4: Database Schema & Indexing
+
+#### Schema Design
+
+```sql
+-- Users table
+CREATE TABLE users (
+    user_id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    is_premium BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_email (email)
+);
+
+-- Problems table
+CREATE TABLE problems (
+    problem_id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    difficulty ENUM('easy', 'medium', 'hard') NOT NULL,
+    description TEXT NOT NULL,
+    acceptance_rate DECIMAL(5,2),
+    total_submissions INT DEFAULT 0,
+    total_accepted INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_difficulty (difficulty),
+    INDEX idx_slug (slug),
+    INDEX idx_acceptance_rate (acceptance_rate)
+);
+
+-- Problem tags (many-to-many)
+CREATE TABLE problem_tags (
+    problem_id BIGINT REFERENCES problems(problem_id),
+    tag VARCHAR(50) NOT NULL,
+    PRIMARY KEY (problem_id, tag),
+    INDEX idx_tag (tag)
+);
+
+-- Test cases (stored separately for security)
+CREATE TABLE test_cases (
+    test_case_id BIGSERIAL PRIMARY KEY,
+    problem_id BIGINT REFERENCES problems(problem_id),
+    input_file_path VARCHAR(500),
+    output_file_path VARCHAR(500),
+    is_sample BOOLEAN DEFAULT FALSE,
+    time_limit INT DEFAULT 2000, -- milliseconds
+    memory_limit INT DEFAULT 256, -- MB
+    INDEX idx_problem_id (problem_id)
+);
+
+-- User submissions (MongoDB for flexibility)
+{
+    "_id": ObjectId("..."),
+    "submission_id": "uuid",
+    "user_id": 12345,
+    "problem_id": 1,
+    "language": "python",
+    "code": "def solution()...",
+    "status": "ACCEPTED",
+    "test_results": [
+        {
+            "test_case_id": 1,
+            "status": "ACCEPTED",
+            "execution_time": 45,
+            "memory_used": 12
+        }
+    ],
+    "total_time": 152,
+    "total_memory": 45,
+    "created_at": ISODate("..."),
+    "indexes": [
+        {"user_id": 1, "created_at": -1},
+        {"problem_id": 1, "status": 1},
+        {"created_at": 1}
+    ]
+}
+
+-- User problem status (PostgreSQL)
+CREATE TABLE user_problem_status (
+    user_id BIGINT REFERENCES users(user_id),
+    problem_id BIGINT REFERENCES problems(problem_id),
+    status ENUM('attempted', 'solved') NOT NULL,
+    attempts INT DEFAULT 1,
+    first_solved_at TIMESTAMP,
+    last_attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, problem_id),
+    INDEX idx_user_solved (user_id, status)
+);
+
+-- User statistics (materialized view)
+CREATE MATERIALIZED VIEW user_statistics AS
+SELECT
+    u.user_id,
+    u.username,
+    COUNT(DISTINCT ups.problem_id) FILTER (WHERE ups.status = 'solved') as solved_count,
+    COUNT(DISTINCT ups.problem_id) FILTER (WHERE ups.status = 'attempted') as attempted_count,
+    COUNT(DISTINCT ups.problem_id) FILTER (
+        WHERE ups.status = 'solved' AND p.difficulty = 'easy'
+    ) as easy_solved,
+    COUNT(DISTINCT ups.problem_id) FILTER (
+        WHERE ups.status = 'solved' AND p.difficulty = 'medium'
+    ) as medium_solved,
+    COUNT(DISTINCT ups.problem_id) FILTER (
+        WHERE ups.status = 'solved' AND p.difficulty = 'hard'
+    ) as hard_solved
+FROM users u
+LEFT JOIN user_problem_status ups ON u.user_id = ups.user_id
+LEFT JOIN problems p ON ups.problem_id = p.problem_id
+GROUP BY u.user_id, u.username;
+
+-- Refresh periodically
+REFRESH MATERIALIZED VIEW CONCURRENTLY user_statistics;
+```
+
+---
+
+## Database Schema
+
+### Partitioning Strategy
+
+```sql
+-- Partition submissions by date for better performance
+CREATE TABLE submissions_2024_01 PARTITION OF submissions
+    FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
+
+CREATE TABLE submissions_2024_02 PARTITION OF submissions
+    FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
+-- ... etc
+```
+
+---
+
+## API Design
+
+### REST API Endpoints
+
+```yaml
+# Authentication
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/logout
+GET    /api/v1/auth/me
+
+# Problems
+GET    /api/v1/problems                    # List problems
+GET    /api/v1/problems/:slug              # Get problem details
+GET    /api/v1/problems/:slug/submissions  # Get user submissions
+POST   /api/v1/problems/:slug/submit       # Submit solution
+POST   /api/v1/problems/:slug/run          # Run custom test
+
+# Submissions
+GET    /api/v1/submissions/:id             # Get submission details
+GET    /api/v1/submissions/:id/status      # Poll submission status
+
+# Leaderboard
+GET    /api/v1/leaderboard/global          # Global leaderboard
+GET    /api/v1/leaderboard/daily           # Daily leaderboard
+GET    /api/v1/users/:id/rank              # User rank
+
+# User
+GET    /api/v1/users/:id/profile           # User profile
+GET    /api/v1/users/:id/statistics        # User stats
+GET    /api/v1/users/:id/submissions       # User submission history
+```
+
+### Example API Request/Response
+
+```json
+// POST /api/v1/problems/two-sum/submit
+{
+    "language": "python",
+    "code": "class Solution:\n    def twoSum(self, nums, target):\n        ..."
+}
+
+// Response
+{
+    "submission_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "QUEUED",
+    "message": "Your submission is being processed"
+}
+
+// GET /api/v1/submissions/550e8400-e29b-41d4-a716-446655440000
+{
+    "submission_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "ACCEPTED",
+    "runtime": 152,
+    "memory": 45.2,
+    "language": "python",
+    "passed_tests": 58,
+    "total_tests": 58,
+    "percentile": {
+        "runtime": 85.2,
+        "memory": 72.1
+    }
+}
+```
+
+---
+
+## Scalability & Optimization
+
+### Caching Strategy
+
+```mermaid
+graph TB
+    REQUEST[User Request] --> CDN{CDN Cache}
+    CDN -->|HIT| RETURN1[Return]
+    CDN -->|MISS| LB[Load Balancer]
+
+    LB --> APP[App Server]
+    APP --> REDIS{Redis Cache}
+    REDIS -->|HIT| RETURN2[Return]
+    REDIS -->|MISS| DB[(Database)]
+
+    DB --> REDIS
+    REDIS --> APP
+    APP --> RETURN2
+```
+
+### Cache Layers
+
+```python
+# Multi-level caching implementation
+class CacheManager:
+    def __init__(self):
+        self.l1_cache = LRUCache(1000)  # In-memory
+        self.l2_cache = RedisCache()    # Distributed
+
+    def get_problem(self, problem_id):
+        # L1: In-memory cache
+        cached = self.l1_cache.get(f"problem:{problem_id}")
+        if cached:
+            return cached
+
+        # L2: Redis cache
+        cached = self.l2_cache.get(f"problem:{problem_id}")
+        if cached:
+            self.l1_cache.set(f"problem:{problem_id}", cached)
+            return cached
+
+        # L3: Database
+        problem = db.get_problem(problem_id)
+
+        # Populate caches
+        self.l2_cache.set(f"problem:{problem_id}", problem, ttl=3600)
+        self.l1_cache.set(f"problem:{problem_id}", problem)
+
+        return problem
+```
+
+### Database Optimization
+
+**1. Read Replicas**
+- Master: Handle writes
+- Replicas: Handle reads (problem lists, user stats)
+- Reduces load on master
+
+**2. Sharding Strategy**
+```python
+# Shard submissions by user_id
+def get_shard(user_id):
+    return user_id % NUM_SHARDS
+
+# Consistent hashing for problem distribution
+class ConsistentHash:
+    def __init__(self, nodes):
+        self.ring = {}
+        self.sorted_keys = []
+        for node in nodes:
+            self.add_node(node)
+
+    def add_node(self, node):
+        for i in range(150):  # Virtual nodes
+            key = hashlib.md5(f"{node}:{i}".encode()).hexdigest()
+            self.ring[key] = node
+            self.sorted_keys.append(key)
+        self.sorted_keys.sort()
+
+    def get_node(self, key):
+        hash_key = hashlib.md5(str(key).encode()).hexdigest()
+        for ring_key in self.sorted_keys:
+            if hash_key <= ring_key:
+                return self.ring[ring_key]
+        return self.ring[self.sorted_keys[0]]
+```
+
+**3. Indexing Strategy**
+```sql
+-- Compound indexes for common queries
+CREATE INDEX idx_user_status ON user_problem_status(user_id, status, last_attempted_at);
+CREATE INDEX idx_problem_difficulty ON problems(difficulty, acceptance_rate);
+CREATE INDEX idx_submission_user_time ON submissions(user_id, created_at DESC);
+
+-- Partial index for active users
+CREATE INDEX idx_active_users ON users(user_id)
+WHERE last_login > NOW() - INTERVAL '30 days';
+
+-- Full-text search index
+CREATE INDEX idx_problem_search ON problems
+USING GIN(to_tsvector('english', title || ' ' || description));
+```
+
+---
+
+### Horizontal Scaling
+
+**Auto-scaling Configuration**
+
+```yaml
+# Kubernetes HPA (Horizontal Pod Autoscaler)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-server-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-server
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Worker pool auto-scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: execution-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: execution-worker
+  minReplicas: 10
+  maxReplicas: 100
+  metrics:
+  - type: External
+    external:
+      metric:
+        name: queue_depth
+        selector:
+          matchLabels:
+            queue_name: code-execution
+      target:
+        type: AverageValue
+        averageValue: "10"  # Scale up when queue has 10+ items per worker
+```
+
+---
+
+### Performance Optimization
+
+**1. Connection Pooling**
+
+```python
+# Database connection pooling
+from sqlalchemy import create_engine, pool
+
+engine = create_engine(
+    "postgresql://user:pass@host/db",
+    poolclass=pool.QueuePool,
+    pool_size=20,        # Persistent connections
+    max_overflow=10,     # Additional connections when needed
+    pool_timeout=30,     # Wait 30s for connection
+    pool_recycle=3600,   # Recycle connections after 1 hour
+    pool_pre_ping=True   # Verify connection before use
+)
+
+# Redis connection pooling
+redis_pool = redis.ConnectionPool(
+    host='redis-host',
+    port=6379,
+    max_connections=50,
+    decode_responses=True
+)
+redis_client = redis.Redis(connection_pool=redis_pool)
+```
+
+**2. Batch Processing**
+
+```python
+# Batch update leaderboard
+class BatchLeaderboardUpdater:
+    def __init__(self):
+        self.batch = []
+        self.batch_size = 100
+        self.redis = RedisClient()
+
+    def add_score_update(self, user_id, problem_id, points):
+        self.batch.append({
+            "user_id": user_id,
+            "problem_id": problem_id,
+            "points": points
+        })
+
+        if len(self.batch) >= self.batch_size:
+            self.flush()
+
+    def flush(self):
+        if not self.batch:
+            return
+
+        # Pipeline Redis commands
+        pipe = self.redis.pipeline()
+
+        for update in self.batch:
+            pipe.zincrby(
+                "leaderboard:global",
+                update["points"],
+                update["user_id"]
+            )
+            pipe.zadd(
+                f"leaderboard:problem:{update['problem_id']}",
+                {update["user_id"]: time.time()}
+            )
+
+        # Execute all at once
+        pipe.execute()
+        self.batch.clear()
+```
+
+**3. Async Processing**
+
+```python
+# Async submission processing
+import asyncio
+import aiohttp
+
+class AsyncSubmissionProcessor:
+    async def process_submissions(self, submissions):
+        tasks = []
+        async with aiohttp.ClientSession() as session:
+            for submission in submissions:
+                task = self.process_single(session, submission)
+                tasks.append(task)
+
+            # Process all concurrently
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        return results
+
+    async def process_single(self, session, submission):
+        # Fetch test cases
+        test_cases = await self.fetch_test_cases(session, submission.problem_id)
+
+        # Execute code
+        result = await self.execute_code(submission, test_cases)
+
+        # Save results
+        await self.save_results(session, submission.id, result)
+
+        return result
+```
+
+---
+
+### Monitoring & Observability
+
+```mermaid
+graph TB
+    subgraph "Monitoring Stack"
+        APP[Application] --> METRICS[Prometheus]
+        APP --> LOGS[Fluentd/ELK]
+        APP --> TRACES[Jaeger]
+
+        METRICS --> GRAFANA[Grafana Dashboard]
+        LOGS --> KIBANA[Kibana]
+        TRACES --> JAEGER_UI[Jaeger UI]
+
+        GRAFANA --> ALERT[AlertManager]
+        ALERT --> SLACK[Slack/PagerDuty]
+    end
+```
+
+**Key Metrics to Monitor**
+
+```python
+# Application metrics
+from prometheus_client import Counter, Histogram, Gauge
+
+# Request metrics
+request_count = Counter(
+    'api_requests_total',
+    'Total API requests',
+    ['method', 'endpoint', 'status']
+)
+
+request_duration = Histogram(
+    'api_request_duration_seconds',
+    'API request duration',
+    ['method', 'endpoint']
+)
+
+# Submission metrics
+submission_queue_size = Gauge(
+    'submission_queue_size',
+    'Number of submissions in queue'
+)
+
+execution_duration = Histogram(
+    'code_execution_duration_seconds',
+    'Code execution duration',
+    ['language', 'status']
+)
+
+active_workers = Gauge(
+    'active_execution_workers',
+    'Number of active execution workers'
+)
+
+# Database metrics
+db_connection_pool = Gauge(
+    'db_connection_pool_size',
+    'Database connection pool size',
+    ['state']  # active, idle, waiting
+)
+
+# Cache metrics
+cache_hits = Counter(
+    'cache_hits_total',
+    'Cache hit count',
+    ['cache_type']  # l1, l2, cdn
+)
+
+cache_misses = Counter(
+    'cache_misses_total',
+    'Cache miss count',
+    ['cache_type']
+)
+```
+
+**Alerting Rules**
+
+```yaml
+# Prometheus alerting rules
+groups:
+- name: leetcode_alerts
+  interval: 30s
+  rules:
+
+  # High error rate
+  - alert: HighErrorRate
+    expr: rate(api_requests_total{status=~"5.."}[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is {{ $value }} errors/sec"
+
+  # Queue backup
+  - alert: SubmissionQueueBackup
+    expr: submission_queue_size > 1000
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Submission queue is backing up"
+      description: "Queue size is {{ $value }}"
+
+  # Database connection pool exhaustion
+  - alert: DBConnectionPoolExhausted
+    expr: db_connection_pool_size{state="waiting"} > 5
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database connection pool exhausted"
+      description: "{{ $value }} connections waiting"
+
+  # Low cache hit rate
+  - alert: LowCacheHitRate
+    expr: |
+      rate(cache_hits_total[5m]) /
+      (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m])) < 0.8
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low cache hit rate"
+      description: "Cache hit rate is {{ $value }}"
+
+  # Slow API responses
+  - alert: SlowAPIResponses
+    expr: histogram_quantile(0.95, api_request_duration_seconds_bucket) > 1.0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "API responses are slow"
+      description: "95th percentile is {{ $value }}s"
+```
+
+---
+
+### Disaster Recovery
+
+**Backup Strategy**
+
+```yaml
+# PostgreSQL backup configuration
+backup_schedule:
+  full_backup:
+    frequency: daily
+    time: "02:00 UTC"
+    retention: 30 days
+    destination: s3://backups/postgresql/
+
+  incremental_backup:
+    frequency: hourly
+    retention: 7 days
+
+  point_in_time_recovery:
+    enabled: true
+    wal_archiving: true
+    retention: 7 days
+
+# MongoDB backup
+mongodb_backup:
+  type: continuous
+  oplog_size: 10GB
+  snapshot_frequency: 6 hours
+  retention: 30 days
+```
+
+**Disaster Recovery Plan**
+
+```mermaid
+graph TB
+    DISASTER[Disaster Detected] --> ASSESS[Assess Impact]
+    ASSESS --> SWITCH{Data Loss?}
+
+    SWITCH -->|No| FAILOVER[Failover to Standby]
+    FAILOVER --> VERIFY[Verify Systems]
+
+    SWITCH -->|Yes| RESTORE[Restore from Backup]
+    RESTORE --> REPLAY[Replay WAL/Oplog]
+    REPLAY --> VERIFY
+
+    VERIFY --> TRAFFIC[Route Traffic]
+    TRAFFIC --> MONITOR[Monitor Systems]
+
+    MONITOR --> POSTMORTEM[Post-mortem Analysis]
+```
+
+---
+
+### Security Measures
+
+**1. Code Execution Sandbox**
+
+```dockerfile
+# Minimal execution container
+FROM scratch
+COPY --from=builder /bin/executor /executor
+COPY --from=builder /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib64/ld-linux-x86-64.so.2 /lib64/
+
+# No shell, no package manager, no network tools
+USER 65534:65534
+ENTRYPOINT ["/executor"]
+```
+
+**2. Input Validation**
+
+```python
+# Input sanitization
+class InputValidator:
+    MAX_CODE_LENGTH = 100_000  # 100KB
+    MAX_TEST_CASE_SIZE = 10_000_000  # 10MB
+    ALLOWED_LANGUAGES = {'python', 'java', 'cpp', 'javascript', 'go'}
+
+    def validate_submission(self, code, language):
+        # Language check
+        if language not in self.ALLOWED_LANGUAGES:
+            raise ValidationError("Invalid language")
+
+        # Size check
+        if len(code) > self.MAX_CODE_LENGTH:
+            raise ValidationError("Code too long")
+
+        # Dangerous patterns
+        dangerous_patterns = [
+            r'import\s+os',
+            r'import\s+subprocess',
+            r'eval\s*\(',
+            r'exec\s*\(',
+            r'__import__',
+            r'open\s*\(',
+            r'file\s*\(',
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, code, re.IGNORECASE):
+                raise SecurityError(f"Forbidden pattern detected: {pattern}")
+
+        return True
+
+    def sanitize_input(self, test_input):
+        # Remove potential injection attempts
+        sanitized = test_input.replace('\x00', '')  # Null bytes
+
+        # Size check
+        if len(sanitized) > self.MAX_TEST_CASE_SIZE:
+            raise ValidationError("Test case too large")
+
+        return sanitized
+```
+
+**3. Authentication & Authorization**
+
+```python
+# JWT-based authentication
+class AuthService:
+    def __init__(self):
+        self.secret_key = os.environ['JWT_SECRET']
+        self.algorithm = 'HS256'
+        self.token_expiry = 3600  # 1 hour
+
+    def generate_token(self, user_id, email):
+        payload = {
+            'user_id': user_id,
+            'email': email,
+            'iat': datetime.utcnow(),
+            'exp': datetime.utcnow() + timedelta(seconds=self.token_expiry)
+        }
+        return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
+
+    def verify_token(self, token):
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise AuthError("Token expired")
+        except jwt.InvalidTokenError:
+            raise AuthError("Invalid token")
+
+    def check_permission(self, user_id, action, resource):
+        # Role-based access control
+        user_roles = self.get_user_roles(user_id)
+
+        permissions = {
+            'admin': ['*'],
+            'premium': ['submit', 'view_solutions', 'video_tutorials'],
+            'free': ['submit', 'view_problems']
+        }
+
+        for role in user_roles:
+            if action in permissions.get(role, []) or '*' in permissions.get(role, []):
+                return True
+
+        return False
+```
+
+---
+
+### Cost Optimization
+
+**1. Resource Management**
+
+```python
+# Dynamic worker pool sizing
+class WorkerPoolManager:
+    def __init__(self):
+        self.min_workers = 10
+        self.max_workers = 100
+        self.current_workers = self.min_workers
+        self.target_queue_depth = 10
+
+    def adjust_pool_size(self):
+        queue_depth = self.get_queue_depth()
+
+        if queue_depth > self.target_queue_depth * self.current_workers:
+            # Scale up
+            new_size = min(
+                self.current_workers + 10,
+                self.max_workers
+            )
+            self.scale_to(new_size)
+
+        elif queue_depth < self.target_queue_depth * self.current_workers * 0.5:
+            # Scale down
+            new_size = max(
+                self.current_workers - 5,
+                self.min_workers
+            )
+            self.scale_to(new_size)
+
+    def scale_to(self, target_size):
+        if target_size > self.current_workers:
+            # Add workers
+            self.add_workers(target_size - self.current_workers)
+        else:
+            # Remove workers (gracefully)
+            self.remove_workers(self.current_workers - target_size)
+
+        self.current_workers = target_size
+```
+
+**2. Spot Instances for Workers**
+
+```yaml
+# Use spot instances for execution workers (70% cost saving)
+worker_pool:
+  on_demand_instances: 20%  # For reliability
+  spot_instances: 80%       # For cost savings
+
+  spot_instance_config:
+    fallback_to_on_demand: true
+    max_price: 0.10  # per hour
+    interruption_handling:
+      drain_tasks: true
+      graceful_shutdown_seconds: 30
+```
+
+---
+
+### Advanced Features
+
+**1. Contest Mode**
+
+```mermaid
+graph LR
+    START[Contest Starts] --> FREEZE[Problem Release]
+    FREEZE --> SUBMIT[Accept Submissions]
+    SUBMIT --> REALTIME[Real-time Leaderboard]
+    REALTIME --> END[Contest Ends]
+    END --> FINAL[Final Rankings]
+    FINAL --> PLAGIARISM[Plagiarism Check]
+    PLAGIARISM --> ANNOUNCE[Announce Winners]
+```
+
+**2. Interactive Problems**
+
+```python
+# Interactive problem execution
+class InteractiveProblemExecutor:
+    def execute_interactive(self, submission, judge_code):
+        # Start user solution
+        user_process = self.start_process(submission.code)
+
+        # Start judge
+        judge_process = self.start_process(judge_code)
+
+        try:
+            # Communication loop
+            for _ in range(MAX_INTERACTIONS):
+                # Judge sends query
+                query = judge_process.read_line()
+                user_process.write_line(query)
+
+                # User responds
+                response = user_process.read_line()
+                judge_process.write_line(response)
+
+                # Check if judge is satisfied
+                if judge_process.is_done():
+                    break
+
+            # Get final verdict from judge
+            verdict = judge_process.get_verdict()
+            return verdict
+
+        finally:
+            user_process.kill()
+            judge_process.kill()
+```
+
+**3. SQL/Database Problems**
+
+```python
+# SQL problem execution
+class SQLProblemExecutor:
+    def execute_sql(self, submission_query, expected_schema):
+        # Create isolated database
+        with self.create_temp_database() as db:
+            # Load test data
+            db.execute(self.get_setup_queries())
+
+            try:
+                # Execute user query
+                result = db.execute(submission_query)
+
+                # Validate result
+                if self.validate_result(result, expected_schema):
+                    return {"status": "ACCEPTED", "result": result}
+                else:
+                    return {"status": "WRONG_ANSWER"}
+
+            except SQLError as e:
+                return {"status": "RUNTIME_ERROR", "message": str(e)}
+```
+
+---
+
+## Summary
+
+### Key Design Decisions
+
+1. **Microservices Architecture**: Independent scaling and deployment
+2. **Message Queue**: Decouples submission from execution
+3. **Containerized Execution**: Security and resource isolation
+4. **Redis for Leaderboard**: Fast sorted set operations
+5. **Hybrid Database**: PostgreSQL for relations, MongoDB for documents
+6. **Multi-level Caching**: Reduces database load
+7. **Horizontal Scaling**: Handles peak loads
+
+### Trade-offs
+
+| Aspect | Choice | Trade-off |
+|--------|--------|-----------|
+| Execution | Synchronous with queue | Better UX but needs WebSocket |
+| Database | Polyglot persistence | Complexity vs performance |
+| Caching | Aggressive caching | Consistency vs speed |
+| Workers | Containerized | Security vs overhead |
+| Leaderboard | Redis sorted sets | Memory vs speed |
+
+### Estimated Costs (AWS)
+
+```
+Application Servers (12 × c5.2xlarge): $2,500/month
+Execution Workers (1000 × t3.small spot): $3,600/month
+RDS PostgreSQL (db.r5.4xlarge): $2,400/month
+ElastiCache Redis (cache.r5.2xlarge): $800/month
+S3 Storage (11TB): $250/month
+CloudFront CDN: $300/month
+Load Balancers: $200/month
+Monitoring & Logs: $150/month
+
+Total: ~$10,200/month
+```
+
+This design handles 10M users with 5M daily submissions efficiently while maintaining security, performance, and reliability!
