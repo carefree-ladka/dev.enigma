@@ -1,0 +1,545 @@
+# Operating Systems Interview
+
+## 1. Processes vs Threads
+
+### Process
+A **process** is an independent execution unit with its own memory space. Each process has:
+- Separate address space (code, data, heap, stack)
+- Own file descriptors and resources
+- Isolated from other processes (security)
+- Higher overhead to create and manage
+
+### Thread
+A **thread** is a lightweight execution unit that exists within a process. Threads share:
+- Same memory space (code, data, heap)
+- File descriptors and resources
+- Lower overhead to create
+- Each thread has its own stack
+
+### Context Switch
+When the CPU switches from executing one process/thread to another:
+1. Save current state (registers, program counter)
+2. Load new state
+3. Resume execution
+
+**Cost**: Context switching between processes is expensive (memory switching), while thread switches are cheaper (same memory space).
+
+### Full Stack Relevance
+- **Node.js**: Single-threaded event loop with async I/O
+- **Java**: Servlet containers use thread pools (Tomcat, Jetty)
+- **Python**: GIL makes true multithreading limited
+
+```java
+// Creating a thread in Java
+class MyTask implements Runnable {
+    @Override
+    public void run() {
+        System.out.println("Thread: " + Thread.currentThread().getName());
+    }
+}
+
+public class ThreadExample {
+    public static void main(String[] args) {
+        Thread t1 = new Thread(new MyTask());
+        Thread t2 = new Thread(new MyTask());
+        t1.start();
+        t2.start();
+    }
+}
+```
+
+---
+
+## 2. CPU Scheduling
+
+### FCFS (First Come First Serve)
+- Simple queue-based scheduling
+- **Pros**: Easy to implement
+- **Cons**: Convoy effect (short jobs wait for long ones)
+
+### SJF (Shortest Job First)
+- Execute shortest job first
+- **Pros**: Minimizes average waiting time
+- **Cons**: Requires knowing job duration, starvation for long jobs
+
+### Round Robin
+- Each process gets a time slice (quantum)
+- Fair for interactive systems
+- **Pros**: No starvation
+- **Cons**: High context switch overhead if quantum is too small
+
+### Priority Scheduling
+- Higher priority jobs execute first
+- **Risk**: Low-priority jobs may starve
+- **Solution**: Priority aging (gradually increase priority)
+
+### Preemptive vs Non-preemptive
+- **Preemptive**: OS can interrupt running process
+- **Non-preemptive**: Process runs until completion or blocks
+
+### Full Stack Relevance
+- Web servers schedule requests across threads
+- Understanding scheduling helps optimize server performance
+- Cloud platforms use priority scheduling for workloads
+
+---
+
+## 3. Synchronization & Concurrency
+
+### Race Condition
+Multiple threads access shared data concurrently, leading to inconsistent results.
+
+```java
+// Race condition example
+class Counter {
+    private int count = 0;
+
+    public void increment() {
+        count++; // NOT atomic: read, increment, write
+    }
+
+    public int getCount() {
+        return count;
+    }
+}
+
+// Two threads calling increment() simultaneously can lose updates
+```
+
+### Critical Section
+Code segment that accesses shared resources and must execute atomically.
+
+### Mutex (Mutual Exclusion Lock)
+Ensures **only one thread** can access critical section at a time.
+
+```java
+class SafeCounter {
+    private int count = 0;
+    private final Object lock = new Object();
+
+    public void increment() {
+        synchronized(lock) { // Mutex
+            count++;
+        }
+    }
+}
+```
+
+### Semaphore
+Allows **N threads** to access resource simultaneously.
+
+```java
+import java.util.concurrent.Semaphore;
+
+class ConnectionPool {
+    private final Semaphore semaphore = new Semaphore(5); // Max 5 connections
+
+    public void useConnection() throws InterruptedException {
+        semaphore.acquire(); // Wait if all connections busy
+        try {
+            // Use connection
+            System.out.println("Connection acquired");
+        } finally {
+            semaphore.release(); // Release connection
+        }
+    }
+}
+```
+
+### Deadlock
+Circular waiting where no thread can proceed.
+
+**Four necessary conditions:**
+1. **Mutual Exclusion**: Resource can't be shared
+2. **Hold and Wait**: Thread holds resource while waiting for another
+3. **No Preemption**: Resource can't be forcibly taken
+4. **Circular Wait**: Chain of threads waiting for each other
+
+```java
+// Deadlock example
+class Account {
+    private int balance;
+
+    public synchronized void transfer(Account to, int amount) {
+        synchronized(to) { // DANGER: Can cause deadlock
+            this.balance -= amount;
+            to.balance += amount;
+        }
+    }
+}
+
+// Thread 1: account1.transfer(account2, 100)
+// Thread 2: account2.transfer(account1, 50)
+// Both acquire first lock, wait for second → DEADLOCK
+```
+
+**Solution**: Always acquire locks in same order
+```java
+public void transfer(Account to, int amount) {
+    Account first = (this.id < to.id) ? this : to;
+    Account second = (this.id < to.id) ? to : this;
+
+    synchronized(first) {
+        synchronized(second) {
+            this.balance -= amount;
+            to.balance += amount;
+        }
+    }
+}
+```
+
+### Starvation
+Low-priority thread never gets CPU time.
+
+### Full Stack Relevance
+- **Database locks**: Row-level vs table-level locking
+- **Cache race conditions**: Redis INCR, check-then-set patterns
+- **Message queues**: Producer-consumer synchronization
+- **Distributed systems**: Consensus protocols (Raft, Paxos)
+
+---
+
+## 4. Memory Management
+
+### Stack vs Heap
+
+**Stack:**
+- Stores function calls, local variables, return addresses
+- LIFO (Last In First Out)
+- Fast allocation/deallocation
+- Limited size (stack overflow)
+- Automatic memory management
+
+**Heap:**
+- Dynamic memory allocation (objects, arrays)
+- Slower than stack
+- Larger size
+- Manual management (C/C++) or GC (Java, JS)
+
+```java
+public void example() {
+    int x = 10;              // Stack
+    String s = new String(); // Reference on stack, object on heap
+}
+```
+
+### Virtual Memory
+OS creates illusion that each process has entire memory to itself.
+- **Virtual addresses** → mapped to → **Physical RAM**
+- Allows running programs larger than available RAM (swap to disk)
+
+### Paging
+Memory divided into fixed-size pages (typically 4KB).
+- **Page Table**: Maps virtual pages to physical frames
+- **Page Fault**: Requested page not in RAM (load from disk)
+
+### Fragmentation
+Wasted memory space:
+- **Internal**: Allocated block larger than needed
+- **External**: Free memory scattered (can't allocate contiguous block)
+
+### Full Stack Relevance
+- **Garbage Collection**: Java/Node.js automatically free unused objects
+- **Memory leaks**: Forgotten references prevent GC
+- **OOM errors**: Heap exhausted in production
+- **Connection pools**: Heap memory for database connections
+
+```java
+// Memory leak example
+class LeakyCache {
+    private static Map<String, byte[]> cache = new HashMap<>();
+
+    public void addToCache(String key) {
+        cache.put(key, new byte[1024 * 1024]); // 1MB
+        // Never removed → memory leak!
+    }
+}
+```
+
+---
+
+## 5. Inter-Process Communication (IPC)
+
+### Pipes
+Unidirectional communication between parent-child processes.
+```bash
+# Unix pipe example
+ls | grep ".txt"
+```
+
+### Message Queues
+OS-managed queue for messages between processes.
+- **Pros**: Async, decoupled
+- **Cons**: Size limits, kernel overhead
+
+### Shared Memory
+Fastest IPC - processes share memory region.
+- **Pros**: No kernel involvement after setup
+- **Cons**: Requires synchronization (semaphores)
+
+### Sockets
+Network or localhost communication.
+- **TCP sockets**: Reliable, connection-based
+- **Unix domain sockets**: Fast local IPC
+
+### Full Stack Relevance
+- **REST APIs**: HTTP over TCP sockets
+- **gRPC**: HTTP/2 with efficient serialization
+- **WebSockets**: Bidirectional real-time communication
+- **Message brokers**: Kafka, RabbitMQ (queue-based IPC)
+- **Redis Pub/Sub**: Shared memory alternative
+
+---
+
+## 6. File Systems & I/O
+
+### File Descriptor
+Integer handle to open file, socket, or pipe (Unix).
+```java
+// Java abstracts this, but under the hood:
+FileInputStream fis = new FileInputStream("data.txt"); // Gets FD
+```
+
+### Blocking I/O
+Thread waits until operation completes.
+```java
+InputStream in = socket.getInputStream();
+int data = in.read(); // Blocks until data available
+```
+
+### Non-blocking I/O
+Returns immediately, even if no data.
+```java
+// Java NIO
+SocketChannel channel = SocketChannel.open();
+channel.configureBlocking(false);
+int bytesRead = channel.read(buffer); // Returns 0 if no data
+```
+
+### Async I/O
+OS notifies when operation completes (callbacks, events).
+
+### Full Stack Relevance
+- **Node.js event loop**: Non-blocking I/O with callbacks
+- **Java NIO**: Scalable servers (Netty, Vert.x)
+- **Async/Await**: Modern async programming model
+
+---
+
+## 7. Deadlocks & Solutions
+
+### Four Conditions (All must hold)
+1. **Mutual Exclusion**: Resources can't be shared
+2. **Hold and Wait**: Process holds resources while waiting
+3. **No Preemption**: Can't forcibly take resources
+4. **Circular Wait**: Cycle in resource dependency graph
+
+### Prevention
+Break at least one condition:
+- **Eliminate Hold & Wait**: Request all resources at once
+- **Allow Preemption**: Forcibly take resources
+- **Break Circular Wait**: Order resources, always acquire in same order
+
+### Detection
+Periodically check for cycles in resource allocation graph.
+
+### Avoidance
+**Banker's Algorithm**: Check if granting request leaves system in safe state.
+
+### Full Stack Relevance
+- **Database transactions**: ACID properties, lock timeouts
+- **Microservices**: Distributed deadlocks (service A calls B, B calls A)
+- **Lock-free data structures**: Atomic operations (CAS)
+
+---
+
+## 8. Networking & OS
+
+### OSI Layers (Simplified)
+1. **Application**: HTTP, FTP, SMTP
+2. **Transport**: TCP, UDP
+3. **Network**: IP, routing
+4. **Data Link**: Ethernet, MAC addresses
+5. **Physical**: Cables, signals
+
+### TCP vs UDP
+
+**TCP (Transmission Control Protocol):**
+- Reliable, ordered delivery
+- Connection-based (3-way handshake: SYN, SYN-ACK, ACK)
+- Flow control, congestion control
+- **Use cases**: HTTP, FTP, email
+
+**UDP (User Datagram Protocol):**
+- Unreliable, no ordering guarantee
+- Connectionless
+- Faster, lower overhead
+- **Use cases**: DNS, video streaming, gaming
+
+### TCP Connection States
+
+**TIME_WAIT:**
+- After closing connection, socket waits (2-4 minutes)
+- Prevents old packets from interfering with new connections
+- **Problem**: Too many connections exhaust available ports
+
+**CLOSE_WAIT:**
+- Remote closed connection, but app hasn't closed socket
+- **Problem**: Memory leak, resource exhaustion
+
+```bash
+# Check connection states
+netstat -an | grep TIME_WAIT
+```
+
+### Full Stack Relevance
+- **Load balancers**: L4 (TCP) vs L7 (HTTP)
+- **HTTP keep-alive**: Reuse TCP connections
+- **WebSockets**: Persistent TCP connection
+- **Connection pooling**: Reuse database connections
+
+---
+
+## 9. Security & OS
+
+### User Mode vs Kernel Mode
+- **User mode**: Restricted access, can't directly access hardware
+- **Kernel mode**: Full access to hardware, memory, I/O
+
+### System Calls
+Controlled interface to kernel services.
+```java
+// Java hides system calls, but these trigger them:
+File file = new File("data.txt");
+file.delete(); // Internally: unlink() system call
+```
+
+Common system calls:
+- `read()`, `write()`: File I/O
+- `fork()`, `exec()`: Process creation
+- `socket()`, `bind()`: Network operations
+
+### Permissions
+File access control (Unix):
+```bash
+-rw-r--r-- 1 user group 1024 Jan 1 12:00 file.txt
+# Owner: read/write
+# Group: read
+# Others: read
+```
+
+### Full Stack Relevance
+- **File uploads**: Validate, sanitize, check permissions
+- **Container security**: Namespaces, cgroups isolate processes
+- **Auth checks**: JWT, OAuth tokens before file access
+- **Sandboxing**: Docker, VMs isolate applications
+
+---
+
+## 10. Practical Resource Management
+
+### Thread Pools
+Reuse threads instead of creating new ones per task.
+
+```java
+import java.util.concurrent.*;
+
+class ServerHandler {
+    private final ExecutorService threadPool = Executors.newFixedThreadPool(10);
+
+    public void handleRequest(Runnable task) {
+        threadPool.submit(task); // Reuses threads
+    }
+
+    public void shutdown() {
+        threadPool.shutdown();
+    }
+}
+```
+
+**Benefits:**
+- Avoid thread creation overhead
+- Limit concurrency (prevent resource exhaustion)
+- Better performance under load
+
+### Priority Inversion
+High-priority thread waits for low-priority thread holding lock.
+
+**Solution**: Priority inheritance (low-priority thread temporarily gets high priority)
+
+### Context Switching Overhead
+Frequent context switches waste CPU cycles.
+
+**Optimization:**
+- Use thread pools (fewer context switches)
+- Async I/O (don't block threads)
+- Keep thread count close to CPU cores for CPU-bound tasks
+
+### Full Stack Relevance
+- **Java Executors**: ThreadPoolExecutor for web servers
+- **Node.js libuv**: Thread pool for file I/O
+- **Database connection pools**: HikariCP, c3p0
+- **Kubernetes**: Resource limits (CPU, memory)
+
+```java
+// Configuring thread pool
+ThreadPoolExecutor executor = new ThreadPoolExecutor(
+    10,  // Core threads
+    50,  // Max threads
+    60L, TimeUnit.SECONDS, // Keep-alive
+    new LinkedBlockingQueue<>(100) // Queue size
+);
+```
+
+---
+
+## Quick Revision Answers
+
+### 1. Process vs Thread?
+- **Process**: Independent, separate memory, high overhead
+- **Thread**: Lives in process, shared memory, low overhead
+
+### 2. Mutex vs Semaphore?
+- **Mutex**: Binary lock (1 thread at a time)
+- **Semaphore**: Counter lock (N threads at a time)
+
+### 3. Four Conditions of Deadlock?
+1. Mutual Exclusion
+2. Hold and Wait
+3. No Preemption
+4. Circular Wait
+
+### 4. Paging vs Segmentation?
+- **Paging**: Fixed-size blocks, eliminates external fragmentation
+- **Segmentation**: Variable-size logical units (code, stack, heap)
+
+### 5. Blocking vs Non-blocking I/O?
+- **Blocking**: Thread waits until operation completes
+- **Non-blocking**: Returns immediately, check later (polling/callbacks)
+
+### 6. What is TIME_WAIT?
+TCP state after closing connection (waits 2-4 minutes) to prevent old packets interfering with new connections. Too many TIME_WAIT sockets exhaust ports.
+
+### 7. Why Thread Pools Instead of New Thread Per Request?
+- Thread creation is expensive (memory, kernel calls)
+- Context switching overhead
+- Resource exhaustion with many threads
+- Thread pools reuse threads, limit concurrency
+
+---
+
+## Interview Tips
+
+**Common Scenarios:**
+- "How does Node.js handle concurrency?" → Single-threaded event loop with async I/O
+- "How to prevent race conditions in cache?" → Use atomic operations (Redis INCR) or locks
+- "Database deadlock?" → Lock ordering, timeouts, retry logic
+- "Memory leak in production?" → Heap dump analysis, weak references, connection pools
+- "Server running out of connections?" → Check TIME_WAIT, increase limits, connection pooling
+
+**Best Practices:**
+- Always acquire locks in consistent order
+- Use thread pools for scalability
+- Prefer async I/O for I/O-bound tasks
+- Monitor resource usage (threads, memory, connections)
+- Implement timeouts to prevent indefinite blocking
