@@ -52,3 +52,7 @@ The purpose of this application is to help you revise coding patterns and proble
 4. [Grind 75](https://www.techinterviewhandbook.org/grind75)
 5. [Tech Interview Handbook](https://www.techinterviewhandbook.org/)
 6. [Sean Prasad's Cheatsheet](https://seanprashad.com/leetcode-patterns/)
+
+## Mutex & SemaPhores ;
+1. https://www.youtube.com/watch?v=iwJt6hqWfTE
+
