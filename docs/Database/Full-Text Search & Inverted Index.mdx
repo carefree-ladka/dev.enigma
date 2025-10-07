@@ -1,0 +1,454 @@
+# Full-Text Search & Inverted Index
+
+## What is Full-Text Search?
+
+Full-text search (FTS) is a technique for searching text within documents or database fields. Unlike simple `LIKE` queries, FTS provides:
+
+- **Relevance ranking** - Results ordered by how well they match
+- **Natural language processing** - Handles stemming, stop words, synonyms
+- **Performance** - Optimized for large text datasets
+- **Advanced queries** - Boolean operators, phrase matching, proximity search
+
+## The Inverted Index
+
+### Concept
+
+An **inverted index** is the core data structure behind full-text search. It maps terms (words) to their locations in documents.
+
+**Normal Index (Forward Index):**
+```
+Document 1 → "The quick brown fox"
+Document 2 → "The lazy dog sleeps"
+Document 3 → "Quick brown dogs run"
+```
+
+**Inverted Index:**
+```
+"quick"  → [Doc 1, Doc 3]
+"brown"  → [Doc 1, Doc 3]
+"fox"    → [Doc 1]
+"lazy"   → [Doc 2]
+"dog"    → [Doc 2, Doc 3]
+"sleeps" → [Doc 2]
+"run"    → [Doc 3]
+```
+
+### How It Works Underneath
+
+1. **Tokenization**: Break text into terms (words)
+   ```
+   "The Quick Brown Fox!" → ["the", "quick", "brown", "fox"]
+   ```
+
+2. **Normalization**: Convert to lowercase, remove punctuation
+   ```
+   ["the", "quick", "brown", "fox"] → ["the", "quick", "brown", "fox"]
+   ```
+
+3. **Stop Words Removal**: Remove common words
+   ```
+   ["the", "quick", "brown", "fox"] → ["quick", "brown", "fox"]
+   ```
+
+4. **Stemming**: Reduce words to root form
+   ```
+   ["running", "runs", "ran"] → ["run", "run", "run"]
+   ```
+
+5. **Index Building**: Create term → document mappings
+   ```
+   Term: "quick" → Posting List: [(doc_id: 1, position: 1), (doc_id: 3, position: 0)]
+   ```
+
+### Storage Structure
+
+```
+┌─────────────┬──────────────────────────────────┐
+│    Term     │        Posting List              │
+├─────────────┼──────────────────────────────────┤
+│   "quick"   │ [(doc:1, pos:[1]), (doc:3, ...)] │
+│   "brown"   │ [(doc:1, pos:[2]), (doc:3, ...)] │
+│   "fox"     │ [(doc:1, pos:[3])]               │
+└─────────────┴──────────────────────────────────┘
+```
+
+---
+
+## MySQL Full-Text Search
+
+### Setup
+
+MySQL supports FTS on `InnoDB` and `MyISAM` tables with `FULLTEXT` indexes.
+
+```sql
+-- Create table with FTS
+CREATE TABLE articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200),
+    body TEXT,
+    FULLTEXT KEY idx_title_body (title, body)
+) ENGINE=InnoDB;
+
+-- Add FULLTEXT index to existing table
+ALTER TABLE articles
+ADD FULLTEXT INDEX idx_content (title, body);
+```
+
+### Inserting Data
+
+```sql
+INSERT INTO articles (title, body) VALUES
+('MySQL Tutorial', 'This tutorial teaches you how to use MySQL full-text search effectively'),
+('PostgreSQL Guide', 'PostgreSQL offers powerful full-text search capabilities with GIN indexes'),
+('Database Indexing', 'Understanding inverted indexes is crucial for search performance'),
+('Quick Brown Fox', 'The quick brown fox jumps over the lazy dog');
+```
+
+### Search Modes
+
+#### 1. Natural Language Mode (Default)
+
+```sql
+-- Basic search
+SELECT id, title,
+       MATCH(title, body) AGAINST('MySQL search') AS relevance
+FROM articles
+WHERE MATCH(title, body) AGAINST('MySQL search')
+ORDER BY relevance DESC;
+```
+
+**How it works:**
+- Automatically removes stop words (the, is, a, etc.)
+- Words appearing in >50% of rows are treated as stop words
+- Returns relevance score (higher = better match)
+
+#### 2. Boolean Mode
+
+```sql
+-- Must contain "MySQL" AND "search"
+SELECT * FROM articles
+WHERE MATCH(title, body) AGAINST('+MySQL +search' IN BOOLEAN MODE);
+
+-- Must contain "MySQL" but NOT "PostgreSQL"
+SELECT * FROM articles
+WHERE MATCH(title, body) AGAINST('+MySQL -PostgreSQL' IN BOOLEAN MODE);
+
+-- Must contain "MySQL" OR "database"
+SELECT * FROM articles
+WHERE MATCH(title, body) AGAINST('MySQL database' IN BOOLEAN MODE);
+
+-- Phrase search
+SELECT * FROM articles
+WHERE MATCH(title, body) AGAINST('"full-text search"' IN BOOLEAN MODE);
+```
+
+**Boolean operators:**
+- `+` Must include term
+- `-` Must exclude term
+- `>` Increase relevance
+- `<` Decrease relevance
+- `*` Wildcard (e.g., `search*` matches "searching", "searches")
+- `"..."` Exact phrase
+- `()` Grouping
+
+#### 3. Query Expansion Mode
+
+```sql
+-- Finds related terms automatically
+SELECT * FROM articles
+WHERE MATCH(title, body)
+AGAINST('database' WITH QUERY EXPANSION);
+```
+
+**How it works:**
+1. Performs initial search
+2. Finds most relevant documents
+3. Extracts related terms from those documents
+4. Performs second search with expanded terms
+
+### Configuration
+
+```sql
+-- Minimum word length (default: 4 for InnoDB, 3 for MyISAM)
+SET GLOBAL innodb_ft_min_token_size = 3;
+
+-- Maximum word length
+SET GLOBAL innodb_ft_max_token_size = 84;
+
+-- Stop words
+SET GLOBAL innodb_ft_enable_stopword = ON;
+
+-- Requires restart
+-- Add to my.cnf:
+[mysqld]
+innodb_ft_min_token_size=3
+```
+
+### Performance Tips
+
+```sql
+-- Check index usage
+EXPLAIN SELECT * FROM articles
+WHERE MATCH(title, body) AGAINST('MySQL');
+
+-- Optimize table (rebuild FTS index)
+OPTIMIZE TABLE articles;
+```
+
+---
+
+## PostgreSQL Full-Text Search
+
+PostgreSQL has more advanced FTS capabilities with `tsvector` and `tsquery` types.
+
+### Basic Setup
+
+```sql
+-- Create table
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200),
+    body TEXT
+);
+
+-- Insert data
+INSERT INTO articles (title, body) VALUES
+('MySQL Tutorial', 'This tutorial teaches you how to use MySQL full-text search effectively'),
+('PostgreSQL Guide', 'PostgreSQL offers powerful full-text search capabilities with GIN indexes'),
+('Database Indexing', 'Understanding inverted indexes is crucial for search performance'),
+('Quick Brown Fox', 'The quick brown fox jumps over the lazy dog');
+```
+
+### Using tsvector and tsquery
+
+#### Without Index (Slower)
+
+```sql
+-- Basic search
+SELECT id, title,
+       ts_rank(to_tsvector('english', title || ' ' || body),
+               to_tsquery('english', 'MySQL & search')) AS rank
+FROM articles
+WHERE to_tsvector('english', title || ' ' || body) @@ to_tsquery('english', 'MySQL & search')
+ORDER BY rank DESC;
+```
+
+**Components:**
+- `to_tsvector()`: Converts text to searchable tokens
+- `to_tsquery()`: Converts search query to tokens
+- `@@`: Match operator
+- `ts_rank()`: Calculates relevance score
+
+#### With Computed Column (Better)
+
+```sql
+-- Add tsvector column
+ALTER TABLE articles
+ADD COLUMN search_vector tsvector
+GENERATED ALWAYS AS (
+    to_tsvector('english', coalesce(title, '') || ' ' || coalesce(body, ''))
+) STORED;
+
+-- Create GIN index (inverted index)
+CREATE INDEX idx_articles_search ON articles USING GIN(search_vector);
+
+-- Now search is fast
+SELECT id, title, ts_rank(search_vector, query) AS rank
+FROM articles, to_tsquery('english', 'MySQL & search') query
+WHERE search_vector @@ query
+ORDER BY rank DESC;
+```
+
+### Search Operators
+
+```sql
+-- AND: both terms required
+SELECT * FROM articles
+WHERE search_vector @@ to_tsquery('english', 'MySQL & search');
+
+-- OR: either term matches
+SELECT * FROM articles
+WHERE search_vector @@ to_tsquery('english', 'MySQL | PostgreSQL');
+
+-- NOT: exclude term
+SELECT * FROM articles
+WHERE search_vector @@ to_tsquery('english', 'database & !MySQL');
+
+-- Phrase search (words in order)
+SELECT * FROM articles
+WHERE search_vector @@ phraseto_tsquery('english', 'full text search');
+
+-- Prefix search
+SELECT * FROM articles
+WHERE search_vector @@ to_tsquery('english', 'search:*');
+
+-- Complex query
+SELECT * FROM articles
+WHERE search_vector @@ to_tsquery('english', '(MySQL | PostgreSQL) & search & !tutorial');
+```
+
+### Helper Functions
+
+```sql
+-- plainto_tsquery: simpler query syntax (treats as AND)
+SELECT * FROM articles
+WHERE search_vector @@ plainto_tsquery('english', 'MySQL search');
+
+-- websearch_to_tsquery: Google-like syntax
+SELECT * FROM articles
+WHERE search_vector @@ websearch_to_tsquery('english', '"full text" -tutorial');
+```
+
+### Ranking and Weights
+
+```sql
+-- Weight different fields differently
+ALTER TABLE articles
+ADD COLUMN weighted_vector tsvector
+GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(body, '')), 'B')
+) STORED;
+
+CREATE INDEX idx_weighted ON articles USING GIN(weighted_vector);
+
+-- Search with weights (title matches rank higher)
+SELECT id, title,
+       ts_rank(weighted_vector, query, 1) AS rank  -- normalization flag 1
+FROM articles, to_tsquery('english', 'search') query
+WHERE weighted_vector @@ query
+ORDER BY rank DESC;
+```
+
+**Weight levels:** A (1.0) > B (0.4) > C (0.2) > D (0.1)
+
+### Highlighting Results
+
+```sql
+-- Highlight matching terms
+SELECT id, title,
+       ts_headline('english', body, query, 'MaxWords=30, MinWords=15')
+FROM articles, to_tsquery('english', 'search') query
+WHERE search_vector @@ query;
+```
+
+### Language Support
+
+```sql
+-- English (default)
+to_tsvector('english', 'running dogs') → 'dog':2 'run':1
+
+-- Spanish
+to_tsvector('spanish', 'corriendo perros') → 'corr':1 'perr':2
+
+-- Simple (no stemming)
+to_tsvector('simple', 'running dogs') → 'dogs':2 'running':1
+```
+
+### Index Types
+
+```sql
+-- GIN (Generalized Inverted Index) - faster search, slower updates
+CREATE INDEX idx_gin ON articles USING GIN(search_vector);
+
+-- GiST (Generalized Search Tree) - faster updates, slower search
+CREATE INDEX idx_gist ON articles USING GIST(search_vector);
+```
+
+**Choose GIN for:**
+- Read-heavy workloads
+- Static or infrequently updated data
+- Best search performance
+
+**Choose GiST for:**
+- Write-heavy workloads
+- Frequently updated data
+- Acceptable search performance
+
+---
+
+## Performance Comparison Example
+
+### Test Data
+```sql
+-- 100k articles
+CREATE TABLE large_articles (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    body TEXT,
+    search_vector tsvector
+);
+
+-- Populate with sample data...
+```
+
+### Query Performance
+
+| Operation | LIKE Query | MySQL FTS | PostgreSQL FTS |
+|-----------|-----------|-----------|----------------|
+| Simple search | ~2000ms | ~50ms | ~30ms |
+| Complex boolean | Not possible | ~80ms | ~40ms |
+| Ranking | Not possible | Built-in | Built-in |
+| Multi-language | Manual | Limited | Excellent |
+
+---
+
+## Best Practices
+
+### MySQL
+1. Use `InnoDB` for production (ACID compliance)
+2. Adjust `ft_min_word_length` for your language
+3. Use Boolean mode for complex queries
+4. Regularly `OPTIMIZE TABLE` to rebuild indexes
+5. Consider partitioning for very large tables
+
+### PostgreSQL
+1. Always use GIN indexes for search columns
+2. Use generated columns for `tsvector` storage
+3. Choose appropriate language for stemming
+4. Use weighted vectors for multi-field search
+5. Consider `pg_trgm` for fuzzy/partial matching
+6. Use `ts_rank_cd()` for cover density ranking
+
+### General
+1. Analyze your query patterns before indexing
+2. Monitor index size vs table size
+3. Test with realistic data volumes
+4. Use EXPLAIN to verify index usage
+5. Consider search-specific solutions (Elasticsearch, MeiliSearch) for complex requirements
+
+---
+
+## Real-World Example: Blog Search
+
+### PostgreSQL Implementation
+
+```sql
+CREATE TABLE blog_posts (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    excerpt TEXT,
+    content TEXT NOT NULL,
+    author TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    search_document tsvector GENERATED ALWAYS AS (
+        setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(excerpt, '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(content, '')), 'C') ||
+        setweight(to_tsvector('english', coalesce(author, '')), 'D')
+    ) STORED
+);
+
+CREATE INDEX idx_blog_search ON blog_posts USING GIN(search_document);
+
+-- Search query
+SELECT
+    id,
+    title,
+    ts_rank(search_document, query) AS rank,
+    ts_headline('english', content, query, 'MaxWords=50') AS snippet
+FROM blog_posts, websearch_to_tsquery('english', 'PostgreSQL indexing') AS query
+WHERE search_document @@ query
+ORDER BY rank DESC, created_at DESC
+LIMIT 20;
+```
