@@ -1,4 +1,4 @@
-name: Deploy Notes Site to GitHub Pages
+name: Deploy DevEnigma to GitHub Pages
 
 on:
   push:
@@ -14,21 +14,48 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for better caching
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
+          cache: 'npm'  # Built-in npm caching
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        id: cache-nodemodules
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm install
+        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
+        run: npm ci  # Faster than npm install for CI
+
+      - name: Cache Docusaurus build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .docusaurus
+            build
+          key: ${{ runner.os }}-docusaurus-${{ hashFiles('**/*.md', '**/*.mdx', 'docusaurus.config.js') }}
+          restore-keys: |
+            ${{ runner.os }}-docusaurus-
 
       - name: Build React app
         run: npm run build
+        env:
+          NODE_ENV: production
+          NODE_OPTIONS: '--max-old-space-size=4096'  # Increase memory if needed
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
+          cname: your-domain.com  # Optional: if using custom domain
