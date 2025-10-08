@@ -1,4 +1,4 @@
-name: Deploy DevEnigma to GitHub Pages
+name: Deploy Notes Site to GitHub Pages
 
 on:
   push:
@@ -15,47 +15,59 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          fetch-depth: 0  # Fetch all history for better caching
+          version: 8
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.18.0'
-          cache: 'npm'  # Built-in npm caching
+          cache: 'pnpm'
 
-      - name: Cache node modules
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
         uses: actions/cache@v4
-        id: cache-nodemodules
         with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
-        run: npm ci  # Faster than npm install for CI
+        run: pnpm install --frozen-lockfile
 
-      - name: Cache Docusaurus build
+      - name: Cache Docusaurus build artifacts
         uses: actions/cache@v4
         with:
           path: |
             .docusaurus
-            build
-          key: ${{ runner.os }}-docusaurus-${{ hashFiles('**/*.md', '**/*.mdx', 'docusaurus.config.js') }}
+            build/.docusaurus
+            node_modules/.cache
+          key: docusaurus-${{ runner.os }}-${{ hashFiles('**/*.{md,mdx}', 'docusaurus.config.js', 'sidebars.js') }}
           restore-keys: |
-            ${{ runner.os }}-docusaurus-
+            docusaurus-${{ runner.os }}-
 
-      - name: Build React app
-        run: npm run build
+      - name: Build with optimizations
+        run: pnpm run build
         env:
           NODE_ENV: production
-          NODE_OPTIONS: '--max-old-space-size=4096'  # Increase memory if needed
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          # Docusaurus-specific optimizations
+          DOCUSAURUS_FASTER_BUILD: true
+          # Skip type checking during build (if applicable)
+          TSC_COMPILE_ON_ERROR: true
+          # Disable source maps in production
+          GENERATE_SOURCEMAP: false
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
-          cname: your-domain.com  # Optional: if using custom domain
