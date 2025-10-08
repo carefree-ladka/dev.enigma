@@ -7,13 +7,11 @@ const config: Config = {
   tagline: "Code beyond boundaries",
   favicon: "img/favicon.ico",
 
-  // Set the production url of your site here
   url: "https://carefree-ladka.github.io",
   baseUrl: "/dev.enigma/",
 
-  // GitHub pages deployment config.
-  organizationName: "devenigma", // Usually your GitHub org/user name.
-  projectName: "dev.enigma", // Usually your repo name.
+  organizationName: "devenigma",
+  projectName: "dev.enigma",
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
@@ -47,58 +45,41 @@ const config: Config = {
     image: "img/docusaurus-social-card.jpg",
     navbar: {
       title: "DevEnigma",
-      logo: {
-        alt: "My Site Logo",
-        src: "img/logo.svg",
-      },
+      logo: { alt: "DevEnigma Logo", src: "img/logo.svg" },
       items: [
-        {
-          type: "docSidebar",
-          sidebarId: "tutorialSidebar",
-          position: "left",
-          label: "Learning",
-        },
-        {
-          href: "https://www.linkedin.com/in/kumpawan/",
-          label: "LinkedIn",
-          position: "right",
-        },
+        { type: "docSidebar", sidebarId: "tutorialSidebar", position: "left", label: "Learning" },
+        { href: "https://www.linkedin.com/in/kumpawan/", label: "LinkedIn", position: "right" },
       ],
     },
     footer: {
       style: "dark",
       links: [
-        {
-          title: "Docs",
-          items: [{ label: "Learning", to: "/docs/intro" }],
-        },
+        { title: "Docs", items: [{ label: "Learning", to: "/docs/intro" }] },
         {
           title: "Community",
           items: [
-            {
-              label: "Instagram",
-              href: "https://www.instagram.com/carefree_ladka/",
-            },
+            { label: "Instagram", href: "https://www.instagram.com/carefree_ladka/" },
             { label: "LeetCode", href: "https://leetcode.com/u/Asyncy99/" },
-            {
-              label: "LinkedIn",
-              href: "https://www.linkedin.com/in/kumpawan/",
-            },
+            { label: "LinkedIn", href: "https://www.linkedin.com/in/kumpawan/" },
           ],
         },
-        {
-          title: "More",
-          items: [
-            { label: "GitHub", href: "https://github.com/carefree-ladka" },
-          ],
-        },
+        { title: "More", items: [{ label: "GitHub", href: "https://github.com/carefree-ladka" }] },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} DevEnigma, Built with Kadak Chai`,
+      copyright: `Copyright © ${new Date().getFullYear()} DevEnigma, Built with Kadak Chai ☕`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
-      additionalLanguages: ["java"],
+      theme: prismThemes.vsLight,
+      darkTheme: prismThemes.vsDark,
+      additionalLanguages: [ "java"],
+      magicComments: [
+        {
+          className: 'theme-code-block-highlighted-line',
+          line: 'highlight-next-line',
+          block: {start: 'highlight-start', end: 'highlight-end'},
+        },
+        { className: 'code-block-error-line', line: 'error-line' },
+        { className: 'code-block-success-line', line: 'success-line' },
+      ],
     },
   } satisfies Preset.ThemeConfig,
 };

@@ -1,12 +1,13 @@
-import * as React from 'react'
-import clsx from 'clsx';
-import Heading from '@theme/Heading';
-import styles from './styles.module.css';
+import Heading from "@theme/Heading";
+import clsx from "clsx";
+import * as React from "react";
+import styles from "./styles.module.css";
 
 type FeatureItem = {
   title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
+  Svg: React.ComponentType<React.ComponentProps<"svg">>;
   description: JSX.Element;
+  color: string; // Add color for each card
 };
 
 const FeatureList: FeatureItem[] = [
@@ -19,6 +20,7 @@ const FeatureList: FeatureItem[] = [
         enhance your problem-solving skills.
       </>
     ),
+    color: "#1dd1a1",
   },
   {
     title: "HTML 5",
@@ -29,6 +31,7 @@ const FeatureList: FeatureItem[] = [
         concepts and interview-focused insights.
       </>
     ),
+    color: "#E34F26",
   },
   {
     title: "CSS 3",
@@ -39,6 +42,7 @@ const FeatureList: FeatureItem[] = [
         responsive, modern, and interview-ready UIs.
       </>
     ),
+    color: "#1572B6",
   },
   {
     title: "TypeScript",
@@ -49,6 +53,7 @@ const FeatureList: FeatureItem[] = [
         and interview-focused tips to write robust, scalable code.
       </>
     ),
+    color: "#3178C6",
   },
   {
     title: "JavaScript",
@@ -59,6 +64,7 @@ const FeatureList: FeatureItem[] = [
         to boost your preparation.
       </>
     ),
+    color: "#F7DF1E",
   },
   {
     title: "React",
@@ -69,6 +75,7 @@ const FeatureList: FeatureItem[] = [
         preparation.
       </>
     ),
+    color: "#61DAFB",
   },
   {
     title: "Java",
@@ -79,6 +86,7 @@ const FeatureList: FeatureItem[] = [
         curated interview questions.
       </>
     ),
+    color: "#007396",
   },
   {
     title: "Spring Boot",
@@ -89,6 +97,7 @@ const FeatureList: FeatureItem[] = [
         interview-ready insights to strengthen your backend expertise.
       </>
     ),
+    color: "#6DB33F",
   },
   {
     title: "Database",
@@ -99,19 +108,27 @@ const FeatureList: FeatureItem[] = [
         techniques to strengthen your backend and interview preparation.
       </>
     ),
+    color: "#4479A1",
   },
 ];
 
-function Feature({ title, Svg, description }: FeatureItem) {
-
+function Feature({ title, Svg, description, color }: FeatureItem) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
+    <div className={clsx("col col--4", styles.featureCol)}>
+      <div
+        className={styles.featureCard}
+        style={{ "--feature-color": color } as React.CSSProperties}
+      >
+        <div className={styles.featureIconWrapper}>
+          <div className={styles.featureIconBg} />
+          <Svg className={styles.featureSvg} role="img" />
+        </div>
+        <div className={styles.featureContent}>
+          <Heading as="h3" className={styles.featureTitle}>
+            {title}
+          </Heading>
+          <p className={styles.featureDescription}>{description}</p>
+        </div>
       </div>
     </div>
   );
@@ -121,6 +138,15 @@ export default function HomepageFeatures(): JSX.Element {
   return (
     <section className={styles.features}>
       <div className="container">
+        <div className={styles.featuresHeader}>
+          <Heading as="h2" className={styles.featuresMainTitle}>
+            What You'll Learn
+          </Heading>
+          <p className={styles.featuresSubtitle}>
+            Comprehensive learning paths designed to help you master modern web
+            development
+          </p>
+        </div>
         <div className="row">
           {FeatureList.map((props, idx) => (
             <Feature key={idx} {...props} />
