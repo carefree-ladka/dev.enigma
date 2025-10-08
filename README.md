@@ -30,7 +30,7 @@ DevEnigma is a complete fullstack development preparation platform covering ever
 - Coding Challenges
 - Fullstack Role Preparation
 
-Visit the live documentation at: https://carefree-ladka.github.io/js.enigma/docs/intro
+Visit the live documentation at: https://carefree-ladka.github.io/dev.enigma/docs/intro
 
 ## Development Setup
 
@@ -72,7 +72,7 @@ Not using SSH:
 $ GIT_USER=carefree-ladka yarn deploy
 ```
 
-This command builds the website and pushes to the `gh-pages` branch, which is then served at https://carefree-ladka.github.io/js.enigma/
+This command builds the website and pushes to the `gh-pages` branch, which is then served at https://carefree-ladka.github.io/dev.enigma/
 
 ## Features
 
@@ -102,8 +102,8 @@ We welcome contributions to help make JS Enigma an even better resource for full
 
 ## Links
 
-- **Live Platform**: https://carefree-ladka.github.io/js.enigma/docs/intro
-- **GitHub Repository**: https://github.com/carefree-ladka/js.enigma
+- **Live Platform**: https://carefree-ladka.github.io/dev.enigma/docs/intro
+- **GitHub Repository**: https://github.com/carefree-ladka/dev.enigma
 - **Docusaurus Documentation**: https://docusaurus.io/
 
 ## License

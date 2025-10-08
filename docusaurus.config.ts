@@ -9,11 +9,11 @@ const config: Config = {
 
   // Set the production url of your site here
   url: "https://carefree-ladka.github.io",
-  baseUrl: "/js.enigma/",
+  baseUrl: "/dev.enigma/",
 
   // GitHub pages deployment config.
   organizationName: "devenigma", // Usually your GitHub org/user name.
-  projectName: "js.enigma", // Usually your repo name.
+  projectName: "dev.enigma", // Usually your repo name.
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
