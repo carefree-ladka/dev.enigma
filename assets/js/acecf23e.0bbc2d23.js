@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdev_enigma=self.webpackChunkdev_enigma||[]).push([[1903],{1912:e=>{e.exports=JSON.parse('{"blogBasePath":"/dev.enigma/blog","blogTitle":"Blog","authorsListPath":"/dev.enigma/blog/authors"}')}}]);
