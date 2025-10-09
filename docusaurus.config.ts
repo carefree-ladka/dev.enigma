@@ -21,7 +21,7 @@ const config: Config = {
     locales: ["en"],
   },
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ["@docusaurus/theme-mermaid"],
   markdown: {
     mermaid: true,
   },
@@ -34,6 +34,14 @@ const config: Config = {
           sidebarPath: "./sidebars.ts",
           editUrl: "https://github.com/carefree-ladka",
         },
+        blog: {
+          showReadingTime: true,
+          feedOptions: { type: ["rss", "atom"], xslt: true },
+          editUrl: "https://github.com/carefree-ladka",
+          onInlineTags: "warn",
+          onInlineAuthors: "warn",
+          onUntruncatedBlogPosts: "warn",
+        },
         theme: {
           customCss: "./src/css/custom.css",
         },
@@ -41,44 +49,97 @@ const config: Config = {
     ],
   ],
 
+  // Add separate docs plugin for Interview Experiences
+  plugins: [
+    [
+      "@docusaurus/plugin-content-docs",
+      {
+        id: "interviews",
+        path: "interviews",
+        routeBasePath: "interviews",
+        sidebarPath: "./sidebars.interviews.ts",
+        editUrl: "https://github.com/carefree-ladka",
+      },
+    ],
+  ],
   themeConfig: {
     image: "img/docusaurus-social-card.jpg",
+    colorMode: {
+      respectPrefersColorScheme: true,
+    },
     navbar: {
       title: "DevEnigma",
       logo: { alt: "DevEnigma Logo", src: "img/logo.svg" },
       items: [
-        { type: "docSidebar", sidebarId: "tutorialSidebar", position: "left", label: "Learning" },
-        { href: "https://www.linkedin.com/in/kumpawan/", label: "LinkedIn", position: "right" },
+        {
+          type: "docSidebar",
+          sidebarId: "tutorialSidebar",
+          position: "left",
+          label: "Learning",
+        },
+        {
+          to: "/interviews",
+          label: "Interview Experiences",
+          position: "left",
+        },
+        { to: "/blog", label: "Blog", position: "left" },
+        { to: "/portfolio", label: "Portfolio", position: "left" },
+        {
+          href: "https://www.linkedin.com/in/kumpawan/",
+          label: "LinkedIn",
+          position: "right",
+        },
       ],
     },
     footer: {
       style: "dark",
       links: [
-        { title: "Docs", items: [{ label: "Learning", to: "/docs/intro" }] },
         {
-          title: "Community",
+          title: "Docs",
           items: [
-            { label: "Instagram", href: "https://www.instagram.com/carefree_ladka/" },
-            { label: "LeetCode", href: "https://leetcode.com/u/Asyncy99/" },
-            { label: "LinkedIn", href: "https://www.linkedin.com/in/kumpawan/" },
+            { label: "Getting Started", to: "/docs/intro" },
+            { label: "Blog", to: "/blog" },
+            { label: "Portfolio", to: "/portfolio" },
+            { label: "Interview Experiences", to: "/interviews/intro" },
           ],
         },
-        { title: "More", items: [{ label: "GitHub", href: "https://github.com/carefree-ladka" }] },
+        {
+          title: "Connect",
+          items: [
+            {
+              label: "LinkedIn",
+              href: "https://www.linkedin.com/in/kumpawan/",
+            },
+            { label: "GitHub", href: "https://github.com/carefree-ladka" },
+            {
+              label: "Instagram",
+              href: "https://www.instagram.com/carefree_ladka/",
+            },
+            { label: "LeetCode", href: "https://leetcode.com/u/Asyncy99/" },
+          ],
+        },
+        {
+          title: "More",
+          items: [
+            { label: "Blog", to: "/blog" },
+            { label: "About", to: "/about" },
+          ],
+        },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} DevEnigma, Built with Kadak Chai ☕`,
+      copyright: `Copyright © ${new Date().getFullYear()} DevEnigma · Built with Kadak Chai ☕`,
     },
     prism: {
       theme: prismThemes.vsLight,
       darkTheme: prismThemes.vsDark,
-      additionalLanguages: [ "java"],
+      additionalLanguages: ["java"],
       magicComments: [
         {
-          className: 'theme-code-block-highlighted-line',
-          line: 'highlight-next-line',
-          block: {start: 'highlight-start', end: 'highlight-end'},
+          className: "theme-code-block-highlighted-line",
+          line: "highlight-next-line",
+          block: { start: "highlight-start", end: "highlight-end" },
         },
-        { className: 'code-block-error-line', line: 'error-line' },
-        { className: 'code-block-success-line', line: 'success-line' },
+        { className: "code-block-error-line", line: "error-line" },
+        { className: "code-block-success-line", line: "success-line" },
       ],
     },
   } satisfies Preset.ThemeConfig,
