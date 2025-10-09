@@ -14,19 +14,19 @@
 
 ## 📋 Table of Contents
 
-- [About](#about)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Development Workflow](#development-workflow)
-- [Code Quality](#code-quality)
-- [Project Structure](#project-structure)
-- [Content Areas](#content-areas)
-- [Contributing](#contributing)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-- [Connect](#connect)
+- [🎯 About](#-about)
+- [✨ Features](#-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [🚀 Getting Started](#-getting-started)
+- [💻 Development Workflow](#-development-workflow)
+- [🔍 Code Quality](#-code-quality)
+- [📁 Project Structure](#-project-structure)
+- [📚 Content Areas](#-content-areas)
+- [🤝 Contributing](#-contributing)
+- [🚢 Deployment](#-deployment)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [📄 License](#-license)
+- [🔗 Connect](#-connect)
 
 ---
 
