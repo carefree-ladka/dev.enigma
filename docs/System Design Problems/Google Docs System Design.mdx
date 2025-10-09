@@ -1,9 +1,9 @@
 ---
-title: "Google Docs System Design"
-description: "Complete system design for Google Docs collaborative document editor"
-author: "System Design Template"
-date: "2025-10-05"
-tags: ["system-design", "collaboration", "google-docs", "real-time", "crdt"]
+title: 'Google Docs System Design'
+description: 'Complete system design for Google Docs collaborative document editor'
+author: 'System Design Template'
+date: '2025-10-05'
+tags: ['system-design', 'collaboration', 'google-docs', 'real-time', 'crdt']
 ---
 
 # Google Docs System Design
@@ -34,6 +34,7 @@ tags: ["system-design", "collaboration", "google-docs", "real-time", "crdt"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 2B (Google Workspace + free users)
 - Daily Active Users (DAU): 300M
 - Concurrent users: 50M
@@ -42,6 +43,7 @@ tags: ["system-design", "collaboration", "google-docs", "real-time", "crdt"]
 - Concurrent editors per document: 10 (average), 100 (max)
 
 **Storage:**
+
 ```
 Total Documents = 2B users × 50 docs = 100B documents
 Document Storage = 100B × 100 KB = 10 PB
@@ -50,6 +52,7 @@ Total Storage = 60 PB
 ```
 
 **Network:**
+
 ```
 Active Editing Sessions = 50M concurrent users
 Operations per second per user = 2 ops/sec (typing)
@@ -59,6 +62,7 @@ Bandwidth = 100M × 200 bytes = 20 GB/sec
 ```
 
 **QPS:**
+
 ```
 Document Opens = 300M DAU × 20 docs/day / 86400s = ~70K QPS
 Edit Operations = 100M ops/sec
@@ -70,24 +74,31 @@ Comment/Share Operations = 300M × 5/day / 86400s = ~17K QPS
 ## 2. Core Entities (~2 minutes)
 
 ### Document
+
 - `documentId`, `title`, `ownerId`, `createdAt`, `lastModified`, `size`
 
 ### DocumentContent
+
 - `documentId`, `version`, `operations[]`, `snapshot` (periodic full state)
 
 ### User
+
 - `userId`, `email`, `displayName`, `profilePicture`, `storageUsed`
 
 ### Permission
+
 - `documentId`, `userId`, `role` (owner/editor/commenter/viewer), `grantedAt`
 
 ### Comment
+
 - `commentId`, `documentId`, `userId`, `text`, `range` (start, end positions), `createdAt`, `resolved`
 
 ### Revision
+
 - `revisionId`, `documentId`, `userId`, `timestamp`, `operations[]`, `description`
 
 ### Session
+
 - `sessionId`, `documentId`, `userId`, `cursorPosition`, `selection`, `lastActive`
 
 ---
@@ -95,6 +106,7 @@ Comment/Share Operations = 300M × 5/day / 86400s = ~17K QPS
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for document CRUD operations
 - **WebSocket** for real-time collaborative editing
 - **gRPC** for internal service communication (lower latency)
@@ -102,6 +114,7 @@ Comment/Share Operations = 300M × 5/day / 86400s = ~17K QPS
 ### API Endpoints
 
 #### Document Management
+
 ```http
 POST /v1/documents
 { "title": "Untitled Document" }
@@ -121,6 +134,7 @@ DELETE /v1/documents/{documentId}
 ```
 
 #### Collaboration (WebSocket)
+
 ```javascript
 // Client connects to WebSocket
 ws://collab.google.com/documents/{documentId}?token={jwt}
@@ -156,6 +170,7 @@ ws://collab.google.com/documents/{documentId}?token={jwt}
 ```
 
 #### Permissions & Sharing
+
 ```http
 POST /v1/documents/{documentId}/permissions
 {
@@ -171,6 +186,7 @@ DELETE /v1/documents/{documentId}/permissions/{userId}
 ```
 
 #### Comments
+
 ```http
 POST /v1/documents/{documentId}/comments
 {
@@ -184,6 +200,7 @@ DELETE /v1/comments/{commentId}
 ```
 
 #### Version History
+
 ```http
 GET /v1/documents/{documentId}/revisions
 Response: {
@@ -236,20 +253,24 @@ POST /v1/documents/{documentId}/restore/{revisionId}
 ### Architecture Components
 
 **Client Layer:**
+
 - Web/Mobile Apps with rich text editor
 - Offline storage (IndexedDB) for offline mode
 - Local operation buffer and sync queue
 
 **Edge Layer:**
+
 - CDN for static assets (fonts, icons, templates)
 - Geographic load balancers
 
 **API Gateway:**
+
 - Authentication (OAuth 2.0)
 - Rate limiting per user
 - Request routing
 
 **Application Layer:**
+
 - **Document Service**: CRUD operations
 - **Collaboration Service**: Real-time editing (WebSocket servers)
 - **Permission Service**: Access control
@@ -258,6 +279,7 @@ POST /v1/documents/{documentId}/restore/{revisionId}
 - **Notification Service**: Real-time notifications
 
 **Data Layer:**
+
 - **Spanner** (Google Cloud Spanner): Global distributed SQL for metadata
 - **Bigtable**: Operational logs and version history (time-series)
 - **Colossus (GFS)**: Binary storage for images, embedded files
@@ -265,6 +287,7 @@ POST /v1/documents/{documentId}/restore/{revisionId}
 - **Firestore**: Real-time sync for mobile apps
 
 **Processing Layer:**
+
 - **Pub/Sub**: Event streaming for operations
 - **Dataflow**: Stream processing for analytics
 - **Background Workers**: Snapshot generation, indexing
@@ -385,6 +408,7 @@ graph TB
 **The Problem**: Two users edit the same document simultaneously
 
 **Example Scenario:**
+
 ```
 Initial State: "Hello World"
 User A: Insert 'X' at position 6 → "Hello XWorld"
@@ -400,7 +424,7 @@ With OT: Operations transformed to produce consistent result
 // Operation types
 class Operation {
   constructor(type, position, content) {
-    this.type = type;        // 'insert' or 'delete'
+    this.type = type; // 'insert' or 'delete'
     this.position = position;
     this.content = content;
     this.timestamp = Date.now();
@@ -414,11 +438,19 @@ function transform(op1, op2) {
       return op2; // No change needed
     } else if (op1.position > op2.position) {
       // Adjust position
-      return new Operation('insert', op2.position + op1.content.length, op2.content);
+      return new Operation(
+        'insert',
+        op2.position + op1.content.length,
+        op2.content
+      );
     } else {
       // Same position - use timestamp to break tie
       if (op1.timestamp < op2.timestamp) {
-        return new Operation('insert', op2.position + op1.content.length, op2.content);
+        return new Operation(
+          'insert',
+          op2.position + op1.content.length,
+          op2.content
+        );
       } else {
         return op2;
       }
@@ -427,7 +459,11 @@ function transform(op1, op2) {
 
   if (op1.type === 'insert' && op2.type === 'delete') {
     if (op1.position <= op2.position) {
-      return new Operation('delete', op2.position + op1.content.length, op2.content);
+      return new Operation(
+        'delete',
+        op2.position + op1.content.length,
+        op2.content
+      );
     }
     // ... more cases
   }
@@ -457,6 +493,7 @@ function applyOperation(documentState, operation) {
 ```
 
 **Alternative: CRDT (Conflict-Free Replicated Data Type)**
+
 - Used by some modern systems (e.g., Figma)
 - Mathematically guarantees convergence
 - No central server needed for conflict resolution
@@ -473,7 +510,7 @@ function applyOperation(documentState, operation) {
 const activeConnections = new Map(); // documentId -> Set<WebSocket>
 
 // Client connects
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   const { documentId, userId, token } = socket.handshake.query;
 
   // Authenticate
@@ -494,16 +531,16 @@ io.on('connection', (socket) => {
   // Notify others of new user
   socket.to(documentId).emit('user-joined', {
     userId,
-    userName: getUserName(userId)
+    userName: getUserName(userId),
   });
 
   // Handle operations
-  socket.on('operation', (op) => {
+  socket.on('operation', op => {
     handleOperation(documentId, userId, op);
   });
 
   // Handle cursor updates
-  socket.on('cursor', (cursor) => {
+  socket.on('cursor', cursor => {
     socket.to(documentId).emit('cursor', { userId, ...cursor });
   });
 
@@ -526,6 +563,7 @@ Client → WebSocket → Collaboration Service → OT Engine → Broadcast
 ```
 
 **Key Optimizations:**
+
 - **Batching**: Group operations every 50ms to reduce network overhead
 - **Compression**: Use binary protocol (Protocol Buffers) instead of JSON
 - **Sticky Sessions**: Route user to same server for connection stability
@@ -570,7 +608,7 @@ async function createSnapshot(documentId) {
     documentId,
     version: lastSnapshot.version + operations.length,
     content,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   });
 
   // Optional: Delete old operations (keep for version history)
@@ -580,6 +618,7 @@ async function createSnapshot(documentId) {
 #### Storage Distribution
 
 **Cloud Spanner** (Document Metadata):
+
 ```sql
 CREATE TABLE documents (
   document_id STRING(36) NOT NULL,
@@ -593,6 +632,7 @@ CREATE TABLE documents (
 ```
 
 **Bigtable** (Operations Log):
+
 ```
 Row Key: {documentId}#{version}
 Column Families:
@@ -603,6 +643,7 @@ Query: Get operations for documentId from version X to Y
 ```
 
 **Colossus/GFS** (Binary Content):
+
 ```
 Path: /docs/{documentId}/images/{imageId}.png
 Path: /docs/{documentId}/attachments/{fileId}.pdf
@@ -621,7 +662,7 @@ async function cacheDocument(documentId, content) {
   await db.put('documents', {
     id: documentId,
     content,
-    cachedAt: Date.now()
+    cachedAt: Date.now(),
   });
 }
 
@@ -771,13 +812,13 @@ async function restoreRevision(documentId, revisionId) {
   // 3. Apply revision content as current
   await updateDocument(documentId, {
     content: revision.content,
-    version: currentVersion + 1
+    version: currentVersion + 1,
   });
 
   // 4. Notify all active editors
   broadcastToDocument(documentId, {
     type: 'document-restored',
-    revisionId
+    revisionId,
   });
 
   return revision;
@@ -819,7 +860,7 @@ class OfflineManager {
     this.isOnline = navigator.onLine;
 
     window.addEventListener('online', () => this.syncPendingOperations());
-    window.addEventListener('offline', () => this.isOnline = false);
+    window.addEventListener('offline', () => (this.isOnline = false));
   }
 
   async applyOperation(operation) {
@@ -994,9 +1035,17 @@ function createDiff(oldDoc, newDoc) {
 
   for (const change of diff) {
     if (change.type === 'add') {
-      changes.push({ type: 'insert', position: change.position, text: change.text });
+      changes.push({
+        type: 'insert',
+        position: change.position,
+        text: change.text,
+      });
     } else if (change.type === 'remove') {
-      changes.push({ type: 'delete', position: change.position, length: change.length });
+      changes.push({
+        type: 'delete',
+        position: change.position,
+        length: change.length,
+      });
     }
   }
 
@@ -1028,31 +1077,31 @@ const searchQuery = {
       must: [
         {
           multi_match: {
-            query: "quarterly report",
-            fields: ["title^3", "content"],
-            type: "best_fields",
-            fuzziness: "AUTO"
-          }
-        }
+            query: 'quarterly report',
+            fields: ['title^3', 'content'],
+            type: 'best_fields',
+            fuzziness: 'AUTO',
+          },
+        },
       ],
       filter: [
         {
           terms: {
-            "permissions.userId": [currentUserId, "public"]
-          }
-        }
-      ]
-    }
+            'permissions.userId': [currentUserId, 'public'],
+          },
+        },
+      ],
+    },
   },
   highlight: {
     fields: {
       content: {
         fragment_size: 150,
-        number_of_fragments: 3
-      }
-    }
+        number_of_fragments: 3,
+      },
+    },
   },
-  size: 20
+  size: 20,
 };
 ```
 
@@ -1075,24 +1124,28 @@ Indexing Worker:
 #### Key Metrics
 
 **Collaboration Quality:**
+
 - **Sync Latency**: Time from operation to broadcast (target: < 200ms)
 - **Conflict Rate**: % of operations requiring transformation
 - **Operation Throughput**: Operations/sec per document
 - **WebSocket Reconnections**: Stability indicator
 
 **Performance:**
+
 - Document load time (P50, P95, P99)
 - Operation apply time
 - Search latency
 - API response times
 
 **Availability:**
+
 - WebSocket connection success rate
 - Database query latency
 - Cache hit ratio
 - Service uptime (99.99% target)
 
 **User Experience:**
+
 - Cursors visible latency
 - Typing lag (keystroke to screen render)
 - Auto-save success rate
@@ -1130,11 +1183,13 @@ Action:
 #### 1. Encryption
 
 **At Rest:**
+
 - All documents encrypted with AES-256
 - Encryption keys managed by Google KMS
 - Separate keys per organization (Workspace)
 
 **In Transit:**
+
 - TLS 1.3 for all HTTP/WebSocket connections
 - End-to-end encryption for sensitive documents (optional)
 
@@ -1175,8 +1230,8 @@ async function validateSharing(documentId, targetEmail) {
   if (sensitiveData.found) {
     return {
       allowed: false,
-      reason: "Document contains sensitive information",
-      details: sensitiveData.types
+      reason: 'Document contains sensitive information',
+      details: sensitiveData.types,
     };
   }
 
@@ -1238,14 +1293,14 @@ def check_rate_limit(user_id, action):
 
 ## Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| Operational Transformation | Guarantees consistency, proven at scale | Complex implementation, requires careful versioning |
-| Snapshot + Ops Log | Fast loading, efficient storage | More complex than pure event sourcing |
-| WebSocket Persistent Connections | Real-time updates, low latency | Connection management complexity, server resources |
-| Spanner for Metadata | Global consistency, strong ACID | Higher cost than NoSQL alternatives |
-| Client-Side Caching | Offline mode, instant loading | Sync complexity, potential staleness |
-| Periodic Snapshots | Bounded replay time | Storage overhead (5x multiplier) |
+| Decision                         | Pro                                     | Con                                                 |
+| -------------------------------- | --------------------------------------- | --------------------------------------------------- |
+| Operational Transformation       | Guarantees consistency, proven at scale | Complex implementation, requires careful versioning |
+| Snapshot + Ops Log               | Fast loading, efficient storage         | More complex than pure event sourcing               |
+| WebSocket Persistent Connections | Real-time updates, low latency          | Connection management complexity, server resources  |
+| Spanner for Metadata             | Global consistency, strong ACID         | Higher cost than NoSQL alternatives                 |
+| Client-Side Caching              | Offline mode, instant loading           | Sync complexity, potential staleness                |
+| Periodic Snapshots               | Bounded replay time                     | Storage overhead (5x multiplier)                    |
 
 ---
 
@@ -1269,12 +1324,12 @@ class DocumentModel {
       id: generateId(),
       text,
       formatting: {
-        bold: [],      // Ranges: [{start: 0, end: 5}]
+        bold: [], // Ranges: [{start: 0, end: 5}]
         italic: [],
         fontSize: 12,
-        alignment: 'left'
+        alignment: 'left',
       },
-      type: 'paragraph' // or 'heading1', 'list-item', etc.
+      type: 'paragraph', // or 'heading1', 'list-item', etc.
     };
     this.paragraphs.push(para);
   }
@@ -1284,9 +1339,10 @@ class DocumentModel {
     const para = this.findParagraph(op.paragraphId);
 
     if (op.type === 'insert') {
-      para.text = para.text.slice(0, op.position) +
-                  op.content +
-                  para.text.slice(op.position);
+      para.text =
+        para.text.slice(0, op.position) +
+        op.content +
+        para.text.slice(op.position);
       this.updateFormatting(para, op);
     }
 
@@ -1423,7 +1479,7 @@ class ExportService {
   async export(documentId, format) {
     const doc = await getDocument(documentId);
 
-    switch(format) {
+    switch (format) {
       case 'docx':
         return this.convertToDocx(doc);
       case 'pdf':
@@ -1444,9 +1500,9 @@ class ExportService {
             text: p.text,
             bold: p.formatting.bold,
             // ... other formatting
-          })
-        ]
-      }))
+          }),
+        ],
+      })),
     });
 
     return Packer.toBuffer(docx);

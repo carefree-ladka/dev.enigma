@@ -1,6 +1,7 @@
 # Rate Limiter System Design
 
 ## Table of Contents
+
 - [Requirements (~5 minutes)](#requirements-5-minutes)
   - [Functional Requirements](#1-functional-requirements)
   - [Non-functional Requirements](#2-non-functional-requirements)
@@ -18,6 +19,7 @@
 ### 1) Functional Requirements
 
 **Key Questions Asked:**
+
 - Q: What types of rate limiting do we need to support?
 - A: User-based, IP-based, and API key-based rate limiting
 - Q: Should it be a standalone service or library?
@@ -28,6 +30,7 @@
 - A: Return HTTP 429 (Too Many Requests) with retry information
 
 **Core Functional Requirements:**
+
 - [ ] System should allow rate limiting by different identifiers (user_id, IP, API key)
 - [ ] System should support different rate limiting algorithms (fixed window, sliding window, token bucket)
 - [ ] System should allow configurable rate limits per API endpoint
@@ -39,6 +42,7 @@
 ### 2) Non-functional Requirements
 
 **System Quality Requirements:**
+
 - [ ] **Ultra-Low Latency:** Rate limit checks should add < 1ms latency to API calls
 - [ ] **High Availability:** 99.99% uptime - rate limiter failure shouldn't bring down services
 - [ ] **High Throughput:** Handle 10M+ rate limit checks per second
@@ -47,6 +51,7 @@
 - [ ] **Fault Tolerance:** Fail-open (allow requests) when rate limiter is unavailable
 
 **Rationale:**
+
 - **Ultra-low latency:** Rate limiting is on the critical path of every API call
 - **High availability:** More critical than accuracy - better to allow some requests than block all
 - **Fail-open:** Ensures service availability over perfect rate limiting
@@ -56,11 +61,13 @@
 **Key Calculations That Influence Design:**
 
 **Throughput Requirements:**
+
 - 10M rate limit checks/second at peak
 - Assuming 80/20 rule: 8M reads, 2M writes per second
-- *Impact:* Need in-memory caching and optimized data structures
+- _Impact:_ Need in-memory caching and optimized data structures
 
 **Memory Requirements per Algorithm:**
+
 ```
 Token Bucket: ~100 bytes per user (bucket state)
 Sliding Window: ~1KB per user (request timestamps)
@@ -69,12 +76,14 @@ Fixed Window: ~50 bytes per user (counter + timestamp)
 For 100M active users with token bucket:
 100M × 100 bytes = 10GB memory per rate limiter node
 ```
-*Impact:* Memory-efficient algorithms and data partitioning required
+
+_Impact:_ Memory-efficient algorithms and data partitioning required
 
 **Network Overhead:**
+
 - Each check: ~200 bytes request/response
 - 10M checks/sec × 200 bytes = 2GB/s network traffic
-- *Impact:* Need local caching and efficient serialization
+- _Impact:_ Need local caching and efficient serialization
 
 > These calculations drive our choice of algorithms, caching strategy, and node sizing.
 
@@ -83,18 +92,21 @@ For 100M active users with token bucket:
 ## Core Entities (~2 minutes)
 
 **Primary Entities:**
+
 - **RateLimit:** Configuration for rate limiting rules (endpoint, limit, window, algorithm)
 - **RateLimitBucket:** Current state of rate limiting for a specific identifier (counter, last_reset, tokens)
 - **RateLimitRequest:** Information needed to check rate limit (identifier, endpoint, timestamp)
 - **RateLimitResponse:** Result of rate limit check (allowed, remaining, reset_time)
 
 **Entity Relationships:**
+
 - RateLimit defines rules (1:N with RateLimitBucket)
 - RateLimitBucket tracks state per identifier
 - RateLimitRequest triggers check against RateLimitBucket
 - RateLimitResponse provides decision and metadata
 
 **Key Identifiers:**
+
 - **user_id:** For user-specific rate limiting
 - **ip_address:** For IP-based protection against abuse
 - **api_key:** For client application rate limiting
@@ -105,11 +117,13 @@ For 100M active users with token bucket:
 ## API or System Interface (~5 minutes)
 
 ### Protocol Choice: gRPC
+
 **Reasoning:** Ultra-low latency requirement makes gRPC ideal due to HTTP/2 multiplexing, binary protocol, and connection reuse. Also supports both synchronous and async calls.
 
 ### Core API Endpoints
 
 **Rate Limit Check (Primary API):**
+
 ```protobuf
 service RateLimiter {
   rpc CheckRateLimit(RateLimitRequest) returns (RateLimitResponse);
@@ -133,6 +147,7 @@ message RateLimitResponse {
 ```
 
 **Configuration Management:**
+
 ```protobuf
 service RateLimiterConfig {
   rpc CreateRateLimit(CreateRateLimitRequest) returns (RateLimit);
@@ -153,6 +168,7 @@ message RateLimit {
 ```
 
 **Monitoring & Health:**
+
 ```protobuf
 service RateLimiterHealth {
   rpc GetHealthStatus(Empty) returns (HealthResponse);
@@ -162,6 +178,7 @@ service RateLimiterHealth {
 ```
 
 **Client Integration Example:**
+
 ```python
 # How services would integrate
 rate_limiter = RateLimiterClient("rate-limiter.internal:9090")
@@ -192,6 +209,7 @@ def api_handler(user_id, request):
 ## Data Flow (~5 minutes)
 
 ### Rate Limit Check Flow
+
 1. **API Request:** Client makes request to API service (e.g., POST /api/v1/posts)
 2. **Rate Limit Check:** API service calls Rate Limiter with (user_id, endpoint, timestamp)
 3. **Cache Lookup:** Rate Limiter checks local cache for user's bucket state
@@ -202,6 +220,7 @@ def api_handler(user_id, request):
 8. **API Processing:** API service either processes request or returns 429 error
 
 ### Configuration Update Flow
+
 1. **Config Change:** Admin updates rate limit via configuration API
 2. **Validation:** Validate new configuration (positive limits, valid algorithms)
 3. **Database Update:** Store new configuration in persistent storage
@@ -210,6 +229,7 @@ def api_handler(user_id, request):
 6. **Hot Reload:** Nodes reload configuration without restart
 
 ### Bucket State Synchronization Flow (Distributed)
+
 1. **State Update:** Local node updates bucket state
 2. **Async Replication:** Broadcast state changes to other nodes (eventual consistency)
 3. **Conflict Resolution:** Use timestamp-based resolution for conflicts
@@ -220,6 +240,7 @@ def api_handler(user_id, request):
 ## High Level Design (~10-15 minutes)
 
 ### Design Approach
+
 Building the system to handle the primary use case first (single rate limit check), then expanding to support batch operations and distributed scenarios.
 
 ### System Architecture
@@ -241,6 +262,7 @@ Building the system to handle the primary use case first (single rate limit chec
 ### Detailed Component Design
 
 **Rate Limiter Node Architecture:**
+
 ```
 ┌─────────────────────────────────────────────┐
 │               Rate Limiter Node             │
@@ -271,6 +293,7 @@ Building the system to handle the primary use case first (single rate limit chec
 ### Algorithm Implementations
 
 **1. Token Bucket Algorithm (Recommended):**
+
 ```python
 class TokenBucket:
     def __init__(self, capacity, refill_rate):
@@ -299,6 +322,7 @@ class TokenBucket:
 ```
 
 **2. Sliding Window Log:**
+
 ```python
 class SlidingWindowLog:
     def __init__(self, limit, window_seconds):
@@ -320,6 +344,7 @@ class SlidingWindowLog:
 ### Database Schema
 
 **Rate Limit Configurations:**
+
 ```sql
 CREATE TABLE rate_limits (
     id UUID PRIMARY KEY,
@@ -339,6 +364,7 @@ CREATE INDEX idx_rate_limits_endpoint_type ON rate_limits(endpoint, identifier_t
 ```
 
 **Rate Limit State (Redis/In-Memory):**
+
 ```python
 # Redis key structure
 bucket_key = f"bucket:{identifier_type}:{identifier}:{endpoint}"
@@ -352,6 +378,7 @@ bucket_data = {
 ```
 
 ### Technology Stack
+
 - **Application:** Go/Java for high-performance gRPC services
 - **Cache:** Redis for distributed state + local in-memory cache
 - **Database:** PostgreSQL for configuration storage
@@ -366,24 +393,28 @@ bucket_data = {
 ### 1. Algorithm Comparison and Selection
 
 **Token Bucket (Recommended):**
+
 - **Pros:** Allows burst traffic, memory efficient, smooth rate limiting
 - **Cons:** Slightly more complex implementation
 - **Use Case:** General purpose, handles traffic bursts well
 - **Memory:** ~100 bytes per bucket (tokens, last_refill, capacity)
 
 **Sliding Window Log:**
+
 - **Pros:** Most accurate, prevents burst at window boundaries
 - **Cons:** High memory usage, complex cleanup
 - **Use Case:** When precision is critical
 - **Memory:** ~1KB per bucket (timestamp array)
 
 **Fixed Window Counter:**
+
 - **Pros:** Simple, memory efficient
 - **Cons:** Allows 2x burst at window boundaries
 - **Use Case:** Simple rate limiting with acceptable burst
 - **Memory:** ~50 bytes per bucket (counter, window_start)
 
 **Decision Matrix:**
+
 ```
 Requirement    | Token Bucket | Sliding Window | Fixed Window
 ---------------|--------------|----------------|-------------
@@ -403,6 +434,7 @@ Performance    | Excellent    | Good           | Excellent
 **Solution: Multi-Tier Caching with Eventual Consistency**
 
 **Local Node Cache (L1):**
+
 ```python
 class LocalRateLimitCache:
     def __init__(self, max_size=1000000):
@@ -424,6 +456,7 @@ class LocalRateLimitCache:
 ```
 
 **Redis Shared State (L2):**
+
 ```python
 class RedisStateManager:
     def __init__(self):
@@ -448,6 +481,7 @@ class RedisStateManager:
 ```
 
 **Conflict Resolution Strategy:**
+
 ```python
 def resolve_bucket_conflict(local_bucket, redis_bucket):
     # Use latest timestamp as source of truth
@@ -464,6 +498,7 @@ def resolve_bucket_conflict(local_bucket, redis_bucket):
 ### 3. High Availability and Fault Tolerance
 
 **Fail-Open Strategy:**
+
 ```python
 class RateLimiterService:
     def __init__(self):
@@ -492,6 +527,7 @@ class RateLimiterService:
 ```
 
 **Health Monitoring:**
+
 ```python
 class HealthChecker:
     def check_health(self):
@@ -515,6 +551,7 @@ class HealthChecker:
 ### 4. Performance Optimizations
 
 **Batched Rate Limit Checks:**
+
 ```python
 def check_rate_limit_batch(self, requests):
     """Check multiple rate limits in a single call"""
@@ -533,6 +570,7 @@ def check_rate_limit_batch(self, requests):
 ```
 
 **Connection Pooling and Multiplexing:**
+
 ```python
 # gRPC connection pooling
 class RateLimiterClient:
@@ -556,6 +594,7 @@ class RateLimiterClient:
 ### 5. Monitoring and Observability
 
 **Key Metrics:**
+
 ```python
 class RateLimiterMetrics:
     def __init__(self):
@@ -575,6 +614,7 @@ class RateLimiterMetrics:
 ```
 
 **Alerting Rules:**
+
 ```yaml
 # Prometheus alerting rules
 groups:
@@ -586,7 +626,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Rate limiter latency is high"
+          summary: 'Rate limiter latency is high'
 
       - alert: RateLimiterCacheMissRate
         expr: rate_limiter_cache_hit_ratio < 0.90
@@ -594,7 +634,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Rate limiter cache hit rate is low"
+          summary: 'Rate limiter cache hit rate is low'
 
       - alert: RateLimiterRedisDown
         expr: up{job="rate-limiter-redis"} == 0
@@ -602,12 +642,13 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Rate limiter Redis is down"
+          summary: 'Rate limiter Redis is down'
 ```
 
 ### 6. Configuration Management
 
 **Dynamic Configuration Updates:**
+
 ```python
 class ConfigurationManager:
     def __init__(self):
@@ -645,6 +686,7 @@ class ConfigurationManager:
 This Rate Limiter design successfully handles the core requirements:
 
 ✅ **Functional Requirements Met:**
+
 - Multi-identifier support (user, IP, API key)
 - Multiple algorithm implementations (token bucket, sliding window, fixed window)
 - Configurable per-endpoint limits
@@ -652,6 +694,7 @@ This Rate Limiter design successfully handles the core requirements:
 - Real-time rate limit status
 
 ✅ **Non-functional Requirements Addressed:**
+
 - **Ultra-low latency:** < 1ms through multi-tier caching and in-memory algorithms
 - **High availability:** 99.99% uptime with fail-open strategy and circuit breakers
 - **High throughput:** 10M+ checks/second via horizontal scaling and connection pooling
@@ -659,6 +702,7 @@ This Rate Limiter design successfully handles the core requirements:
 - **Fault tolerance:** Graceful degradation when dependencies fail
 
 ✅ **Production-Ready Features:**
+
 - Distributed state management with eventual consistency
 - Comprehensive monitoring and alerting
 - Dynamic configuration updates without restarts

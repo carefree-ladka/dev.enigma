@@ -3,6 +3,7 @@
 ## Core Concepts
 
 ### 1. Definition of Median
+
 ```javascript
 // For array of length n:
 // If n is odd: median = array[n/2]
@@ -14,6 +15,7 @@
 ```
 
 ### 2. Key Properties
+
 - For sorted arrays A and B:
   - All elements in left partition ≤ all elements in right partition
   - Left partition size = (n1 + n2 + 1) / 2 for odd total length
@@ -22,92 +24,95 @@
 ## Approaches
 
 ### 1. Merge and Find (O(n+m))
+
 ```javascript
 function findMedianSortedArrays_merge(nums1, nums2) {
-    const merged = [];
-    let i = 0, j = 0;
-    
-    // Merge arrays
-    while (i < nums1.length && j < nums2.length) {
-        if (nums1[i] <= nums2[j]) {
-            merged.push(nums1[i++]);
-        } else {
-            merged.push(nums2[j++]);
-        }
+  const merged = [];
+  let i = 0,
+    j = 0;
+
+  // Merge arrays
+  while (i < nums1.length && j < nums2.length) {
+    if (nums1[i] <= nums2[j]) {
+      merged.push(nums1[i++]);
+    } else {
+      merged.push(nums2[j++]);
     }
-    
-    // Add remaining elements
-    while (i < nums1.length) merged.push(nums1[i++]);
-    while (j < nums2.length) merged.push(nums2[j++]);
-    
-    const mid = Math.floor(merged.length / 2);
-    
-    // Return median
-    return merged.length % 2 === 0
-        ? (merged[mid - 1] + merged[mid]) / 2
-        : merged[mid];
+  }
+
+  // Add remaining elements
+  while (i < nums1.length) merged.push(nums1[i++]);
+  while (j < nums2.length) merged.push(nums2[j++]);
+
+  const mid = Math.floor(merged.length / 2);
+
+  // Return median
+  return merged.length % 2 === 0
+    ? (merged[mid - 1] + merged[mid]) / 2
+    : merged[mid];
 }
 ```
 
 ### 2. Binary Search (Optimal O(log(min(n,m))))
+
 ```javascript
 function findMedianSortedArrays(nums1, nums2) {
-    // Ensure nums1 is the shorter array
-    if (nums1.length > nums2.length) {
-        [nums1, nums2] = [nums2, nums1];
+  // Ensure nums1 is the shorter array
+  if (nums1.length > nums2.length) {
+    [nums1, nums2] = [nums2, nums1];
+  }
+
+  const n1 = nums1.length;
+  const n2 = nums2.length;
+  const totalLength = n1 + n2;
+  const halfLength = Math.floor((totalLength + 1) / 2);
+
+  let left = 0;
+  let right = n1;
+
+  while (left <= right) {
+    const partition1 = Math.floor((left + right) / 2);
+    const partition2 = halfLength - partition1;
+
+    // Find partition elements
+    const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
+    const right1 = partition1 === n1 ? Infinity : nums1[partition1];
+    const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
+    const right2 = partition2 === n2 ? Infinity : nums2[partition2];
+
+    // Check if partition is correct
+    if (left1 <= right2 && left2 <= right1) {
+      // Found correct partition
+      if (totalLength % 2 === 0) {
+        return (Math.max(left1, left2) + Math.min(right1, right2)) / 2;
+      } else {
+        return Math.max(left1, left2);
+      }
+    } else if (left1 > right2) {
+      right = partition1 - 1;
+    } else {
+      left = partition1 + 1;
     }
-    
-    const n1 = nums1.length;
-    const n2 = nums2.length;
-    const totalLength = n1 + n2;
-    const halfLength = Math.floor((totalLength + 1) / 2);
-    
-    let left = 0;
-    let right = n1;
-    
-    while (left <= right) {
-        const partition1 = Math.floor((left + right) / 2);
-        const partition2 = halfLength - partition1;
-        
-        // Find partition elements
-        const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
-        const right1 = partition1 === n1 ? Infinity : nums1[partition1];
-        const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
-        const right2 = partition2 === n2 ? Infinity : nums2[partition2];
-        
-        // Check if partition is correct
-        if (left1 <= right2 && left2 <= right1) {
-            // Found correct partition
-            if (totalLength % 2 === 0) {
-                return (Math.max(left1, left2) + 
-                        Math.min(right1, right2)) / 2;
-            } else {
-                return Math.max(left1, left2);
-            }
-        } else if (left1 > right2) {
-            right = partition1 - 1;
-        } else {
-            left = partition1 + 1;
-        }
-    }
+  }
 }
 ```
 
 ## Common Patterns and Edge Cases
 
 ### 1. Edge Cases to Handle
+
 ```javascript
 // Empty arrays
 if (nums1.length === 0) {
-    const mid = Math.floor(nums2.length / 2);
-    return nums2.length % 2 === 0
-        ? (nums2[mid - 1] + nums2[mid]) / 2
-        : nums2[mid];
+  const mid = Math.floor(nums2.length / 2);
+  return nums2.length % 2 === 0
+    ? (nums2[mid - 1] + nums2[mid]) / 2
+    : nums2[mid];
 }
 
 // Single element arrays
 if (nums1.length === 1 && nums2.length === 1) {
-    return (nums1[0] + nums2[0]) / 2;
+  return (nums1[0] + nums2[0]) / 2;
 }
 
 // Arrays of different lengths
@@ -115,50 +120,53 @@ if (nums1.length === 1 && nums2.length === 1) {
 ```
 
 ### 2. Partition Property Checks
+
 ```javascript
 function isValidPartition(left1, right1, left2, right2) {
-    return left1 <= right2 && left2 <= right1;
+  return left1 <= right2 && left2 <= right1;
 }
 
 function getPartitionElements(nums1, nums2, partition1, partition2) {
-    const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
-    const right1 = partition1 === nums1.length ? Infinity : nums1[partition1];
-    const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
-    const right2 = partition2 === nums2.length ? Infinity : nums2[partition2];
-    
-    return { left1, right1, left2, right2 };
+  const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
+  const right1 = partition1 === nums1.length ? Infinity : nums1[partition1];
+  const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
+  const right2 = partition2 === nums2.length ? Infinity : nums2[partition2];
+
+  return { left1, right1, left2, right2 };
 }
 ```
 
 ## Optimization Techniques
 
 ### 1. Ensure Working with Shorter Array
+
 ```javascript
 if (nums1.length > nums2.length) {
-    return findMedianSortedArrays(nums2, nums1);
+  return findMedianSortedArrays(nums2, nums1);
 }
 ```
 
 ### 2. Early Return for Special Cases
+
 ```javascript
 function findMedianSortedArrays_optimized(nums1, nums2) {
-    // Handle empty arrays
-    if (nums1.length === 0) {
-        return getMedian(nums2);
-    }
-    if (nums2.length === 0) {
-        return getMedian(nums1);
-    }
-    
-    // Handle non-overlapping arrays
-    if (nums1[nums1.length - 1] <= nums2[0]) {
-        return getMedianOfNonOverlapping(nums1, nums2);
-    }
-    if (nums2[nums2.length - 1] <= nums1[0]) {
-        return getMedianOfNonOverlapping(nums2, nums1);
-    }
-    
-    // Continue with binary search...
+  // Handle empty arrays
+  if (nums1.length === 0) {
+    return getMedian(nums2);
+  }
+  if (nums2.length === 0) {
+    return getMedian(nums1);
+  }
+
+  // Handle non-overlapping arrays
+  if (nums1[nums1.length - 1] <= nums2[0]) {
+    return getMedianOfNonOverlapping(nums1, nums2);
+  }
+  if (nums2[nums2.length - 1] <= nums1[0]) {
+    return getMedianOfNonOverlapping(nums2, nums1);
+  }
+
+  // Continue with binary search...
 }
 ```
 
@@ -181,40 +189,42 @@ function findMedianSortedArrays_optimized(nums1, nums2) {
 ## Problem Variations
 
 ### 1. K-th Element in Two Sorted Arrays
+
 ```javascript
 function findKthElement(nums1, nums2, k) {
-    if (nums1.length > nums2.length) {
-        return findKthElement(nums2, nums1, k);
+  if (nums1.length > nums2.length) {
+    return findKthElement(nums2, nums1, k);
+  }
+
+  let left = 0;
+  let right = Math.min(nums1.length, k);
+
+  while (left <= right) {
+    const partition1 = Math.floor((left + right) / 2);
+    const partition2 = k - partition1;
+
+    const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
+    const right1 = partition1 === nums1.length ? Infinity : nums1[partition1];
+    const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
+    const right2 = partition2 === nums2.length ? Infinity : nums2[partition2];
+
+    if (left1 <= right2 && left2 <= right1) {
+      return Math.max(left1, left2);
+    } else if (left1 > right2) {
+      right = partition1 - 1;
+    } else {
+      left = partition1 + 1;
     }
-    
-    let left = 0;
-    let right = Math.min(nums1.length, k);
-    
-    while (left <= right) {
-        const partition1 = Math.floor((left + right) / 2);
-        const partition2 = k - partition1;
-        
-        const left1 = partition1 === 0 ? -Infinity : nums1[partition1 - 1];
-        const right1 = partition1 === nums1.length ? Infinity : nums1[partition1];
-        const left2 = partition2 === 0 ? -Infinity : nums2[partition2 - 1];
-        const right2 = partition2 === nums2.length ? Infinity : nums2[partition2];
-        
-        if (left1 <= right2 && left2 <= right1) {
-            return Math.max(left1, left2);
-        } else if (left1 > right2) {
-            right = partition1 - 1;
-        } else {
-            left = partition1 + 1;
-        }
-    }
+  }
 }
 ```
 
 ### 2. Median of Three Sorted Arrays
+
 ```javascript
 function findMedianOfThree(nums1, nums2, nums3) {
-    // Convert to two arrays problem
-    const merged = mergeTwoSorted(nums1, nums2);
-    return findMedianSortedArrays(merged, nums3);
+  // Convert to two arrays problem
+  const merged = mergeTwoSorted(nums1, nums2);
+  return findMedianSortedArrays(merged, nums3);
 }
 ```

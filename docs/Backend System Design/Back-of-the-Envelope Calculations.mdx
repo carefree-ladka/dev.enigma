@@ -5,6 +5,7 @@
 Before diving into calculations, establish the foundation by asking clarifying questions:
 
 ### Key Questions to Ask
+
 - **User Scale**: How many daily/monthly active users?
 - **Usage Patterns**: How many requests per user per day?
 - **Data Characteristics**: What's the read vs write ratio?
@@ -13,6 +14,7 @@ Before diving into calculations, establish the foundation by asking clarifying q
 - **Peak Traffic Patterns**: When do traffic spikes occur?
 
 ### What to Estimate
+
 - **Traffic/Load**: Requests per second (RPS)
 - **Storage Requirements**: Total data storage needs
 - **Network Bandwidth**: Data transfer requirements
@@ -24,6 +26,7 @@ Before diving into calculations, establish the foundation by asking clarifying q
 ### Core BoE Formulas
 
 #### Traffic Calculation
+
 ```javascript
 // Basic RPS calculation
 const totalRequestsPerDay = users * actionsPerUserPerDay;
@@ -33,6 +36,7 @@ const peakRPS = baseRPS * peakFactor; // Usually 2-3x
 ```
 
 #### Storage Estimation
+
 ```javascript
 // Storage calculation
 const totalStorage = numberOfItems * sizePerItem;
@@ -41,6 +45,7 @@ const monthlyStorage = dailyStorage * 30;
 ```
 
 #### Network Bandwidth
+
 ```javascript
 // Bandwidth calculation
 const bandwidth = peakRPS * avgResponseSize;
@@ -49,32 +54,32 @@ const bandwidth = peakRPS * avgResponseSize;
 
 ### Server Capacity Planning
 
-| Server Type | Request Type | Approx RPS | Use Case |
-|-------------|--------------|------------|----------|
-| **Nginx** | Static content | 10,000 - 50,000 | CDN, reverse proxy |
-| **Node.js** | Simple API reads | 1,000 - 5,000 | Async I/O operations |
-| **Node.js** | DB-heavy operations | 100 - 1,000 | Complex queries, writes |
-| **Spring Boot** | REST API | 200 - 1,000 | Java backend services |
-| **Python/Django** | Web API | 100 - 500 | Traditional web apps |
-| **File Processing** | Upload/processing | 10 - 100 | Image/video handling |
-| **Redis Cache** | Key-value ops | 50,000+ | In-memory caching |
+| Server Type         | Request Type        | Approx RPS      | Use Case                |
+| ------------------- | ------------------- | --------------- | ----------------------- |
+| **Nginx**           | Static content      | 10,000 - 50,000 | CDN, reverse proxy      |
+| **Node.js**         | Simple API reads    | 1,000 - 5,000   | Async I/O operations    |
+| **Node.js**         | DB-heavy operations | 100 - 1,000     | Complex queries, writes |
+| **Spring Boot**     | REST API            | 200 - 1,000     | Java backend services   |
+| **Python/Django**   | Web API             | 100 - 500       | Traditional web apps    |
+| **File Processing** | Upload/processing   | 10 - 100        | Image/video handling    |
+| **Redis Cache**     | Key-value ops       | 50,000+         | In-memory caching       |
 
 ## Data Model
 
 ### BoE Estimation Template
 
-| Metric | Formula | Example Values |
-|--------|---------|----------------|
-| **Users (DAU)** | Daily Active Users | 10,000,000 |
-| **Actions/User/Day** | Average requests per user | 10 |
-| **Total Requests/Day** | Users × Actions | 100,000,000 |
-| **Base RPS** | Total requests ÷ 86,400 | ~1,157 |
-| **Peak Factor** | Traffic spike multiplier | 3x |
-| **Peak RPS** | Base RPS × Peak Factor | ~3,471 |
-| **Data/Request** | Payload size | 100 KB |
-| **Bandwidth** | Peak RPS × Data size | ~347 MB/s |
-| **Daily Storage** | Requests × Data size | ~10 TB |
-| **Monthly Storage** | Daily × 30 | ~300 TB |
+| Metric                 | Formula                   | Example Values |
+| ---------------------- | ------------------------- | -------------- |
+| **Users (DAU)**        | Daily Active Users        | 10,000,000     |
+| **Actions/User/Day**   | Average requests per user | 10             |
+| **Total Requests/Day** | Users × Actions           | 100,000,000    |
+| **Base RPS**           | Total requests ÷ 86,400   | ~1,157         |
+| **Peak Factor**        | Traffic spike multiplier  | 3x             |
+| **Peak RPS**           | Base RPS × Peak Factor    | ~3,471         |
+| **Data/Request**       | Payload size              | 100 KB         |
+| **Bandwidth**          | Peak RPS × Data size      | ~347 MB/s      |
+| **Daily Storage**      | Requests × Data size      | ~10 TB         |
+| **Monthly Storage**    | Daily × 30                | ~300 TB        |
 
 ### Database Scaling Calculations
 
@@ -84,8 +89,8 @@ const readWriteRatio = 100; // 100:1 read to write ratio
 const totalReads = totalRequests * (readWriteRatio / (readWriteRatio + 1));
 const totalWrites = totalRequests / (readWriteRatio + 1);
 
-const readsPerSecond = totalReads / 86400 * peakFactor;
-const writesPerSecond = totalWrites / 86400 * peakFactor;
+const readsPerSecond = (totalReads / 86400) * peakFactor;
+const writesPerSecond = (totalWrites / 86400) * peakFactor;
 ```
 
 ## Interface Definition (API)
@@ -112,37 +117,39 @@ const totalNodes = Math.ceil(totalStorage / storagePerNode) * replicationFactor;
 
 ### Caching Strategy Impact
 
-| Cache Type | RPS Improvement | Use Case |
-|------------|-----------------|----------|
-| **Redis** | 10-100x | Session data, frequently accessed data |
-| **CDN** | 100-1000x | Static assets, images, videos |
-| **Application Cache** | 5-20x | Database query results |
-| **Browser Cache** | Infinite | Static resources |
+| Cache Type            | RPS Improvement | Use Case                               |
+| --------------------- | --------------- | -------------------------------------- |
+| **Redis**             | 10-100x         | Session data, frequently accessed data |
+| **CDN**               | 100-1000x       | Static assets, images, videos          |
+| **Application Cache** | 5-20x           | Database query results                 |
+| **Browser Cache**     | Infinite        | Static resources                       |
 
 ### Cost Optimization Techniques
 
 ```javascript
 // Cost estimation example (AWS pricing model)
-const serverCostPerHour = 0.10; // t3.medium
+const serverCostPerHour = 0.1; // t3.medium
 const storageCostPerGB = 0.023; // S3 standard
 const bandwidthCostPerGB = 0.09; // Data transfer
 
 const monthlyCosts = {
   compute: requiredServers * serverCostPerHour * 24 * 30,
   storage: totalStorageGB * storageCostPerGB,
-  bandwidth: monthlyBandwidthGB * bandwidthCostPerGB
+  bandwidth: monthlyBandwidthGB * bandwidthCostPerGB,
 };
 ```
 
 ### Mental Math Shortcuts
 
 #### Quick Approximations
+
 - **Seconds per day**: ~86,400 ≈ 10^5
 - **1 million**: 10^6
 - **1 billion**: 10^9
 - **Powers of 2**: 2^10 = 1,024 ≈ 1,000
 
 #### Conversion Helpers
+
 ```javascript
 // Unit conversions
 const KB = 1024;
@@ -159,12 +166,14 @@ const SECONDS_PER_DAY = 86400;
 ## Practical Example: Photo Sharing App
 
 ### Requirements
+
 - **Users**: 10M DAU
 - **Photos per user per day**: 2
 - **Photo size**: 3 MB average
 - **Read/Write ratio**: 100:1
 
 ### Calculations
+
 ```javascript
 // Traffic calculation
 const users = 10_000_000;
@@ -189,6 +198,7 @@ const readRPS = (photoViews / 86400) * 3; // ~69,444 RPS
 ## Interview Best Practices
 
 ### Key Tips
+
 1. **State Assumptions**: Always explain your reasoning
 2. **Round Numbers**: Use approximations for speed
 3. **Show Growth Buffer**: Design for 2-3x peak traffic
@@ -196,12 +206,14 @@ const readRPS = (photoViews / 86400) * 3; // ~69,444 RPS
 5. **Think Holistically**: Consider all system components
 
 ### Common Assumptions to State
+
 - "Assuming each Spring Boot server handles ~500 RPS for simple REST APIs"
 - "Assuming 3x peak factor for traffic spikes during events"
 - "Assuming 100:1 read-to-write ratio for social media app"
 - "Assuming average response size of 100KB including metadata"
 
 ### Scaling Considerations
+
 - **Horizontal Scaling**: Add more servers
 - **Vertical Scaling**: Upgrade server specs
 - **Database Scaling**: Sharding, read replicas
@@ -210,4 +222,4 @@ const readRPS = (photoViews / 86400) * 3; // ~69,444 RPS
 
 ---
 
-*Remember: The goal isn't perfect accuracy, but demonstrating systematic thinking and understanding of scale!*
+_Remember: The goal isn't perfect accuracy, but demonstrating systematic thinking and understanding of scale!_

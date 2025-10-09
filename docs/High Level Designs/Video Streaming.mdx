@@ -8,10 +8,10 @@
 
 ## 1. Streaming vs Downloading
 
-| Method | Approach | User Experience |
-|--------|----------|----------------|
-| **Downloading** | Fetch entire file first | Wait minutes for GB files |
-| **Streaming** | Fetch small chunks progressively | Playback starts in seconds |
+| Method          | Approach                         | User Experience            |
+| --------------- | -------------------------------- | -------------------------- |
+| **Downloading** | Fetch entire file first          | Wait minutes for GB files  |
+| **Streaming**   | Fetch small chunks progressively | Playback starts in seconds |
 
 **Why streaming wins**: Videos can be 1-10GB+. Nobody waits 5 minutes to start watching.
 
@@ -41,6 +41,7 @@ original_video.mp4
 ### Step 2: Manifest Creation
 
 **HLS Example** (`.m3u8` playlist):
+
 ```m3u8
 #EXTM3U
 #EXT-X-VERSION:3
@@ -58,11 +59,13 @@ chunk_003.ts
 ## 3. Adaptive Bitrate Streaming (ABR)
 
 ### How It Works
+
 1. **Monitor network speed** continuously
 2. **Switch quality** based on bandwidth
 3. **Seamless transitions** between resolutions
 
 ### ABR Decision Logic
+
 ```javascript
 if (bandwidth > 5Mbps) {
   quality = "1080p"
@@ -76,6 +79,7 @@ if (bandwidth > 5Mbps) {
 ```
 
 ### Real-World Example
+
 ```
 User starts video:
 chunk1_360p.ts → plays immediately
@@ -89,18 +93,21 @@ chunk4_480p.ts → network congestion, downgrade
 ## 4. Streaming Protocols
 
 ### HLS (HTTP Live Streaming)
+
 - **Created by**: Apple
 - **Format**: `.m3u8` playlists + `.ts` segments
 - **Support**: iOS, Safari, most platforms
 - **Latency**: 6-30 seconds
 
 ### DASH (Dynamic Adaptive Streaming)
+
 - **Created by**: ISO standard
 - **Format**: `.mpd` manifests + various segments
 - **Support**: Wide browser support
 - **Latency**: 2-30 seconds
 
 ### WebRTC (Real-time)
+
 - **Use case**: Live streaming, video calls
 - **Latency**: Sub-second
 - **Trade-off**: Higher complexity, less scalable
@@ -125,6 +132,7 @@ User → Nearest Edge Server → Chunk Delivery
 ```
 
 ### CDN Benefits
+
 - **Reduced latency**: Serve from nearby servers
 - **Load distribution**: Spread traffic across nodes
 - **Redundancy**: Multiple copies prevent outages
@@ -135,10 +143,11 @@ User → Nearest Edge Server → Chunk Delivery
 ## 6. Client-Side Streaming
 
 ### Buffer Management
+
 ```javascript
 // Typical streaming player logic
 const BUFFER_SIZE = 30; // seconds ahead
-const MIN_BUFFER = 5;   // minimum before stalling
+const MIN_BUFFER = 5; // minimum before stalling
 
 function manageBuffer() {
   if (currentBuffer < MIN_BUFFER) {
@@ -151,6 +160,7 @@ function manageBuffer() {
 ```
 
 ### Quality Switching
+
 - **Upward switching**: Gradual (avoid wasted bandwidth)
 - **Downward switching**: Immediate (prevent stalling)
 - **Chunk boundaries**: Quality changes only between segments
@@ -160,43 +170,50 @@ function manageBuffer() {
 ## 7. Advanced Optimizations
 
 ### Byte-Range Requests
+
 ```http
 GET /video.mp4 HTTP/1.1
 Range: bytes=2048000-4095999
 ```
+
 - Fetch **specific byte ranges** from single file
 - Useful for **seeking** to specific timestamps
 - Alternative to chunk-based streaming
 
 ### Preloading Strategies
+
 - **Predictive buffering**: Fetch likely next chunks
 - **Quality pre-loading**: Cache multiple resolutions
 - **Seek optimization**: Pre-load keyframes for scrubbing
 
 ### Modern Codecs
-| Codec | Compression | Quality | CPU Load |
-|-------|-------------|---------|----------|
-| **H.264** | Standard | Good | Low |
-| **H.265/HEVC** | 50% better | Excellent | Medium |
-| **AV1** | 30% better than H.265 | Best | High |
+
+| Codec          | Compression           | Quality   | CPU Load |
+| -------------- | --------------------- | --------- | -------- |
+| **H.264**      | Standard              | Good      | Low      |
+| **H.265/HEVC** | 50% better            | Excellent | Medium   |
+| **AV1**        | 30% better than H.265 | Best      | High     |
 
 ---
 
 ## 8. Platform Examples
 
 ### YouTube
+
 - **Protocol**: DASH primarily
 - **Resolutions**: 144p → 8K
 - **Strategy**: Start low (360p), upgrade quickly
 - **Innovation**: VP9/AV1 codecs for efficiency
 
 ### Netflix
+
 - **Protocol**: Custom DASH implementation
 - **Pre-encoding**: 15+ quality levels per title
 - **CDN**: Custom Open Connect network
 - **Optimization**: Per-title encoding optimization
 
 ### Twitch (Live)
+
 - **Protocol**: HLS for playback, RTMP for ingest
 - **Latency**: 3-5 second delay
 - **Transcoding**: Real-time quality variants
@@ -207,12 +224,14 @@ Range: bytes=2048000-4095999
 ## 9. Performance Metrics
 
 ### User Experience Metrics
+
 - **Startup time**: Time to first frame (`<2s` target)
 - **Rebuffering ratio**: % of playback time stalled (`<1%`)
 - **Quality switches**: Frequency of resolution changes
 - **Bandwidth efficiency**: Data used vs video length
 
 ### Technical Metrics
+
 - **Chunk fetch time**: Network request latency
 - **Decode performance**: Client-side processing speed
 - **Cache hit ratio**: CDN efficiency (>90% target)
@@ -223,16 +242,17 @@ Range: bytes=2048000-4095999
 ## 10. Implementation Considerations
 
 ### Client Implementation
+
 ```javascript
 // Modern HTML5 video with HLS.js
 import Hls from 'hls.js';
 
 const video = document.querySelector('video');
 const hls = new Hls({
-  maxBufferLength: 30,        // 30s buffer
-  maxMaxBufferLength: 60,     // absolute max
-  startLevel: -1,             // auto quality
-  capLevelToPlayerSize: true  // match screen resolution
+  maxBufferLength: 30, // 30s buffer
+  maxMaxBufferLength: 60, // absolute max
+  startLevel: -1, // auto quality
+  capLevelToPlayerSize: true, // match screen resolution
 });
 
 hls.loadSource('playlist.m3u8');
@@ -240,6 +260,7 @@ hls.attachMedia(video);
 ```
 
 ### Server-Side Considerations
+
 - **Concurrent connections**: Handle thousands of simultaneous streams
 - **Geographic distribution**: CDN placement strategy
 - **Storage costs**: Balance quality vs storage requirements

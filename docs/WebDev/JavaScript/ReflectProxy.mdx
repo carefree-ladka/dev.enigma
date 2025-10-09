@@ -7,6 +7,7 @@ The Reflect API provides methods for interceptable JavaScript operations. It's a
 ### Core Reflect Methods
 
 #### 1. Reflect.get()
+
 ```javascript
 const person = { name: 'John' };
 console.log(Reflect.get(person, 'name')); // 'John'
@@ -16,13 +17,14 @@ const user = {
   _name: 'Alice',
   get name() {
     return this._name;
-  }
+  },
 };
 const proxy = new Proxy(user, {});
 console.log(Reflect.get(user, 'name', proxy)); // 'Alice'
 ```
 
 #### 2. Reflect.set()
+
 ```javascript
 const person = { age: 30 };
 Reflect.set(person, 'age', 31);
@@ -33,12 +35,13 @@ const user = {
   _age: 25,
   set age(value) {
     this._age = value;
-  }
+  },
 };
 Reflect.set(user, 'age', 26, user);
 ```
 
 #### 3. Reflect.has()
+
 ```javascript
 const person = { name: 'John' };
 console.log(Reflect.has(person, 'name')); // true
@@ -46,6 +49,7 @@ console.log(Reflect.has(person, 'age')); // false
 ```
 
 #### 4. Reflect.deleteProperty()
+
 ```javascript
 const person = { name: 'John', age: 30 };
 Reflect.deleteProperty(person, 'age');
@@ -53,6 +57,7 @@ console.log(person); // { name: 'John' }
 ```
 
 #### 5. Reflect.construct()
+
 ```javascript
 function Person(name) {
   this.name = name;
@@ -69,6 +74,7 @@ Proxy allows you to create an object that can intercept and redefine fundamental
 ### Common Use Cases
 
 #### 1. Validation
+
 ```javascript
 const validator = {
   set(target, property, value) {
@@ -81,7 +87,7 @@ const validator = {
       }
     }
     return Reflect.set(target, property, value);
-  }
+  },
 };
 
 const person = new Proxy({}, validator);
@@ -91,6 +97,7 @@ person.age = 30; // Works
 ```
 
 #### 2. Logging
+
 ```javascript
 const handler = {
   get(target, property) {
@@ -100,7 +107,7 @@ const handler = {
   set(target, property, value) {
     console.log(`Setting property: ${property} = ${value}`);
     return Reflect.set(target, property, value);
-  }
+  },
 };
 
 const user = new Proxy({}, handler);
@@ -109,11 +116,12 @@ console.log(user.name); // Logs: "Accessing property: name", then "John"
 ```
 
 #### 3. Default Values
+
 ```javascript
 const handler = {
   get(target, property) {
     return Reflect.get(target, property) ?? 'Property not found';
-  }
+  },
 };
 
 const obj = new Proxy({}, handler);
@@ -121,11 +129,12 @@ console.log(obj.nonexistent); // 'Property not found'
 ```
 
 #### 4. Read-Only Properties
+
 ```javascript
 const handler = {
   set(target, property) {
     throw new Error(`Property ${property} is read-only`);
-  }
+  },
 };
 
 const readOnly = new Proxy({ data: 'protected' }, handler);
@@ -133,6 +142,7 @@ const readOnly = new Proxy({ data: 'protected' }, handler);
 ```
 
 #### 5. Private Properties
+
 ```javascript
 const handler = {
   get(target, property) {
@@ -146,13 +156,16 @@ const handler = {
       throw new Error('Cannot modify private property');
     }
     return Reflect.set(target, property, value);
-  }
+  },
 };
 
-const obj = new Proxy({
-  _private: 'secret',
-  public: 'accessible'
-}, handler);
+const obj = new Proxy(
+  {
+    _private: 'secret',
+    public: 'accessible',
+  },
+  handler
+);
 
 console.log(obj.public); // 'accessible'
 // console.log(obj._private); // Throws Error
@@ -161,6 +174,7 @@ console.log(obj.public); // 'accessible'
 ## Advanced Patterns
 
 ### Method Decorators with Proxy
+
 ```javascript
 function measureTime(target) {
   const handler = {
@@ -170,15 +184,15 @@ function measureTime(target) {
       const end = performance.now();
       console.log(`Execution time: ${end - start}ms`);
       return result;
-    }
+    },
   };
-  
+
   return new Proxy(target, handler);
 }
 
-const slowFunction = measureTime(function(n) {
+const slowFunction = measureTime(function (n) {
   let result = 0;
-  for(let i = 0; i < n; i++) {
+  for (let i = 0; i < n; i++) {
     result += i;
   }
   return result;
@@ -188,6 +202,7 @@ slowFunction(1000000); // Logs execution time
 ```
 
 ### Reactive Properties
+
 ```javascript
 function reactive(obj) {
   return new Proxy(obj, {
@@ -195,16 +210,18 @@ function reactive(obj) {
       const oldValue = target[property];
       const result = Reflect.set(target, property, value);
       if (oldValue !== value) {
-        console.log(`Property ${property} changed from ${oldValue} to ${value}`);
+        console.log(
+          `Property ${property} changed from ${oldValue} to ${value}`
+        );
         // Could trigger UI updates or other reactions here
       }
       return result;
-    }
+    },
   });
 }
 
 const state = reactive({
-  count: 0
+  count: 0,
 });
 
 state.count++; // Logs: "Property count changed from 0 to 1"
@@ -234,13 +251,13 @@ const target = {
   name: 'John',
   getName() {
     return this.name;
-  }
+  },
 };
 
 const handler = {
   get(target, property) {
     return Reflect.get(target, property);
-  }
+  },
 };
 
 const proxy = new Proxy(target, handler);
@@ -252,18 +269,19 @@ console.log(proxy.getName()); // 'John' - works correctly
 ## Additional Reflection Methods
 
 ### Object.setPrototypeOf() and Reflect.setPrototypeOf()
+
 ```javascript
 // Using Object.setPrototypeOf
 const animal = {
   makeSound() {
     return 'Some sound';
-  }
+  },
 };
 
 const dog = {
   bark() {
     return 'Woof!';
-  }
+  },
 };
 
 Object.setPrototypeOf(dog, animal);
@@ -278,6 +296,7 @@ console.log(Object.getPrototypeOf(dog) === animal); // true
 ```
 
 ### Object.getPrototypeOf() and Reflect.getPrototypeOf()
+
 ```javascript
 class Parent {
   parentMethod() {
@@ -300,12 +319,12 @@ console.log(Reflect.getPrototypeOf(child) === Child.prototype); // true
 function getPrototypeChain(obj) {
   const chain = [];
   let currentProto = Object.getPrototypeOf(obj);
-  
+
   while (currentProto !== null) {
     chain.push(currentProto);
     currentProto = Object.getPrototypeOf(currentProto);
   }
-  
+
   return chain;
 }
 
@@ -313,6 +332,7 @@ console.log(getPrototypeChain(child)); // [Child.prototype, Parent.prototype, Ob
 ```
 
 ### Object.defineProperty() and Reflect.defineProperty()
+
 ```javascript
 const person = {};
 
@@ -321,7 +341,7 @@ Object.defineProperty(person, 'name', {
   value: 'John',
   writable: false,
   enumerable: true,
-  configurable: false
+  configurable: false,
 });
 
 // Using Reflect.defineProperty
@@ -329,7 +349,7 @@ Reflect.defineProperty(person, 'age', {
   value: 30,
   writable: true,
   enumerable: true,
-  configurable: true
+  configurable: true,
 });
 
 // Advanced usage with getters and setters
@@ -343,7 +363,7 @@ Reflect.defineProperty(person, 'score', {
     internalValue = value;
   },
   enumerable: true,
-  configurable: true
+  configurable: true,
 });
 
 // Usage
@@ -353,6 +373,7 @@ console.log(person.score); // 100
 ```
 
 ### Object.getOwnPropertyNames() and Object.getOwnPropertySymbols()
+
 ```javascript
 const sym1 = Symbol('sym1');
 const sym2 = Symbol('sym2');
@@ -361,7 +382,7 @@ const obj = {
   prop1: 'value1',
   prop2: 'value2',
   [sym1]: 'symbol value 1',
-  [sym2]: 'symbol value 2'
+  [sym2]: 'symbol value 2',
 };
 
 // Get all string property names
@@ -373,7 +394,7 @@ console.log(Object.getOwnPropertySymbols(obj)); // [Symbol(sym1), Symbol(sym2)]
 // Combining both
 const allProps = [
   ...Object.getOwnPropertyNames(obj),
-  ...Object.getOwnPropertySymbols(obj)
+  ...Object.getOwnPropertySymbols(obj),
 ];
 
 // Getting property descriptors
@@ -384,6 +405,7 @@ const fullPropDetails = allProps.reduce((acc, prop) => {
 ```
 
 ### Object.getOwnPropertyDescriptor() and Reflect.getOwnPropertyDescriptor()
+
 ```javascript
 const obj = {};
 
@@ -391,7 +413,7 @@ Object.defineProperty(obj, 'name', {
   value: 'John',
   writable: false,
   enumerable: true,
-  configurable: false
+  configurable: false,
 });
 
 // Using Object method
@@ -412,25 +434,26 @@ console.log(descriptor2); // Same output as above
 ### Practical Use Cases
 
 #### Creating an Immutable Object
+
 ```javascript
 function makeImmutable(obj) {
   const props = Object.getOwnPropertyNames(obj);
   const symbols = Object.getOwnPropertySymbols(obj);
-  
+
   [...props, ...symbols].forEach(prop => {
     Object.defineProperty(obj, prop, {
       writable: false,
-      configurable: false
+      configurable: false,
     });
   });
-  
+
   Object.preventExtensions(obj);
   return obj;
 }
 
 const config = makeImmutable({
   apiKey: '12345',
-  endpoint: 'https://api.example.com'
+  endpoint: 'https://api.example.com',
 });
 
 // config.apiKey = 'new key'; // Throws error in strict mode
@@ -438,10 +461,11 @@ const config = makeImmutable({
 ```
 
 #### Property Observer Pattern
+
 ```javascript
 function observeProperty(obj, prop, callback) {
   let value = obj[prop];
-  
+
   Object.defineProperty(obj, prop, {
     get() {
       return value;
@@ -452,13 +476,13 @@ function observeProperty(obj, prop, callback) {
       callback(prop, oldValue, newValue);
     },
     enumerable: true,
-    configurable: true
+    configurable: true,
   });
 }
 
 const user = {
   name: 'John',
-  age: 30
+  age: 30,
 };
 
 observeProperty(user, 'name', (prop, oldVal, newVal) => {
@@ -469,24 +493,25 @@ user.name = 'Jane'; // Logs: "name changed from John to Jane"
 ```
 
 #### Safe Property Access with Reflect
+
 ```javascript
 function safeGetProperty(obj, prop) {
   if (Reflect.has(obj, prop)) {
     return {
       value: Reflect.get(obj, prop),
-      exists: true
+      exists: true,
     };
   }
   return {
     value: undefined,
-    exists: false
+    exists: false,
   };
 }
 
 const data = {
   user: {
-    name: 'John'
-  }
+    name: 'John',
+  },
 };
 
 console.log(safeGetProperty(data, 'user')); // { value: { name: 'John' }, exists: true }
@@ -494,6 +519,7 @@ console.log(safeGetProperty(data, 'age')); // { value: undefined, exists: false 
 ```
 
 These methods provide powerful tools for metaprogramming in JavaScript, allowing you to:
+
 - Manipulate object prototypes
 - Define and modify property attributes
 - Inspect object properties and their descriptors

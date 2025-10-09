@@ -1,9 +1,9 @@
 ---
-title: "Twitter System Design"
-description: "Complete system design for Twitter social media platform"
-author: "System Design Template"
-date: "2025-10-05"
-tags: ["system-design", "social-media", "twitter", "real-time", "feed"]
+title: 'Twitter System Design'
+description: 'Complete system design for Twitter social media platform'
+author: 'System Design Template'
+date: '2025-10-05'
+tags: ['system-design', 'social-media', 'twitter', 'real-time', 'feed']
 ---
 
 # Twitter System Design
@@ -33,6 +33,7 @@ tags: ["system-design", "social-media", "twitter", "real-time", "feed"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 500M
 - Daily Active Users (DAU): 200M
 - Average tweets per user per day: 2
@@ -42,6 +43,7 @@ tags: ["system-design", "social-media", "twitter", "real-time", "feed"]
 - Media tweets: 20% (images/videos)
 
 **Daily Metrics:**
+
 ```
 Tweets per day = 200M × 2 = 400M tweets/day
 Tweets per second = 400M / 86400 = ~4600 TPS
@@ -53,6 +55,7 @@ Read:Write Ratio = 4B / 400M = 10:1 (actually higher during viral events)
 ```
 
 **Storage:**
+
 ```
 Text tweets = 400M × 300 bytes = 120 GB/day
 With metadata & index = 120 GB × 2 = 240 GB/day
@@ -63,6 +66,7 @@ Media storage (20% of tweets):
 ```
 
 **Bandwidth:**
+
 ```
 Upload: 4600 TPS × 300 bytes = 1.4 MB/s (text)
 Upload: 920 media/sec × 2 MB = 1.8 GB/s (media)
@@ -75,24 +79,31 @@ Download: 46K QPS × 10 tweets × 300 bytes = 138 MB/s
 ## 2. Core Entities (~2 minutes)
 
 ### User
+
 - `userId`, `username`, `email`, `displayName`, `bio`, `profilePicUrl`, `createdAt`, `verified`
 
 ### Tweet
+
 - `tweetId`, `userId`, `content`, `mediaUrls[]`, `createdAt`, `likeCount`, `retweetCount`, `replyCount`
 
 ### Follow
+
 - `followerId`, `followeeId`, `createdAt`
 
 ### Timeline
+
 - `userId`, `tweetId`, `timestamp`, `score` (for ranking)
 
 ### Like
+
 - `userId`, `tweetId`, `createdAt`
 
 ### Retweet
+
 - `userId`, `originalTweetId`, `createdAt`, `comment` (quote tweet)
 
 ### Notification
+
 - `notificationId`, `userId`, `type`, `actorId`, `tweetId`, `createdAt`, `read`
 
 ---
@@ -100,6 +111,7 @@ Download: 46K QPS × 10 tweets × 300 bytes = 138 MB/s
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for CRUD operations
 - **WebSocket** for real-time notifications
 - **GraphQL** (optional) for flexible data fetching
@@ -353,16 +365,19 @@ Response: { "success": true }
 ### Architecture Components
 
 **Client Layer:**
+
 - Web App (React)
 - Mobile Apps (iOS/Android)
 - Real-time WebSocket connection
 
 **API Layer:**
+
 - API Gateway - routing, rate limiting, authentication
 - Load Balancer - distributes traffic across app servers
 - Application Servers - business logic (Spring Boot microservices)
 
 **Service Layer (Microservices):**
+
 - **Tweet Service** - CRUD operations for tweets
 - **Timeline Service** - generates and serves timelines
 - **User Service** - user profiles, follow/unfollow
@@ -371,6 +386,7 @@ Response: { "success": true }
 - **Media Service** - handles image/video uploads
 
 **Data Layer:**
+
 - **PostgreSQL** - users, follows (relational data)
 - **Cassandra** - tweets, timelines (high write throughput)
 - **Redis** - cache (timelines, user sessions, trending topics)
@@ -378,10 +394,12 @@ Response: { "success": true }
 - **S3/CDN** - media storage
 
 **Messaging & Streaming:**
+
 - **Kafka** - event streaming (tweet events, notifications)
 - **RabbitMQ/SQS** - task queues (fan-out workers)
 
 **Background Workers:**
+
 - **Fan-out Service** - pushes tweets to followers' timelines
 - **Trend Service** - computes trending topics
 - **Analytics Service** - processes engagement metrics
@@ -641,15 +659,18 @@ TTL: 1 hour
 #### Fan-out on Write (Push Model)
 
 **How it works:**
+
 - When user posts tweet, immediately push to all followers' timelines
 - Pre-compute timelines and store in Redis/Cassandra
 - Timeline reads are fast (just fetch from cache)
 
 **Pros:**
+
 - Fast timeline reads (pre-computed)
 - Simple timeline service
 
 **Cons:**
+
 - Slow writes for users with many followers (celebrities)
 - Wasted work if followers don't view timeline
 - High write amplification
@@ -701,16 +722,19 @@ public void processFanout(FanoutTask task) {
 #### Fan-out on Read (Pull Model)
 
 **How it works:**
+
 - Don't pre-compute timelines
 - When user requests timeline, fetch tweets from all followed users
 - Merge and sort on-the-fly
 
 **Pros:**
+
 - Fast writes
 - No wasted work
 - Always fresh data
 
 **Cons:**
+
 - Slow reads (must query many users)
 - Complex merge logic
 - High read load
@@ -748,6 +772,7 @@ public class TimelineService {
 #### Hybrid Approach (Twitter's Solution)
 
 **Strategy:**
+
 - **Regular users** (< 10K followers): Fan-out on write
 - **Celebrities** (> 10K followers): Fan-out on read
 - Mix both results when serving timeline
@@ -796,6 +821,7 @@ public class HybridTimelineService {
 #### Multi-Level Cache
 
 **L1 - Application Cache (In-Memory):**
+
 ```java
 @Service
 public class TweetService {
@@ -811,6 +837,7 @@ public class TweetService {
 ```
 
 **L2 - Redis Cache (Distributed):**
+
 ```java
 @Cacheable(value = "tweets", key = "#tweetId")
 public Tweet getTweetById(String tweetId) {
@@ -827,6 +854,7 @@ public List<Tweet> getHomeTimeline(String userId) {
 ```
 
 **Cache Warming for Trending Tweets:**
+
 ```java
 @Scheduled(fixedRate = 60000) // Every minute
 public void warmTrendingCache() {
@@ -883,6 +911,7 @@ public class TweetService {
 #### PostgreSQL (User Service)
 
 **Read Replicas:**
+
 ```java
 @Configuration
 public class DataSourceConfig {
@@ -917,6 +946,7 @@ public void createUser(User user) {
 ```
 
 **Indexing:**
+
 ```sql
 -- Improve follow queries
 CREATE INDEX idx_follows_follower ON follows(follower_id);
@@ -930,6 +960,7 @@ CREATE INDEX idx_users_email ON users(email);
 #### Cassandra (Tweet Service)
 
 **Partition Strategy:**
+
 ```sql
 -- User timeline: Fast queries for all tweets by a user
 CREATE TABLE user_timeline (
@@ -949,6 +980,7 @@ CREATE TABLE home_timeline (
 ```
 
 **Write Optimization:**
+
 ```java
 @Service
 public class TweetRepository {
@@ -1905,15 +1937,15 @@ public class ExternalServiceClient {
 
 ## Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| Fan-out on Write | Fast reads, simple timeline service | Slow writes for celebrities, wasted work |
-| Fan-out on Read | Fast writes, always fresh | Slow reads, complex merge logic |
-| Hybrid Approach | Balance of both | Increased complexity |
-| Cassandra for Tweets | Linear scalability, high write throughput | Eventual consistency, limited queries |
-| Elasticsearch for Search | Fast full-text search, faceted search | Additional maintenance, sync lag |
-| Async Notifications | Non-blocking, scalable | Possible delay, delivery not guaranteed |
-| Counter Sharding | Handles hotspots | Eventually consistent counts |
+| Decision                 | Pro                                       | Con                                      |
+| ------------------------ | ----------------------------------------- | ---------------------------------------- |
+| Fan-out on Write         | Fast reads, simple timeline service       | Slow writes for celebrities, wasted work |
+| Fan-out on Read          | Fast writes, always fresh                 | Slow reads, complex merge logic          |
+| Hybrid Approach          | Balance of both                           | Increased complexity                     |
+| Cassandra for Tweets     | Linear scalability, high write throughput | Eventual consistency, limited queries    |
+| Elasticsearch for Search | Fast full-text search, faceted search     | Additional maintenance, sync lag         |
+| Async Notifications      | Non-blocking, scalable                    | Possible delay, delivery not guaranteed  |
+| Counter Sharding         | Handles hotspots                          | Eventually consistent counts             |
 
 ---
 

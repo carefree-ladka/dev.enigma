@@ -65,22 +65,24 @@ graph TB
 
 ### Key Characteristics
 
-| Aspect | Description |
-|--------|-------------|
-| **Purpose** | High availability & read scalability |
-| **Data Distribution** | Full copy on each server |
-| **Consistency** | Eventual or strong (depending on sync method) |
-| **Failure Impact** | Redundancy protects against server failure |
+| Aspect                | Description                                   |
+| --------------------- | --------------------------------------------- |
+| **Purpose**           | High availability & read scalability          |
+| **Data Distribution** | Full copy on each server                      |
+| **Consistency**       | Eventual or strong (depending on sync method) |
+| **Failure Impact**    | Redundancy protects against server failure    |
 
 ### Replication Strategies
 
 **Synchronous Replication**
+
 - Write confirmed only after all replicas acknowledge
 - Strong consistency
 - Higher latency
 - Lower availability (all replicas must be online)
 
 **Asynchronous Replication**
+
 - Write confirmed immediately
 - Eventual consistency
 - Lower latency
@@ -90,6 +92,7 @@ graph TB
 ### Use Cases
 
 ✅ **When to use Replication:**
+
 - High read-to-write ratio (95% reads)
 - Need for high availability and fault tolerance
 - Geographic distribution for low latency
@@ -97,6 +100,7 @@ graph TB
 - Disaster recovery requirements
 
 ❌ **When NOT to use:**
+
 - Write-heavy workloads (all replicas must handle writes)
 - Storage constraints (full copy per replica)
 - Complex conflict resolution required
@@ -104,6 +108,7 @@ graph TB
 ### Example Scenario
 
 **E-commerce Product Catalog**
+
 ```
 Master DB: Handles product updates (rare)
 Replica 1 (US East): Serves customer browsing
@@ -178,6 +183,7 @@ graph LR
 ### Partitioning Strategies
 
 **Range Partitioning**
+
 ```sql
 -- By date
 Partition P1: created_at BETWEEN '2023-01-01' AND '2023-12-31'
@@ -189,6 +195,7 @@ Partition P2: user_id BETWEEN 1000001 AND 2000000
 ```
 
 **Hash Partitioning**
+
 ```sql
 -- Distribute evenly using hash function
 Partition P1: HASH(user_id) % 4 = 0
@@ -198,6 +205,7 @@ Partition P4: HASH(user_id) % 4 = 3
 ```
 
 **List Partitioning**
+
 ```sql
 -- By discrete values
 Partition P1: region IN ('US', 'Canada')
@@ -207,16 +215,17 @@ Partition P3: region IN ('India', 'Singapore')
 
 ### Key Characteristics
 
-| Aspect | Description |
-|--------|-------------|
-| **Purpose** | Query performance & manageability |
-| **Scope** | Single database instance |
-| **Transparency** | Often transparent to application |
-| **Scalability** | Limited by single server resources |
+| Aspect           | Description                        |
+| ---------------- | ---------------------------------- |
+| **Purpose**      | Query performance & manageability  |
+| **Scope**        | Single database instance           |
+| **Transparency** | Often transparent to application   |
+| **Scalability**  | Limited by single server resources |
 
 ### Use Cases
 
 ✅ **When to use Partitioning:**
+
 - Large tables slowing down queries
 - Time-series data with predictable access patterns
 - Easy data archival/deletion (drop old partitions)
@@ -224,6 +233,7 @@ Partition P3: region IN ('India', 'Singapore')
 - Query patterns that filter on partition key
 
 ❌ **When NOT to use:**
+
 - Small tables (< 1GB)
 - Queries don't align with partition key
 - Need to scale beyond single server
@@ -232,6 +242,7 @@ Partition P3: region IN ('India', 'Singapore')
 ### Example Scenario
 
 **Analytics Platform with Time-Series Data**
+
 ```
 logs_2024_01: January data (can archive after 90 days)
 logs_2024_02: February data
@@ -328,6 +339,7 @@ graph TB
 ### Sharding Strategies
 
 **Range-Based Sharding**
+
 ```
 Shard 1: user_id 1 to 1,000,000
 Shard 2: user_id 1,000,001 to 2,000,000
@@ -335,6 +347,7 @@ Shard 3: user_id 2,000,001 to 3,000,000
 ```
 
 **Hash-Based Sharding**
+
 ```
 Shard = HASH(user_id) % number_of_shards
 
@@ -343,6 +356,7 @@ user_id 67890 → HASH → 1 → Shard 1
 ```
 
 **Geographic Sharding**
+
 ```
 Shard US: users where region = 'US'
 Shard EU: users where region = 'EU'
@@ -350,6 +364,7 @@ Shard ASIA: users where region = 'ASIA'
 ```
 
 **Entity/Directory-Based Sharding**
+
 ```
 Shard mapping stored in lookup table:
 tenant_id: 1001 → Shard 1
@@ -359,16 +374,17 @@ tenant_id: 1003 → Shard 1
 
 ### Key Characteristics
 
-| Aspect | Description |
-|--------|-------------|
-| **Purpose** | Horizontal scalability for writes & storage |
-| **Scope** | Multiple independent database servers |
-| **Complexity** | High (routing, joins, transactions) |
-| **Scalability** | Nearly unlimited (add more shards) |
+| Aspect          | Description                                 |
+| --------------- | ------------------------------------------- |
+| **Purpose**     | Horizontal scalability for writes & storage |
+| **Scope**       | Multiple independent database servers       |
+| **Complexity**  | High (routing, joins, transactions)         |
+| **Scalability** | Nearly unlimited (add more shards)          |
 
 ### Challenges
 
 **Cross-Shard Queries**
+
 ```sql
 -- This query spans multiple shards
 SELECT COUNT(*) FROM users WHERE created_at > '2024-01-01'
@@ -376,6 +392,7 @@ SELECT COUNT(*) FROM users WHERE created_at > '2024-01-01'
 ```
 
 **Cross-Shard Joins**
+
 ```sql
 -- Users on Shard 1, Orders on Shard 2
 SELECT users.name, orders.total
@@ -385,11 +402,13 @@ JOIN orders ON users.id = orders.user_id
 ```
 
 **Distributed Transactions**
+
 - Maintaining ACID across shards is complex
 - Often requires 2-phase commit
 - Can use eventual consistency instead
 
 **Rebalancing**
+
 - Adding/removing shards requires data migration
 - Can cause downtime or performance issues
 - Hash-based sharding makes this harder
@@ -397,6 +416,7 @@ JOIN orders ON users.id = orders.user_id
 ### Use Cases
 
 ✅ **When to use Sharding:**
+
 - Massive data volume (TBs/PBs)
 - High write throughput requirements
 - Single database can't handle load
@@ -404,6 +424,7 @@ JOIN orders ON users.id = orders.user_id
 - Data sovereignty requirements (geographic sharding)
 
 ❌ **When NOT to use:**
+
 - Can scale with replication/partitioning
 - Frequent cross-shard queries needed
 - Complex transactions across entities
@@ -412,6 +433,7 @@ JOIN orders ON users.id = orders.user_id
 ### Example Scenario
 
 **Social Media Platform**
+
 ```
 Shard 1: Users with last_name A-F (10M users)
 Shard 2: Users with last_name G-M (10M users)
@@ -425,18 +447,18 @@ Each shard has its own master + 2 replicas
 
 ## 🎯 Comparison Matrix
 
-| Feature | Replication | Partitioning | Sharding |
-|---------|------------|--------------|----------|
-| **Data Distribution** | Full copy per node | Subset per partition | Subset per shard |
-| **Scalability** | Read scalability | Single server limit | Unlimited horizontal |
-| **Write Performance** | No improvement | Improved for specific queries | Linear improvement |
-| **Read Performance** | Linear improvement | Improved for partition-aware queries | Improved |
-| **Complexity** | Low-Medium | Low | High |
-| **Storage Cost** | High (full copies) | Same as original | Distributed |
-| **Query Complexity** | Simple | Simple | Complex (cross-shard) |
-| **Failure Impact** | Other replicas available | Single point of failure | Only affected shard |
-| **Setup Difficulty** | Easy | Easy | Difficult |
-| **Maintenance** | Medium | Easy | Difficult |
+| Feature               | Replication              | Partitioning                         | Sharding              |
+| --------------------- | ------------------------ | ------------------------------------ | --------------------- |
+| **Data Distribution** | Full copy per node       | Subset per partition                 | Subset per shard      |
+| **Scalability**       | Read scalability         | Single server limit                  | Unlimited horizontal  |
+| **Write Performance** | No improvement           | Improved for specific queries        | Linear improvement    |
+| **Read Performance**  | Linear improvement       | Improved for partition-aware queries | Improved              |
+| **Complexity**        | Low-Medium               | Low                                  | High                  |
+| **Storage Cost**      | High (full copies)       | Same as original                     | Distributed           |
+| **Query Complexity**  | Simple                   | Simple                               | Complex (cross-shard) |
+| **Failure Impact**    | Other replicas available | Single point of failure              | Only affected shard   |
+| **Setup Difficulty**  | Easy                     | Easy                                 | Difficult             |
+| **Maintenance**       | Medium                   | Easy                                 | Difficult             |
 
 ---
 
@@ -497,6 +519,7 @@ graph TB
 ```
 
 **Strategy:**
+
 - **Sharding** by geographic region (data locality)
 - **Replication** within each shard (high availability + read scaling)
 - **Partitioning** by year (query performance + easy archival)
@@ -536,6 +559,7 @@ graph TD
 ## 📝 Quick Decision Guide
 
 ### Start with Replication if:
+
 - 🎯 Your reads outnumber writes 10:1 or more
 - 🎯 You need high availability
 - 🎯 You want geographic distribution
@@ -543,6 +567,7 @@ graph TD
 - 🎯 You're starting out and need simple scaling
 
 ### Add Partitioning if:
+
 - 🎯 Single tables are becoming very large (>100GB)
 - 🎯 Queries have predictable access patterns (time-based, range-based)
 - 🎯 You need to archive/delete old data regularly
@@ -550,6 +575,7 @@ graph TD
 - 🎯 You're still on a single database server
 
 ### Move to Sharding when:
+
 - 🎯 You've exhausted vertical scaling (bigger servers)
 - 🎯 Replication doesn't help (write bottleneck)
 - 🎯 Data exceeds single server capacity (multi-TB)
@@ -562,18 +588,21 @@ graph TD
 ## 💡 Best Practices
 
 ### Replication
+
 - Monitor replication lag
 - Use read replicas for analytics
 - Implement retry logic for failover
 - Consider async for performance, sync for consistency
 
 ### Partitioning
+
 - Choose partition key carefully (used in WHERE clauses)
 - Keep partitions relatively equal in size
 - Plan for growth (add partitions in advance)
 - Use partition pruning in queries
 
 ### Sharding
+
 - Choose a stable shard key (won't change)
 - Distribute data evenly (avoid hot shards)
 - Plan for rebalancing from day one

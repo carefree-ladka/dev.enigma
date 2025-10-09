@@ -1,6 +1,7 @@
 # URL Shortener System Design
 
 ## Table of Contents
+
 - [Requirements (~5 minutes)](#requirements-5-minutes)
   - [Functional Requirements](#1-functional-requirements)
   - [Non-functional Requirements](#2-non-functional-requirements)
@@ -18,6 +19,7 @@
 ### 1) Functional Requirements
 
 **Key Questions Asked:**
+
 - Q: What's the expected scale - how many URLs will be shortened daily?
 - A: Target 100M URLs shortened per day with 100:1 read-to-write ratio
 - Q: Do we need custom aliases or just random short URLs?
@@ -30,6 +32,7 @@
 - A: Support both - anonymous and registered user creation
 
 **Core Functional Requirements:**
+
 - [ ] Users should be able to shorten long URLs into compact URLs
 - [ ] Users should be able to redirect from short URLs to original URLs
 - [ ] Users should be able to set custom aliases for short URLs
@@ -41,6 +44,7 @@
 ### 2) Non-functional Requirements
 
 **System Quality Requirements:**
+
 - [ ] **High Availability:** 99.99% uptime for URL redirections (higher than creation)
 - [ ] **Low Latency:** URL redirection should be < 100ms globally
 - [ ] **Scale:** Handle 100M URL creations/day, 10B redirections/day
@@ -48,6 +52,7 @@
 - [ ] **Security:** Prevent malicious URLs, spam, and abuse
 
 **Rationale:**
+
 - **Redirection Priority:** Once a URL is shared, it must always work
 - **Global Performance:** Users expect instant redirects worldwide
 - **Massive Read Scale:** 100:1 read-to-write ratio requires heavy caching
@@ -57,19 +62,22 @@
 **Key Calculations That Influence Design:**
 
 **URL Creation:**
+
 - 100M new URLs/day = 1,157 URLs/second average
 - Peak traffic: 3x average = 3,500 URLs/second
-- *Impact:* Database write optimization and connection pooling needed
+- _Impact:_ Database write optimization and connection pooling needed
 
 **URL Redirections:**
+
 - 10B redirections/day = 115,740 redirections/second average
 - Peak traffic: 230,000 redirections/second
-- *Impact:* Heavy caching strategy and CDN distribution required
+- _Impact:_ Heavy caching strategy and CDN distribution required
 
 **Storage Requirements:**
+
 - 100M URLs/day × 500 bytes average = 50GB/day = 18TB/year
 - 5-year retention = 90TB total storage needed
-- *Impact:* Horizontal database sharding required
+- _Impact:_ Horizontal database sharding required
 
 > These calculations directly influence our caching, CDN, and database partitioning strategies.
 
@@ -78,12 +86,14 @@
 ## Core Entities (~2 minutes)
 
 **Primary Entities:**
+
 - **URL:** Short code, original URL, creator info, expiration, status
 - **User:** Account information, API keys, usage quotas
 - **Analytics:** Click events, user agents, referrers, timestamps
 - **CustomAlias:** User-defined short codes and their mappings
 
 **Entity Relationships:**
+
 - User has many URLs (1:N)
 - URL has many Analytics events (1:N)
 - CustomAlias belongs to one URL (1:1)
@@ -96,11 +106,13 @@
 ## API or System Interface (~5 minutes)
 
 ### Protocol Choice: REST + HTTP Redirects
+
 **Reasoning:** REST for management operations, HTTP 301/302 redirects for URL redirection. Simple and cacheable.
 
 ### Core API Endpoints
 
 **URL Shortening:**
+
 ```java
 // Create short URL
 POST /v1/urls
@@ -119,6 +131,7 @@ POST /v1/urls
 ```
 
 **URL Redirection:**
+
 ```java
 // Redirect to original URL
 GET /aB3xY9
@@ -127,6 +140,7 @@ Location: https://example.com/very/long/path
 ```
 
 **URL Management:**
+
 ```java
 // Get URL details
 GET /v1/urls/:shortCode -> URL
@@ -143,6 +157,7 @@ DELETE /v1/urls/:shortCode
 ```
 
 **Analytics:**
+
 ```java
 // Get URL analytics
 GET /v1/urls/:shortCode/analytics?period=7d -> {
@@ -158,6 +173,7 @@ GET /v1/users/:userId/urls?page=1&limit=20 -> URL[]
 ```
 
 **Security Notes:**
+
 - Rate limiting: 100 URL creations/hour per IP, 1000/hour for authenticated users
 - Malicious URL detection using domain blacklists and content scanning
 - Custom alias validation to prevent reserved words and profanity
@@ -167,6 +183,7 @@ GET /v1/users/:userId/urls?page=1&limit=20 -> URL[]
 ## Data Flow (~5 minutes)
 
 ### URL Shortening Flow
+
 1. **Request Validation:** Validate original URL format and accessibility
 2. **Duplicate Check:** Check if URL already shortened (optional deduplication)
 3. **Short Code Generation:** Generate unique base62 code or validate custom alias
@@ -176,6 +193,7 @@ GET /v1/users/:userId/urls?page=1&limit=20 -> URL[]
 7. **Analytics Setup:** Initialize analytics tracking for the new URL
 
 ### URL Redirection Flow
+
 1. **Extract Short Code:** Parse short code from incoming request
 2. **Cache Lookup:** Check Redis cache for URL mapping
 3. **Cache Hit:** Return cached original URL with 301 redirect
@@ -190,6 +208,7 @@ GET /v1/users/:userId/urls?page=1&limit=20 -> URL[]
 ## High Level Design (~10-15 minutes)
 
 ### Design Approach
+
 Building the system to handle massive read scale with global distribution:
 
 ### System Architecture
@@ -218,6 +237,7 @@ Building the system to handle massive read scale with global distribution:
 ### Detailed Component Design
 
 **1. POST /v1/urls (URL Shortening)**
+
 - **Client** → **CDN** → **Regional Load Balancer** → **API Gateway** → **URL Service**
 - **URL Service** validates URL and generates/validates short code
 - Store mapping in **URL Database** with replication
@@ -225,6 +245,7 @@ Building the system to handle massive read scale with global distribution:
 - **Analytics Service** initializes tracking for new URL
 
 **2. GET /:shortCode (URL Redirection)**
+
 - **Client** → **CDN** (cache miss) → **Regional Load Balancer** → **URL Service**
 - **URL Service** checks **Redis Cache** first for URL mapping
 - On cache miss: Query **URL Database** and update cache
@@ -232,6 +253,7 @@ Building the system to handle massive read scale with global distribution:
 - Return **HTTP 301 Redirect** to original URL
 
 **3. GET /v1/urls/:shortCode/analytics**
+
 - **Client** → **API Gateway** → **Analytics Service**
 - **Analytics Service** queries **ClickHouse** for aggregated metrics
 - Apply time-based filtering and return formatted analytics
@@ -239,6 +261,7 @@ Building the system to handle massive read scale with global distribution:
 ### Database Schema
 
 **URLs Table:**
+
 ```java
 @Entity
 @Table(name = "urls")
@@ -271,6 +294,7 @@ public class URL {
 ```
 
 **Users Table:**
+
 ```java
 @Entity
 @Table(name = "users")
@@ -294,6 +318,7 @@ public class User {
 ```
 
 **Click Events Table (ClickHouse):**
+
 ```java
 // Optimized for analytics - stored in ClickHouse for fast aggregation
 public class ClickEvent {
@@ -309,6 +334,7 @@ public class ClickEvent {
 ```
 
 **Custom Aliases Table:**
+
 ```java
 @Entity
 @Table(name = "custom_aliases")
@@ -329,6 +355,7 @@ public class CustomAlias {
 ```
 
 ### Technology Stack
+
 - **Application:** Java Spring Boot microservices
 - **Database:** PostgreSQL for URL storage, ClickHouse for analytics
 - **Cache:** Redis Cluster for distributed caching
@@ -401,6 +428,7 @@ public class ShortCodeGenerator {
 **Multi-tier Caching Strategy:**
 
 **Tier 1: CDN Edge Caching**
+
 ```java
 @RestController
 public class RedirectController {
@@ -429,6 +457,7 @@ public class RedirectController {
 ```
 
 **Tier 2: Application-level Redis Caching**
+
 ```java
 @Service
 public class URLService {
@@ -643,6 +672,7 @@ public class MetricsCollector {
 ```
 
 **Alerting Configuration:**
+
 - Redirection latency > 200ms for 5 minutes → Critical alert
 - Error rate > 1% → Warning alert
 - Cache hit rate < 90% → Performance alert
@@ -655,6 +685,7 @@ public class MetricsCollector {
 This URL Shortener design successfully handles the core requirements:
 
 ✅ **Functional Requirements Met:**
+
 - Scalable URL shortening with custom aliases
 - Fast global URL redirection (< 100ms)
 - Comprehensive click analytics and reporting
@@ -662,12 +693,14 @@ This URL Shortener design successfully handles the core requirements:
 - Support for both anonymous and authenticated users
 
 ✅ **Non-functional Requirements Addressed:**
+
 - **Scale:** Handles 100M URL creations/day and 10B redirections/day
 - **Performance:** Multi-tier caching achieves < 100ms redirect latency
 - **Availability:** Global distribution provides 99.99% uptime
 - **Security:** Multi-layer protection against abuse and malicious content
 
 ✅ **Production-Ready Deep Dives:**
+
 - Efficient short code generation with collision avoidance
 - Multi-tier caching strategy for global performance
 - Horizontal database sharding for massive scale

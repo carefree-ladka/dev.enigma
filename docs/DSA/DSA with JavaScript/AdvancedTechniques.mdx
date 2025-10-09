@@ -1,66 +1,74 @@
 # Advanced Algorithm Techniques
 
 ## Euler Tour Technique (ETT)
+
 ### Theory
+
 The Euler Tour Technique is a method for processing trees by converting them into a linear array representation. It involves performing a DFS traversal and recording each vertex both when entering and leaving it.
 
 ### Key Concepts
+
 - Creates a linear representation of a tree
 - Each node appears twice: entry and exit times
 - Useful for solving subtree queries efficiently
 - Time complexity: O(n) for preprocessing, O(1) for queries
 
 ### Implementation
+
 ```javascript
 class EulerTour {
-    constructor(n) {
-        this.adj = Array.from({ length: n }, () => []);
-        this.tour = [];
-        this.first = new Array(n).fill(-1);
-        this.last = new Array(n).fill(-1);
-    }
+  constructor(n) {
+    this.adj = Array.from({ length: n }, () => []);
+    this.tour = [];
+    this.first = new Array(n).fill(-1);
+    this.last = new Array(n).fill(-1);
+  }
 
-    addEdge(u, v) {
-        this.adj[u].push(v);
-        this.adj[v].push(u);
-    }
+  addEdge(u, v) {
+    this.adj[u].push(v);
+    this.adj[v].push(u);
+  }
 
-    dfs(node, parent) {
-        if (this.first[node] === -1) {
-            this.first[node] = this.tour.length;
-        }
+  dfs(node, parent) {
+    if (this.first[node] === -1) {
+      this.first[node] = this.tour.length;
+    }
+    this.tour.push(node);
+
+    for (const child of this.adj[node]) {
+      if (child !== parent) {
+        this.dfs(child, node);
         this.tour.push(node);
-        
-        for (const child of this.adj[node]) {
-            if (child !== parent) {
-                this.dfs(child, node);
-                this.tour.push(node);
-            }
-        }
-        
-        this.last[node] = this.tour.length - 1;
+      }
     }
 
-    buildTour(root = 0) {
-        this.dfs(root, -1);
-        return {
-            tour: this.tour,
-            first: this.first,
-            last: this.last
-        };
-    }
+    this.last[node] = this.tour.length - 1;
+  }
+
+  buildTour(root = 0) {
+    this.dfs(root, -1);
+    return {
+      tour: this.tour,
+      first: this.first,
+      last: this.last,
+    };
+  }
 }
 ```
 
 ### LeetCode Problems
+
 1. [1483. Kth Ancestor of a Tree Node](https://leetcode.com/problems/kth-ancestor-of-a-tree-node/)
 2. [2646. Minimize the Total Price of the Trips](https://leetcode.com/problems/minimize-the-total-price-of-the-trips/)
 
 ## Point Update Range Sum (Segment Tree)
+
 ### Theory
+
 A Segment Tree is a data structure that allows both range queries and point updates efficiently. It's particularly useful when you need to perform multiple updates and range queries on an array.
 
 ### Key Concepts
+
 - Binary tree structure
 - Each node represents a range
 - Supports point updates in O(log n)
@@ -68,127 +76,137 @@ A Segment Tree is a data structure that allows both range queries and point upda
 - Space complexity: O(n)
 
 ### Implementation
+
 ```javascript
 class SegmentTree {
-    constructor(arr) {
-        this.n = arr.length;
-        this.tree = new Array(4 * this.n).fill(0);
-        this.build(arr, 1, 0, this.n - 1);
+  constructor(arr) {
+    this.n = arr.length;
+    this.tree = new Array(4 * this.n).fill(0);
+    this.build(arr, 1, 0, this.n - 1);
+  }
+
+  build(arr, node, start, end) {
+    if (start === end) {
+      this.tree[node] = arr[start];
+      return;
     }
 
-    build(arr, node, start, end) {
-        if (start === end) {
-            this.tree[node] = arr[start];
-            return;
-        }
+    const mid = Math.floor((start + end) / 2);
+    this.build(arr, 2 * node, start, mid);
+    this.build(arr, 2 * node + 1, mid + 1, end);
+    this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  }
 
-        const mid = Math.floor((start + end) / 2);
-        this.build(arr, 2 * node, start, mid);
-        this.build(arr, 2 * node + 1, mid + 1, end);
-        this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  update(index, val, node = 1, start = 0, end = this.n - 1) {
+    if (start === end) {
+      this.tree[node] = val;
+      return;
     }
 
-    update(index, val, node = 1, start = 0, end = this.n - 1) {
-        if (start === end) {
-            this.tree[node] = val;
-            return;
-        }
-
-        const mid = Math.floor((start + end) / 2);
-        if (index <= mid) {
-            this.update(index, val, 2 * node, start, mid);
-        } else {
-            this.update(index, val, 2 * node + 1, mid + 1, end);
-        }
-        this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+    const mid = Math.floor((start + end) / 2);
+    if (index <= mid) {
+      this.update(index, val, 2 * node, start, mid);
+    } else {
+      this.update(index, val, 2 * node + 1, mid + 1, end);
     }
+    this.tree[node] = this.tree[2 * node] + this.tree[2 * node + 1];
+  }
 
-    query(left, right, node = 1, start = 0, end = this.n - 1) {
-        if (right < start || left > end) return 0;
-        if (left <= start && end <= right) return this.tree[node];
+  query(left, right, node = 1, start = 0, end = this.n - 1) {
+    if (right < start || left > end) return 0;
+    if (left <= start && end <= right) return this.tree[node];
 
-        const mid = Math.floor((start + end) / 2);
-        const leftSum = this.query(left, right, 2 * node, start, mid);
-        const rightSum = this.query(left, right, 2 * node + 1, mid + 1, end);
-        return leftSum + rightSum;
-    }
+    const mid = Math.floor((start + end) / 2);
+    const leftSum = this.query(left, right, 2 * node, start, mid);
+    const rightSum = this.query(left, right, 2 * node + 1, mid + 1, end);
+    return leftSum + rightSum;
+  }
 }
 ```
 
 ### LeetCode Problems
+
 1. [307. Range Sum Query - Mutable](https://leetcode.com/problems/range-sum-query-mutable/)
 2. [2286. Booking Concert Tickets in Groups](https://leetcode.com/problems/booking-concert-tickets-in-groups/)
 
 ## Meet in the Middle
+
 ### Theory
+
 Meet in the Middle is a technique that splits the input into two roughly equal parts, processes them separately, and then combines the results. It's particularly useful when the brute force approach would be too slow.
 
 ### Key Concepts
+
 - Divides the problem into two smaller subproblems
 - Processes each half independently
 - Combines results efficiently
 - Usually reduces time complexity from O(2^n) to O(2^(n/2))
 
 ### Implementation Example (Subset Sum)
+
 ```javascript
 function meetInMiddle(arr, target) {
-    const n = arr.length;
-    const mid = Math.floor(n / 2);
-    
-    // Generate all possible sums for first half
-    function generateSums(start, end) {
-        const sums = [];
-        const len = end - start;
-        
-        for (let mask = 0; mask < (1 << len); mask++) {
-            let sum = 0;
-            for (let i = 0; i < len; i++) {
-                if (mask & (1 << i)) {
-                    sum += arr[start + i];
-                }
-            }
-            sums.push(sum);
+  const n = arr.length;
+  const mid = Math.floor(n / 2);
+
+  // Generate all possible sums for first half
+  function generateSums(start, end) {
+    const sums = [];
+    const len = end - start;
+
+    for (let mask = 0; mask < 1 << len; mask++) {
+      let sum = 0;
+      for (let i = 0; i < len; i++) {
+        if (mask & (1 << i)) {
+          sum += arr[start + i];
         }
-        return sums.sort((a, b) => a - b);
+      }
+      sums.push(sum);
     }
-    
-    const leftSums = generateSums(0, mid);
-    const rightSums = generateSums(mid, n);
-    
-    // Binary search to find pairs that sum to target
-    let count = 0;
-    for (const leftSum of leftSums) {
-        const complement = target - leftSum;
-        const low = rightSums.findIndex(x => x >= complement);
-        const high = rightSums.findIndex(x => x > complement);
-        if (low !== -1 && high !== -1) {
-            count += high - low;
-        }
+    return sums.sort((a, b) => a - b);
+  }
+
+  const leftSums = generateSums(0, mid);
+  const rightSums = generateSums(mid, n);
+
+  // Binary search to find pairs that sum to target
+  let count = 0;
+  for (const leftSum of leftSums) {
+    const complement = target - leftSum;
+    const low = rightSums.findIndex(x => x >= complement);
+    const high = rightSums.findIndex(x => x > complement);
+    if (low !== -1 && high !== -1) {
+      count += high - low;
     }
-    
-    return count;
+  }
+
+  return count;
 }
 ```
 
 ### LeetCode Problems
+
 1. [1755. Closest Subsequence Sum](https://leetcode.com/problems/closest-subsequence-sum/)
 2. [2035. Partition Array Into Two Arrays to Minimize Sum Difference](https://leetcode.com/problems/partition-array-into-two-arrays-to-minimize-sum-difference/)
 
 ## Common Use Cases & Tips
 
 ### Euler Tour Technique
+
 - Tree path queries
 - Subtree problems
 - LCA (Lowest Common Ancestor) queries
 - Subtree modification queries
 
 ### Point Update Range Sum
+
 - Dynamic range queries
 - Interval problems
 - Cumulative statistics
 - Online query processing
 
 ### Meet in the Middle
+
 - Subset sum problems
 - Problems with exponential complexity
 - Optimization problems with small constraints
@@ -197,17 +215,20 @@ function meetInMiddle(arr, target) {
 ## Time Complexity Analysis
 
 ### Euler Tour
+
 - Preprocessing: O(n)
 - Query: O(1) with additional data structures
 - Space: O(n)
 
 ### Segment Tree
+
 - Build: O(n)
 - Update: O(log n)
 - Query: O(log n)
 - Space: O(n)
 
 ### Meet in the Middle
+
 - Time: O(2^(n/2))
 - Space: O(2^(n/2))
 - Typically used when n ≤ 40

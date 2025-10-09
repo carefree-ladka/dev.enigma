@@ -11,11 +11,13 @@ When a request fails due to transient issues (network hiccup, temporary server o
 Many failures in distributed systems are temporary. A simple retry often succeeds where the first attempt failed.
 
 **⚠️ Pitfalls:**
+
 - **Retry Storms**: If every client blindly retries, you amplify load on an already struggling system
 - **Duplicate Operations**: Retrying non-idempotent operations (like payment processing) can cause unintended side effects
 - **Resource Exhaustion**: Aggressive retries can exhaust connection pools, thread pools, or API quotas
 
 **✅ Best Practices:**
+
 - Limit retry attempts (typically 3-5 max)
 - Only retry safe errors (timeouts, 503, 502, connection resets)
 - Never retry on client errors (4xx) except 408, 429
@@ -32,32 +34,40 @@ Instead of retrying immediately, introduce an increasing delay between retry att
 **Types:**
 
 **Fixed Backoff**
+
 ```
 Delay: 2s → 2s → 2s
 ```
+
 Simple but doesn't adapt to system load.
 
 **Linear Backoff**
+
 ```
 Delay: 1s → 2s → 3s → 4s
 ```
+
 Gradual increase, predictable scaling.
 
 **Exponential Backoff** ⭐ Most Common
+
 ```
 Delay: 1s → 2s → 4s → 8s → 16s
 ```
+
 Rapidly backs off, giving systems time to recover.
 
 **Why use it?**
 Prevents overwhelming a struggling system and gives it breathing room to recover. Immediate retries can make problems worse.
 
 **Formula:**
+
 ```
 delay = base_delay * (2 ^ attempt_number)
 ```
 
 **Use Cases:**
+
 - API rate limiting (429 responses)
 - Database connection failures
 - Message queue processing
@@ -76,24 +86,28 @@ Without jitter, thousands of clients retry at exactly the same time (4s, 8s, 16s
 **Types:**
 
 **Full Jitter**
+
 ```
 delay = random(0, exponential_backoff)
 Example: random(0, 8s) → could be 2.3s, 5.7s, 7.1s
 ```
 
 **Equal Jitter** (Recommended)
+
 ```
 delay = (exponential_backoff / 2) + random(0, exponential_backoff / 2)
 Example: (8s / 2) + random(0, 4s) → between 4s and 8s
 ```
 
 **Decorrelated Jitter**
+
 ```
 delay = min(cap, random(base, previous_delay * 3))
 More aggressive randomization for high-load scenarios
 ```
 
 **Impact:**
+
 - Without jitter: 10,000 clients retry at exactly 8s → 10,000 simultaneous requests
 - With jitter: 10,000 clients retry spread across 4s-8s → ~1,250 requests per second
 
@@ -107,20 +121,24 @@ A state machine that prevents requests to a failing service, allowing it to reco
 **States:**
 
 **Closed (Normal)**
+
 - All requests pass through
 - Tracks failure rate
 
 **Open (Service Down)**
+
 - Immediately fails requests without trying
 - Returns fallback response or cached data
 - Prevents cascading failures
 
 **Half-Open (Testing)**
+
 - Allows limited requests to test recovery
 - If successful → Close circuit
 - If failed → Open circuit again
 
 **Configuration Example:**
+
 ```
 Failure threshold: 50% errors in last 10 requests
 Timeout: 30 seconds (before trying Half-Open)
@@ -136,6 +154,7 @@ Protects your system from wasting resources on a service that's clearly down, an
 
 **Rate Limiting**
 Restricts the number of requests a client can make in a time window.
+
 ```
 Examples:
 - 100 requests per minute per API key
@@ -145,12 +164,14 @@ Examples:
 
 **Throttling**
 Dynamically slows down requests when system is under load.
+
 ```
 - 429 Too Many Requests → retry after X seconds
 - Adaptive: reduce throughput based on CPU/memory
 ```
 
 **Algorithms:**
+
 - **Token Bucket**: Refills tokens at fixed rate
 - **Leaky Bucket**: Processes requests at constant rate
 - **Sliding Window**: Counts requests in rolling time window
@@ -167,6 +188,7 @@ A separate queue where messages go after all retry attempts fail.
 Prevents poison messages from blocking queue processing while preserving them for debugging and manual intervention.
 
 **Flow:**
+
 ```
 1. Message processing fails
 2. Retry with backoff (3 times)
@@ -176,6 +198,7 @@ Prevents poison messages from blocking queue processing while preserving them fo
 ```
 
 **Best Practices:**
+
 - Monitor DLQ depth
 - Set up alerts for DLQ messages
 - Implement DLQ replay mechanisms
@@ -186,6 +209,7 @@ Prevents poison messages from blocking queue processing while preserving them fo
 ## 🎯 Real-World Example: Payment Processing System
 
 ### Scenario
+
 A **Payment Service** needs to process a transaction by calling an external **Payment Gateway API** (Stripe, PayPal, etc.)
 
 ### Architecture
@@ -223,18 +247,21 @@ graph TB
 ### Step-by-Step Flow
 
 #### **Step 1: Initial Request**
+
 ```
 User initiates $100 payment
 Payment Service generates idempotency key: "payment_abc123"
 ```
 
 #### **Step 2: Circuit Breaker Check**
+
 ```
 Circuit Breaker State: CLOSED (service is healthy)
 ✅ Allow request to proceed
 ```
 
 #### **Step 3: First Attempt**
+
 ```
 POST /charge
 Headers: {
@@ -248,6 +275,7 @@ Response: 503 Service Unavailable (Gateway overloaded)
 #### **Step 4: Retry Logic Kicks In**
 
 **Attempt 1:**
+
 ```
 Base delay: 1 second
 Exponential: 2^0 = 1s
@@ -257,6 +285,7 @@ Result: Timeout ❌
 ```
 
 **Attempt 2:**
+
 ```
 Exponential: 2^1 = 2s
 Jitter: random(1s, 3s) = 2.3s
@@ -265,6 +294,7 @@ Result: 502 Bad Gateway ❌
 ```
 
 **Attempt 3:**
+
 ```
 Exponential: 2^2 = 4s
 Jitter: random(2s, 6s) = 4.7s
@@ -274,6 +304,7 @@ Idempotency key prevents duplicate charge
 ```
 
 #### **Step 5: Success Response**
+
 ```
 Payment processed successfully
 Circuit breaker records success
@@ -317,6 +348,7 @@ sequenceDiagram
 ```
 
 #### **Outcome:**
+
 - Circuit breaker opens after failure threshold
 - Failed payment goes to DLQ
 - User gets friendly error: "Payment processing delayed, you won't be charged twice"
@@ -328,6 +360,7 @@ sequenceDiagram
 ## 📊 Configuration Examples
 
 ### Retry Policy
+
 ```python
 retry_config = {
     "max_attempts": 4,
@@ -347,14 +380,15 @@ retry_config = {
 ```
 
 ### Circuit Breaker Config
+
 ```yaml
 circuit_breaker:
-  failure_threshold: 5        # failures to open
-  failure_rate: 50            # % failures in window
-  window_size: 10             # requests to track
-  timeout: 30                 # seconds before half-open
-  half_open_requests: 3       # test requests
-  success_threshold: 2        # successes to close
+  failure_threshold: 5 # failures to open
+  failure_rate: 50 # % failures in window
+  window_size: 10 # requests to track
+  timeout: 30 # seconds before half-open
+  half_open_requests: 3 # test requests
+  success_threshold: 2 # successes to close
 ```
 
 ---
@@ -364,21 +398,27 @@ circuit_breaker:
 When discussing resilience patterns in **system design interviews**, demonstrate depth by covering:
 
 ### 1. **Why Retries Alone Are Dangerous**
+
 > "Retries without backoff can create a retry storm where thousands of clients hammer a recovering service, making the problem worse. This is called the thundering herd problem."
 
 ### 2. **Retry + Backoff + Jitter = Best Practice**
+
 > "I'd implement exponential backoff with equal jitter. This spreads retries over time and prevents synchronized stampedes. For example, with jitter, 10,000 clients retrying at 8s becomes a smooth distribution between 4-8 seconds."
 
 ### 3. **Circuit Breakers for Cascading Failure Prevention**
+
 > "If the payment gateway is down, a circuit breaker prevents our service from wasting threads waiting for timeouts. It fails fast and returns cached responses, protecting both our system and theirs."
 
 ### 4. **Idempotency is Critical**
+
 > "For payment processing, I'd use idempotency keys so retries don't double-charge customers. The same key ensures the gateway processes the request exactly once, even if we retry."
 
 ### 5. **Observability Matters**
+
 > "I'd emit metrics for retry counts, circuit breaker state changes, and DLQ depth. Alerts on high retry rates or circuit breaker trips help us detect issues before they cascade."
 
 ### 6. **Dead Letter Queues for Async Systems**
+
 > "For async payment processing with Kafka or SQS, failed messages after all retries go to a DLQ. This preserves data for debugging while preventing poison messages from blocking the queue."
 
 ---
@@ -416,22 +456,26 @@ A: Implement token bucket rate limiting on our side, respect 429 Retry-After hea
 ### Choose Your Strategy Based On:
 
 **Low-Latency Requirements (< 100ms)**
+
 - Fewer retries (2-3 max)
 - Shorter backoff (100ms, 200ms, 400ms)
 - Aggressive circuit breaker (fail fast)
 
 **High-Reliability Requirements (payments, orders)**
+
 - More retries (4-5)
 - Longer backoff (1s, 2s, 4s, 8s)
 - Conservative circuit breaker
 - DLQ for all failures
 
 **Real-Time Systems (streaming, gaming)**
+
 - Minimal retries (1-2)
 - Fallback to cached data immediately
 - Fast circuit breaker trip
 
 **Batch Processing**
+
 - More aggressive retries (5-10)
 - Exponential backoff with cap
 - DLQ for permanent failures
@@ -441,6 +485,7 @@ A: Implement token bucket rate limiting on our side, respect 429 Retry-After hea
 ## 📈 Monitoring & Alerts
 
 **Key Metrics:**
+
 - Retry rate per service
 - Average retry attempts per request
 - Circuit breaker state (open/closed/half-open)
@@ -449,6 +494,7 @@ A: Implement token bucket rate limiting on our side, respect 429 Retry-After hea
 - Success rate after retries
 
 **Critical Alerts:**
+
 - Circuit breaker opened
 - Retry rate > 20%
 - DLQ depth > threshold
@@ -458,13 +504,13 @@ A: Implement token bucket rate limiting on our side, respect 429 Retry-After hea
 
 ## 🎯 Summary
 
-| Pattern | Purpose | When to Use |
-|---------|---------|-------------|
-| **Retry** | Handle transient failures | Network glitches, temporary overload |
-| **Backoff** | Space out retries | Prevent overwhelming recovering systems |
-| **Jitter** | Randomize retry timing | Prevent thundering herd with many clients |
-| **Circuit Breaker** | Stop requests to failing service | Systemic failures, cascading prevention |
-| **Rate Limiting** | Control request volume | Protect APIs, prevent abuse |
-| **DLQ** | Preserve failed messages | Async systems, debugging, reprocessing |
+| Pattern             | Purpose                          | When to Use                               |
+| ------------------- | -------------------------------- | ----------------------------------------- |
+| **Retry**           | Handle transient failures        | Network glitches, temporary overload      |
+| **Backoff**         | Space out retries                | Prevent overwhelming recovering systems   |
+| **Jitter**          | Randomize retry timing           | Prevent thundering herd with many clients |
+| **Circuit Breaker** | Stop requests to failing service | Systemic failures, cascading prevention   |
+| **Rate Limiting**   | Control request volume           | Protect APIs, prevent abuse               |
+| **DLQ**             | Preserve failed messages         | Async systems, debugging, reprocessing    |
 
 **Golden Rule**: Always combine retry + exponential backoff + jitter for distributed systems. Add circuit breakers for critical dependencies. Implement idempotency for state-changing operations.

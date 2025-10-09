@@ -32,15 +32,15 @@ The most basic protection against race conditions is using cleanup functions in 
 ```jsx
 function SearchComponent() {
   const [data, setData] = useState(null);
-  
+
   useEffect(() => {
     let isSubscribed = true;
-    
+
     async function fetchData() {
       try {
         const response = await fetch('https://api.example.com/data');
         const result = await response.json();
-        
+
         if (isSubscribed) {
           setData(result);
         }
@@ -50,9 +50,9 @@ function SearchComponent() {
         }
       }
     }
-    
+
     fetchData();
-    
+
     return () => {
       isSubscribed = false;
     };
@@ -68,11 +68,11 @@ function SearchComponent() {
 function DataFetcher() {
   useEffect(() => {
     const abortController = new AbortController();
-    
+
     async function fetchData() {
       try {
         const response = await fetch('https://api.example.com/data', {
-          signal: abortController.signal
+          signal: abortController.signal,
         });
         const data = await response.json();
         // Process data
@@ -82,9 +82,9 @@ function DataFetcher() {
         }
       }
     }
-    
+
     fetchData();
-    
+
     return () => {
       abortController.abort();
     };
@@ -101,15 +101,15 @@ function SearchWithRequestId() {
   const [results, setResults] = useState([]);
   const [search, setSearch] = useState('');
   const requestIdRef = useRef(0);
-  
+
   useEffect(() => {
     const currentRequestId = ++requestIdRef.current;
-    
+
     async function performSearch() {
       try {
         const response = await fetch(`/api/search?q=${search}`);
         const data = await response.json();
-        
+
         if (currentRequestId === requestIdRef.current) {
           setResults(data);
         }
@@ -117,7 +117,7 @@ function SearchWithRequestId() {
         console.error(error);
       }
     }
-    
+
     performSearch();
   }, [search]);
 }
@@ -132,15 +132,15 @@ import { debounce } from 'lodash';
 
 function DebouncedSearch() {
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const debouncedSearch = useCallback(
-    debounce((term) => {
+    debounce(term => {
       // Perform search
       console.log('Searching for:', term);
     }, 500),
     []
   );
-  
+
   useEffect(() => {
     if (searchTerm) {
       debouncedSearch(searchTerm);
@@ -168,14 +168,14 @@ Create a custom hook to ensure state updates only occur when a component is moun
 ```jsx
 function useSafeDispatch(dispatch) {
   const mounted = useRef(false);
-  
+
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
     };
   }, []);
-  
+
   return useCallback(
     (...args) => {
       if (mounted.current) {
@@ -212,18 +212,18 @@ Here's a simple test case to verify race condition handling:
 ```jsx
 test('handles race conditions in async operations', async () => {
   const { result } = renderHook(() => useAsyncOperation());
-  
+
   // Trigger multiple async operations
   act(() => {
     result.current.trigger();
     result.current.trigger();
   });
-  
+
   // Wait for operations to complete
   await waitFor(() => {
     expect(result.current.isComplete).toBe(true);
   });
-  
+
   // Verify only the latest operation's result is used
   expect(result.current.data).toBe('latest result');
 });

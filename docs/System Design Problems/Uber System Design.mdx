@@ -1,9 +1,9 @@
 ---
-title: "Uber System Design"
-description: "Complete system design for Uber ride-hailing platform"
-author: "System Design Template"
-date: "2025-10-05"
-tags: ["system-design", "uber", "ride-hailing", "geospatial", "real-time"]
+title: 'Uber System Design'
+description: 'Complete system design for Uber ride-hailing platform'
+author: 'System Design Template'
+date: '2025-10-05'
+tags: ['system-design', 'uber', 'ride-hailing', 'geospatial', 'real-time']
 ---
 
 # Uber System Design
@@ -37,6 +37,7 @@ tags: ["system-design", "uber", "ride-hailing", "geospatial", "real-time"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 100M (riders + drivers)
 - Daily Active Riders: 10M
 - Daily Active Drivers: 2M
@@ -46,6 +47,7 @@ tags: ["system-design", "uber", "ride-hailing", "geospatial", "real-time"]
 - Rider tracking during ride: Every 5 seconds
 
 **Daily Metrics:**
+
 ```
 Rides per day = 10M
 Rides per second = 10M / 86400 = ~115 rides/sec
@@ -59,6 +61,7 @@ Ride tracking updates = 140K rides × 2 users × (1 update / 5 sec) = 56K update
 ```
 
 **Storage:**
+
 ```
 Trip data per ride = 2 KB (pickup, dropoff, fare, time, etc.)
 Daily trip storage = 10M × 2 KB = 20 GB/day
@@ -70,6 +73,7 @@ Annual location storage = 300 GB × 365 = ~110 TB/year
 ```
 
 **Bandwidth:**
+
 ```
 Driver location upload = 500K updates/sec × 100 bytes = 50 MB/s
 Rider tracking = 56K updates/sec × 100 bytes = 5.6 MB/s
@@ -84,27 +88,35 @@ ETA queries = 115 rides/sec × 5 KB = 575 KB/s
 ## 2. Core Entities (~2 minutes)
 
 ### User
+
 - `userId`, `name`, `email`, `phone`, `userType` (RIDER/DRIVER), `rating`, `createdAt`
 
 ### Driver
+
 - `driverId`, `userId`, `vehicleId`, `currentLocation` (lat, lng), `status` (AVAILABLE/BUSY/OFFLINE), `rating`, `totalTrips`
 
 ### Vehicle
+
 - `vehicleId`, `driverId`, `type` (ECONOMY/PREMIUM/SUV), `make`, `model`, `year`, `licensePlate`, `capacity`
 
 ### Ride
+
 - `rideId`, `riderId`, `driverId`, `pickupLocation`, `dropoffLocation`, `status`, `requestedAt`, `acceptedAt`, `startedAt`, `completedAt`, `fare`, `distance`
 
 ### Location
+
 - `entityId`, `entityType`, `latitude`, `longitude`, `timestamp`, `heading`, `speed`
 
 ### Payment
+
 - `paymentId`, `rideId`, `amount`, `method`, `status`, `timestamp`
 
 ### Rating
+
 - `ratingId`, `rideId`, `raterId`, `rateeId`, `score` (1-5), `feedback`, `timestamp`
 
 ### Pricing
+
 - `rideType`, `baseFare`, `perKmRate`, `perMinuteRate`, `surgeFactor`, `region`
 
 ---
@@ -112,6 +124,7 @@ ETA queries = 115 rides/sec × 5 KB = 575 KB/s
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for CRUD operations
 - **WebSocket** for real-time location updates
 - **gRPC** for internal microservice communication
@@ -372,16 +385,19 @@ Response: {
 ### Architecture Components
 
 **Client Layer:**
+
 - Rider App (iOS/Android/Web)
 - Driver App (iOS/Android)
 - Real-time WebSocket connections
 
 **API Gateway Layer:**
+
 - API Gateway - routing, authentication, rate limiting
 - Load Balancer - geographic load distribution
 - CDN - static assets, maps tiles
 
 **Service Layer (Microservices):**
+
 - **Ride Service** - ride lifecycle management
 - **Matching Service** - driver-rider matching algorithm
 - **Location Service** - tracks and queries driver locations
@@ -393,6 +409,7 @@ Response: {
 - **Analytics Service** - real-time metrics, surge detection
 
 **Data Layer:**
+
 - **PostgreSQL** - users, vehicles, payment methods (ACID required)
 - **Cassandra** - ride history, location history (high write throughput)
 - **Redis** - active driver locations, ride state, cache
@@ -400,16 +417,19 @@ Response: {
 - **S3** - receipts, documents, driver photos
 
 **Geospatial Layer:**
+
 - **Redis Geospatial** - nearby driver queries
 - **Elasticsearch Geo** - historical location analysis
 - **Google Maps API** - routing, traffic, ETA
 
 **Messaging & Streaming:**
+
 - **Kafka** - location events, ride events, analytics
 - **RabbitMQ** - task queues, notifications
 - **Redis Pub/Sub** - real-time location broadcasting
 
 **Background Workers:**
+
 - **Surge Pricing Calculator** - monitors supply/demand
 - **ETA Updater** - recalculates ETAs with traffic
 - **Payment Processor** - processes payments asynchronously
@@ -850,11 +870,13 @@ public List<Driver> findNearbyDrivers(double lat, double lng, double radiusKm) {
 **Concept**: Hierarchical spatial index that divides space into quadrants
 
 **Advantages:**
+
 - Fast in-memory queries (< 10ms)
 - Efficient for dynamic updates
 - Better for dense urban areas
 
 **Structure:**
+
 ```
 Each QuadTree node contains:
 - Boundary (lat/lng bounds)
@@ -865,6 +887,7 @@ When node exceeds capacity, split into 4 children
 ```
 
 **Pseudo Implementation:**
+
 ```java
 class QuadTree {
     private Boundary boundary;
@@ -913,12 +936,14 @@ class QuadTree {
 #### Approach 3: Google S2 (Uber's Choice)
 
 **Why S2?**
+
 - Handles edge cases near poles and date line
 - Hierarchical cell decomposition
 - Better for global coverage
 - Region covering algorithms
 
 **Key Concepts:**
+
 ```
 - World divided into 6 cube faces
 - Each face recursively divided into cells
@@ -936,6 +961,7 @@ Level 15: ~100m²
 ### 8.2 Driver-Rider Matching Algorithm
 
 **Goals:**
+
 1. Minimize pickup time (rider experience)
 2. Maximize driver utilization (business)
 3. Fair distribution of rides (driver satisfaction)
@@ -943,10 +969,12 @@ Level 15: ~100m²
 #### Matching Strategy
 
 **Step 1: Find Candidate Drivers**
+
 - Query drivers within 5km radius
 - Filter by availability, vehicle type, rating > 4.0
 
 **Step 2: Rank Drivers**
+
 ```
 Score = W1 × Distance + W2 × (1 - AcceptanceRate) + W3 × (1 - Rating/5)
 
@@ -959,11 +987,13 @@ Lower score = better match
 ```
 
 **Step 3: Dispatch**
+
 - Send ride request to top 5 drivers simultaneously
 - First to accept gets the ride
 - Timeout after 15 seconds, move to next batch
 
 **Step 4: Fallback**
+
 - If no acceptance, expand radius to 10km
 - Adjust fare estimation with surge pricing
 - Notify rider of longer wait time
@@ -971,17 +1001,20 @@ Lower score = better match
 #### Handling Edge Cases
 
 **No Drivers Available:**
+
 - Add rider to waiting queue
 - Monitor for newly available drivers
 - Send ETA updates every 30 seconds
 - Option to increase offered fare
 
 **Driver Cancellation:**
+
 - Automatically re-match with next best driver
 - Track cancellation rate, penalize habitual cancelers
 - Offer compensation to rider (credit/discount)
 
 **Rider Cancellation:**
+
 - Free cancellation within 2 minutes
 - Cancellation fee after 2 minutes
 - Full fee if driver already arrived
@@ -995,6 +1028,7 @@ Lower score = better match
 #### WebSocket Architecture
 
 **Connection Management:**
+
 ```java
 @Component
 public class LocationWebSocketHandler extends TextWebSocketHandler {
@@ -1051,6 +1085,7 @@ public class LocationWebSocketHandler extends TextWebSocketHandler {
 **Optimization Techniques:**
 
 **1. Batching:**
+
 ```java
 @Service
 public class LocationBatchProcessor {
@@ -1074,14 +1109,17 @@ public class LocationBatchProcessor {
 ```
 
 **2. Data Compression:**
+
 - Use Protocol Buffers instead of JSON (50% size reduction)
 - Delta encoding (send only changes from last position)
 
 **3. Connection Pooling:**
+
 - Maintain persistent WebSocket connections
 - Reuse connections to reduce handshake overhead
 
 **4. Geographic Sharding:**
+
 - Route drivers to nearest data center
 - San Francisco drivers → US-West servers
 - New York drivers → US-East servers
@@ -1093,6 +1131,7 @@ public class LocationBatchProcessor {
 **Components:**
 
 #### 1. Static Route Calculation
+
 ```
 Input: Pickup location, Dropoff location
 Output: Distance, Estimated time, Route polyline
@@ -1103,11 +1142,13 @@ Uses: Google Maps Directions API / OSRM (Open Source Routing Machine)
 #### 2. Real-time Traffic Integration
 
 **Approach:**
+
 - Query current traffic conditions from Maps API
 - Apply traffic multiplier to base ETA
 - Cache frequent routes (15-minute TTL)
 
 **Formula:**
+
 ```
 ETA = (Distance / AverageSpeed) × TrafficMultiplier
 
@@ -1119,11 +1160,13 @@ TrafficMultiplier = Current traffic / Normal traffic (1.0 - 3.0)
 #### 3. Historical Data Learning
 
 **Strategy:**
+
 - Store actual vs. estimated times for completed rides
 - Train ML model to predict corrections
 - Apply learned adjustments to future ETAs
 
 **Features for ML Model:**
+
 - Route distance and duration
 - Time of day, day of week
 - Weather conditions
@@ -1133,6 +1176,7 @@ TrafficMultiplier = Current traffic / Normal traffic (1.0 - 3.0)
 #### 4. Continuous ETA Updates
 
 **During Ride:**
+
 ```java
 @Scheduled(fixedRate = 30000) // Every 30 seconds
 public void updateActiveRideETAs() {
@@ -1223,16 +1267,19 @@ private double calculateSurgeFactor(long supply, long demand) {
 #### Surge Notification Strategy
 
 **Transparent Communication:**
+
 - Show surge multiplier before requesting
 - Explain why surge is active ("High demand in your area")
 - Offer alternatives (wait for lower price, try different pickup location)
 
 **Gradual Rollout:**
+
 - Don't apply full surge immediately
 - Ramp up over 5-10 minutes to avoid shock
 - Helps regulate demand naturally
 
 **Geographic Boundaries:**
+
 - Avoid sharp surge boundaries
 - Smooth transitions between regions
 - Suggest nearby lower-surge pickup locations
@@ -1244,6 +1291,7 @@ private double calculateSurgeFactor(long supply, long demand) {
 **Flow:**
 
 #### 1. Pre-authorization
+
 ```
 When ride starts:
 - Put hold on rider's payment method
@@ -1252,6 +1300,7 @@ When ride starts:
 ```
 
 #### 2. Fare Calculation
+
 ```
 Final Fare = BaseFare + (Distance × PerKmRate) + (Duration × PerMinuteRate) × SurgeFactor
 
@@ -1363,17 +1412,20 @@ Security:
 #### 1. Push Notifications (Mobile)
 
 **High Priority (Immediate):**
+
 - Ride request for drivers
 - Driver accepted ride (for riders)
 - Driver arrived at pickup
 - Ride started/completed
 
 **Medium Priority (Can be delayed 10-30s):**
+
 - ETA updates
 - Surge pricing alerts
 - Payment confirmations
 
 **Low Priority (Batch):**
+
 - Promotional offers
 - Weekly summaries
 - Rating reminders
@@ -1381,6 +1433,7 @@ Security:
 #### 2. SMS Notifications
 
 **When to use:**
+
 - Critical updates if app not active
 - Verification codes
 - Emergency situations
@@ -1389,6 +1442,7 @@ Security:
 #### 3. In-App Notifications
 
 **Real-time updates:**
+
 - Driver location on map
 - Chat messages
 - Route changes
@@ -1432,6 +1486,7 @@ public class NotificationService {
 ```
 
 **Notification Preferences:**
+
 ```
 Allow users to configure:
 - Notification types to receive
@@ -1446,6 +1501,7 @@ Allow users to configure:
 #### 1. Fraud Detection
 
 **Common Fraud Patterns:**
+
 - GPS spoofing (fake location)
 - Account sharing
 - Fake rides (driver and rider collude)
@@ -1504,6 +1560,7 @@ public class FraudDetectionService {
 ```
 
 **Actions:**
+
 - Score < 0.4: Allow
 - Score 0.4-0.7: Flag for manual review
 - Score > 0.7: Block payment, investigate account
@@ -1511,6 +1568,7 @@ public class FraudDetectionService {
 #### 2. Safety Features
 
 **Real-time Safety:**
+
 - Share trip with friends/family
 - Emergency button (contacts police/emergency services)
 - In-app safety toolkit
@@ -1518,6 +1576,7 @@ public class FraudDetectionService {
 - Background checks for drivers
 
 **Trip Monitoring:**
+
 ```java
 @Service
 public class SafetyMonitoringService {
@@ -1547,6 +1606,7 @@ public class SafetyMonitoringService {
 ```
 
 **Driver Verification:**
+
 - Government-issued ID
 - Background check (criminal record)
 - Driving record check
@@ -1561,6 +1621,7 @@ public class SafetyMonitoringService {
 #### Real-time Dashboards
 
 **Operations Dashboard:**
+
 ```
 Metrics displayed:
 - Active rides (current moment)
@@ -1571,6 +1632,7 @@ Metrics displayed:
 ```
 
 **Business Metrics:**
+
 ```
 - Gross booking value (GBV)
 - Take rate (commission %)
@@ -1625,26 +1687,31 @@ ORDER BY avg_rating DESC;
 #### Machine Learning Applications
 
 **1. Demand Prediction:**
+
 - Predict ride requests for next hour by region
 - Proactively position drivers
 - Optimize driver supply
 
 **2. Dynamic Pricing:**
+
 - ML model predicts optimal surge factor
 - Considers: weather, events, historical patterns
 - Maximizes revenue while maintaining service quality
 
 **3. ETA Prediction:**
+
 - Improve accuracy over time
 - Learn from actual vs. estimated times
 - Factor in local patterns
 
 **4. Fraud Detection:**
+
 - Anomaly detection models
 - Pattern recognition
 - Risk scoring
 
 **5. Driver-Rider Matching:**
+
 - Predict best matches
 - Optimize for completion rate
 - Minimize cancellations
@@ -1730,11 +1797,13 @@ public void warmCache() {
 #### Read Replicas
 
 **PostgreSQL:**
+
 - 1 Primary (writes)
 - 5 Read Replicas (reads)
 - Route reads to nearest replica
 
 **Geographic Distribution:**
+
 - US-East: 2 replicas
 - US-West: 2 replicas
 - EU-West: 1 replica
@@ -1767,6 +1836,7 @@ Per Endpoint:
 #### Load Balancing
 
 **Geographic Routing:**
+
 ```
 DNS-based routing:
 - us-west.uber.com → US-West data center
@@ -1779,6 +1849,7 @@ Latency-based routing:
 ```
 
 **Service Mesh (Istio):**
+
 - Automatic load balancing
 - Circuit breaking
 - Retry logic
@@ -1791,6 +1862,7 @@ Latency-based routing:
 #### Multi-Region Architecture
 
 **Active-Active Setup:**
+
 ```
 Region 1 (US-West):
 - Primary for West Coast users
@@ -1829,6 +1901,7 @@ Redis:
 #### Backup Strategy
 
 **Database Backups:**
+
 ```
 - Full backup: Daily at 2 AM
 - Incremental: Every 4 hours
@@ -1838,6 +1911,7 @@ Redis:
 ```
 
 **Critical Data:**
+
 ```
 - User accounts: 3 copies across regions
 - Payment methods: Encrypted, 5 copies
@@ -1848,6 +1922,7 @@ Redis:
 #### Failover Procedures
 
 **Database Failover:**
+
 ```
 1. Health check detects failure
 2. Promote read replica to primary (automatic)
@@ -1859,6 +1934,7 @@ Total time: < 2 minutes
 ```
 
 **Service Failover:**
+
 ```
 1. Circuit breaker detects service failure
 2. Route traffic to healthy instances
@@ -1896,15 +1972,15 @@ Total time: < 30 seconds
 
 ## Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| WebSocket for locations | Real-time updates, low latency | Stateful connections, scaling complexity |
-| Redis Geospatial | Fast queries (< 10ms) | Limited to 2D coordinates, memory intensive |
-| Async payment processing | Non-blocking, better UX | Eventual consistency, retry complexity |
-| Multi-region active-active | Low latency globally, HA | Data consistency challenges, higher cost |
-| Cassandra for locations | High write throughput | Eventually consistent, limited queries |
-| Surge pricing | Balances supply-demand | Potential rider dissatisfaction |
-| GPS tracking | Accurate routing, safety | Privacy concerns, battery drain |
+| Decision                   | Pro                            | Con                                         |
+| -------------------------- | ------------------------------ | ------------------------------------------- |
+| WebSocket for locations    | Real-time updates, low latency | Stateful connections, scaling complexity    |
+| Redis Geospatial           | Fast queries (< 10ms)          | Limited to 2D coordinates, memory intensive |
+| Async payment processing   | Non-blocking, better UX        | Eventual consistency, retry complexity      |
+| Multi-region active-active | Low latency globally, HA       | Data consistency challenges, higher cost    |
+| Cassandra for locations    | High write throughput          | Eventually consistent, limited queries      |
+| Surge pricing              | Balances supply-demand         | Potential rider dissatisfaction             |
+| GPS tracking               | Accurate routing, safety       | Privacy concerns, battery drain             |
 
 ---
 
@@ -1928,12 +2004,14 @@ Total time: < 30 seconds
 ### Data Privacy & Compliance
 
 **GDPR Compliance:**
+
 - Right to data portability (export user data)
 - Right to be forgotten (delete user data)
 - Consent for location tracking
 - Encrypted data storage
 
 **Location Privacy:**
+
 - Anonymize historical location data after 7 days
 - Truncate precise coordinates for analytics
 - Allow users to delete location history
@@ -1950,6 +2028,7 @@ Total time: < 30 seconds
 ### Environmental Impact
 
 **Sustainability Initiatives:**
+
 - Electric vehicle incentives for drivers
 - Carbon footprint tracking
 - Green ride options (EVs only)

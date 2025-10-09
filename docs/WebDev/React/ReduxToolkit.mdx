@@ -3,6 +3,7 @@
 ## Core Concepts
 
 ### Store
+
 The central state container that holds the complete state tree of your application.
 
 ```javascript
@@ -11,7 +12,7 @@ import rootReducer from './reducers';
 
 const store = configureStore({
   reducer: rootReducer,
-  middleware: (getDefaultMiddleware) => 
+  middleware: getDefaultMiddleware =>
     getDefaultMiddleware().concat(customMiddleware),
   devTools: process.env.NODE_ENV !== 'production',
   preloadedState: initialState,
@@ -22,6 +23,7 @@ export default store;
 ```
 
 ### Slice
+
 A collection of Redux reducer logic and actions for a single feature.
 
 ```javascript
@@ -41,7 +43,7 @@ const todoSlice = createSlice({
       }
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
       .addCase(fetchTodos.fulfilled, (state, action) => {
         return action.payload;
@@ -166,13 +168,13 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
-  endpoints: (builder) => ({
+  endpoints: builder => ({
     getUsers: builder.query({
       query: () => 'users',
       providesTags: ['Users'],
     }),
     getUserById: builder.query({
-      query: (id) => `users/${id}`,
+      query: id => `users/${id}`,
       providesTags: (_result, _err, id) => [{ type: 'Users', id }],
     }),
     updateUser: builder.mutation({
@@ -189,11 +191,8 @@ export const api = createApi({
   }),
 });
 
-export const {
-  useGetUsersQuery,
-  useGetUserByIdQuery,
-  useUpdateUserMutation,
-} = api;
+export const { useGetUsersQuery, useGetUserByIdQuery, useUpdateUserMutation } =
+  api;
 ```
 
 ## Selectors
@@ -251,8 +250,7 @@ listenerMiddleware.startListening({
 // Add to store
 const store = configureStore({
   reducer: rootReducer,
-  middleware: (getDefault) =>
-    getDefault().concat(listenerMiddleware.middleware),
+  middleware: getDefault => getDefault().concat(listenerMiddleware.middleware),
 });
 ```
 
@@ -417,11 +415,14 @@ describe('todo reducer', () => {
   });
 
   test('should handle addTodo', () => {
-    const actual = todoReducer(initialState, addTodo({
-      id: 1,
-      text: 'Test Todo',
-      completed: false,
-    }));
+    const actual = todoReducer(
+      initialState,
+      addTodo({
+        id: 1,
+        text: 'Test Todo',
+        completed: false,
+      })
+    );
     expect(actual.items.length).toEqual(1);
     expect(actual.items[0].text).toEqual('Test Todo');
   });
@@ -444,7 +445,7 @@ describe('todo async actions', () => {
     fetch.mockResponseOnce(JSON.stringify(todos));
 
     const result = await store.dispatch(fetchTodos());
-    
+
     expect(result.payload).toEqual(todos);
     expect(store.getState().todos.items).toEqual(todos);
   });
@@ -453,7 +454,7 @@ describe('todo async actions', () => {
     fetch.mockRejectOnce(new Error('API Error'));
 
     const result = await store.dispatch(fetchTodos());
-    
+
     expect(result.payload).toEqual('API Error');
     expect(store.getState().todos.error).toEqual('API Error');
   });

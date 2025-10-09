@@ -3,61 +3,70 @@
 ## Core Web Vitals Overview
 
 ### Largest Contentful Paint (LCP)
+
 - **What**: Measures loading performance - time until largest content element is visible
 - **Target**: Under 2.5s
 - **Debugging**:
+
 ```javascript
 import { getLCP } from 'web-vitals';
 
 getLCP(console.log); // Basic logging
-getLCP((metric) => {
+getLCP(metric => {
   // Send to analytics
   analytics.send({
     name: 'LCP',
     value: metric.value,
     id: metric.id,
-    element: metric.element // The actual LCP element
+    element: metric.element, // The actual LCP element
   });
 });
 ```
 
 ### First Input Delay (FID)
+
 - **What**: Measures interactivity - time from user's first interaction to browser's response
 - **Target**: Under 100ms
 - **Debugging**:
+
 ```javascript
 import { getFID } from 'web-vitals';
 
-getFID((metric) => {
+getFID(metric => {
   console.log({
     name: 'FID',
     value: metric.value,
     eventTarget: metric.eventTarget, // Element that was interacted with
-    eventType: metric.eventType // Type of interaction
+    eventType: metric.eventType, // Type of interaction
   });
 });
 ```
 
 ### Cumulative Layout Shift (CLS)
+
 - **What**: Measures visual stability - unexpected layout shifts
 - **Target**: Under 0.1
 - **Debugging**:
+
 ```javascript
 import { getCLS } from 'web-vitals';
 
-getCLS((metric) => {
-  console.table(metric.entries.map(entry => ({
-    startTime: entry.startTime,
-    value: entry.value,
-    hadRecentInput: entry.hadRecentInput,
-    elements: entry.sources.map(source => source.node)
-  })));
+getCLS(metric => {
+  console.table(
+    metric.entries.map(entry => ({
+      startTime: entry.startTime,
+      value: entry.value,
+      hadRecentInput: entry.hadRecentInput,
+      elements: entry.sources.map(source => source.node),
+    }))
+  );
 });
 ```
 
 ## React Performance Debugging Tools
 
 ### React Developer Tools
+
 ```javascript
 // Enable React Developer Tools in development
 if (process.env.NODE_ENV === 'development') {
@@ -69,6 +78,7 @@ if (process.env.NODE_ENV === 'development') {
 ```
 
 ### Custom Performance Hooks
+
 ```javascript
 import { useEffect, useRef } from 'react';
 
@@ -77,7 +87,7 @@ function useComponentTimer(componentName) {
 
   useEffect(() => {
     startTime.current = performance.now();
-    
+
     return () => {
       const duration = performance.now() - startTime.current;
       console.log(`${componentName} mounted for ${duration}ms`);
@@ -87,6 +97,7 @@ function useComponentTimer(componentName) {
 ```
 
 ### Web Vitals in Next.js
+
 ```javascript
 // pages/_app.js
 import { useEffect } from 'react';
@@ -108,6 +119,7 @@ function MyApp({ Component, pageProps }) {
 ## Common Performance Issues & Solutions
 
 ### Image Optimization
+
 ```javascript
 // Next.js Image component with optimization
 import Image from 'next/image';
@@ -127,6 +139,7 @@ function OptimizedImage() {
 ```
 
 ### Code Splitting
+
 ```javascript
 // Using React.lazy for component-level code splitting
 const HeavyComponent = React.lazy(() => import('./HeavyComponent'));
@@ -141,10 +154,11 @@ function App() {
 ```
 
 ### Performance Monitoring
+
 ```javascript
 // Using Performance Observer API
-const performanceObserver = new PerformanceObserver((list) => {
-  list.getEntries().forEach((entry) => {
+const performanceObserver = new PerformanceObserver(list => {
+  list.getEntries().forEach(entry => {
     if (entry.entryType === 'largest-contentful-paint') {
       console.log('LCP:', entry.startTime);
       console.log('Element:', entry.element);
@@ -163,29 +177,31 @@ performanceObserver.observe({ entryTypes: ['largest-contentful-paint'] });
    - Lighthouse
 
 2. Enable Performance Tracing:
+
 ```javascript
 // Add to your app's entry point
 if (process.env.NODE_ENV !== 'production') {
   const { enableReactTracking } = require('@performance/react-tracker');
   enableReactTracking({
     logToConsole: true,
-    logToNetwork: true
+    logToNetwork: true,
   });
 }
 ```
 
 3. Monitor Layout Shifts:
+
 ```javascript
 let cumulativeScore = 0;
 
-new PerformanceObserver((entryList) => {
+new PerformanceObserver(entryList => {
   for (const entry of entryList.getEntries()) {
     if (!entry.hadRecentInput) {
       cumulativeScore += entry.value;
       console.log('Layout shift:', {
         value: entry.value,
         cumulative: cumulativeScore,
-        elements: entry.sources.map(source => source.node)
+        elements: entry.sources.map(source => source.node),
       });
     }
   }
@@ -193,17 +209,18 @@ new PerformanceObserver((entryList) => {
 ```
 
 4. Implement Error Boundaries:
+
 ```javascript
 class PerformanceErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('Performance issue detected:', error);
     console.log('Component stack:', errorInfo.componentStack);
-    
+
     // Log to your analytics service
     logError({
       type: 'PERFORMANCE',
       error,
-      componentStack: errorInfo.componentStack
+      componentStack: errorInfo.componentStack,
     });
   }
 

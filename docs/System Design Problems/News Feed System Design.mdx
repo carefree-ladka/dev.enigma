@@ -1,14 +1,15 @@
 ---
-title: "News Feed System Design"
-description: "Complete system design for a scalable news feed platform (Facebook/Twitter-like)"
-author: "System Design Guide"
-date: "2025-10-07"
-tags: ["system-design", "news-feed", "social-media", "distributed-systems"]
+title: 'News Feed System Design'
+description: 'Complete system design for a scalable news feed platform (Facebook/Twitter-like)'
+author: 'System Design Guide'
+date: '2025-10-07'
+tags: ['system-design', 'news-feed', 'social-media', 'distributed-systems']
 ---
 
 # News Feed System Design
 
 ## Table of Contents
+
 1. [Requirements](#1-requirements-5-minutes)
    - [Functional Requirements](#functional-requirements)
    - [Non-functional Requirements](#non-functional-requirements)
@@ -82,6 +83,7 @@ tags: ["system-design", "news-feed", "social-media", "distributed-systems"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 2B
 - Daily Active Users (DAU): 500M
 - Average posts per user: 2 posts/day
@@ -91,6 +93,7 @@ tags: ["system-design", "news-feed", "social-media", "distributed-systems"]
 - Feed refresh: 20 times/day per user
 
 **Storage:**
+
 ```
 Daily Posts = 500M users × 2 posts = 1B posts/day
 Annual Posts = 1B × 365 = 365B posts/year
@@ -100,6 +103,7 @@ Annual Media = 365 PB (with compression ~180 PB)
 ```
 
 **QPS:**
+
 ```
 Post Creation = 1B posts/day / 86400s = ~12K writes/sec
 Feed Reads = 500M DAU × 20 refreshes/day / 86400s = ~115K reads/sec
@@ -108,6 +112,7 @@ Interactions (likes/comments) = 500M × 50 actions/day / 86400s = ~290K QPS
 ```
 
 **Network:**
+
 ```
 Feed Fetch Size = 20 posts × 1 KB metadata = 20 KB
 Peak Bandwidth = 575K requests/sec × 20 KB = 11.5 GB/s
@@ -119,24 +124,31 @@ Media Bandwidth = 500M users × 10 images/day × 2 MB / 86400s = 115 GB/s
 ## 2. Core Entities (~2 minutes)
 
 ### User
+
 - `userId`, `username`, `email`, `displayName`, `profilePicUrl`, `bio`, `verified`, `createdAt`
 
 ### Post
+
 - `postId`, `userId`, `content`, `mediaUrls[]`, `postType` (TEXT/IMAGE/VIDEO/LINK), `visibility` (PUBLIC/FRIENDS/PRIVATE), `createdAt`, `editedAt`
 
 ### Interaction
+
 - `interactionId`, `postId`, `userId`, `type` (LIKE/SHARE/SAVE), `createdAt`
 
 ### Comment
+
 - `commentId`, `postId`, `userId`, `parentCommentId`, `content`, `createdAt`
 
 ### Follow
+
 - `followerId`, `followeeId`, `createdAt`
 
 ### Feed
+
 - `userId`, `postId`, `score`, `generatedAt` (pre-computed feed)
 
 ### Notification
+
 - `notificationId`, `userId`, `actorId`, `type` (LIKE/COMMENT/FOLLOW), `postId`, `read`, `createdAt`
 
 ---
@@ -144,6 +156,7 @@ Media Bandwidth = 500M users × 10 images/day × 2 MB / 86400s = 115 GB/s
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for CRUD operations
 - **WebSocket** for real-time notifications and live feed updates
 - **GraphQL** for flexible feed queries (optional optimization)
@@ -151,6 +164,7 @@ Media Bandwidth = 500M users × 10 images/day × 2 MB / 86400s = 115 GB/s
 ### API Endpoints
 
 #### Authentication
+
 ```http
 POST /api/v1/auth/login
 Request: { "email": "user@example.com", "password": "hashed_password" }
@@ -158,6 +172,7 @@ Response: { "accessToken": "jwt_token", "refreshToken": "refresh_token", "expire
 ```
 
 #### Feed Operations
+
 ```http
 GET /api/v1/feed?limit=20&cursor=eyJwb3N0SWQiOiIxMjM0NSJ9
 Response: {
@@ -181,6 +196,7 @@ GET /api/v1/feed/following?limit=20  // Chronological feed
 ```
 
 #### Post Creation
+
 ```http
 POST /api/v1/posts
 Content-Type: multipart/form-data
@@ -202,6 +218,7 @@ DELETE /api/v1/posts/{postId}
 ```
 
 #### Interactions
+
 ```http
 POST /api/v1/posts/{postId}/like
 DELETE /api/v1/posts/{postId}/like
@@ -216,6 +233,7 @@ POST /api/v1/posts/{postId}/save
 ```
 
 #### Social Graph
+
 ```http
 POST /api/v1/users/{userId}/follow
 DELETE /api/v1/users/{userId}/unfollow
@@ -224,6 +242,7 @@ GET /api/v1/users/{userId}/following?limit=50
 ```
 
 #### Notifications
+
 ```http
 GET /api/v1/notifications?limit=20&unreadOnly=true
 Response: {
@@ -244,6 +263,7 @@ PUT /api/v1/notifications/mark-all-read
 ```
 
 #### WebSocket (Real-time)
+
 ```javascript
 WebSocket: wss://realtime.app.com/feed
 Messages: {
@@ -261,6 +281,7 @@ Types: NEW_POST, NOTIFICATION, FEED_UPDATE
 ### Feed Generation Flow (Hybrid Approach)
 
 **Fanout-on-Write (Push) - For Users with Few Followers (`<10K`)**
+
 1. User creates post → Post Service
 2. Post Service writes to DB
 3. Post Service publishes event to Kafka
@@ -269,6 +290,7 @@ Types: NEW_POST, NOTIFICATION, FEED_UPDATE
 6. Followers see post instantly
 
 **Fanout-on-Read (Pull) - For Celebrities (>10K followers)**
+
 1. User creates post → Post Service
 2. Post Service writes to DB
 3. When follower requests feed → Feed Service
@@ -277,6 +299,7 @@ Types: NEW_POST, NOTIFICATION, FEED_UPDATE
 6. Rank and return
 
 **Hybrid Example:**
+
 ```
 User requests feed →
   1. Fetch pre-computed feed (Redis) - from regular users
@@ -293,15 +316,18 @@ User requests feed →
 ### Architecture Components
 
 **Client Layer:**
+
 - Mobile Apps (iOS/Android)
 - Web Application (React/Next.js)
 - Native Desktop Apps
 
 **Edge Layer:**
+
 - CDN (CloudFlare/Akamai) - media files, static assets
 - API Gateway - authentication, rate limiting, routing
 
 **API Layer:**
+
 - **Post Service** - create, edit, delete posts
 - **Feed Service** - generate and serve feeds
 - **Interaction Service** - likes, comments, shares
@@ -311,6 +337,7 @@ User requests feed →
 - **Media Service** - upload/process images/videos
 
 **Data Layer:**
+
 - **PostgreSQL** - users, posts metadata (with read replicas)
 - **Cassandra** - pre-computed feeds, social graph
 - **Redis Cluster** - caching, session management
@@ -319,6 +346,7 @@ User requests feed →
 - **Neo4j** (optional) - complex graph queries
 
 **Processing Layer:**
+
 - **Kafka** - event streaming (post created, liked, commented)
 - **Fanout Workers** - distribute posts to followers' feeds
 - **Ranking Service** - ML-based feed ranking
@@ -326,6 +354,7 @@ User requests feed →
 - **Media Processing** - resize images, transcode videos
 
 **Real-time Layer:**
+
 - **WebSocket Servers** - live updates, notifications
 - **Redis Pub/Sub** - broadcast messages
 
@@ -458,11 +487,11 @@ graph TB
 
 #### Strategy Comparison
 
-| Approach | Pros | Cons | Best For |
-|----------|------|------|----------|
-| **Fanout-on-Write (Push)** | Fast reads, pre-computed | Slow writes for celebrities, high storage | Regular users |
-| **Fanout-on-Read (Pull)** | Fast writes, less storage | Slow reads, compute on demand | Celebrities |
-| **Hybrid** | Balanced performance | Complex implementation | All users |
+| Approach                   | Pros                      | Cons                                      | Best For      |
+| -------------------------- | ------------------------- | ----------------------------------------- | ------------- |
+| **Fanout-on-Write (Push)** | Fast reads, pre-computed  | Slow writes for celebrities, high storage | Regular users |
+| **Fanout-on-Read (Pull)**  | Fast writes, less storage | Slow reads, compute on demand             | Celebrities   |
+| **Hybrid**                 | Balanced performance      | Complex implementation                    | All users     |
 
 #### Hybrid Implementation (Spring Boot)
 
@@ -2410,8 +2439,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Feed generation P99 latency is high"
-          description: "P99 latency is {{ $value }}s (threshold: 1s)"
+          summary: 'Feed generation P99 latency is high'
+          description: 'P99 latency is {{ $value }}s (threshold: 1s)'
 
       # Low cache hit rate
       - alert: LowCacheHitRate
@@ -2420,7 +2449,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Cache hit rate is below 80%"
+          summary: 'Cache hit rate is below 80%'
 
       # High error rate
       - alert: HighErrorRate
@@ -2429,7 +2458,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Error rate is above 1%"
+          summary: 'Error rate is above 1%'
 
       # Kafka consumer lag
       - alert: KafkaConsumerLag
@@ -2438,8 +2467,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Kafka consumer lag is high"
-          description: "Consumer lag is {{ $value }} messages"
+          summary: 'Kafka consumer lag is high'
+          description: 'Consumer lag is {{ $value }} messages'
 
       # Database connection pool exhaustion
       - alert: DatabasePoolExhausted
@@ -2448,7 +2477,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Database connection pool is nearly exhausted"
+          summary: 'Database connection pool is nearly exhausted'
 ```
 
 ---
@@ -2482,27 +2511,27 @@ groups:
 
 ## 10. Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| Hybrid Fanout | Balanced performance for all users | Complex implementation, harder to debug |
-| Pre-computed Feeds | Fast read performance | Storage overhead, eventual consistency |
-| Event-Driven (Kafka) | Loose coupling, scalable | Added complexity, potential message lag |
-| WebSocket for Real-time | Low latency, bi-directional | Connection management overhead, scaling challenges |
-| ML-Based Ranking | Better engagement | Computationally expensive, requires training data |
-| Polyglot Persistence | Optimized for each use case | Operational complexity, data consistency challenges |
+| Decision                | Pro                                | Con                                                 |
+| ----------------------- | ---------------------------------- | --------------------------------------------------- |
+| Hybrid Fanout           | Balanced performance for all users | Complex implementation, harder to debug             |
+| Pre-computed Feeds      | Fast read performance              | Storage overhead, eventual consistency              |
+| Event-Driven (Kafka)    | Loose coupling, scalable           | Added complexity, potential message lag             |
+| WebSocket for Real-time | Low latency, bi-directional        | Connection management overhead, scaling challenges  |
+| ML-Based Ranking        | Better engagement                  | Computationally expensive, requires training data   |
+| Polyglot Persistence    | Optimized for each use case        | Operational complexity, data consistency challenges |
 
 ---
 
 ## 11. Key Differences from Other Systems
 
-| Aspect | News Feed | Twitter | Instagram | LinkedIn |
-|--------|-----------|---------|-----------|----------|
-| Feed Model | Hybrid | Mostly Pull | Push (small network) | Hybrid |
-| Content Type | Text, Image, Video | Short text, links | Image, Video | Professional content |
-| Real-time | Moderate | High (trending) | Moderate | Low |
-| Engagement | Likes, comments, shares | Retweets, replies | Likes, comments | Reactions, endorsements |
-| Graph Type | Social + Interest | Follow-based | Social + Interest | Professional network |
-| Search Focus | Content | Hashtags, trends | Users, hashtags | Jobs, people, content |
+| Aspect       | News Feed               | Twitter           | Instagram            | LinkedIn                |
+| ------------ | ----------------------- | ----------------- | -------------------- | ----------------------- |
+| Feed Model   | Hybrid                  | Mostly Pull       | Push (small network) | Hybrid                  |
+| Content Type | Text, Image, Video      | Short text, links | Image, Video         | Professional content    |
+| Real-time    | Moderate                | High (trending)   | Moderate             | Low                     |
+| Engagement   | Likes, comments, shares | Retweets, replies | Likes, comments      | Reactions, endorsements |
+| Graph Type   | Social + Interest       | Follow-based      | Social + Interest    | Professional network    |
+| Search Focus | Content                 | Hashtags, trends  | Users, hashtags      | Jobs, people, content   |
 
 ---
 

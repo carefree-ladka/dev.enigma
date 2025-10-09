@@ -1,5 +1,5 @@
-import portfolioData from "../../../utils/portfolio-data.json";
-import styles from "./Portfolio.module.css";
+import portfolioData from '../../../utils/portfolio-data.json';
+import styles from './Portfolio.module.css';
 
 const Portfolio = () => {
   const { personal, social, skills, experience, education, achievements } =
@@ -11,7 +11,7 @@ const Portfolio = () => {
       <div className={styles.heroSection}>
         <div className={styles.heroContent}>
           <img
-            src={require("@site/static/img/PAWAN.png").default}
+            src={require('@site/static/img/PAWAN.png').default}
             alt={personal.name}
             className={styles.heroAvatar}
           />
@@ -100,13 +100,13 @@ const Portfolio = () => {
               <div className={styles.experienceContent}>
                 <ul className={styles.experienceList}>
                   {exp.description
-                    .split(". ")
-                    .filter((point) => point.trim())
+                    .split('. ')
+                    .filter(point => point.trim())
                     .map((point, i) => (
                       <li key={i} className={styles.experiencePoint}>
-                        {point.trim().endsWith(".")
+                        {point.trim().endsWith('.')
                           ? point.trim()
-                          : point.trim() + "."}
+                          : point.trim() + '.'}
                       </li>
                     ))}
                 </ul>
@@ -116,7 +116,7 @@ const Portfolio = () => {
                   <div className={styles.techStackSection}>
                     <span className={styles.techStackLabel}>Tech Stack:</span>
                     <div className={styles.techStackTags}>
-                      {exp.techStack.split(", ").map((tech, i) => (
+                      {exp.techStack.split(', ').map((tech, i) => (
                         <span key={i} className={styles.techTag}>
                           {tech.trim()}
                         </span>

@@ -1,14 +1,15 @@
 ---
-title: "Search Autocomplete System Design"
-description: "Complete system design for search autocomplete/typeahead (Google-like)"
-author: "System Design Guide"
-date: "2025-10-07"
-tags: ["system-design", "autocomplete", "typeahead", "search", "trie"]
+title: 'Search Autocomplete System Design'
+description: 'Complete system design for search autocomplete/typeahead (Google-like)'
+author: 'System Design Guide'
+date: '2025-10-07'
+tags: ['system-design', 'autocomplete', 'typeahead', 'search', 'trie']
 ---
 
 # Search Autocomplete System Design
 
 ## Table of Contents
+
 1. [Requirements](#1-requirements-5-minutes)
 2. [Capacity Estimation](#capacity-estimation)
 3. [High-Level Design (HLD)](#3-high-level-design-10-15-minutes)
@@ -51,6 +52,7 @@ tags: ["system-design", "autocomplete", "typeahead", "search", "trie"]
 ## Capacity Estimation
 
 **Assumptions:**
+
 - Daily Active Users (DAU): 500M
 - Average searches per user: 10/day
 - Average keystrokes per search: 10 characters
@@ -58,6 +60,7 @@ tags: ["system-design", "autocomplete", "typeahead", "search", "trie"]
 - Total unique queries: 5B
 
 **QPS:**
+
 ```
 Daily Searches = 500M users × 10 searches = 5B searches/day
 Autocomplete Requests = 5B × 8 keystrokes (after 2nd char) = 40B requests/day
@@ -66,6 +69,7 @@ Peak QPS (3x average) = ~1.4M requests/sec
 ```
 
 **Storage:**
+
 ```
 Query Storage:
 - Average query length: 30 characters
@@ -84,6 +88,7 @@ Trie Data Structure (in-memory):
 ```
 
 **Bandwidth:**
+
 ```
 Request Size = 50 bytes (prefix + metadata)
 Response Size = 10 suggestions × 50 bytes = 500 bytes
@@ -132,6 +137,7 @@ Response:
 ```
 
 ### Query Parameters
+
 - `q`: Search prefix (required)
 - `limit`: Number of suggestions (default: 10, max: 20)
 - `lang`: Language code (default: en)
@@ -145,26 +151,31 @@ Response:
 ### Architecture Components
 
 **Client Layer:**
+
 - Web browsers, mobile apps
 - Debouncing: Wait 150ms after last keystroke before API call
 - Client-side caching: Cache last 50 queries
 
 **Edge Layer:**
+
 - CDN/Edge servers at 200+ locations
 - Cache popular prefixes (hit rate: ~40%)
 
 **API Layer:**
+
 - API Gateway: Rate limiting, authentication
 - Load Balancer: Distribute to autocomplete servers
 - **Autocomplete Service**: Core suggestion logic
 
 **Data Layer:**
+
 - **Trie Servers**: In-memory Trie data structure
 - **Redis Cluster**: Cache top suggestions per prefix
 - **Cassandra**: Historical query data, frequency counts
 - **Kafka**: Real-time query stream for analytics
 
 **Analytics Layer:**
+
 - **Data Aggregator**: Process query logs, update frequencies
 - **Trending Service**: Detect real-time trends
 - **ML Service**: Personalization models
@@ -247,11 +258,13 @@ graph TB
 ### 4.1 Trie Data Structure (Core Algorithm)
 
 **Why Trie?**
+
 - Efficient prefix matching: O(len(prefix))
 - Space-efficient for common prefixes
 - Easy to traverse for top-K suggestions
 
 **Trie Node Structure:**
+
 ```
 TrieNode {
     children: Map<char, TrieNode>  // 26 letters
@@ -262,6 +275,7 @@ TrieNode {
 ```
 
 **Example Trie for ["face", "facebook", "fact"]:**
+
 ```
         root
          |
@@ -283,12 +297,14 @@ TrieNode {
 ```
 
 **Lookup Process:**
+
 1. Start at root
 2. Traverse prefix: 'f' → 'a' → 'c' → 'e'
 3. At 'e' node, get pre-computed topSuggestions
 4. Return top 10
 
 **Time Complexity:**
+
 - Lookup: O(len(prefix)) + O(1) = O(p)
 - Space: O(total_chars_in_all_queries)
 
@@ -314,6 +330,7 @@ Weights: w1=0.5, w2=0.2, w3=0.2, w4=0.1
 ```
 
 **Example:**
+
 ```
 Query: "facebook"
 - Frequency: 15M searches → FrequencyScore = 0.95
@@ -342,6 +359,7 @@ Server 6: U-Z queries (Trie 6)
 ```
 
 **Routing Logic:**
+
 ```
 prefix = "face"
 first_char = prefix[0] = 'f'
@@ -349,11 +367,13 @@ server = route_to_server(first_char)  // Server 2 (E-H)
 ```
 
 **Benefits:**
+
 - Each server handles ~11 GB Trie (manageable)
 - Parallel processing
 - Independent scaling
 
 **Replication:**
+
 - Each partition replicated 3x for availability
 - Master-slave setup: Master handles writes, slaves for reads
 
@@ -366,6 +386,7 @@ server = route_to_server(first_char)  // Server 2 (E-H)
 **Solution: Batch Updates**
 
 **Real-time Flow:**
+
 ```
 User searches "facebook" →
   1. Log to Kafka (async, non-blocking)
@@ -374,6 +395,7 @@ User searches "facebook" →
 ```
 
 **Batch Update Flow (Every 10 minutes):**
+
 ```
 1. Kafka Consumer reads last 10 min of queries
 2. Aggregate: {"facebook": +15000, "face masks": +8000}
@@ -383,6 +405,7 @@ User searches "facebook" →
 ```
 
 **Trie Update Strategy:**
+
 ```
 Option 1: Full Rebuild (Daily)
 - Build new Trie from scratch
@@ -402,6 +425,7 @@ Option 2: Incremental Update (Every 10 min)
 ### 4.5 Data Storage
 
 **Cassandra Schema (Query Frequency Table):**
+
 ```sql
 CREATE TABLE query_stats (
     prefix TEXT,              -- First 3 chars: "fac"
@@ -420,12 +444,14 @@ LIMIT 10;
 ```
 
 **Why Cassandra?**
+
 - Write-heavy: 463K writes/sec
 - Horizontal scaling
 - Counter data type for atomic increments
 - Time-series friendly
 
 **Redis Cache (Hot Prefixes):**
+
 ```
 Key: "autocomplete:fac"
 Value: [
@@ -437,6 +463,7 @@ TTL: 10 minutes
 ```
 
 **Cache Strategy:**
+
 - Top 10K most popular prefixes cached
 - Hit rate: ~40% (power law distribution)
 - Eviction: LRU policy
@@ -471,6 +498,7 @@ Fallback: Cassandra Database
 ```
 
 **Cache Invalidation:**
+
 - Time-based: TTL of 10 minutes
 - Event-based: Breaking news triggers cache clear
 - Lazy update: Rebuild on next request
@@ -484,6 +512,7 @@ Fallback: Cassandra Database
 **Solutions:**
 
 **1. Edit Distance (Levenshtein Distance):**
+
 ```
 EditDistance("facbook", "facebook") = 1 (insert 'e')
 
@@ -495,6 +524,7 @@ For each candidate in Trie:
 **Trade-off:** Expensive to compute for all candidates
 
 **2. Phonetic Algorithms (Soundex/Metaphone):**
+
 ```
 Soundex("facebook") = "F212"
 Soundex("facbook") = "F212"  // Same code!
@@ -503,6 +533,7 @@ Store phonetic codes in Trie
 ```
 
 **3. Bigram/Trigram Matching:**
+
 ```
 "facbook" → bigrams: [fa, ac, cb, bo, oo, ok]
 "facebook" → bigrams: [fa, ac, ce, eb, bo, oo, ok]
@@ -512,10 +543,12 @@ Similarity = (common bigrams) / (total unique bigrams)
 ```
 
 **Implementation:**
+
 - Build inverted index: bigram → queries
 - At query time, find queries with similar bigrams
 
 **Chosen Approach:** Hybrid
+
 - Use Trie for exact prefix
 - If < 3 results, fallback to fuzzy matching (edit distance ≤ 2)
 
@@ -524,6 +557,7 @@ Similarity = (common bigrams) / (total unique bigrams)
 ### 4.8 Personalization
 
 **User History Tracking:**
+
 ```
 Redis Key: "user:12345:history"
 Value: [
@@ -533,6 +567,7 @@ Value: [
 ```
 
 **Personalization Logic:**
+
 ```
 For each suggestion:
   if user searched this before:
@@ -543,6 +578,7 @@ For each suggestion:
 ```
 
 **Privacy:**
+
 - Store only last 100 queries per user
 - Hash user IDs
 - TTL: 30 days
@@ -557,6 +593,7 @@ For each suggestion:
 **Solution: Trending Detection**
 
 **Algorithm:**
+
 ```
 1. Count queries in sliding windows:
    - Last 5 minutes
@@ -580,6 +617,7 @@ Example:
 ```
 
 **Implementation:**
+
 ```
 Kafka Stream Processing:
   1. Consume query logs
@@ -594,17 +632,20 @@ Kafka Stream Processing:
 ### 4.10 Handling Special Cases
 
 **Case 1: Long Tail Queries**
+
 - Problem: 80% of queries are unique (searched once)
 - Solution: Don't store queries with frequency < 5
 - Trade-off: Miss rare queries, save 80% storage
 
 **Case 2: Offensive/Adult Content**
+
 - Solution: Blacklist filter
 - Maintain list of banned words/phrases
 - Filter at ingestion time (Kafka consumer)
 - Never show in suggestions
 
 **Case 3: Multi-word Queries**
+
 ```
 Query: "how to learn python"
 
@@ -619,6 +660,7 @@ Approach 2: Last word matching
 ```
 
 **Case 4: Numbers/Special Characters**
+
 ```
 Query: "iphone 15 pro"
 
@@ -654,6 +696,7 @@ UK Region:
 ```
 
 **Implementation:**
+
 - Maintain separate Tries per region
 - Route based on user's IP or explicit location
 - Fallback to global Trie if region-specific unavailable
@@ -665,42 +708,51 @@ UK Region:
 ### 5.1 Read Optimization
 
 **Pre-computation:**
+
 - Store top 10 suggestions at each Trie node
 - Avoids traversing entire subtree at query time
 
 **Connection Pooling:**
+
 - Persistent connections to Redis/Cassandra
 - Reduce connection overhead
 
 **Compression:**
+
 - Compress Trie in memory (prefix compression)
 - Save 30-40% memory
 
 ### 5.2 Write Optimization
 
 **Async Logging:**
+
 - Non-blocking writes to Kafka
 - Don't wait for acknowledgment
 
 **Batch Writes:**
+
 - Aggregate 10 min of queries
 - Single batch update to Cassandra
 
 **Append-only Logs:**
+
 - Never update Trie in-place
 - Build new version, swap atomically
 
 ### 5.3 Network Optimization
 
 **Protocol Buffers:**
+
 - Use Protobuf instead of JSON
 - 50% smaller payload
 
 **HTTP/2:**
+
 - Multiplexing
 - Header compression
 
 **Compression:**
+
 - Gzip response bodies
 - 70% bandwidth savings
 
@@ -711,22 +763,26 @@ UK Region:
 **Key Metrics:**
 
 **Performance:**
+
 - P50, P95, P99 latency (target: < 100ms)
 - QPS per server
 - Cache hit rates (CDN, Redis, Trie)
 
 **Quality:**
+
 - Suggestion relevance (CTR - click-through rate)
 - Empty result rate (< 5%)
 - Typo correction rate
 
 **System Health:**
+
 - Trie rebuild time
 - Kafka consumer lag (< 10 sec)
 - Redis memory usage
 - Cassandra write throughput
 
 **Alerts:**
+
 ```
 Alert: High Latency
 Condition: P99 > 200ms for 5 minutes
@@ -745,14 +801,14 @@ Action: Trigger emergency rebuild
 
 ## 7. Trade-offs & Considerations
 
-| Decision | Pros | Cons |
-|----------|------|------|
-| **Trie in-memory** | Fast lookups (O(p)) | Limited by RAM, expensive |
-| **Batch updates** | High write throughput | 10-min staleness |
-| **Pre-computed suggestions** | Ultra-fast response | Increased storage |
-| **Partitioning by letter** | Horizontal scaling | Uneven distribution (Z has fewer queries) |
-| **Redis caching** | Reduces Trie load | Cache invalidation complexity |
-| **Fuzzy matching** | Better UX for typos | Increased latency |
+| Decision                     | Pros                  | Cons                                      |
+| ---------------------------- | --------------------- | ----------------------------------------- |
+| **Trie in-memory**           | Fast lookups (O(p))   | Limited by RAM, expensive                 |
+| **Batch updates**            | High write throughput | 10-min staleness                          |
+| **Pre-computed suggestions** | Ultra-fast response   | Increased storage                         |
+| **Partitioning by letter**   | Horizontal scaling    | Uneven distribution (Z has fewer queries) |
+| **Redis caching**            | Reduces Trie load     | Cache invalidation complexity             |
+| **Fuzzy matching**           | Better UX for typos   | Increased latency                         |
 
 ---
 
@@ -782,6 +838,7 @@ Action: Trigger emergency rebuild
 ## 9. Alternative Approaches
 
 ### Approach 1: Full Database Lookup (No Trie)
+
 ```sql
 SELECT query, frequency
 FROM queries
@@ -789,10 +846,12 @@ WHERE query LIKE 'fac%'
 ORDER BY frequency DESC
 LIMIT 10;
 ```
+
 - **Pros:** Simple, no Trie complexity
 - **Cons:** Too slow (> 500ms), can't scale
 
 ### Approach 2: Inverted Index (Elasticsearch)
+
 ```
 Index:
 {
@@ -800,10 +859,12 @@ Index:
   "ace": ["facebook", "face masks", "race car"]
 }
 ```
+
 - **Pros:** Flexible, supports fuzzy matching
 - **Cons:** Slower than Trie (100-200ms), higher memory
 
 ### Approach 3: ML Model (Neural Networks)
+
 - Train model to predict next characters
 - **Pros:** Learns context, handles typos naturally
 - **Cons:** High latency (300ms+), expensive training
@@ -815,16 +876,19 @@ Index:
 ## 10. Advanced Features
 
 ### Voice Search Support
+
 - Convert speech to text (ASR)
 - Feed to autocomplete with confidence scores
 - Boost high-confidence suggestions
 
 ### Image-based Suggestions
+
 - OCR on images
 - Extract text → feed to autocomplete
 - Show visual suggestions (thumbnails)
 
 ### Context-aware Suggestions
+
 ```
 Previous query: "python"
 Current input: "tut"
@@ -833,6 +897,7 @@ Suggestions: ["tutorial", "tutorials for beginners"]
 ```
 
 ### A/B Testing Framework
+
 - Test ranking algorithms
 - Measure CTR, conversion
 - Roll out winner to 100%
@@ -842,21 +907,25 @@ Suggestions: ["tutorial", "tutorials for beginners"]
 ## 11. Failure Scenarios & Recovery
 
 ### Scenario 1: Trie Server Down
+
 - **Detection:** Health check fails
 - **Recovery:** Route to replica
 - **Time:** < 1 second (automatic failover)
 
 ### Scenario 2: Redis Cluster Failure
+
 - **Detection:** All Redis nodes unreachable
 - **Recovery:** Fallback to Trie (slower but works)
 - **Time:** Degraded performance, no downtime
 
 ### Scenario 3: Cassandra Outage
+
 - **Impact:** Can't update frequencies
 - **Recovery:** Serve stale data from Redis/Trie
 - **Time:** No user-facing impact (batch updates delayed)
 
 ### Scenario 4: Kafka Lag
+
 - **Detection:** Consumer lag > 1 min
 - **Recovery:** Scale up consumers, replay messages
 - **Time:** 5-10 min to catch up
@@ -866,6 +935,7 @@ Suggestions: ["tutorial", "tutorials for beginners"]
 ## 12. Interview Tips
 
 **What interviewers look for:**
+
 1. ✅ **Understand requirements**: Low latency is critical
 2. ✅ **Choose right data structure**: Trie vs database vs inverted index
 3. ✅ **Handle scale**: 1M+ QPS, 5B queries
@@ -874,12 +944,14 @@ Suggestions: ["tutorial", "tutorials for beginners"]
 6. ✅ **Monitoring**: How to detect/fix issues
 
 **Common follow-ups:**
+
 - "How would you handle typos?" → Edit distance, phonetic codes
 - "What if Trie doesn't fit in memory?" → Partitioning, compression
 - "How to make suggestions personalized?" → User history, ML
 - "How to detect trending queries?" → Spike detection algorithm
 
 **Red flags to avoid:**
+
 - ❌ Saying "use database LIKE query" (too slow)
 - ❌ Ignoring latency requirements
 - ❌ Not discussing caching

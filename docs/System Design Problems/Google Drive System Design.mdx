@@ -1,6 +1,7 @@
 # Google Drive System Design
 
 ## Table of Contents
+
 1. [Requirements](#requirements)
 2. [Core Entities](#core-entities)
 3. [API Interface](#api-interface)
@@ -18,6 +19,7 @@
 ### Functional Requirements
 
 **Core Features:**
+
 1. **File Operations**
    - Upload files (single and batch)
    - Download files
@@ -92,6 +94,7 @@
 ## Core Entities
 
 ### 1. User
+
 ```
 User {
   user_id: UUID (primary key)
@@ -105,12 +108,14 @@ User {
 ```
 
 **Key Attributes:**
+
 - Unique identifier for each user
 - Email for authentication and notifications
 - Storage quota and usage tracking
 - Account metadata
 
 ### 2. File
+
 ```
 File {
   file_id: UUID (primary key)
@@ -130,6 +135,7 @@ File {
 ```
 
 **Key Attributes:**
+
 - Unique file identifier
 - Parent folder for hierarchy
 - Owner and permissions
@@ -138,6 +144,7 @@ File {
 - Soft delete support
 
 ### 3. Folder
+
 ```
 Folder {
   folder_id: UUID (primary key)
@@ -151,12 +158,14 @@ Folder {
 ```
 
 **Key Attributes:**
+
 - Unique folder identifier
 - Hierarchical structure via parent reference
 - Owner and permissions
 - Soft delete support
 
 ### 4. FileVersion
+
 ```
 FileVersion {
   version_id: UUID (primary key)
@@ -171,11 +180,13 @@ FileVersion {
 ```
 
 **Key Attributes:**
+
 - Track all versions of a file
 - Storage location for each version
 - Version metadata and creator
 
 ### 5. Permission
+
 ```
 Permission {
   permission_id: UUID (primary key)
@@ -191,12 +202,14 @@ Permission {
 ```
 
 **Key Attributes:**
+
 - Granular access control per file/folder
 - Support for user-specific and public sharing
 - Permission hierarchy (owner > editor > commenter > viewer)
 - Optional expiration
 
 ### 6. SyncMetadata
+
 ```
 SyncMetadata {
   sync_id: UUID (primary key)
@@ -211,6 +224,7 @@ SyncMetadata {
 ```
 
 **Key Attributes:**
+
 - Track sync status per device
 - Detect conflicts
 - Map cloud files to local paths
@@ -220,6 +234,7 @@ SyncMetadata {
 ## API Interface
 
 ### Authentication APIs
+
 ```
 POST   /api/v1/auth/login
 POST   /api/v1/auth/logout
@@ -228,6 +243,7 @@ GET    /api/v1/auth/me
 ```
 
 ### File Management APIs
+
 ```
 POST   /api/v1/files/upload
 GET    /api/v1/files/{file_id}
@@ -241,6 +257,7 @@ POST   /api/v1/files/{file_id}/restore
 ```
 
 ### Folder Management APIs
+
 ```
 POST   /api/v1/folders
 GET    /api/v1/folders/{folder_id}
@@ -251,6 +268,7 @@ POST   /api/v1/folders/{folder_id}/move
 ```
 
 ### Sharing & Permissions APIs
+
 ```
 POST   /api/v1/files/{file_id}/share
 GET    /api/v1/files/{file_id}/permissions
@@ -261,6 +279,7 @@ GET    /api/v1/shared-with-me
 ```
 
 ### Synchronization APIs
+
 ```
 GET    /api/v1/sync/changes?cursor={cursor}
 POST   /api/v1/sync/register-device
@@ -269,6 +288,7 @@ POST   /api/v1/sync/resolve-conflict
 ```
 
 ### Search APIs
+
 ```
 GET    /api/v1/search?q={query}&type={file_type}&owner={owner}
 GET    /api/v1/recent
@@ -276,6 +296,7 @@ GET    /api/v1/starred
 ```
 
 ### Storage Management APIs
+
 ```
 GET    /api/v1/storage/quota
 GET    /api/v1/storage/breakdown
@@ -586,23 +607,27 @@ graph TB
 ### Component Responsibilities
 
 **1. Client Layer**
+
 - Web, mobile, and desktop applications
 - Local file system monitoring (desktop)
 - Chunked upload/download
 - Offline support with local cache
 
 **2. CDN Layer**
+
 - Cache static assets and popular files
 - Edge location serving for low latency
 - Reduce origin server load
 
 **3. Load Balancer**
+
 - Distribute traffic across API gateways
 - SSL/TLS termination
 - Health checks and automatic failover
 - Geographic routing
 
 **4. API Gateway**
+
 - Centralized authentication and authorization
 - Rate limiting per user/IP
 - Request validation
@@ -622,24 +647,28 @@ graph TB
 - **Trash Service**: Soft delete management, trash retention, permanent deletion
 
 **6. Message Queue**
+
 - Decouple services
 - Async processing (uploads, sync, notifications)
 - Guaranteed delivery
 - Load smoothing
 
 **7. Cache Layer**
+
 - **Redis**: Hot metadata (file info, folder structure, user sessions)
 - **Memcached**: Distributed session store
 - Reduce database load
 - Fast read operations
 
 **8. Database Layer**
+
 - **PostgreSQL**: Relational data (users, files, folders, permissions)
 - **Read Replicas**: Scale read operations
 - **Cassandra**: High-write throughput (sync events, activity logs)
 - **Elasticsearch**: Full-text search indexing
 
 **9. Object Storage**
+
 - **Hot Tier**: Frequently accessed files
 - **Warm Tier**: Infrequently accessed files
 - **Cold Tier**: Archive storage
@@ -647,6 +676,7 @@ graph TB
 - Versioning support
 
 **10. Real-time Communication**
+
 - WebSocket for live sync notifications
 - Push notifications for mobile
 - Server-sent events for web
@@ -877,21 +907,25 @@ flowchart TD
 **Folder Hierarchy Representation**
 
 **Approach 1: Adjacency List**
+
 - Each folder stores parent_folder_id
 - Simple inserts and updates
 - Inefficient for retrieving full path
 
 **Approach 2: Materialized Path**
+
 - Store full path: `/root/folder1/folder2/`
 - Fast path retrieval
 - Complex updates when renaming parent
 
 **Approach 3: Nested Set Model**
+
 - Store left and right boundaries
 - Efficient subtree queries
 - Complex inserts/deletes
 
 **Recommended: Hybrid Approach**
+
 - Use Adjacency List in PostgreSQL
 - Cache materialized paths in Redis
 - Regenerate cache on path changes
@@ -1227,6 +1261,7 @@ For non-collaborative workflows:
 ### PostgreSQL Schema
 
 **Users Table**
+
 ```sql
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1246,6 +1281,7 @@ CREATE INDEX idx_users_created_at ON users(created_at);
 ```
 
 **Folders Table**
+
 ```sql
 CREATE TABLE folders (
     folder_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1265,6 +1301,7 @@ CREATE INDEX idx_folders_deleted ON folders(deleted_at) WHERE is_deleted = true;
 ```
 
 **Files Table**
+
 ```sql
 CREATE TABLE files (
     file_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1291,6 +1328,7 @@ CREATE INDEX idx_files_updated ON files(updated_at DESC);
 ```
 
 **File Versions Table**
+
 ```sql
 CREATE TABLE file_versions (
     version_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1308,6 +1346,7 @@ CREATE INDEX idx_versions_file ON file_versions(file_id, version_number DESC);
 ```
 
 **Permissions Table**
+
 ```sql
 CREATE TABLE permissions (
     permission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1330,6 +1369,7 @@ CREATE INDEX idx_permissions_public ON permissions(is_public) WHERE is_public = 
 ```
 
 **Sync Metadata Table**
+
 ```sql
 CREATE TABLE sync_metadata (
     sync_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1349,6 +1389,7 @@ CREATE INDEX idx_sync_status ON sync_metadata(sync_status) WHERE sync_status != 
 ```
 
 **Shared With Me View**
+
 ```sql
 CREATE VIEW shared_with_me AS
 SELECT
@@ -1373,6 +1414,7 @@ WHERE p.user_id IS NOT NULL;
 ### Cassandra Schema (for Sync Events)
 
 **Sync Events Table**
+
 ```
 CREATE TABLE sync_events (
     user_id UUID,
@@ -1427,6 +1469,7 @@ sync:cursor:{user_id}:{device_id} → {last_event_id, timestamp}
 ### Traffic Estimates
 
 **Assumptions:**
+
 - Total users: 1 billion
 - Daily Active Users (DAU): 100 million (10%)
 - Average files per user: 1000
@@ -1436,6 +1479,7 @@ sync:cursor:{user_id}:{device_id} → {last_event_id, timestamp}
 - Read:Write ratio: 70:30
 
 **Daily Metrics:**
+
 ```
 Daily Uploads:
 100M users × 5 uploads = 500M uploads/day
@@ -1456,6 +1500,7 @@ Peak = ~173,610 ops/sec
 ### Storage Estimates
 
 **File Storage:**
+
 ```
 Total users: 1B
 Files per user: 1,000
@@ -1473,6 +1518,7 @@ Annual new storage = 365 PB/year
 ```
 
 **Metadata Storage:**
+
 ```
 Metadata per file = 1 KB (file_id, name, path, owner, size, etc.)
 Total files = 1 trillion
@@ -1483,6 +1529,7 @@ Total metadata storage = 1 TB × 3 = 3 TB
 ```
 
 **Version Storage:**
+
 ```
 Average versions per file: 3
 Version metadata: 500 bytes
@@ -1493,6 +1540,7 @@ Version file storage (20% of files have multiple versions):
 ```
 
 **Total Storage (with replication factor 3):**
+
 ```
 File storage: 1.2 EB × 3 = 3.6 EB
 Metadata: 3 TB × 3 = 9 TB
@@ -1503,24 +1551,28 @@ Total: ~3.6 EB
 ### Bandwidth Estimates
 
 **Incoming (Upload):**
+
 ```
 Average: 5,787 uploads/sec × 2 MB = 11.5 GB/sec = 92 Gbps
 Peak: 17,361 uploads/sec × 2 MB = 34.7 GB/sec = 278 Gbps
 ```
 
 **Outgoing (Download):**
+
 ```
 Average: 11,574 downloads/sec × 2 MB = 23.1 GB/sec = 185 Gbps
 Peak: 34,722 downloads/sec × 2 MB = 69.4 GB/sec = 555 Gbps
 ```
 
 **Metadata API:**
+
 ```
 Average: 57,870 ops/sec × 10 KB = 578 MB/sec = 4.6 Gbps
 Peak: 173,610 ops/sec × 10 KB = 1.7 GB/sec = 13.6 Gbps
 ```
 
 **Total Bandwidth:**
+
 ```
 Average: 92 + 185 + 4.6 = 281.6 Gbps
 Peak: 278 + 555 + 13.6 = 846.6 Gbps ≈ 850 Gbps
@@ -1529,6 +1581,7 @@ Peak: 278 + 555 + 13.6 = 846.6 Gbps ≈ 850 Gbps
 ### Memory Estimates
 
 **Cache Requirements:**
+
 ```
 # Hot metadata cache (1% of files accessed frequently)
 Hot files = 1T × 0.01 = 10B files
@@ -1551,6 +1604,7 @@ Total cache requirement: 10 TB + 10 GB + 20 GB ≈ 10 TB
 ### Server Estimates
 
 **API Servers:**
+
 ```
 Total requests per second (peak): 173,610 ops/sec
 Requests per server: 1,000 req/sec
@@ -1559,6 +1613,7 @@ With redundancy (2x): 350 servers
 ```
 
 **Upload Workers:**
+
 ```
 Peak uploads: 17,361 uploads/sec
 Average upload time: 10 seconds (with chunking)
@@ -1568,6 +1623,7 @@ Required workers: 174,000 workers (scaled dynamically)
 ```
 
 **Database Servers:**
+
 ```
 PostgreSQL (Metadata):
 - Primary: 1 large instance (write)
@@ -1583,6 +1639,7 @@ Elasticsearch (Search):
 ```
 
 **Storage Servers:**
+
 ```
 Object storage (S3-compatible):
 - Distributed across multiple regions
@@ -1599,17 +1656,20 @@ Object storage (S3-compatible):
 **1. Database Sharding**
 
 **Metadata Sharding (PostgreSQL):**
+
 - Shard by user_id using consistent hashing
 - Each shard contains subset of users
 - 100 shards to distribute load
 - Shard key: `user_id % 100`
 
 **Sync Event Sharding (Cassandra):**
+
 - Naturally sharded by partition key (user_id)
 - Add nodes as users grow
 - Automatic rebalancing
 
 **Search Sharding (Elasticsearch):**
+
 - Shard by user_id
 - 500 shards across 200 nodes
 - Co-locate user's data on same shard for efficiency
@@ -1617,12 +1677,14 @@ Object storage (S3-compatible):
 **2. Service Replication**
 
 **Stateless Services:**
+
 - API servers, microservices are stateless
 - Use load balancer to distribute requests
 - Auto-scale based on CPU/memory/request rate
 - Kubernetes HPA for dynamic scaling
 
 **Stateful Services:**
+
 - Database read replicas
 - Redis cluster with master-slave replication
 - Cassandra multi-datacenter replication
@@ -1630,11 +1692,13 @@ Object storage (S3-compatible):
 **3. Geographic Distribution**
 
 **Multi-Region Deployment:**
+
 - Deploy in multiple AWS regions (us-east-1, eu-west-1, ap-southeast-1)
 - Users routed to nearest region
 - Reduce latency by 60-80%
 
 **Cross-Region Replication:**
+
 - Async replication of file data across regions
 - Metadata replicated with eventual consistency
 - Sync events propagated globally
@@ -1642,12 +1706,14 @@ Object storage (S3-compatible):
 **4. CDN Edge Caching**
 
 **Static Content:**
+
 - Cache images, videos, documents at edge locations
 - 300+ edge locations globally
 - Cache hit ratio: 80%+
 - Reduce origin load by 80%
 
 **Dynamic Content:**
+
 - Cache file metadata at edge
 - Cache user sessions
 - Invalidate on updates
@@ -1657,12 +1723,14 @@ Object storage (S3-compatible):
 **1. Chunked Upload/Download**
 
 **Upload Optimization:**
+
 - Split large files into 4MB chunks
 - Parallel upload of chunks (6 connections)
 - Resume failed chunks
 - Bandwidth utilization: 95%+
 
 **Download Optimization:**
+
 - Range requests for partial downloads
 - Parallel chunk downloads
 - Resume interrupted downloads
@@ -1671,12 +1739,14 @@ Object storage (S3-compatible):
 **2. Compression**
 
 **File Compression:**
+
 - Compress text files (GZIP): 70% reduction
 - Compress images (WebP): 30% reduction
 - Skip already compressed formats (JPEG, MP4)
 - Background compression for cold storage
 
 **Network Compression:**
+
 - GZIP response compression
 - Brotli for supported clients
 - Reduce bandwidth by 60%
@@ -1684,12 +1754,14 @@ Object storage (S3-compatible):
 **3. Deduplication**
 
 **Block-Level Deduplication:**
+
 - Calculate SHA-256 for each 4MB chunk
 - Store unique chunks only
 - Reference counting for shared chunks
 - Storage savings: 40-50%
 
 **Benefits:**
+
 - Reduced storage costs
 - Faster uploads (skip duplicate chunks)
 - Efficient backups
@@ -1699,21 +1771,25 @@ Object storage (S3-compatible):
 **Multi-Level Cache:**
 
 **L1: CDN (Edge)**
+
 - Static files, images, videos
 - TTL: 24 hours
 - Hit ratio: 80%
 
 **L2: Application Cache (Redis)**
+
 - Hot metadata, permissions
 - TTL: 1 hour
 - Hit ratio: 90%
 
 **L3: Database Query Cache**
+
 - Frequently accessed queries
 - TTL: 5 minutes
 - Hit ratio: 70%
 
 **Cache Invalidation:**
+
 - Write-through: Update cache on write
 - Event-driven: Invalidate on file change
 - TTL-based: Expire old entries
@@ -1721,17 +1797,20 @@ Object storage (S3-compatible):
 **5. Database Optimization**
 
 **Query Optimization:**
+
 - Proper indexing on foreign keys
 - Composite indexes for common queries
 - Partial indexes for filtered queries
 - Query plan analysis and optimization
 
 **Connection Pooling:**
+
 - Pool size: 100 connections per app server
 - Reuse connections
 - Reduce connection overhead
 
 **Read/Write Splitting:**
+
 - Route writes to primary
 - Route reads to replicas
 - Load balance across replicas
@@ -1739,6 +1818,7 @@ Object storage (S3-compatible):
 **6. Async Processing**
 
 **Background Jobs:**
+
 - File preview generation
 - Thumbnail creation
 - OCR processing
@@ -1746,6 +1826,7 @@ Object storage (S3-compatible):
 - Search indexing
 
 **Benefits:**
+
 - Non-blocking user operations
 - Better resource utilization
 - Smooth out load spikes
@@ -1755,16 +1836,19 @@ Object storage (S3-compatible):
 **1. High Availability Architecture**
 
 **Multi-AZ Deployment:**
+
 - Deploy across 3 availability zones
 - Automatic failover on AZ failure
 - Synchronous replication within region
 
 **Load Balancer:**
+
 - Active-active load balancers
 - Health checks every 10 seconds
 - Automatic removal of unhealthy instances
 
 **Database Failover:**
+
 - PostgreSQL automatic failover (30 seconds)
 - Cassandra self-healing (no downtime)
 - Redis Sentinel for master failover
@@ -1772,17 +1856,20 @@ Object storage (S3-compatible):
 **2. Data Durability**
 
 **Replication:**
+
 - 3x replication for file data
 - Cross-region async replication
 - Versioning enabled
 
 **Backups:**
+
 - Daily full backups
 - Continuous incremental backups
 - 30-day retention
 - Point-in-time recovery
 
 **Disaster Recovery:**
+
 - RTO (Recovery Time Objective): 1 hour
 - RPO (Recovery Point Objective): 5 minutes
 - Regular DR drills
@@ -1790,6 +1877,7 @@ Object storage (S3-compatible):
 **3. Monitoring & Alerting**
 
 **Metrics:**
+
 - Upload/download success rate
 - API latency (p50, p95, p99)
 - Error rates
@@ -1798,6 +1886,7 @@ Object storage (S3-compatible):
 - Queue depths
 
 **Alerting:**
+
 - Error rate > 1%
 - Latency p99 > 5 seconds
 - Storage > 90% capacity
@@ -1807,12 +1896,14 @@ Object storage (S3-compatible):
 **4. Rate Limiting**
 
 **Multi-Level Rate Limits:**
+
 - Per user: 1000 API calls/hour
 - Per IP: 10,000 requests/hour
 - Upload: 50 GB/day for free tier
 - Download: No limit (owned files)
 
 **Throttling:**
+
 - Token bucket algorithm
 - Exponential backoff on violations
 - Premium users get higher limits
@@ -1822,12 +1913,14 @@ Object storage (S3-compatible):
 **1. Encryption**
 
 **At Rest:**
+
 - AES-256 encryption for all files
 - Separate encryption keys per user
 - Key management service (KMS)
 - Encrypted database volumes
 
 **In Transit:**
+
 - TLS 1.3 for all connections
 - Certificate pinning for mobile apps
 - End-to-end encryption option (client-side)
@@ -1835,12 +1928,14 @@ Object storage (S3-compatible):
 **2. Access Control**
 
 **Authentication:**
+
 - JWT tokens with 1-hour expiry
 - Refresh tokens with 30-day expiry
 - Multi-factor authentication (MFA)
 - OAuth2 integration (Google, Microsoft)
 
 **Authorization:**
+
 - Role-based access control (RBAC)
 - Permission inheritance
 - Audit logging of all access
@@ -1848,6 +1943,7 @@ Object storage (S3-compatible):
 **3. Malware Scanning**
 
 **Upload Scanning:**
+
 - Scan all uploads with antivirus
 - Quarantine suspicious files
 - Notify user and admin
@@ -1856,6 +1952,7 @@ Object storage (S3-compatible):
 **4. DDoS Protection**
 
 **Mitigation:**
+
 - CloudFlare or AWS Shield
 - Rate limiting at edge
 - IP blacklisting
@@ -1864,12 +1961,14 @@ Object storage (S3-compatible):
 **5. Compliance**
 
 **Regulations:**
+
 - GDPR compliance (EU users)
 - HIPAA compliance (healthcare)
 - SOC 2 certification
 - Regular security audits
 
 **Data Residency:**
+
 - Store EU user data in EU region
 - Data sovereignty compliance
 - Right to deletion (GDPR)
@@ -1879,21 +1978,25 @@ Object storage (S3-compatible):
 **1. Tiered Storage**
 
 **Hot Tier (SSD):**
+
 - Files accessed in last 30 days
 - Cost: $0.023/GB/month
 - Usage: 10% of total storage
 
 **Warm Tier (HDD):**
+
 - Files accessed 30-90 days ago
 - Cost: $0.01/GB/month
 - Usage: 20% of total storage
 
 **Cold Tier (Archive):**
+
 - Files not accessed in 90+ days
 - Cost: $0.004/GB/month
 - Usage: 70% of total storage
 
 **Savings:**
+
 - Blended cost: ~$0.008/GB/month
 - vs. Hot-only: $0.023/GB/month
 - Cost reduction: 65%
@@ -1901,6 +2004,7 @@ Object storage (S3-compatible):
 **2. Compression**
 
 **Storage Savings:**
+
 - Compress text files: 70% reduction
 - Compress images: 30% reduction
 - Overall savings: 40%
@@ -1908,6 +2012,7 @@ Object storage (S3-compatible):
 **3. Deduplication**
 
 **Savings:**
+
 - Block-level dedup: 40-50% reduction
 - Especially effective for:
   - Common files (OS files, libraries)
@@ -1917,17 +2022,20 @@ Object storage (S3-compatible):
 **4. Spot Instances**
 
 **Use Cases:**
+
 - Background processing workers
 - Batch jobs (transcoding, OCR)
 - Non-critical workloads
 
 **Savings:**
+
 - 70-90% cost reduction
 - Handle interruptions gracefully
 
 **5. Reserved Instances**
 
 **Commit to 1-3 year contracts:**
+
 - Database servers: 50% savings
 - Core application servers: 40% savings
 - Predictable workload
@@ -1935,16 +2043,19 @@ Object storage (S3-compatible):
 ### Estimated Costs (Monthly)
 
 **Compute (Application Servers):**
+
 ```
 350 servers × $200/month = $70,000
 ```
 
 **Compute (Workers - Spot Instances):**
+
 ```
 1000 workers × $30/month = $30,000
 ```
 
 **Database:**
+
 ```
 PostgreSQL: 51 instances × $500/month = $25,500
 Cassandra: 100 nodes × $300/month = $30,000
@@ -1954,6 +2065,7 @@ Total: $109,500
 ```
 
 **Storage (1.2 EB with tiering):**
+
 ```
 Hot (120 PB): 120,000 TB × $23 = $2,760,000
 Warm (240 PB): 240,000 TB × $10 = $2,400,000
@@ -1962,21 +2074,25 @@ Total: $8,520,000
 ```
 
 **Bandwidth (Outgoing - 185 Gbps average):**
+
 ```
 ~600 PB/month × $0.05/GB = $30,000,000
 ```
 
 **CDN:**
+
 ```
 Data transfer: 400 PB/month × $0.02/GB = $8,000,000
 ```
 
 **Monitoring & Logging:**
+
 ```
 $50,000
 ```
 
 **Total Monthly Cost:**
+
 ```
 Compute: $100,000
 Database: $109,500
@@ -1990,6 +2106,7 @@ Annual: ~$561 Million/year
 ```
 
 **Revenue Model:**
+
 ```
 Free tier: 15 GB
 Paid tier: $9.99/month for 100 GB (10M paid users)
@@ -2019,19 +2136,20 @@ Profit margin: 54%
 
 ### Trade-offs
 
-| Aspect | Choice | Trade-off |
-|--------|--------|-----------|
-| Storage | Object storage | Durability & scalability vs. higher latency than block storage |
-| Metadata | PostgreSQL | Strong consistency vs. limited write scalability |
-| Sync | Eventual consistency | Performance vs. potential temporary inconsistencies |
-| Deduplication | Block-level | Storage savings vs. computational overhead |
-| Caching | Aggressive caching | Read performance vs. potential stale data |
-| Sharding | User-based | Balanced load vs. cross-shard queries complexity |
-| Replication | 3x replication | Durability vs. 3x storage cost |
+| Aspect        | Choice               | Trade-off                                                      |
+| ------------- | -------------------- | -------------------------------------------------------------- |
+| Storage       | Object storage       | Durability & scalability vs. higher latency than block storage |
+| Metadata      | PostgreSQL           | Strong consistency vs. limited write scalability               |
+| Sync          | Eventual consistency | Performance vs. potential temporary inconsistencies            |
+| Deduplication | Block-level          | Storage savings vs. computational overhead                     |
+| Caching       | Aggressive caching   | Read performance vs. potential stale data                      |
+| Sharding      | User-based           | Balanced load vs. cross-shard queries complexity               |
+| Replication   | 3x replication       | Durability vs. 3x storage cost                                 |
 
 ### Scale Summary
 
 **System Capacity:**
+
 - Users: 1 billion
 - Daily Active Users: 100 million
 - Total Files: 1 trillion
@@ -2042,6 +2160,7 @@ Profit margin: 54%
 - Bandwidth: 850 Gbps peak
 
 **Performance Targets:**
+
 - Upload latency: < 10 seconds (10 MB file)
 - Download latency: < 5 seconds (10 MB file)
 - Sync latency: < 2 seconds
@@ -2052,6 +2171,7 @@ Profit margin: 54%
 ### Future Enhancements
 
 **1. AI-Powered Features**
+
 - Smart search with natural language
 - Auto-categorization and tagging
 - Duplicate detection and cleanup
@@ -2059,6 +2179,7 @@ Profit margin: 54%
 - Intelligent compression
 
 **2. Advanced Collaboration**
+
 - Video conferencing integration
 - Whiteboard collaboration
 - Task management integration
@@ -2066,6 +2187,7 @@ Profit margin: 54%
 - Collaborative annotations
 
 **3. Enhanced Security**
+
 - Zero-knowledge encryption
 - Blockchain-based audit logs
 - AI-powered anomaly detection
@@ -2073,6 +2195,7 @@ Profit margin: 54%
 - Data loss prevention (DLP)
 
 **4. Performance Improvements**
+
 - Edge computing for processing
 - P2P sync between devices
 - Predictive prefetching
@@ -2080,6 +2203,7 @@ Profit margin: 54%
 - Protocol optimization (QUIC)
 
 **5. Mobile Optimization**
+
 - Offline-first architecture
 - Selective sync
 - Photo backup optimization
@@ -2095,6 +2219,7 @@ Profit margin: 54%
 **1. File Upload**
 
 Request:
+
 ```json
 POST /api/v1/files/upload
 
@@ -2112,6 +2237,7 @@ Body:
 ```
 
 Response:
+
 ```json
 {
   "file_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
@@ -2129,6 +2255,7 @@ Response:
 **2. Chunked Upload Initialization**
 
 Request:
+
 ```json
 POST /api/v1/files/upload/init
 
@@ -2142,6 +2269,7 @@ POST /api/v1/files/upload/init
 ```
 
 Response:
+
 ```json
 {
   "upload_id": "upload_abc123",
@@ -2167,6 +2295,7 @@ Response:
 **3. Complete Chunked Upload**
 
 Request:
+
 ```json
 POST /api/v1/files/upload/complete
 
@@ -2188,6 +2317,7 @@ POST /api/v1/files/upload/complete
 ```
 
 Response:
+
 ```json
 {
   "file_id": "file_xyz789",
@@ -2200,6 +2330,7 @@ Response:
 **4. List Folder Contents**
 
 Request:
+
 ```json
 GET /api/v1/folders/folder123/contents?page=1&limit=50&sort=name&order=asc
 
@@ -2208,6 +2339,7 @@ Authorization: Bearer {jwt_token}
 ```
 
 Response:
+
 ```json
 {
   "folder_id": "folder123",
@@ -2247,6 +2379,7 @@ Response:
 **5. Share File**
 
 Request:
+
 ```json
 POST /api/v1/files/file789/share
 
@@ -2263,6 +2396,7 @@ POST /api/v1/files/file789/share
 ```
 
 Response:
+
 ```json
 {
   "file_id": "file789",
@@ -2281,6 +2415,7 @@ Response:
 **6. Generate Share Link**
 
 Request:
+
 ```json
 POST /api/v1/files/file789/share-link
 
@@ -2294,6 +2429,7 @@ POST /api/v1/files/file789/share-link
 ```
 
 Response:
+
 ```json
 {
   "share_link": "https://drive.example.com/share/a1b2c3d4e5f6",
@@ -2309,6 +2445,7 @@ Response:
 **7. Sync Changes (Delta Sync)**
 
 Request:
+
 ```json
 GET /api/v1/sync/changes?cursor=abc123xyz&limit=100
 
@@ -2318,6 +2455,7 @@ X-Device-ID: device_abc123
 ```
 
 Response:
+
 ```json
 {
   "changes": [
@@ -2363,6 +2501,7 @@ Response:
 **8. Resolve Sync Conflict**
 
 Request:
+
 ```json
 POST /api/v1/sync/resolve-conflict
 
@@ -2382,6 +2521,7 @@ POST /api/v1/sync/resolve-conflict
 ```
 
 Response:
+
 ```json
 {
   "resolution": "KEEP_BOTH",
@@ -2402,6 +2542,7 @@ Response:
 **9. Search Files**
 
 Request:
+
 ```json
 GET /api/v1/search?q=project+report&type=pdf&owner=me&modified_after=2025-09-01&limit=20
 
@@ -2410,6 +2551,7 @@ Authorization: Bearer {jwt_token}
 ```
 
 Response:
+
 ```json
 {
   "query": "project report",
@@ -2464,6 +2606,7 @@ Response:
 **10. Get Storage Quota**
 
 Request:
+
 ```json
 GET /api/v1/storage/quota
 
@@ -2472,6 +2615,7 @@ Authorization: Bearer {jwt_token}
 ```
 
 Response:
+
 ```json
 {
   "user_id": "user123",
@@ -2513,6 +2657,7 @@ Response:
 ### WebSocket Events
 
 **Connection Establishment:**
+
 ```javascript
 // Client connects to WebSocket
 ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
@@ -2527,6 +2672,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ```
 
 **Real-time Sync Notification:**
+
 ```json
 {
   "type": "FILE_CHANGED",
@@ -2546,6 +2692,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ```
 
 **Collaboration Notification:**
+
 ```json
 {
   "type": "FILE_SHARED",
@@ -2563,6 +2710,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ```
 
 **User Presence (for collaborative editing):**
+
 ```json
 {
   "type": "USER_PRESENCE",
@@ -2588,6 +2736,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ### Error Handling
 
 **Standard Error Response:**
+
 ```json
 {
   "error": {
@@ -2606,6 +2755,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ```
 
 **Common Error Codes:**
+
 - `AUTHENTICATION_FAILED`: Invalid or expired token
 - `PERMISSION_DENIED`: User lacks required permission
 - `RESOURCE_NOT_FOUND`: File or folder not found
@@ -2619,6 +2769,7 @@ ws://drive.example.com/sync/ws?token={jwt_token}&device_id={device_id}
 ### Monitoring Metrics
 
 **System Health Metrics:**
+
 ```
 # Upload metrics
 drive_uploads_total{status="success"} 5787/sec
@@ -2668,6 +2819,7 @@ drive_db_query_duration_seconds{quantile="0.95"} 0.045
 ## Conclusion
 
 This Google Drive system design handles:
+
 - ✅ **1 billion users** with horizontal scaling
 - ✅ **1 trillion files** with efficient metadata management
 - ✅ **1.2 EB storage** with tiered storage and deduplication
@@ -2679,6 +2831,7 @@ This Google Drive system design handles:
 - ✅ **Cost-effective** with optimization strategies
 
 The design prioritizes:
+
 1. **Scalability**: Horizontal scaling at every layer
 2. **Reliability**: Replication, backups, failover
 3. **Performance**: Caching, CDN, optimization

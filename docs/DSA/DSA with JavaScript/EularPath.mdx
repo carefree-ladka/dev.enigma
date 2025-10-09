@@ -1,6 +1,7 @@
 # Euler Path, Hamilton Cycle, and Hierholzer's Algorithm
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Euler Path](#euler-path)
 - [Hamilton Cycle](#hamilton-cycle)
@@ -18,66 +19,70 @@ An Euler path visits every edge in a graph exactly once. Here's the implementati
 
 ```javascript
 class EulerPath {
-    constructor(n) {
-        this.n = n;
-        this.adj = Array.from({length: n}, () => []);
-        this.inDegree = new Array(n).fill(0);
-        this.outDegree = new Array(n).fill(0);
+  constructor(n) {
+    this.n = n;
+    this.adj = Array.from({ length: n }, () => []);
+    this.inDegree = new Array(n).fill(0);
+    this.outDegree = new Array(n).fill(0);
+  }
+
+  addEdge(from, to) {
+    this.adj[from].push(to);
+    this.outDegree[from]++;
+    this.inDegree[to]++;
+  }
+
+  findPath() {
+    if (!this.canHaveEulerPath()) return [];
+
+    let start = 0;
+    for (let i = 0; i < this.n; i++) {
+      if (this.outDegree[i] - this.inDegree[i] === 1) {
+        start = i;
+        break;
+      }
+      if (this.outDegree[i] > 0) start = i;
     }
-    
-    addEdge(from, to) {
-        this.adj[from].push(to);
-        this.outDegree[from]++;
-        this.inDegree[to]++;
+
+    const path = [];
+    const stack = [start];
+
+    while (stack.length > 0) {
+      let curr = stack[stack.length - 1];
+
+      if (this.adj[curr].length === 0) {
+        path.push(curr);
+        stack.pop();
+      } else {
+        let next = this.adj[curr].pop();
+        stack.push(next);
+      }
     }
-    
-    findPath() {
-        if (!this.canHaveEulerPath()) return [];
-        
-        let start = 0;
-        for (let i = 0; i < this.n; i++) {
-            if (this.outDegree[i] - this.inDegree[i] === 1) {
-                start = i;
-                break;
-            }
-            if (this.outDegree[i] > 0) start = i;
-        }
-        
-        const path = [];
-        const stack = [start];
-        
-        while (stack.length > 0) {
-            let curr = stack[stack.length - 1];
-            
-            if (this.adj[curr].length === 0) {
-                path.push(curr);
-                stack.pop();
-            } else {
-                let next = this.adj[curr].pop();
-                stack.push(next);
-            }
-        }
-        
-        return path.reverse();
+
+    return path.reverse();
+  }
+
+  canHaveEulerPath() {
+    let startNodes = 0,
+      endNodes = 0;
+
+    for (let i = 0; i < this.n; i++) {
+      let diff = this.outDegree[i] - this.inDegree[i];
+      if (Math.abs(diff) > 1) return false;
+      if (diff === 1) startNodes++;
+      if (diff === -1) endNodes++;
     }
-    
-    canHaveEulerPath() {
-        let startNodes = 0, endNodes = 0;
-        
-        for (let i = 0; i < this.n; i++) {
-            let diff = this.outDegree[i] - this.inDegree[i];
-            if (Math.abs(diff) > 1) return false;
-            if (diff === 1) startNodes++;
-            if (diff === -1) endNodes++;
-        }
-        
-        return (startNodes === 0 && endNodes === 0) || 
-               (startNodes === 1 && endNodes === 1);
-    }
+
+    return (
+      (startNodes === 0 && endNodes === 0) ||
+      (startNodes === 1 && endNodes === 1)
+    );
+  }
 }
 ```
 
 ### Key Concepts
+
 - Requires all vertices to have equal in-degree and out-degree (for Euler circuit)
 - At most one vertex can have out-degree = in-degree + 1 (for Euler path)
 - At most one vertex can have in-degree = out-degree + 1 (for Euler path)
@@ -88,41 +93,41 @@ A Hamilton cycle visits every vertex exactly once and returns to the starting ve
 
 ```javascript
 class HamiltonCycle {
-    constructor(n) {
-        this.n = n;
-        this.adj = Array.from({length: n}, () => Array(n).fill(0));
-        this.path = new Array(n).fill(-1);
+  constructor(n) {
+    this.n = n;
+    this.adj = Array.from({ length: n }, () => Array(n).fill(0));
+    this.path = new Array(n).fill(-1);
+  }
+
+  addEdge(from, to) {
+    this.adj[from][to] = 1;
+    this.adj[to][from] = 1;
+  }
+
+  findCycle() {
+    this.path[0] = 0;
+    return !this.findCycleUtil(1) ? [] : this.path;
+  }
+
+  findCycleUtil(pos) {
+    if (pos === this.n) {
+      return this.adj[this.path[pos - 1]][this.path[0]] === 1;
     }
-    
-    addEdge(from, to) {
-        this.adj[from][to] = 1;
-        this.adj[to][from] = 1;
+
+    for (let v = 1; v < this.n; v++) {
+      if (this.isSafe(v, pos)) {
+        this.path[pos] = v;
+        if (this.findCycleUtil(pos + 1)) return true;
+        this.path[pos] = -1;
+      }
     }
-    
-    findCycle() {
-        this.path[0] = 0;
-        return !this.findCycleUtil(1) ? [] : this.path;
-    }
-    
-    findCycleUtil(pos) {
-        if (pos === this.n) {
-            return this.adj[this.path[pos-1]][this.path[0]] === 1;
-        }
-        
-        for (let v = 1; v < this.n; v++) {
-            if (this.isSafe(v, pos)) {
-                this.path[pos] = v;
-                if (this.findCycleUtil(pos + 1)) return true;
-                this.path[pos] = -1;
-            }
-        }
-        
-        return false;
-    }
-    
-    isSafe(v, pos) {
-        return this.adj[this.path[pos-1]][v] === 1 && !this.path.includes(v);
-    }
+
+    return false;
+  }
+
+  isSafe(v, pos) {
+    return this.adj[this.path[pos - 1]][v] === 1 && !this.path.includes(v);
+  }
 }
 ```
 
@@ -132,32 +137,32 @@ Hierholzer's Algorithm finds Euler circuits efficiently:
 
 ```javascript
 class Hierholzer {
-    constructor(n) {
-        this.n = n;
-        this.adj = Array.from({length: n}, () => []);
+  constructor(n) {
+    this.n = n;
+    this.adj = Array.from({ length: n }, () => []);
+  }
+
+  addEdge(from, to) {
+    this.adj[from].push(to);
+  }
+
+  findCircuit() {
+    const circuit = [];
+    const stack = [0];
+
+    while (stack.length > 0) {
+      let curr = stack[stack.length - 1];
+
+      if (this.adj[curr].length === 0) {
+        circuit.push(curr);
+        stack.pop();
+      } else {
+        stack.push(this.adj[curr].pop());
+      }
     }
-    
-    addEdge(from, to) {
-        this.adj[from].push(to);
-    }
-    
-    findCircuit() {
-        const circuit = [];
-        const stack = [0];
-        
-        while (stack.length > 0) {
-            let curr = stack[stack.length - 1];
-            
-            if (this.adj[curr].length === 0) {
-                circuit.push(curr);
-                stack.pop();
-            } else {
-                stack.push(this.adj[curr].pop());
-            }
-        }
-        
-        return circuit.reverse();
-    }
+
+    return circuit.reverse();
+  }
 }
 ```
 
@@ -166,44 +171,64 @@ class Hierholzer {
 Here are some LeetCode problems that can be solved using these algorithms:
 
 ### 1. LeetCode 332 - Reconstruct Itinerary (Hard)
+
 - Uses Hierholzer's algorithm
 - Find Euler path in directed graph of flight tickets
+
 ```javascript
-Example:
-Input: [["MUC","LHR"],["JFK","MUC"],["SFO","SJC"],["LHR","SFO"]]
-Output: ["JFK","MUC","LHR","SFO","SJC"]
+Example: Input: [
+  ['MUC', 'LHR'],
+  ['JFK', 'MUC'],
+  ['SFO', 'SJC'],
+  ['LHR', 'SFO'],
+];
+Output: ['JFK', 'MUC', 'LHR', 'SFO', 'SJC'];
 ```
 
 ### 2. LeetCode 753 - Cracking the Safe (Hard)
+
 - Uses de Bruijn sequence (special case of Euler path)
 - Find shortest string containing all combinations
+
 ```javascript
-Example:
-Input: n = 2, k = 2
-Output: "00110" // Contains all 2-digit combinations of 0,1
+Example: Input: ((n = 2), (k = 2));
+Output: '00110'; // Contains all 2-digit combinations of 0,1
 ```
 
 ### 3. LeetCode 2097 - Valid Arrangement of Pairs (Hard)
+
 - Find Euler path in graph of number pairs
+
 ```javascript
-Example:
-Input: pairs = [[5,1],[4,5],[11,9],[9,4]]
-Output: [[11,9],[9,4],[4,5],[5,1]]
+Example: Input: pairs = [
+  [5, 1],
+  [4, 5],
+  [11, 9],
+  [9, 4],
+];
+Output: [
+  [11, 9],
+  [9, 4],
+  [4, 5],
+  [5, 1],
+];
 ```
 
 ## Implementation Guide
 
 ### Using Euler Path
+
 ```javascript
 const eulerGraph = new EulerPath(4);
 eulerGraph.addEdge(0, 1);
 eulerGraph.addEdge(1, 2);
 eulerGraph.addEdge(2, 3);
 eulerGraph.addEdge(3, 0);
-console.log("Euler Path:", eulerGraph.findPath());
+console.log('Euler Path:', eulerGraph.findPath());
 ```
 
 ### Using Hamilton Cycle
+
 ```javascript
 const hamiltonGraph = new HamiltonCycle(5);
 hamiltonGraph.addEdge(0, 1);
@@ -211,17 +236,18 @@ hamiltonGraph.addEdge(1, 2);
 hamiltonGraph.addEdge(2, 3);
 hamiltonGraph.addEdge(3, 4);
 hamiltonGraph.addEdge(4, 0);
-console.log("Hamilton Cycle:", hamiltonGraph.findCycle());
+console.log('Hamilton Cycle:', hamiltonGraph.findCycle());
 ```
 
 ### Using Hierholzer
+
 ```javascript
 const hierholzerGraph = new Hierholzer(4);
 hierholzerGraph.addEdge(0, 1);
 hierholzerGraph.addEdge(1, 2);
 hierholzerGraph.addEdge(2, 3);
 hierholzerGraph.addEdge(3, 0);
-console.log("Hierholzer Circuit:", hierholzerGraph.findCircuit());
+console.log('Hierholzer Circuit:', hierholzerGraph.findCircuit());
 ```
 
 ## Tips for Problem Solving

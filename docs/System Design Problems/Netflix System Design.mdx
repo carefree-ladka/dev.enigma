@@ -1,9 +1,9 @@
 ---
-title: "Netflix System Design"
-description: "Complete system design for Netflix video streaming platform"
-author: "System Design Template"
-date: "2025-10-05"
-tags: ["system-design", "streaming", "netflix", "video", "cdn"]
+title: 'Netflix System Design'
+description: 'Complete system design for Netflix video streaming platform'
+author: 'System Design Template'
+date: '2025-10-05'
+tags: ['system-design', 'streaming', 'netflix', 'video', 'cdn']
 ---
 
 # Netflix System Design
@@ -30,6 +30,7 @@ tags: ["system-design", "streaming", "netflix", "video", "cdn"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 500M
 - Daily Active Users (DAU): 200M
 - Concurrent viewers (peak): 50M
@@ -38,6 +39,7 @@ tags: ["system-design", "streaming", "netflix", "video", "cdn"]
 - Catalog size: 10,000 titles
 
 **Storage:**
+
 ```
 Video Storage = 10,000 titles × 2 hours × 5 quality levels × 1GB
               = 100,000 GB = 100 TB (master copies)
@@ -45,6 +47,7 @@ With CDN replication (×50 regions) = 5 PB
 ```
 
 **Bandwidth:**
+
 ```
 Peak Concurrent Streams = 50M users
 Average Bitrate = 5 Mbps
@@ -52,6 +55,7 @@ Peak Bandwidth = 50M × 5 Mbps = 250 Tbps
 ```
 
 **QPS:**
+
 ```
 Metadata Requests = 200M DAU × 50 requests/day / 86400s = ~115K QPS
 Video Chunk Requests = 50M concurrent × 4 chunks/sec = 200M requests/sec (handled by CDN)
@@ -62,21 +66,27 @@ Video Chunk Requests = 50M concurrent × 4 chunks/sec = 200M requests/sec (handl
 ## 2. Core Entities (~2 minutes)
 
 ### User
+
 - `userId`, `email`, `subscriptionType`, `preferences`
 
 ### Video
+
 - `videoId`, `title`, `description`, `duration`, `releaseDate`, `genres`, `maturityRating`
 
 ### VideoMetadata
+
 - `videoId`, `resolutions`, `encodedFiles`, `thumbnails`, `subtitles`
 
 ### WatchHistory
+
 - `userId`, `videoId`, `timestamp`, `watchedDuration`, `completed`
 
 ### Rating
+
 - `userId`, `videoId`, `rating` (1-5), `timestamp`
 
 ### Recommendation
+
 - `userId`, `recommendedVideoIds`, `score`, `generatedAt`
 
 ---
@@ -84,6 +94,7 @@ Video Chunk Requests = 50M concurrent × 4 chunks/sec = 200M requests/sec (handl
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for metadata operations
 - **HTTP Streaming (HLS/DASH)** for video delivery
 
@@ -221,18 +232,22 @@ Response: {
 ### Architecture Components
 
 **Client Layer:**
+
 - Web/Mobile/TV Apps with adaptive video player
 
 **Edge Layer:**
+
 - CDN (CloudFront/Akamai) - caches video chunks globally
 - Edge Servers - closest to users for lowest latency
 
 **API Layer:**
+
 - API Gateway - rate limiting, authentication
 - Load Balancer - distributes traffic across app servers
 - Application Servers - business logic (Spring Boot)
 
 **Data Layer:**
+
 - **PostgreSQL** (metadata) - videos, users, subscriptions
 - **Cassandra** (watch history) - high write throughput, time-series data
 - **Redis** (cache) - hot metadata, user sessions
@@ -240,6 +255,7 @@ Response: {
 - **S3/Object Storage** - master video files
 
 **Processing Layer:**
+
 - **Video Encoding Service** - transcodes to multiple resolutions
 - **Kafka** - event streaming (watch events, ratings)
 - **Recommendation Engine** - ML model serving
@@ -464,6 +480,7 @@ graph TB
 ### 7.2 CDN Strategy & Content Distribution
 
 **Why CDN?**
+
 - Reduced latency (content closer to users)
 - Reduced load on origin servers
 - Better availability
@@ -471,6 +488,7 @@ graph TB
 #### Push vs Pull CDN
 
 **Push CDN** (Netflix uses this):
+
 - Proactively push popular content to edge servers
 - Predict what users will watch (recommendations drive this)
 - Pre-warm cache during off-peak hours
@@ -537,10 +555,12 @@ public void warmCache() {
 #### PostgreSQL (Metadata) - Read-Heavy
 
 **Vertical Scaling:**
+
 - Master: Write operations
 - 5+ Read Replicas: Distribute read load
 
 **Indexing:**
+
 ```sql
 CREATE INDEX idx_videos_genre ON videos USING GIN(genres);
 CREATE INDEX idx_videos_release_date ON videos(release_date DESC);
@@ -548,6 +568,7 @@ CREATE INDEX idx_users_email ON users(email);
 ```
 
 **Connection Pooling:**
+
 ```properties
 # HikariCP configuration
 spring.datasource.hikari.maximum-pool-size=50
@@ -558,11 +579,13 @@ spring.datasource.hikari.connection-timeout=30000
 #### Cassandra (Watch History) - Write-Heavy
 
 **Why Cassandra?**
+
 - Handles 200M+ users × 50 watch events/day = 10B writes/day
 - Linear scalability (add nodes as needed)
 - Eventual consistency is acceptable
 
 **Partition Strategy:**
+
 ```sql
 -- Partitioned by user_id for fast user queries
 CREATE TABLE watch_history (
@@ -576,6 +599,7 @@ CREATE TABLE watch_history (
 ```
 
 **Write Path:**
+
 ```
 Client -> Kafka -> Batch Worker -> Cassandra
 (Async, non-blocking, batched writes every 30 seconds)
@@ -586,6 +610,7 @@ Client -> Kafka -> Batch Worker -> Cassandra
 ### 7.5 Search Functionality (Elasticsearch)
 
 **Why Elasticsearch?**
+
 - Full-text search with fuzzy matching
 - Fast autocomplete suggestions
 - Faceted search (filter by genre, year, rating)
@@ -728,6 +753,7 @@ public class RecommendationService {
 #### Solutions
 
 **1. Auto-Scaling:**
+
 ```yaml
 # Kubernetes HPA (Horizontal Pod Autoscaler)
 # Scale app servers based on CPU > 70%
@@ -735,6 +761,7 @@ public class RecommendationService {
 ```
 
 **2. Rate Limiting:**
+
 ```java
 @RateLimiter(name = "api", fallbackMethod = "rateLimitFallback")
 public ResponseEntity<?> getVideos() {
@@ -747,6 +774,7 @@ public ResponseEntity<?> getVideos() {
 ```
 
 **3. Request Prioritization:**
+
 - **P0**: Video streaming requests (always serve)
 - **P1**: Metadata, search (throttle if needed)
 - **P2**: Recommendations, analytics (can drop)
@@ -829,17 +857,20 @@ Expiry = 5 minutes (forces client to refresh)
 #### Key Metrics
 
 **Application:**
+
 - API response time (P50, P95, P99)
 - Error rate (4xx, 5xx)
 - Requests per second
 
 **Video Streaming:**
+
 - Buffering ratio (% of playback time spent buffering)
 - Startup time (time to first frame)
 - Bitrate distribution
 - CDN hit ratio
 
 **Infrastructure:**
+
 - CPU/Memory usage
 - Database query latency
 - Cache hit ratio
@@ -857,8 +888,7 @@ Expiry = 5 minutes (forces client to refresh)
 ```yaml
 Alert: High Video Buffering
 Condition: buffering_ratio > 5% for 5 minutes
-Action:
-  1. Check CDN health
+Action: 1. Check CDN health
   2. Scale up edge servers
   3. Notify on-call engineer
 ```
@@ -888,13 +918,13 @@ Action:
 
 ## Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| Push CDN | Lower latency, predictable performance | Higher storage costs, wasted bandwidth for unpopular content |
-| Cassandra for Watch History | Linear scalability, handles massive writes | Eventual consistency, complex queries limited |
-| Async Watch Tracking | Non-blocking, better UX | Possible data loss if Kafka fails |
-| Pre-computed Recommendations | Fast response time | Stale recommendations (6-hour refresh) |
-| Multi-CDN Strategy | High availability, redundancy | Increased complexity, higher costs |
+| Decision                     | Pro                                        | Con                                                          |
+| ---------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
+| Push CDN                     | Lower latency, predictable performance     | Higher storage costs, wasted bandwidth for unpopular content |
+| Cassandra for Watch History  | Linear scalability, handles massive writes | Eventual consistency, complex queries limited                |
+| Async Watch Tracking         | Non-blocking, better UX                    | Possible data loss if Kafka fails                            |
+| Pre-computed Recommendations | Fast response time                         | Stale recommendations (6-hour refresh)                       |
+| Multi-CDN Strategy           | High availability, redundancy              | Increased complexity, higher costs                           |
 
 ---
 

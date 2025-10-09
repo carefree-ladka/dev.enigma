@@ -1,14 +1,12 @@
 ---
-title : Operating Systems
+title: Operating Systems
 ---
 
 ## 1. Deadlock
 
 Deadlock is a situation in operating systems where two or more processes are blocked forever because they are waiting for each other to release resources.
 
-
 Conditions for Deadlock:
-
 
 **1. Mutual Exclusion:** At least one resource must be held in a non-shareable mode (i.e., only one process can use the resource at any given time).
 
@@ -20,9 +18,8 @@ Conditions for Deadlock:
 
 **Deadlock Prevention:**
 
-  - **Avoiding Circular Wait:** One strategy is to impose a total order on all resources and require that processes request resources in an increasing order of enumeration.
-  - **Preemptive Resource Allocation:** If a process is holding resources and cannot proceed, the system can preempt its resources and give them to other processes.
-
+- **Avoiding Circular Wait:** One strategy is to impose a total order on all resources and require that processes request resources in an increasing order of enumeration.
+- **Preemptive Resource Allocation:** If a process is holding resources and cannot proceed, the system can preempt its resources and give them to other processes.
 
 ## 2. Virtual Memory
 
@@ -41,7 +38,6 @@ Virtual memory allows programs to execute without requiring all of their data to
 ### Example:
 
 If your program accesses memory addresses outside the current physical memory allocation, the OS will trigger a page fault and load the required pages into memory.
-
 
 ## 3. Semaphores
 
@@ -83,9 +79,11 @@ function V() {
 ## Thread Synchronization
 
 ### Basic Concepts
+
 Thread synchronization ensures orderly access to shared resources in a multi-threaded environment.
 
 ### Key Aspects
+
 1. **Resource Sharing**
    - Multiple threads accessing shared resources
    - Need for controlled access to prevent data corruption
@@ -99,25 +97,27 @@ Thread synchronization ensures orderly access to shared resources in a multi-thr
    - Result depends on timing of thread execution
 
 ### Synchronization Mechanisms
+
 1. **Mutex**
    - Binary semaphore
    - Locks resource for exclusive access
+
    ```javascript
    class Mutex {
-       constructor() {
-           this.locked = false;
+     constructor() {
+       this.locked = false;
+     }
+
+     acquire() {
+       while (this.locked) {
+         // wait
        }
-       
-       acquire() {
-           while(this.locked) {
-               // wait
-           }
-           this.locked = true;
-       }
-       
-       release() {
-           this.locked = false;
-       }
+       this.locked = true;
+     }
+
+     release() {
+       this.locked = false;
+     }
    }
    ```
 
@@ -126,31 +126,33 @@ Thread synchronization ensures orderly access to shared resources in a multi-thr
    - Controls access to finite resources
    ```javascript
    class Semaphore {
-       constructor(initial) {
-           this.value = initial;
+     constructor(initial) {
+       this.value = initial;
+     }
+
+     wait() {
+       while (this.value <= 0) {
+         // wait
        }
-       
-       wait() {
-           while(this.value <= 0) {
-               // wait
-           }
-           this.value--;
-       }
-       
-       signal() {
-           this.value++;
-       }
+       this.value--;
+     }
+
+     signal() {
+       this.value++;
+     }
    }
    ```
 
 ## Producer-Consumer Problem
 
 ### Problem Statement
+
 - Producers create data items and store in buffer
 - Consumers remove items from buffer
 - Need to synchronize access to shared buffer
 
 ### Components
+
 1. **Buffer**
    - Shared data structure
    - Limited capacity in bounded version
@@ -159,13 +161,14 @@ Thread synchronization ensures orderly access to shared resources in a multi-thr
 2. **Producer**
    - Creates items
    - Adds to buffer when space available
+
    ```javascript
    async function produce(buffer, item) {
-       await buffer.notFull.wait();
-       await buffer.mutex.acquire();
-       buffer.add(item);
-       buffer.mutex.release();
-       buffer.notEmpty.signal();
+     await buffer.notFull.wait();
+     await buffer.mutex.acquire();
+     buffer.add(item);
+     buffer.mutex.release();
+     buffer.notEmpty.signal();
    }
    ```
 
@@ -174,12 +177,12 @@ Thread synchronization ensures orderly access to shared resources in a multi-thr
    - Waits when buffer empty
    ```javascript
    async function consume(buffer) {
-       await buffer.notEmpty.wait();
-       await buffer.mutex.acquire();
-       const item = buffer.remove();
-       buffer.mutex.release();
-       buffer.notFull.signal();
-       return item;
+     await buffer.notEmpty.wait();
+     await buffer.mutex.acquire();
+     const item = buffer.remove();
+     buffer.mutex.release();
+     buffer.notFull.signal();
+     return item;
    }
    ```
 
@@ -336,12 +339,14 @@ main().catch(console.error);
 ### Common Scenarios
 
 #### 1. Single Producer-Single Consumer
+
 - Simplest case
 - Needs:
   - One mutex for buffer access
   - Two semaphores (empty, full)
 
 #### 2. Multiple Producers-Single Consumer
+
 - Multiple threads adding items
 - Needs:
   - Mutex for producer synchronization
@@ -349,6 +354,7 @@ main().catch(console.error);
   - Consumer flow control
 
 #### 3. Single Producer-Multiple Consumers
+
 - Multiple threads removing items
 - Needs:
   - Mutex for consumer synchronization
@@ -356,6 +362,7 @@ main().catch(console.error);
   - Producer flow control
 
 #### 4. Multiple Producers-Multiple Consumers
+
 - Most complex scenario
 - Needs:
   - Full synchronization mechanism
@@ -363,6 +370,7 @@ main().catch(console.error);
   - Fair access policies
 
 ### Implementation Considerations
+
 1. **Buffer Design**
    - Choose appropriate data structure
    - Consider memory constraints
@@ -382,35 +390,35 @@ main().catch(console.error);
 
 ```javascript
 class BoundedBuffer {
-    constructor(size) {
-        this.buffer = [];
-        this.size = size;
-        this.mutex = new Mutex();
-        this.notFull = new Semaphore(size);
-        this.notEmpty = new Semaphore(0);
-    }
+  constructor(size) {
+    this.buffer = [];
+    this.size = size;
+    this.mutex = new Mutex();
+    this.notFull = new Semaphore(size);
+    this.notEmpty = new Semaphore(0);
+  }
 
-    async produce(item) {
-        await this.notFull.wait();
-        await this.mutex.acquire();
-        
-        this.buffer.push(item);
-        
-        this.mutex.release();
-        this.notEmpty.signal();
-    }
+  async produce(item) {
+    await this.notFull.wait();
+    await this.mutex.acquire();
 
-    async consume() {
-        await this.notEmpty.wait();
-        await this.mutex.acquire();
-        
-        const item = this.buffer.shift();
-        
-        this.mutex.release();
-        this.notFull.signal();
-        
-        return item;
-    }
+    this.buffer.push(item);
+
+    this.mutex.release();
+    this.notEmpty.signal();
+  }
+
+  async consume() {
+    await this.notEmpty.wait();
+    await this.mutex.acquire();
+
+    const item = this.buffer.shift();
+
+    this.mutex.release();
+    this.notFull.signal();
+
+    return item;
+  }
 }
 ```
 
@@ -456,4 +464,4 @@ class BoundedBuffer {
 4. **Buffer Problems**
    - Overflow/underflow
    - Memory leaks
-   - Performance bottlenecks****
+   - Performance bottlenecks\*\*\*\*

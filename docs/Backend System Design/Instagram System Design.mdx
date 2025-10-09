@@ -1,6 +1,7 @@
 # Instagram System Design
 
 ## Table of Contents
+
 - [Requirements (~5 minutes)](#requirements-5-minutes)
   - [Functional Requirements](#1-functional-requirements)
   - [Non-functional Requirements](#2-non-functional-requirements)
@@ -18,6 +19,7 @@
 ### 1) Functional Requirements
 
 **Key Questions Asked:**
+
 - Q: Should we focus on photo sharing or include Stories/Reels?
 - A: Focus on core photo sharing - upload, feed, social interactions
 - Q: Do we need direct messaging?
@@ -26,6 +28,7 @@
 - A: Start with photos only, mention video as future enhancement
 
 **Core Functional Requirements:**
+
 - [ ] Users should be able to upload and share photos with captions
 - [ ] Users should be able to follow/unfollow other users
 - [ ] Users should be able to view their personalized feed of photos from followed users
@@ -37,6 +40,7 @@
 ### 2) Non-functional Requirements
 
 **System Quality Requirements:**
+
 - [ ] **High Availability:** System should maintain 99.9% uptime (prioritize availability over consistency)
 - [ ] **Scale:** Support 100M+ daily active users with 50M+ photos uploaded daily
 - [ ] **Performance:** Feed loading should be < 300ms, image loading < 500ms
@@ -44,6 +48,7 @@
 - [ ] **Consistency:** Eventually consistent system (likes/comments can have slight delays)
 
 **Rationale:**
+
 - **Availability over Consistency:** Social media users expect the app to always work, slight delays in like counts are acceptable
 - **Low Latency:** Critical for user engagement and retention
 - **Massive Scale:** Instagram-level requires handling billions of requests daily
@@ -53,16 +58,19 @@
 **Key Calculations That Influence Design:**
 
 **Storage Requirements:**
+
 - 50M photos/day × 2MB average size = 100TB/day = 36PB/year
-- *Impact:* Requires distributed object storage + CDN strategy
+- _Impact:_ Requires distributed object storage + CDN strategy
 
 **Read vs Write Ratio:**
+
 - Assumption: 100:1 read-to-write ratio (users browse much more than post)
-- *Impact:* Heavy caching and read replica strategy needed
+- _Impact:_ Heavy caching and read replica strategy needed
 
 **QPS Estimates:**
+
 - 100M DAU × 50 feed refreshes/day = 5B requests/day ≈ 58K QPS average
-- *Impact:* Need horizontal scaling and load balancing
+- _Impact:_ Need horizontal scaling and load balancing
 
 > These calculations directly influence our CDN, caching, and database sharding strategies.
 
@@ -71,6 +79,7 @@
 ## Core Entities (~2 minutes)
 
 **Primary Entities:**
+
 - **User:** Profile information, followers/following counts, authentication
 - **Post:** Photo content, caption, metadata, upload timestamp
 - **Follow:** Relationship between users (follower_id, following_id)
@@ -78,6 +87,7 @@
 - **Comment:** User-generated content on posts (user_id, post_id, text, timestamp)
 
 **Entity Relationships:**
+
 - User has many Posts (1:N)
 - User can follow many Users (N:M via Follow table)
 - Post can have many Likes and Comments (1:N each)
@@ -90,11 +100,13 @@
 ## API or System Interface (~5 minutes)
 
 ### Protocol Choice: REST
+
 **Reasoning:** Standard HTTP-based CRUD operations fit well with Instagram's resource-based model (posts, users, likes). Mobile apps can easily consume REST APIs.
 
 ### Core API Endpoints
 
 **Authentication & Users:**
+
 ```
 POST /v1/auth/login
 POST /v1/auth/register
@@ -104,6 +116,7 @@ GET /v1/users/:userId/posts -> Post[]
 ```
 
 **Posts & Content:**
+
 ```
 POST /v1/posts
 Content-Type: multipart/form-data
@@ -120,6 +133,7 @@ GET /v1/posts/:postId/comments -> Comment[]
 ```
 
 **Social Features:**
+
 ```
 POST /v1/users/:userId/follow
 DELETE /v1/users/:userId/follow
@@ -132,12 +146,14 @@ body: {"text": "Beautiful photo!"}
 ```
 
 **Feed & Discovery:**
+
 ```
 GET /v1/feed?page=1&limit=20 -> Post[]
 GET /v1/users/search?q=john&limit=10 -> User[]
 ```
 
 **Security Notes:**
+
 - All endpoints require authentication via JWT token in Authorization header
 - User ID derived from auth token, never from request body
 - Rate limiting applied per user (e.g., 100 posts/hour, 1000 likes/hour)
@@ -147,6 +163,7 @@ GET /v1/users/search?q=john&limit=10 -> User[]
 ## Data Flow (~5 minutes)
 
 ### Photo Upload Flow
+
 1. **Client Upload:** Mobile app uploads photo with metadata
 2. **Validation:** Server validates file type, size (max 10MB), user permissions
 3. **Image Processing:** Resize/compress image into multiple formats (thumbnail, medium, full)
@@ -156,6 +173,7 @@ GET /v1/users/search?q=john&limit=10 -> User[]
 7. **Response:** Return success with post_id and CDN URLs to client
 
 ### Feed Generation Flow
+
 1. **Feed Request:** User opens app and requests feed
 2. **Cache Check:** Check Redis cache for pre-generated feed
 3. **Cache Hit:** Return cached feed items
@@ -169,6 +187,7 @@ GET /v1/users/search?q=john&limit=10 -> User[]
 ## High Level Design (~10-15 minutes)
 
 ### Design Approach
+
 Building the architecture endpoint by endpoint to ensure we satisfy all functional requirements:
 
 ### System Architecture
@@ -198,6 +217,7 @@ Building the architecture endpoint by endpoint to ensure we satisfy all function
 ### Detailed Component Design
 
 **1. POST /v1/posts (Photo Upload)**
+
 - **Client** → **Load Balancer** → **API Gateway** → **Post Service**
 - **Post Service** validates and processes image
 - Store image in **S3**, metadata in **Post Database**
@@ -205,6 +225,7 @@ Building the architecture endpoint by endpoint to ensure we satisfy all function
 - **Notification Service** sends push notifications to followers
 
 **2. GET /v1/feed (Feed Generation)**
+
 - **Client** → **Load Balancer** → **API Gateway** → **Feed Service**
 - **Feed Service** checks **Redis Cache** first
 - On cache miss: Query **Follow Database** + **Post Database**
@@ -212,6 +233,7 @@ Building the architecture endpoint by endpoint to ensure we satisfy all function
 - Return posts with **CDN URLs** for images
 
 **3. POST /v1/users/:userId/follow**
+
 - **Client** → **API Gateway** → **User Service**
 - **User Service** updates **Follow Database**
 - Invalidate follower's feed cache in **Redis**
@@ -220,6 +242,7 @@ Building the architecture endpoint by endpoint to ensure we satisfy all function
 ### Database Schema
 
 **Users Table:**
+
 ```sql
 users:
 - id (UUID, Primary Key)
@@ -232,6 +255,7 @@ users:
 ```
 
 **Posts Table:**
+
 ```sql
 posts:
 - id (UUID, Primary Key)
@@ -247,6 +271,7 @@ posts:
 ```
 
 **Follows Table:**
+
 ```sql
 follows:
 - follower_id (UUID, Foreign Key → users.id)
@@ -256,6 +281,7 @@ follows:
 ```
 
 **Likes Table:**
+
 ```sql
 likes:
 - user_id (UUID, Foreign Key → users.id)
@@ -265,6 +291,7 @@ likes:
 ```
 
 **Comments Table:**
+
 ```sql
 comments:
 - id (UUID, Primary Key)
@@ -275,6 +302,7 @@ comments:
 ```
 
 ### Technology Stack
+
 - **Application:** Node.js/Python microservices
 - **Database:** PostgreSQL for structured data
 - **Cache:** Redis for feed caching and session storage
@@ -294,18 +322,21 @@ comments:
 **Solution: Hybrid Fanout Approach**
 
 **For Regular Users (< 1M followers):**
+
 - **Fanout-on-Write (Push Model):** Pre-generate feeds when posts are created
 - When user posts, push to all followers' feed caches
 - **Pros:** Fast feed loading (< 100ms)
 - **Cons:** High write amplification, storage cost
 
 **For Celebrity Users (> 1M followers):**
+
 - **Fanout-on-Read (Pull Model):** Generate feed when user requests
 - Query celebrity posts in real-time and merge with pre-generated feed
 - **Pros:** Lower storage cost, no write amplification
 - **Cons:** Higher latency for feed generation
 
 **Implementation:**
+
 ```python
 def generate_feed(user_id):
     # Get pre-computed feed from cache
@@ -327,19 +358,23 @@ def generate_feed(user_id):
 **Multi-tier Storage Strategy:**
 
 **Tier 1: Hot Data (Recent posts, < 30 days)**
+
 - Store in **multiple S3 regions** with Cross-Region Replication
 - Cached in **CloudFront CDN** with 24-hour TTL
 - **Image formats:** Original, 1080p, 720p, 480p, thumbnail (150px)
 
 **Tier 2: Warm Data (30 days - 1 year)**
+
 - S3 Standard-IA (Infrequent Access)
 - CDN cache on demand
 
 **Tier 3: Cold Data (> 1 year)**
+
 - S3 Glacier for cost optimization
 - Longer retrieval time acceptable for old content
 
 **Image Processing Pipeline:**
+
 ```
 Upload → [Lambda] → [Resize/Compress] → [S3 Multi-format] → [CDN Distribution]
 ```
@@ -351,10 +386,12 @@ Upload → [Lambda] → [Resize/Compress] → [S3 Multi-format] → [CDN Distrib
 **Horizontal Sharding Strategy:**
 
 **User Data Sharding:**
+
 - Shard by `user_id` hash across 100 database shards
 - Co-locate user profile, posts, and social graph data
 
 **Posts Sharding:**
+
 ```sql
 -- Shard function
 shard_id = hash(user_id) % 100
@@ -365,10 +402,12 @@ SELECT * FROM follows_shard_42 WHERE follower_id = 'uuid';
 ```
 
 **Read Scaling:**
+
 - **3 read replicas** per shard for read-heavy workload
 - **Connection pooling** to manage database connections efficiently
 
 **Indexing Strategy:**
+
 ```sql
 -- Critical indexes for performance
 CREATE INDEX idx_posts_user_created ON posts(user_id, created_at DESC);
@@ -381,10 +420,12 @@ CREATE INDEX idx_likes_post ON likes(post_id);
 **Multi-level Caching:**
 
 **L1: CDN (CloudFront)**
+
 - Cache images and static content globally
 - 24-hour TTL for images, 1-hour for thumbnails
 
 **L2: Application Cache (Redis)**
+
 ```python
 # Feed caching
 redis.setex(f"feed:{user_id}", 300, json.dumps(feed_data))  # 5-min TTL
@@ -397,10 +438,12 @@ redis.setex(f"post:{post_id}", 3600, json.dumps(post_data))  # 1-hour TTL
 ```
 
 **L3: Database Query Cache**
+
 - PostgreSQL query result caching
 - Connection pooling with PgBouncer
 
 **Cache Invalidation Strategy:**
+
 - **Write-through:** Update cache when database is updated
 - **TTL-based:** Automatic expiration for eventually consistent data
 - **Event-driven:** Invalidate specific cache entries on user actions
@@ -408,6 +451,7 @@ redis.setex(f"post:{post_id}", 3600, json.dumps(post_data))  # 1-hour TTL
 ### 5. Performance Optimizations
 
 **Database Optimizations:**
+
 ```sql
 -- Denormalized counts for performance
 UPDATE users SET followers_count = followers_count + 1 WHERE id = :user_id;
@@ -418,6 +462,7 @@ UPDATE posts SET likes_count = likes_count + 1 WHERE id = :post_id;
 ```
 
 **Feed Ranking Algorithm:**
+
 ```python
 def calculate_post_score(post):
     recency_score = 1.0 / (hours_since_posted + 1)
@@ -430,16 +475,19 @@ def calculate_post_score(post):
 ### 6. Monitoring and Observability
 
 **Key Metrics:**
+
 - **Business:** Daily Active Users, Posts per User, Feed Engagement Rate
 - **System:** API latency (p95, p99), Error rates, Database connection pools
 - **Infrastructure:** CDN hit rates, Image upload success rates
 
 **Alerting:**
+
 - Feed loading > 500ms for 5 minutes → Page on-call
 - Image upload failure rate > 5% → Critical alert
 - Database CPU > 80% → Auto-scale read replicas
 
 **Distributed Tracing:**
+
 - Trace requests across microservices (User → Feed → Database)
 - Identify bottlenecks in complex feed generation flow
 
@@ -450,6 +498,7 @@ def calculate_post_score(post):
 This Instagram design successfully handles the core requirements:
 
 ✅ **Functional Requirements Met:**
+
 - Photo upload/sharing with metadata
 - User following system
 - Personalized feed generation
@@ -457,12 +506,14 @@ This Instagram design successfully handles the core requirements:
 - User search functionality
 
 ✅ **Non-functional Requirements Addressed:**
+
 - **Scale:** Horizontally sharded databases handle 100M+ users
 - **Performance:** Multi-tier caching achieves < 300ms feed loading
 - **Availability:** Microservices with read replicas provide 99.9% uptime
 - **Storage:** S3 + CDN handles petabytes of image data globally
 
 ✅ **Production-Ready Deep Dives:**
+
 - Hybrid fanout strategy balances performance and cost
 - Multi-tier storage optimizes for access patterns
 - Comprehensive caching strategy reduces database load

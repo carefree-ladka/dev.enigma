@@ -25,6 +25,7 @@ A distributed rate limiting system to protect APIs from abuse and ensure fair re
 ### Capacity Estimation
 
 **Assumptions:**
+
 - 1 billion requests per day
 - 10 million unique users
 - Average 100 requests per user per day
@@ -32,12 +33,14 @@ A distributed rate limiting system to protect APIs from abuse and ensure fair re
 **Calculations:**
 
 **QPS (Queries Per Second):**
+
 ```
 Average QPS = 1B / (24 * 3600) ≈ 11,574 QPS
 Peak QPS (3x average) ≈ 35,000 QPS
 ```
 
 **Memory Requirements (Redis):**
+
 ```
 Per user: ~100 bytes (key + counter + metadata)
 10M users × 100 bytes = 1 GB
@@ -45,6 +48,7 @@ With overhead and multiple time windows: ~5 GB
 ```
 
 **Cache Hit Rate:**
+
 - 80% of requests from 20% of users (power law)
 - Active cache size: ~1 GB for hot users
 
@@ -53,18 +57,21 @@ With overhead and multiple time windows: ~5 GB
 ## 2. Core Entities (~2 minutes)
 
 **RateLimitRule**: Configuration defining rate limiting behavior
+
 - `ruleId`: Unique identifier
 - `limit`: Maximum requests allowed
 - `window`: Time window (seconds)
 - `tier`: User tier (free, premium, enterprise)
 
 **RateLimitCounter**: Tracks request counts per user
+
 - `userId/apiKey`: Identifier
 - `requestCount`: Current count
 - `windowStart`: Window start timestamp
 - `expiresAt`: TTL for cleanup
 
 **RateLimitResponse**: Result of rate limit check
+
 - `allowed`: Boolean indicating if request is allowed
 - `remaining`: Requests remaining in window
 - `resetTime`: When the limit resets
@@ -79,6 +86,7 @@ With overhead and multiple time windows: ~5 GB
 ### Public API Endpoints
 
 **Check Rate Limit (Internal)**
+
 ```
 POST /v1/ratelimit/check
 Headers:
@@ -102,6 +110,7 @@ Response:
 ```
 
 **Get User Rate Limit Status**
+
 ```
 GET /v1/ratelimit/status/{userId}
 Headers:
@@ -121,6 +130,7 @@ Response:
 ```
 
 **Configure Rate Limit Rules (Admin)**
+
 ```
 POST /v1/admin/ratelimit/rules
 Headers:
@@ -139,6 +149,7 @@ Body:
 ```
 
 ### Response Headers (Added to all API responses)
+
 ```
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 847
@@ -153,12 +164,14 @@ Retry-After: 30 (if rate limited)
 ### Algorithm Choice: **Token Bucket Algorithm**
 
 **Why Token Bucket?**
+
 - Allows burst traffic while maintaining average rate
 - Simple to implement in Redis
 - Memory efficient
 - Handles distributed systems well
 
 **Alternative Algorithms:**
+
 - **Fixed Window**: Simple but allows burst at window boundaries
 - **Sliding Window Log**: Accurate but memory intensive
 - **Sliding Window Counter**: Good balance but more complex
@@ -1021,14 +1034,17 @@ class RateLimitRuleDto {
 ## 6. Alternative Approaches
 
 ### Approach 1: Fixed Window Counter
+
 **Pros**: Simple, low memory
 **Cons**: Burst at window boundaries
 
 ### Approach 2: Sliding Window Log
+
 **Pros**: Very accurate
 **Cons**: High memory usage (store all request timestamps)
 
 ### Approach 3: Leaky Bucket
+
 **Pros**: Smooth traffic, no bursts
 **Cons**: Less flexible, may reject valid bursts
 
@@ -1038,13 +1054,13 @@ class RateLimitRuleDto {
 
 ## 7. Trade-offs & Decisions
 
-| Decision | Trade-off | Rationale |
-|----------|-----------|-----------|
-| Token Bucket over Fixed Window | Complexity vs Accuracy | Allows legitimate bursts while maintaining rate |
-| Fail-Open on Redis failure | Availability vs Security | Business continuity over strict enforcement |
-| Eventual consistency in multi-region | Consistency vs Latency | Low latency more important than perfect accuracy |
-| 5% accuracy margin | Strictness vs Performance | Acceptable for most use cases, huge perf gain |
-| Redis over Database | Cost vs Performance | Sub-5ms latency requirement demands in-memory |
+| Decision                             | Trade-off                 | Rationale                                        |
+| ------------------------------------ | ------------------------- | ------------------------------------------------ |
+| Token Bucket over Fixed Window       | Complexity vs Accuracy    | Allows legitimate bursts while maintaining rate  |
+| Fail-Open on Redis failure           | Availability vs Security  | Business continuity over strict enforcement      |
+| Eventual consistency in multi-region | Consistency vs Latency    | Low latency more important than perfect accuracy |
+| 5% accuracy margin                   | Strictness vs Performance | Acceptable for most use cases, huge perf gain    |
+| Redis over Database                  | Cost vs Performance       | Sub-5ms latency requirement demands in-memory    |
 
 ---
 
@@ -1780,6 +1796,7 @@ class RateLimitIntegrationTest {
 ## 9. Summary
 
 This rate limiter design provides:
+
 - ✅ Sub-5ms latency with Redis + Token Bucket
 - ✅ High availability with fail-open strategy
 - ✅ Scalable to millions of QPS
@@ -1794,6 +1811,7 @@ This rate limiter design provides:
 **Key Components**: API Gateway → Rate Limiter Service → Redis Cluster → PostgreSQL Config DB
 
 **Maven Dependencies Required**:
+
 ```xml
 <dependencies>
     <dependency>

@@ -1,6 +1,7 @@
 # Microservice Patterns
 
 ## Table of Contents
+
 1. [Two-Phase Commit (2PC)](#1-two-phase-commit-2pc)
 2. [Three-Phase Commit (3PC)](#2-three-phase-commit-3pc)
 3. [CQRS (Command Query Responsibility Segregation)](#3-cqrs-command-query-responsibility-segregation)
@@ -16,11 +17,13 @@
 ## 1. Two-Phase Commit (2PC)
 
 ### Overview
+
 Two-Phase Commit is a distributed transaction protocol that ensures all participating nodes either commit or abort a transaction atomically.
 
 ### How It Works
 
 **Phase 1: Prepare Phase**
+
 1. Coordinator sends PREPARE request to all participants
 2. Each participant:
    - Executes the transaction up to the point of commit
@@ -28,6 +31,7 @@ Two-Phase Commit is a distributed transaction protocol that ensures all particip
    - Responds with VOTE_COMMIT or VOTE_ABORT
 
 **Phase 2: Commit Phase**
+
 1. If all votes are COMMIT:
    - Coordinator sends COMMIT to all participants
    - Each participant commits and releases locks
@@ -36,11 +40,13 @@ Two-Phase Commit is a distributed transaction protocol that ensures all particip
    - Each participant rolls back and releases locks
 
 ### Advantages
+
 - ✅ Strong consistency guarantees
 - ✅ ACID properties maintained
 - ✅ Simple to understand conceptually
 
 ### Disadvantages
+
 - ❌ Blocking protocol (participants wait for coordinator)
 - ❌ Single point of failure (coordinator)
 - ❌ Poor performance in distributed systems
@@ -48,6 +54,7 @@ Two-Phase Commit is a distributed transaction protocol that ensures all particip
 - ❌ Not suitable for microservices at scale
 
 ### Use Cases
+
 - Traditional distributed databases
 - Systems requiring strict consistency
 - Small-scale distributed transactions
@@ -58,29 +65,35 @@ Two-Phase Commit is a distributed transaction protocol that ensures all particip
 ## 2. Three-Phase Commit (3PC)
 
 ### Overview
+
 Three-Phase Commit extends 2PC to eliminate blocking by adding an additional phase and timeout mechanisms.
 
 ### How It Works
 
 **Phase 1: CanCommit**
+
 - Coordinator asks participants if they can commit
 - Participants respond YES or NO
 
 **Phase 2: PreCommit**
+
 - If all say YES, coordinator sends PRECOMMIT
 - Participants acknowledge and prepare to commit
 - Participants can now timeout and commit if coordinator fails
 
 **Phase 3: DoCommit**
+
 - Coordinator sends DOCOMMIT
 - All participants commit the transaction
 
 ### Advantages
+
 - ✅ Non-blocking under certain failure scenarios
 - ✅ Better fault tolerance than 2PC
 - ✅ Reduces the blocking window
 
 ### Disadvantages
+
 - ❌ More complex than 2PC
 - ❌ Higher network overhead (3 phases)
 - ❌ Still has performance issues
@@ -88,6 +101,7 @@ Three-Phase Commit extends 2PC to eliminate blocking by adding an additional pha
 - ❌ Rarely used in modern microservices
 
 ### Use Cases
+
 - Legacy systems requiring non-blocking distributed transactions
 - Systems where coordinator failure is common
 - Limited adoption in practice
@@ -97,17 +111,20 @@ Three-Phase Commit extends 2PC to eliminate blocking by adding an additional pha
 ## 3. CQRS (Command Query Responsibility Segregation)
 
 ### Overview
+
 CQRS separates read and write operations into different models, optimizing each for their specific purpose.
 
 ### Core Concepts
 
 **Command Side (Write Model)**
+
 - Handles all data modifications
 - Validates business rules
 - Emits domain events
 - Optimized for writes
 
 **Query Side (Read Model)**
+
 - Handles all data retrieval
 - Denormalized views
 - Optimized for specific queries
@@ -138,20 +155,24 @@ CQRS separates read and write operations into different models, optimizing each 
 ### Implementation Approaches
 
 **Simple CQRS**
+
 - Same database, different models
 - Synchronous updates
 
 **CQRS with Event Sourcing**
+
 - Events as source of truth
 - Read models built from events
 - Full audit trail
 
 **CQRS with Separate Databases**
+
 - Different databases for read/write
 - Eventual consistency via events
 - Scale independently
 
 ### Advantages
+
 - ✅ Optimized read and write models
 - ✅ Independent scaling of reads/writes
 - ✅ Simplified complex domain models
@@ -159,12 +180,14 @@ CQRS separates read and write operations into different models, optimizing each 
 - ✅ Flexibility in data storage
 
 ### Disadvantages
+
 - ❌ Increased complexity
 - ❌ Eventual consistency challenges
 - ❌ More code to maintain
 - ❌ Learning curve for team
 
 ### Use Cases
+
 - High-traffic applications with different read/write patterns
 - Complex business domains
 - Systems requiring audit trails
@@ -173,6 +196,7 @@ CQRS separates read and write operations into different models, optimizing each 
 - Reporting systems
 
 ### Example Scenario
+
 ```javascript
 // Command: Place Order
 {
@@ -203,11 +227,13 @@ CQRS separates read and write operations into different models, optimizing each 
 ## 4. Saga Pattern
 
 ### Overview
+
 Saga pattern manages distributed transactions as a sequence of local transactions, where each step has a compensating action for rollback.
 
 ### Types of Sagas
 
 #### **Choreography-Based Saga**
+
 Services communicate through events, no central coordinator.
 
 ```
@@ -217,22 +243,26 @@ Compensate ←──────────┴───────────
 ```
 
 **Flow:**
+
 1. Service A completes transaction, publishes event
 2. Service B listens, completes its transaction, publishes event
 3. Service C listens, completes its transaction
 4. If any fails, compensation events flow backward
 
 **Advantages:**
+
 - Simple for small sagas
 - No single point of failure
 - Services loosely coupled
 
 **Disadvantages:**
+
 - Difficult to understand flow
 - Hard to debug
 - Cyclic dependencies risk
 
 #### **Orchestration-Based Saga**
+
 Central orchestrator coordinates the saga flow.
 
 ```
@@ -243,18 +273,21 @@ Central orchestrator coordinates the saga flow.
 ```
 
 **Flow:**
+
 1. Orchestrator sends command to Service A
 2. Waits for response
 3. Sends command to Service B
 4. If any fails, orchestrator triggers compensations
 
 **Advantages:**
+
 - Centralized logic
 - Easy to understand and test
 - Better monitoring
 - Simpler error handling
 
 **Disadvantages:**
+
 - Single point of failure
 - Orchestrator can become complex
 - Additional service to maintain
@@ -262,6 +295,7 @@ Central orchestrator coordinates the saga flow.
 ### Saga Example: E-Commerce Order
 
 **Happy Path:**
+
 ```
 1. Order Service → Create Order (Pending)
 2. Payment Service → Reserve Payment
@@ -271,6 +305,7 @@ Central orchestrator coordinates the saga flow.
 ```
 
 **Failure with Compensation:**
+
 ```
 1. Order Service → Create Order ✅
 2. Payment Service → Reserve Payment ✅
@@ -282,27 +317,32 @@ Central orchestrator coordinates the saga flow.
 ### Implementation Considerations
 
 **State Management**
+
 - Track saga state and current step
 - Store in database or event store
 - Handle retries and idempotency
 
 **Compensating Transactions**
+
 - Must be idempotent
 - May not always perfectly undo (semantic rollback)
 - Example: Cancel order vs. Delete order
 
 **Handling Failures**
+
 - Forward recovery: retry until success
 - Backward recovery: compensate completed steps
 - Timeout handling and dead letter queues
 
 ### Advantages
+
 - ✅ No distributed locks
 - ✅ Better scalability than 2PC
 - ✅ Works across service boundaries
 - ✅ Each service maintains local ACID
 
 ### Disadvantages
+
 - ❌ Eventual consistency
 - ❌ Complex error handling
 - ❌ Difficult debugging
@@ -310,6 +350,7 @@ Central orchestrator coordinates the saga flow.
 - ❌ No isolation (dirty reads possible)
 
 ### Use Cases
+
 - Microservices architectures
 - Long-running business processes
 - Cross-service transactions
@@ -322,22 +363,26 @@ Central orchestrator coordinates the saga flow.
 ## 5. Event Sourcing
 
 ### Overview
+
 Event Sourcing is a pattern where state changes are stored as a sequence of immutable events rather than storing just the current state. The current state is derived by replaying all events.
 
 ### Core Concepts
 
 **Event Store**
+
 - Append-only log of domain events
 - Events are immutable (never updated or deleted)
 - Each event represents a state change
 - Events ordered by timestamp/sequence number
 
 **Event Replay**
+
 - Current state reconstructed by replaying events
 - Can rebuild state at any point in time
 - Enables temporal queries ("what was the state on date X?")
 
 **Snapshots**
+
 - Periodic state snapshots for performance
 - Avoid replaying thousands of events
 - Optimization technique, not core requirement
@@ -414,6 +459,7 @@ Event Sourcing is a pattern where state changes are stored as a sequence of immu
 ### Example: Bank Account
 
 **Traditional Approach:**
+
 ```javascript
 // Database stores only current state
 {
@@ -424,34 +470,35 @@ Event Sourcing is a pattern where state changes are stored as a sequence of immu
 ```
 
 **Event Sourcing Approach:**
+
 ```javascript
 // Event Store contains all events
 [
   {
-    eventType: "AccountOpened",
-    accountId: "acc_123",
-    timestamp: "2025-01-01T09:00:00Z",
-    data: { initialBalance: 1000 }
+    eventType: 'AccountOpened',
+    accountId: 'acc_123',
+    timestamp: '2025-01-01T09:00:00Z',
+    data: { initialBalance: 1000 },
   },
   {
-    eventType: "MoneyDeposited",
-    accountId: "acc_123",
-    timestamp: "2025-02-15T14:30:00Z",
-    data: { amount: 500 }
+    eventType: 'MoneyDeposited',
+    accountId: 'acc_123',
+    timestamp: '2025-02-15T14:30:00Z',
+    data: { amount: 500 },
   },
   {
-    eventType: "MoneyWithdrawn",
-    accountId: "acc_123",
-    timestamp: "2025-03-20T11:15:00Z",
-    data: { amount: 200 }
+    eventType: 'MoneyWithdrawn',
+    accountId: 'acc_123',
+    timestamp: '2025-03-20T11:15:00Z',
+    data: { amount: 200 },
   },
   {
-    eventType: "MoneyDeposited",
-    accountId: "acc_123",
-    timestamp: "2025-05-10T16:45:00Z",
-    data: { amount: 200 }
-  }
-]
+    eventType: 'MoneyDeposited',
+    accountId: 'acc_123',
+    timestamp: '2025-05-10T16:45:00Z',
+    data: { amount: 200 },
+  },
+];
 
 // Current balance = 1000 + 500 - 200 + 200 = 1500
 ```
@@ -459,6 +506,7 @@ Event Sourcing is a pattern where state changes are stored as a sequence of immu
 ### Event Sourcing with CQRS
 
 **Perfect Combination:**
+
 - Events are the source of truth (write side)
 - Projections/read models built from events (read side)
 - Enables multiple read models from same events
@@ -477,6 +525,7 @@ Commands → Aggregate → Events → Event Store
 ### Projections (Read Models)
 
 **Projection 1: Current Account Balance**
+
 ```javascript
 // Listens to events and maintains current state
 class AccountBalanceProjection {
@@ -485,7 +534,7 @@ class AccountBalanceProjection {
   }
 
   on(event) {
-    switch(event.eventType) {
+    switch (event.eventType) {
       case 'AccountOpened':
         this.balances[event.accountId] = event.data.initialBalance;
         break;
@@ -501,6 +550,7 @@ class AccountBalanceProjection {
 ```
 
 **Projection 2: Audit Trail**
+
 ```javascript
 // Maintains complete transaction history
 class TransactionHistoryProjection {
@@ -517,7 +567,7 @@ class TransactionHistoryProjection {
       type: event.eventType,
       amount: event.data.amount,
       timestamp: event.timestamp,
-      balance: this.calculateBalance(event.accountId)
+      balance: this.calculateBalance(event.accountId),
     });
   }
 }
@@ -526,11 +576,13 @@ class TransactionHistoryProjection {
 ### Snapshots
 
 **Why Snapshots?**
+
 - Replaying 1 million events is slow
 - Snapshots cache state at a point in time
 - Replay only events after last snapshot
 
 **Snapshot Strategy:**
+
 ```javascript
 // Snapshot every 100 events
 {
@@ -557,6 +609,7 @@ class TransactionHistoryProjection {
 **Challenge:** Events are immutable, but business logic changes
 
 **Solution: Upcasting**
+
 ```javascript
 // Old event format (v1)
 {
@@ -604,6 +657,7 @@ class OrderPlacedUpcaster {
 ### Handling Commands
 
 **Typical Flow:**
+
 ```javascript
 class OrderAggregate {
   constructor(eventStore) {
@@ -622,19 +676,19 @@ class OrderAggregate {
   placeOrder(command) {
     // Validate business rules
     if (this.state.status) {
-      throw new Error("Order already exists");
+      throw new Error('Order already exists');
     }
 
     // Create event
     const event = {
-      eventType: "OrderPlaced",
+      eventType: 'OrderPlaced',
       aggregateId: command.orderId,
       data: {
         customerId: command.customerId,
         items: command.items,
-        totalAmount: command.totalAmount
+        totalAmount: command.totalAmount,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     // Apply to local state
@@ -646,14 +700,14 @@ class OrderAggregate {
 
   // Apply event to state
   apply(event) {
-    switch(event.eventType) {
+    switch (event.eventType) {
       case 'OrderPlaced':
         this.state = {
           orderId: event.aggregateId,
           customerId: event.data.customerId,
           items: event.data.items,
           totalAmount: event.data.totalAmount,
-          status: 'Placed'
+          status: 'Placed',
         };
         break;
       case 'OrderShipped':
@@ -674,6 +728,7 @@ class OrderAggregate {
 ```
 
 ### Advantages
+
 - ✅ **Complete Audit Trail**: Every state change is recorded
 - ✅ **Temporal Queries**: Query state at any point in time
 - ✅ **Event Replay**: Rebuild state, fix bugs by replaying with new logic
@@ -684,6 +739,7 @@ class OrderAggregate {
 - ✅ **No Lost Information**: Never delete data, only append
 
 ### Disadvantages
+
 - ❌ **Complexity**: Higher learning curve and development complexity
 - ❌ **Eventual Consistency**: Read models lag behind events
 - ❌ **Event Schema Evolution**: Managing event versioning is challenging
@@ -693,6 +749,7 @@ class OrderAggregate {
 - ❌ **Operational Complexity**: More moving parts to monitor
 
 ### Use Cases
+
 - **Financial Systems**: Banking, payments, accounting (audit requirements)
 - **E-Commerce**: Order processing, inventory management
 - **Compliance-Heavy Domains**: Healthcare, legal, regulatory systems
@@ -705,11 +762,13 @@ class OrderAggregate {
 ### Event Store Technologies
 
 **Specialized Event Stores:**
+
 - **EventStoreDB**: Purpose-built for event sourcing
 - **Axon Server**: CQRS and Event Sourcing platform
 - **Marten**: Event store for PostgreSQL
 
 **General Purpose:**
+
 - **Kafka**: Distributed event streaming
 - **AWS DynamoDB**: With proper schema design
 - **MongoDB**: Document store with append-only pattern
@@ -767,44 +826,44 @@ class OrderAggregate {
 // Event Stream for Order "ORD-123"
 [
   {
-    eventType: "OrderPlaced",
-    orderId: "ORD-123",
-    timestamp: "2025-10-06T09:00:00Z",
+    eventType: 'OrderPlaced',
+    orderId: 'ORD-123',
+    timestamp: '2025-10-06T09:00:00Z',
     data: {
-      customerId: "CUST-456",
-      items: [{ productId: "PROD-1", qty: 2, price: 50 }],
-      total: 100
-    }
+      customerId: 'CUST-456',
+      items: [{ productId: 'PROD-1', qty: 2, price: 50 }],
+      total: 100,
+    },
   },
   {
-    eventType: "PaymentReceived",
-    orderId: "ORD-123",
-    timestamp: "2025-10-06T09:01:30Z",
+    eventType: 'PaymentReceived',
+    orderId: 'ORD-123',
+    timestamp: '2025-10-06T09:01:30Z',
     data: {
-      paymentId: "PAY-789",
+      paymentId: 'PAY-789',
       amount: 100,
-      method: "CreditCard"
-    }
+      method: 'CreditCard',
+    },
   },
   {
-    eventType: "OrderShipped",
-    orderId: "ORD-123",
-    timestamp: "2025-10-06T14:30:00Z",
+    eventType: 'OrderShipped',
+    orderId: 'ORD-123',
+    timestamp: '2025-10-06T14:30:00Z',
     data: {
-      trackingNumber: "TRK-ABC123",
-      carrier: "FedEx"
-    }
+      trackingNumber: 'TRK-ABC123',
+      carrier: 'FedEx',
+    },
   },
   {
-    eventType: "OrderDelivered",
-    orderId: "ORD-123",
-    timestamp: "2025-10-08T16:45:00Z",
+    eventType: 'OrderDelivered',
+    orderId: 'ORD-123',
+    timestamp: '2025-10-08T16:45:00Z',
     data: {
-      deliveredAt: "2025-10-08T16:45:00Z",
-      signedBy: "John Doe"
-    }
-  }
-]
+      deliveredAt: '2025-10-08T16:45:00Z',
+      signedBy: 'John Doe',
+    },
+  },
+];
 
 // Benefits:
 // - Complete history of order lifecycle
@@ -817,19 +876,20 @@ class OrderAggregate {
 
 ## Pattern Comparison
 
-| Pattern | Consistency | Complexity | Performance | Scalability | Use Case |
-|---------|------------|------------|-------------|-------------|----------|
-| **2PC** | Strong | Medium | Poor | Poor | Legacy distributed DBs |
-| **3PC** | Strong | High | Poor | Poor | Rarely used |
-| **CQRS** | Eventual | High | Excellent | Excellent | Read-heavy systems |
-| **Saga** | Eventual | Medium-High | Good | Excellent | Microservices |
-| **Event Sourcing** | Eventual | High | Good | Excellent | Audit trails, temporal queries |
+| Pattern            | Consistency | Complexity  | Performance | Scalability | Use Case                       |
+| ------------------ | ----------- | ----------- | ----------- | ----------- | ------------------------------ |
+| **2PC**            | Strong      | Medium      | Poor        | Poor        | Legacy distributed DBs         |
+| **3PC**            | Strong      | High        | Poor        | Poor        | Rarely used                    |
+| **CQRS**           | Eventual    | High        | Excellent   | Excellent   | Read-heavy systems             |
+| **Saga**           | Eventual    | Medium-High | Good        | Excellent   | Microservices                  |
+| **Event Sourcing** | Eventual    | High        | Good        | Excellent   | Audit trails, temporal queries |
 
 ---
 
 ## Best Practices
 
 ### General Guidelines
+
 1. **Prefer Saga over 2PC/3PC** in microservices
 2. **Use CQRS when read/write patterns differ significantly**
 3. **Combine Event Sourcing with CQRS** for complete audit trails
@@ -838,6 +898,7 @@ class OrderAggregate {
 6. **Monitor and alert** on saga failures and compensations
 
 ### Event Sourcing Best Practices
+
 - Design events around business domain, not technical operations
 - Never modify or delete events
 - Implement event versioning from day one
@@ -846,6 +907,7 @@ class OrderAggregate {
 - Keep events immutable and serializable
 
 ### Saga Best Practices
+
 - Keep sagas short (3-4 steps ideal)
 - Make compensations idempotent
 - Use orchestration for complex workflows
@@ -853,6 +915,7 @@ class OrderAggregate {
 - Log all state transitions
 
 ### CQRS Best Practices
+
 - Start simple, add complexity only when needed
 - Use domain events for synchronization
 - Version your read models
@@ -884,11 +947,13 @@ Compensations if step 3 fails:
 ### Using CQRS
 
 **Command Side:**
+
 - BookFlight command
 - Validates availability
 - Creates reservation
 
 **Query Side:**
+
 - Flight search (denormalized with pricing, seats, routes)
 - Booking history (optimized for user queries)
 - Admin dashboard (different aggregations)
@@ -900,6 +965,7 @@ Each read model optimized for its specific use case!
 ## Conclusion
 
 Modern microservices architectures typically combine these patterns:
+
 - **Saga** for distributed transactions across services
 - **CQRS** for read/write optimization and scalability
 - **Event Sourcing** with CQRS for complete audit trails and temporal queries
@@ -907,6 +973,7 @@ Modern microservices architectures typically combine these patterns:
 - Avoid 2PC/3PC in distributed systems due to blocking and poor scalability
 
 **Common Combinations:**
+
 - **CQRS + Event Sourcing**: Events as source of truth, multiple read models
 - **Saga + Event Sourcing**: Track saga state as events, enable replay and debugging
 - **All Three Together**: Enterprise-grade microservices with full auditability

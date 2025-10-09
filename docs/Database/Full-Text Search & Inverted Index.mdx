@@ -16,6 +16,7 @@ Full-text search (FTS) is a technique for searching text within documents or dat
 An **inverted index** is the core data structure behind full-text search. It maps terms (words) to their locations in documents.
 
 **Normal Index (Forward Index):**
+
 ```
 Document 1 → "The quick brown fox"
 Document 2 → "The lazy dog sleeps"
@@ -23,6 +24,7 @@ Document 3 → "Quick brown dogs run"
 ```
 
 **Inverted Index:**
+
 ```
 "quick"  → [Doc 1, Doc 3]
 "brown"  → [Doc 1, Doc 3]
@@ -36,21 +38,25 @@ Document 3 → "Quick brown dogs run"
 ### How It Works Underneath
 
 1. **Tokenization**: Break text into terms (words)
+
    ```
    "The Quick Brown Fox!" → ["the", "quick", "brown", "fox"]
    ```
 
 2. **Normalization**: Convert to lowercase, remove punctuation
+
    ```
    ["the", "quick", "brown", "fox"] → ["the", "quick", "brown", "fox"]
    ```
 
 3. **Stop Words Removal**: Remove common words
+
    ```
    ["the", "quick", "brown", "fox"] → ["quick", "brown", "fox"]
    ```
 
 4. **Stemming**: Reduce words to root form
+
    ```
    ["running", "runs", "ran"] → ["run", "run", "run"]
    ```
@@ -118,6 +124,7 @@ ORDER BY relevance DESC;
 ```
 
 **How it works:**
+
 - Automatically removes stop words (the, is, a, etc.)
 - Words appearing in >50% of rows are treated as stop words
 - Returns relevance score (higher = better match)
@@ -143,6 +150,7 @@ WHERE MATCH(title, body) AGAINST('"full-text search"' IN BOOLEAN MODE);
 ```
 
 **Boolean operators:**
+
 - `+` Must include term
 - `-` Must exclude term
 - `>` Increase relevance
@@ -161,6 +169,7 @@ AGAINST('database' WITH QUERY EXPANSION);
 ```
 
 **How it works:**
+
 1. Performs initial search
 2. Finds most relevant documents
 3. Extracts related terms from those documents
@@ -234,6 +243,7 @@ ORDER BY rank DESC;
 ```
 
 **Components:**
+
 - `to_tsvector()`: Converts text to searchable tokens
 - `to_tsquery()`: Converts search query to tokens
 - `@@`: Match operator
@@ -356,11 +366,13 @@ CREATE INDEX idx_gist ON articles USING GIST(search_vector);
 ```
 
 **Choose GIN for:**
+
 - Read-heavy workloads
 - Static or infrequently updated data
 - Best search performance
 
 **Choose GiST for:**
+
 - Write-heavy workloads
 - Frequently updated data
 - Acceptable search performance
@@ -370,6 +382,7 @@ CREATE INDEX idx_gist ON articles USING GIST(search_vector);
 ## Performance Comparison Example
 
 ### Test Data
+
 ```sql
 -- 100k articles
 CREATE TABLE large_articles (
@@ -384,18 +397,19 @@ CREATE TABLE large_articles (
 
 ### Query Performance
 
-| Operation | LIKE Query | MySQL FTS | PostgreSQL FTS |
-|-----------|-----------|-----------|----------------|
-| Simple search | ~2000ms | ~50ms | ~30ms |
-| Complex boolean | Not possible | ~80ms | ~40ms |
-| Ranking | Not possible | Built-in | Built-in |
-| Multi-language | Manual | Limited | Excellent |
+| Operation       | LIKE Query   | MySQL FTS | PostgreSQL FTS |
+| --------------- | ------------ | --------- | -------------- |
+| Simple search   | ~2000ms      | ~50ms     | ~30ms          |
+| Complex boolean | Not possible | ~80ms     | ~40ms          |
+| Ranking         | Not possible | Built-in  | Built-in       |
+| Multi-language  | Manual       | Limited   | Excellent      |
 
 ---
 
 ## Best Practices
 
 ### MySQL
+
 1. Use `InnoDB` for production (ACID compliance)
 2. Adjust `ft_min_word_length` for your language
 3. Use Boolean mode for complex queries
@@ -403,6 +417,7 @@ CREATE TABLE large_articles (
 5. Consider partitioning for very large tables
 
 ### PostgreSQL
+
 1. Always use GIN indexes for search columns
 2. Use generated columns for `tsvector` storage
 3. Choose appropriate language for stemming
@@ -411,6 +426,7 @@ CREATE TABLE large_articles (
 6. Use `ts_rank_cd()` for cover density ranking
 
 ### General
+
 1. Analyze your query patterns before indexing
 2. Monitor index size vs table size
 3. Test with realistic data volumes

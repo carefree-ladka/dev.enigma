@@ -1,9 +1,9 @@
 ---
-title: "Spotify System Design"
-description: "Complete system design for Spotify music streaming platform"
-author: "System Design Template"
-date: "2025-10-05"
-tags: ["system-design", "streaming", "spotify", "music", "audio"]
+title: 'Spotify System Design'
+description: 'Complete system design for Spotify music streaming platform'
+author: 'System Design Template'
+date: '2025-10-05'
+tags: ['system-design', 'streaming', 'spotify', 'music', 'audio']
 ---
 
 # Spotify System Design
@@ -32,6 +32,7 @@ tags: ["system-design", "streaming", "spotify", "music", "audio"]
 ### Capacity Estimation
 
 **Assumptions:**
+
 - Total Users: 500M
 - Daily Active Users (DAU): 200M
 - Concurrent listeners (peak): 100M
@@ -40,6 +41,7 @@ tags: ["system-design", "streaming", "spotify", "music", "audio"]
 - Catalog size: 100M tracks
 
 **Storage:**
+
 ```
 Audio Storage = 100M tracks × 5 MB × 3 quality levels = 1.5 PB
 With CDN replication (×30 regions) = 45 PB
@@ -48,6 +50,7 @@ User Data (playlists, history) = 500M users × 5 MB = 2.5 PB
 ```
 
 **Bandwidth:**
+
 ```
 Peak Concurrent Streams = 100M users
 Average Bitrate = 320 kbps = 40 KB/s
@@ -55,6 +58,7 @@ Peak Bandwidth = 100M × 40 KB/s = 4 TB/s = 32 Tbps
 ```
 
 **QPS:**
+
 ```
 Metadata Requests = 200M DAU × 100 requests/day / 86400s = ~230K QPS
 Audio Chunk Requests = 100M concurrent × 10 chunks/sec = 1B requests/sec (CDN)
@@ -66,24 +70,31 @@ Search Queries = 200M DAU × 10 searches/day / 86400s = ~23K QPS
 ## 2. Core Entities (~2 minutes)
 
 ### User
+
 - `userId`, `email`, `displayName`, `subscriptionType` (Free/Premium), `country`
 
 ### Track
+
 - `trackId`, `title`, `artistIds[]`, `albumId`, `duration`, `releaseDate`, `genres[]`, `isrc`
 
 ### Artist
+
 - `artistId`, `name`, `bio`, `imageUrl`, `followerCount`, `verified`
 
 ### Album
+
 - `albumId`, `title`, `artistId`, `releaseDate`, `trackIds[]`, `coverArtUrl`
 
 ### Playlist
+
 - `playlistId`, `name`, `ownerId`, `trackIds[]`, `isPublic`, `isCollaborative`, `followerCount`
 
 ### ListeningHistory
+
 - `userId`, `trackId`, `playedAt`, `duration`, `context` (playlist/album/radio)
 
 ### SocialActivity
+
 - `userId`, `activityType` (listening/playlist_created), `trackId`, `timestamp`
 
 ---
@@ -91,6 +102,7 @@ Search Queries = 200M DAU × 10 searches/day / 86400s = ~23K QPS
 ## 3. API Interface (~5 minutes)
 
 ### Protocol Choice
+
 - **REST** for metadata and user operations
 - **WebSocket** for real-time features (friend activity, collaborative playlists)
 - **HTTP/2** for audio streaming with range requests
@@ -98,6 +110,7 @@ Search Queries = 200M DAU × 10 searches/day / 86400s = ~23K QPS
 ### API Endpoints
 
 #### Authentication
+
 ```http
 POST /v1/auth/login
 { "email": "user@example.com", "password": "hash" }
@@ -105,6 +118,7 @@ Response: { "accessToken": "jwt", "refreshToken": "refresh_jwt" }
 ```
 
 #### Search & Browse
+
 ```http
 GET /v1/search?q=bohemian&type=track,artist&limit=20
 Response: {
@@ -119,6 +133,7 @@ GET /v1/browse/categories/{categoryId}/playlists
 ```
 
 #### Playback
+
 ```http
 GET /v1/tracks/{trackId}/stream?quality=high
 Response: Binary audio stream (MP3/OGG/AAC)
@@ -137,6 +152,7 @@ GET /v1/me/player/currently-playing
 ```
 
 #### Playlists
+
 ```http
 GET /v1/playlists/{playlistId}
 POST /v1/users/{userId}/playlists
@@ -149,6 +165,7 @@ DELETE /v1/playlists/{playlistId}/tracks
 ```
 
 #### Social Features
+
 ```http
 GET /v1/me/following?type=artist
 PUT /v1/me/following?type=artist&ids=artistId1,artistId2
@@ -182,14 +199,17 @@ Messages: { "type": "friend_activity", "data": {...} }
 ### Architecture Components
 
 **Client Layer:**
+
 - Desktop/Mobile/Web Apps with audio player
 - Offline storage for downloaded tracks (Premium users)
 
 **Edge Layer:**
+
 - CDN (CloudFront/Fastly) - caches audio files globally
 - Edge Servers - 200-300 PoPs worldwide
 
 **API Layer:**
+
 - API Gateway - authentication, rate limiting
 - Load Balancer - distributes traffic
 - Microservices:
@@ -200,6 +220,7 @@ Messages: { "type": "friend_activity", "data": {...} }
   - **User Service** - profiles, subscriptions
 
 **Data Layer:**
+
 - **PostgreSQL** - users, tracks, albums, artists (normalized)
 - **Cassandra** - listening history, scrobbles (time-series)
 - **MongoDB** - playlists (flexible schema, nested arrays)
@@ -208,12 +229,14 @@ Messages: { "type": "friend_activity", "data": {...} }
 - **S3/Object Storage** - audio files, images
 
 **Processing Layer:**
+
 - **Kafka** - event streaming (scrobbles, social events)
 - **Recommendation Engine** - ML model (collaborative filtering)
 - **Analytics Pipeline** - Spark jobs for insights
 - **Background Workers** - async processing
 
 **Real-time Layer:**
+
 - **WebSocket Servers** - friend activity, collaborative editing
 - **Redis Pub/Sub** - message broadcasting
 
@@ -342,18 +365,19 @@ graph TB
 ### 7.1 Audio Streaming Architecture
 
 **Key Difference from Video**: Audio files are smaller (3-5 MB vs 1 GB), so we can:
+
 - Stream entire file vs chunked delivery
 - Support offline downloads easily
 - Cache more aggressively
 
 #### Audio Formats & Quality Levels
 
-| Quality | Bitrate | Format | Use Case |
-|---------|---------|--------|----------|
-| Low | 96 kbps | OGG Vorbis | Mobile data saver |
-| Normal | 160 kbps | OGG Vorbis | Free tier, default |
-| High | 320 kbps | OGG Vorbis | Premium users |
-| Lossless | 1411 kbps | FLAC | Audiophiles (HiFi tier) |
+| Quality  | Bitrate   | Format     | Use Case                |
+| -------- | --------- | ---------- | ----------------------- |
+| Low      | 96 kbps   | OGG Vorbis | Mobile data saver       |
+| Normal   | 160 kbps  | OGG Vorbis | Free tier, default      |
+| High     | 320 kbps  | OGG Vorbis | Premium users           |
+| Lossless | 1411 kbps | FLAC       | Audiophiles (HiFi tier) |
 
 #### Streaming Protocol
 
@@ -371,6 +395,7 @@ Accept-Ranges: bytes
 ```
 
 **Client Logic:**
+
 - Request file in 1MB chunks
 - Buffer 30-60 seconds ahead
 - Prefetch next 2-3 tracks in queue
@@ -422,6 +447,7 @@ GET /tracks/_search
 ```
 
 **Optimization:**
+
 - Index sharding: 50 shards × 3 replicas
 - Search across shards in parallel
 - Cache top 10K queries (60% hit rate)
@@ -432,6 +458,7 @@ GET /tracks/_search
 ### 7.3 Playlist Management (MongoDB)
 
 **Why MongoDB?**
+
 - Flexible schema for nested arrays
 - Fast array operations (add/remove tracks)
 - Horizontal scaling with sharding
@@ -491,6 +518,7 @@ db.playlists.updateOne(
 ```
 
 **Sharding Strategy:**
+
 - Shard key: `owner_id` (co-locate user's playlists)
 - Hot shard problem: Popular public playlists cached in Redis
 
@@ -499,6 +527,7 @@ db.playlists.updateOne(
 ### 7.4 Listening History & Scrobbling (Cassandra)
 
 **Why Cassandra?**
+
 - Write-heavy: 100M concurrent users × 1 scrobble/30s = 3.3M writes/sec
 - Time-series data (query by user + time range)
 - Eventual consistency acceptable
@@ -537,6 +566,7 @@ Client --(every 30s)--> Kafka --> Batch Worker --> Cassandra
 ```
 
 **Batching Strategy:**
+
 - Buffer 1000 scrobbles or 10 seconds
 - Batch insert to Cassandra
 - Reduces write amplification
@@ -546,6 +576,7 @@ Client --(every 30s)--> Kafka --> Batch Worker --> Cassandra
 ### 7.5 Caching Strategy (Multi-Tier)
 
 #### Layer 1: CDN Cache (Audio Files)
+
 - 95% hit rate for popular tracks (top 1M tracks)
 - TTL: 90 days
 - Cache warming: Push new releases to all edges
@@ -589,6 +620,7 @@ public List<Track> getPopularTracks(String country) {
 ### 7.6 Real-Time Social Features (WebSocket)
 
 **Use Cases:**
+
 - Friend activity feed (who's listening to what)
 - Collaborative playlist editing
 - Live lyrics synchronization
@@ -607,26 +639,27 @@ Client <--WebSocket--> Gateway <--Redis Pub/Sub--> Services
 ```javascript
 // Client subscribes to friend activity
 ws.send({
-  type: "subscribe",
-  channel: "user:123:friends_activity"
-})
+  type: 'subscribe',
+  channel: 'user:123:friends_activity',
+});
 
 // Backend publishes when friend plays song
-redis.publish("user:123:friends_activity", {
-  friend_id: "user-456",
-  track_id: "track-789",
-  artist_name: "Queen",
-  track_name: "Bohemian Rhapsody",
-  timestamp: 1696512000
-})
+redis.publish('user:123:friends_activity', {
+  friend_id: 'user-456',
+  track_id: 'track-789',
+  artist_name: 'Queen',
+  track_name: 'Bohemian Rhapsody',
+  timestamp: 1696512000,
+});
 
 // Client receives real-time update
-ws.onmessage = (event) => {
+ws.onmessage = event => {
   // Update friend activity UI
-}
+};
 ```
 
 **Scaling WebSockets:**
+
 - Sticky sessions (user always connects to same server)
 - Redis Pub/Sub for cross-server messaging
 - Auto-scale based on connection count
@@ -729,7 +762,6 @@ def get_radio_next_track(user_id, current_track_id):
 min_replicas: 100
 max_replicas: 2000
 target_cpu_utilization: 70%
-
 # Peak hours: 6 PM - 11 PM (3x traffic)
 # Scale up 30 minutes before peak
 ```
@@ -785,6 +817,7 @@ Playback:
 ```
 
 **Storage Limits:**
+
 - Free tier: 0 downloads
 - Premium: 10,000 tracks across 5 devices
 
@@ -795,17 +828,20 @@ Playback:
 #### Key Metrics
 
 **Playback Quality:**
+
 - **Time to First Byte (TTFB)**: < 200ms
 - **Buffering Ratio**: < 1% of playback time
 - **Failed Streams**: < 0.1%
 - **Audio Quality Distribution** (96/160/320 kbps)
 
 **Application:**
+
 - API latency (P50, P95, P99)
 - Search latency (< 100ms P99)
 - Error rates (4xx, 5xx)
 
 **Infrastructure:**
+
 - CDN hit ratio (target: > 95%)
 - Database query latency
 - Kafka lag (< 10s)
@@ -857,28 +893,28 @@ Action: Scale consumer groups, check Cassandra write performance
 
 ## Trade-offs & Considerations
 
-| Decision | Pro | Con |
-|----------|-----|-----|
-| CDN Push Strategy | Lower latency, predictable performance | Higher storage costs (~45 PB) |
-| MongoDB for Playlists | Flexible schema, fast array ops | Complex queries limited, need indexing |
-| Cassandra for History | Massive write throughput | Eventual consistency, complex query patterns |
-| WebSocket for Social | Real-time updates, low latency | Connection management complexity, server costs |
-| Pre-computed Recommendations | Fast serving | Stale data (6-hour refresh cycle) |
-| Offline DRM | Enables offline playback | Complex licensing, key management |
+| Decision                     | Pro                                    | Con                                            |
+| ---------------------------- | -------------------------------------- | ---------------------------------------------- |
+| CDN Push Strategy            | Lower latency, predictable performance | Higher storage costs (~45 PB)                  |
+| MongoDB for Playlists        | Flexible schema, fast array ops        | Complex queries limited, need indexing         |
+| Cassandra for History        | Massive write throughput               | Eventual consistency, complex query patterns   |
+| WebSocket for Social         | Real-time updates, low latency         | Connection management complexity, server costs |
+| Pre-computed Recommendations | Fast serving                           | Stale data (6-hour refresh cycle)              |
+| Offline DRM                  | Enables offline playback               | Complex licensing, key management              |
 
 ---
 
 ## Key Differences from Netflix
 
-| Aspect | Spotify | Netflix |
-|--------|---------|---------|
-| File Size | 3-5 MB (songs) | 1-5 GB (movies) |
-| Streaming | Entire file or chunked | Always chunked (HLS/DASH) |
-| Offline | Common (Premium feature) | Rare (limited catalog) |
-| Social Features | Heavy (friend activity, collaborative playlists) | Light (shared profiles) |
-| Content Creation | Artist uploads, licensing | Original + licensed content |
-| Recommendation | Track-level, session-based | Title-level, slower refresh |
-| Real-time Sync | Multi-device handoff critical | Less critical |
+| Aspect           | Spotify                                          | Netflix                     |
+| ---------------- | ------------------------------------------------ | --------------------------- |
+| File Size        | 3-5 MB (songs)                                   | 1-5 GB (movies)             |
+| Streaming        | Entire file or chunked                           | Always chunked (HLS/DASH)   |
+| Offline          | Common (Premium feature)                         | Rare (limited catalog)      |
+| Social Features  | Heavy (friend activity, collaborative playlists) | Light (shared profiles)     |
+| Content Creation | Artist uploads, licensing                        | Original + licensed content |
+| Recommendation   | Track-level, session-based                       | Title-level, slower refresh |
+| Real-time Sync   | Multi-device handoff critical                    | Less critical               |
 
 ---
 

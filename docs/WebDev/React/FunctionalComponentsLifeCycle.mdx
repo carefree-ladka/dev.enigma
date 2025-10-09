@@ -14,12 +14,12 @@ When a component is being created and inserted into the DOM:
 function ExampleComponent({ initialData }) {
   // 1. Component initialization
   const [data, setData] = useState(initialData);
-  
+
   // 2. First render setup
   useEffect(() => {
     // Runs after first render
     console.log('Component mounted');
-    
+
     // Cleanup function (optional)
     return () => {
       console.log('Component will unmount');
@@ -37,18 +37,18 @@ When a component is re-rendering due to changes in props or state:
 ```javascript
 function UpdatingExample({ user }) {
   const [count, setCount] = useState(0);
-  
+
   // Runs on specific prop/state changes
   useEffect(() => {
     console.log('user or count updated');
     // Side effects here
   }, [user, count]); // Dependency array with values to watch
-  
+
   // Runs on every render
   useEffect(() => {
     console.log('Component updated');
   }); // No dependency array
-  
+
   return (
     <div>
       <p>User: {user}</p>
@@ -67,14 +67,14 @@ function UnmountExample() {
   useEffect(() => {
     // Setup phase
     const subscription = setupSubscription();
-    
+
     // Cleanup phase
     return () => {
       subscription.unsubscribe();
       console.log('Cleanup performed');
     };
   }, []);
-  
+
   return <div>Subscribed Component</div>;
 }
 ```
@@ -88,16 +88,16 @@ function DataFetchingComponent({ id }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
     let mounted = true;
-    
+
     async function fetchData() {
       try {
         setLoading(true);
         const response = await fetch(`/api/data/${id}`);
         const result = await response.json();
-        
+
         if (mounted) {
           setData(result);
           setLoading(false);
@@ -109,14 +109,14 @@ function DataFetchingComponent({ id }) {
         }
       }
     }
-    
+
     fetchData();
-    
+
     return () => {
       mounted = false;
     };
   }, [id]);
-  
+
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
   return <div>{data}</div>;
@@ -131,14 +131,14 @@ function EventListenerComponent() {
     const handleResize = () => {
       console.log('Window resized');
     };
-    
+
     window.addEventListener('resize', handleResize);
-    
+
     return () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
-  
+
   return <div>Window Size Observer</div>;
 }
 ```
@@ -148,6 +148,7 @@ function EventListenerComponent() {
 ### 1. Cleanup Functions
 
 Always include cleanup functions in useEffect when:
+
 - Setting up subscriptions
 - Adding event listeners
 - Starting timers
@@ -159,7 +160,7 @@ function BestPracticeExample() {
     const timer = setInterval(() => {
       console.log('Timer tick');
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 }
@@ -208,7 +209,7 @@ if (condition) {
 // ❌ Wrong - Creates infinite loop
 function InfiniteLoopExample() {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     setCount(count + 1); // Triggers re-render, which triggers effect again
   }, [count]);
@@ -217,7 +218,7 @@ function InfiniteLoopExample() {
 // ✅ Correct - Using functional update
 function FixedExample() {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     setCount(prev => prev + 1);
   }, []); // Runs once on mount
@@ -230,12 +231,12 @@ function FixedExample() {
 // ❌ Wrong - Stale closure problem
 function StaleClosureExample() {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     const timer = setInterval(() => {
       console.log(count); // Will always log initial value
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []); // Missing dependency
 }
@@ -243,12 +244,12 @@ function StaleClosureExample() {
 // ✅ Correct - Using functional update
 function FixedStaleClosureExample() {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     const timer = setInterval(() => {
       setCount(prev => prev + 1); // Uses latest state
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []); // No dependencies needed
 }
@@ -264,12 +265,12 @@ function OptimizedComponent({ data }) {
   const processedData = useMemo(() => {
     return expensiveOperation(data);
   }, [data]);
-  
+
   // Memoize callbacks
   const handleClick = useCallback(() => {
     console.log(processedData);
   }, [processedData]);
-  
+
   return <button onClick={handleClick}>Process Data</button>;
 }
 ```
@@ -284,10 +285,13 @@ const MemoizedChild = React.memo(function Child({ data }) {
 
 function Parent() {
   // Memoize value to prevent unnecessary re-renders
-  const memoizedValue = useMemo(() => ({
-    complex: 'data structure'
-  }), []);
-  
+  const memoizedValue = useMemo(
+    () => ({
+      complex: 'data structure',
+    }),
+    []
+  );
+
   return <MemoizedChild data={memoizedValue} />;
 }
 ```
