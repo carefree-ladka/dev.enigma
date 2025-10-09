@@ -1,0 +1,1618 @@
+# Complete Guide to Dexie.js & Offline-First Apps
+
+## Table of Contents
+
+1. [Introduction to Dexie.js](#introduction)
+2. [Why Dexie.js for Offline-First Apps](#why-dexie)
+3. [Getting Started](#getting-started)
+4. [Basic CRUD Operations](#crud-operations)
+5. [Queries and Filtering](#queries)
+6. [Transactions](#transactions)
+7. [Offline-First Sync Pattern](#sync-pattern)
+8. [React Integration](#react-integration)
+9. [Service Worker Setup](#service-worker)
+10. [Background Sync Implementation](#background-sync)
+11. [Complete Integration Example](#complete-example)
+12. [Conflict Resolution Strategies](#conflict-resolution)
+13. [Production Best Practices](#best-practices)
+
+---
+
+## Introduction to Dexie.js {#introduction}
+
+Dexie.js is a lightweight wrapper around IndexedDB, the browser's built-in database. It simplifies working with IndexedDB's async API and provides a more intuitive interface for transactions, queries, and syncing.
+
+IndexedDB is a powerful client-side storage solution that allows you to store significant amounts of structured data in the browser, making it ideal for offline-first applications.
+
+---
+
+## Why Dexie.js for Offline-First Apps? {#why-dexie}
+
+**Key Benefits:**
+
+- **IndexedDB Powered** → Persists data locally, survives page reloads and offline scenarios
+- **Promise-Based API** → Cleaner, more modern code compared to raw IndexedDB
+- **Rich Queries** → SQL-like methods such as `.where()`, `.equals()`, `.between()`
+- **Atomic Transactions** → Ensures data consistency with atomic reads and writes
+- **Sync Support** → Easily integrates with server synchronization strategies
+- **React Hooks** → First-class support for React with live queries
+
+---
+
+## Getting Started {#getting-started}
+
+### Installation
+
+```bash
+npm install dexie
+```
+
+For React projects, also install:
+
+```bash
+npm install dexie-react-hooks
+```
+
+For Service Worker integration:
+
+```bash
+npm install idb
+```
+
+### Step 1: Define Your Database Schema
+
+```javascript
+import Dexie from 'dexie';
+
+// Create database instance
+const db = new Dexie("MyOfflineAppDB");
+
+// Define schema with version
+db.version(1).stores({
+  todos: "++id, title, completed, updatedAt, synced",
+  users: "++id, name, email",
+  notes: "++id, content, createdAt, tags"
+});
+
+export default db;
+```
+
+**Schema Syntax:**
+
+- `++id` → Auto-increment primary key
+- `id` → Custom primary key (you manage the values)
+- `title, completed` → Indexed fields for faster queries
+- Non-indexed fields can still be stored, they just won't be optimized for queries
+
+---
+
+## Basic CRUD Operations {#crud-operations}
+
+### Create (Add Data)
+
+```javascript
+// Add single record
+await db.todos.add({
+  title: "Learn Dexie.js",
+  completed: false,
+  updatedAt: Date.now()
+});
+
+// Add multiple records
+await db.todos.bulkAdd([
+  { title: "Task 1", completed: false, updatedAt: Date.now() },
+  { title: "Task 2", completed: true, updatedAt: Date.now() }
+]);
+```
+
+### Read (Query Data)
+
+```javascript
+// Get all records
+const allTodos = await db.todos.toArray();
+
+// Get by primary key
+const todo = await db.todos.get(1);
+
+// Get first matching record
+const firstCompleted = await db.todos
+  .where("completed")
+  .equals(true)
+  .first();
+
+// Count records
+const totalTodos = await db.todos.count();
+```
+
+### Update
+
+```javascript
+// Update by primary key
+await db.todos.update(1, {
+  completed: true,
+  updatedAt: Date.now()
+});
+
+// Update multiple records
+await db.todos
+  .where("completed")
+  .equals(false)
+  .modify({ completed: true });
+```
+
+### Delete
+
+```javascript
+// Delete by primary key
+await db.todos.delete(1);
+
+// Delete multiple records
+await db.todos
+  .where("completed")
+  .equals(true)
+  .delete();
+
+// Clear entire table
+await db.todos.clear();
+```
+
+---
+
+## Queries and Filtering {#queries}
+
+Dexie provides powerful SQL-like query capabilities:
+
+### Basic Queries
+
+```javascript
+// Exact match
+const completed = await db.todos
+  .where("completed")
+  .equals(true)
+  .toArray();
+
+// Range queries
+const recent = await db.todos
+  .where("updatedAt")
+  .above(Date.now() - 86400000) // Last 24 hours
+  .toArray();
+
+const range = await db.todos
+  .where("updatedAt")
+  .between(startDate, endDate)
+  .toArray();
+```
+
+### Advanced Queries
+
+```javascript
+// Search by email
+const user = await db.users
+  .where("email")
+  .equals("john@example.com")
+  .first();
+
+// Multiple conditions with filter
+const important = await db.todos
+  .where("completed")
+  .equals(false)
+  .filter(todo => todo.priority === "high")
+  .toArray();
+
+// Sorting
+const sorted = await db.todos
+  .orderBy("updatedAt")
+  .reverse()
+  .toArray();
+
+// Pagination
+const page = await db.todos
+  .orderBy("createdAt")
+  .offset(20)
+  .limit(10)
+  .toArray();
+```
+
+### Full-Text Search Pattern
+
+```javascript
+// Search in title (case-insensitive)
+const results = await db.todos
+  .filter(todo =>
+    todo.title.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .toArray();
+```
+
+---
+
+## Transactions {#transactions}
+
+Transactions ensure that multiple operations either all succeed or all fail together, maintaining data consistency.
+
+### Basic Transaction
+
+```javascript
+await db.transaction('rw', db.todos, db.users, async () => {
+  const user = await db.users.add({
+    name: "Alice",
+    email: "alice@mail.com"
+  });
+
+  await db.todos.add({
+    title: "Welcome Alice",
+    userId: user,
+    completed: false,
+    updatedAt: Date.now()
+  });
+});
+```
+
+### Transaction Modes
+
+- `'r'` → Read-only
+- `'rw'` → Read-write
+- `'rw!'` → Read-write with explicit commit
+
+### Error Handling in Transactions
+
+```javascript
+try {
+  await db.transaction('rw', db.todos, async () => {
+    await db.todos.add({ title: "Task 1" });
+    await db.todos.add({ title: "Task 2" });
+    // If any operation fails, all changes are rolled back
+  });
+} catch (error) {
+  console.error("Transaction failed:", error);
+}
+```
+
+---
+
+## Offline-First Sync Pattern {#sync-pattern}
+
+The key principle: **Write locally first, sync to server later.**
+
+### Pattern Overview
+
+1. **Write Locally First** → Save all changes immediately to Dexie
+2. **Mark as Unsynced** → Track which records need server sync with a `synced` flag
+3. **Queue Changes** → Keep unsynced items in the database
+4. **Sync on Reconnect** → Push changes to server when online
+5. **Update Status** → Mark items as synced after successful upload
+
+### Implementation
+
+```javascript
+// Add offline task
+async function addTodo(title) {
+  await db.todos.add({
+    title,
+    completed: false,
+    synced: false,
+    updatedAt: Date.now(),
+    createdAt: Date.now()
+  });
+}
+
+// Sync function
+async function syncTodos() {
+  const unsynced = await db.todos
+    .where("synced")
+    .equals(false)
+    .toArray();
+
+  for (const todo of unsynced) {
+    try {
+      // Send to server
+      const response = await fetch("/api/todos", {
+        method: "POST",
+        body: JSON.stringify(todo),
+        headers: { "Content-Type": "application/json" }
+      });
+
+      if (response.ok) {
+        const serverData = await response.json();
+        // Update with server response
+        await db.todos.update(todo.id, {
+          synced: true,
+          serverId: serverData.id,
+          serverVersion: serverData.version
+        });
+      }
+    } catch (err) {
+      console.log("Sync failed, will retry later", err);
+    }
+  }
+}
+
+// Trigger sync on connection change
+window.addEventListener('online', syncTodos);
+```
+
+### Manual Sync Trigger
+
+```javascript
+async function triggerManualSync() {
+  if (navigator.onLine) {
+    await syncTodos();
+    console.log("Sync completed");
+  } else {
+    console.log("Offline - sync will happen when connection is restored");
+  }
+}
+```
+
+---
+
+## React Integration {#react-integration}
+
+Dexie provides excellent React integration through hooks that automatically update your components when data changes.
+
+### Using useLiveQuery
+
+```javascript
+import React, { useState } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import db from "./db";
+
+function TodoList() {
+  const [newTitle, setNewTitle] = useState("");
+
+  // Automatically updates when database changes
+  const todos = useLiveQuery(() => db.todos.toArray(), []);
+
+  const addTodo = async () => {
+    await db.todos.add({
+      title: newTitle,
+      completed: false,
+      synced: false,
+      updatedAt: Date.now()
+    });
+    setNewTitle("");
+  };
+
+  const toggleTodo = async (id, completed) => {
+    await db.todos.update(id, {
+      completed: !completed,
+      synced: false,
+      updatedAt: Date.now()
+    });
+  };
+
+  const deleteTodo = async (id) => {
+    await db.todos.delete(id);
+  };
+
+  return (
+    <div>
+      <input
+        value={newTitle}
+        onChange={(e) => setNewTitle(e.target.value)}
+        placeholder="Add new todo"
+      />
+      <button onClick={addTodo}>Add</button>
+
+      <ul>
+        {todos?.map(todo => (
+          <li key={todo.id}>
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => toggleTodo(todo.id, todo.completed)}
+            />
+            {todo.title}
+            {todo.synced ? " ✅" : " ⏳"}
+            <button onClick={() => deleteTodo(todo.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default TodoList;
+```
+
+### Advanced React Patterns
+
+```javascript
+// Filtered query with live updates
+function CompletedTodos() {
+  const completed = useLiveQuery(
+    () => db.todos.where("completed").equals(true).toArray(),
+    []
+  );
+
+  return (
+    <div>
+      <h2>Completed Tasks ({completed?.length || 0})</h2>
+      {/* ... */}
+    </div>
+  );
+}
+
+// With dependencies
+function UserTodos({ userId }) {
+  const todos = useLiveQuery(
+    () => db.todos.where("userId").equals(userId).toArray(),
+    [userId] // Re-run query when userId changes
+  );
+
+  return <div>{/* ... */}</div>;
+}
+```
+
+---
+
+## Service Worker Setup {#service-worker}
+
+Service Workers enable background sync and offline functionality even when your app is closed.
+
+### Register Service Worker
+
+**src/index.js**
+
+```javascript
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker
+    .register('/sw.js')
+    .then(registration => {
+      console.log('[App] SW registered:', registration.scope);
+    })
+    .catch(err => {
+      console.error('[App] SW registration failed:', err);
+    });
+}
+```
+
+### Basic Service Worker Structure
+
+**public/sw.js**
+
+```javascript
+// Import idb for cleaner IndexedDB access
+importScripts("https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js");
+
+const { openDB } = self.idb;
+
+// Install event
+self.addEventListener('install', event => {
+  console.log('[SW] Installed');
+  self.skipWaiting(); // Activate immediately
+});
+
+// Activate event
+self.addEventListener('activate', event => {
+  console.log('[SW] Activated');
+  event.waitUntil(clients.claim()); // Take control of all clients
+});
+
+// Fetch event (for caching)
+self.addEventListener('fetch', event => {
+  // Handle fetch requests
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
+});
+```
+
+---
+
+## Background Sync Implementation {#background-sync}
+
+Background Sync allows your app to defer actions until the user has stable connectivity.
+
+### App-Side Sync Trigger
+
+**src/db.js**
+
+```javascript
+import Dexie from "dexie";
+
+export const db = new Dexie("MyOfflineAppDB");
+
+db.version(1).stores({
+  todos: "++id, title, completed, updatedAt, synced, serverVersion"
+});
+
+// Add todo offline-first
+export async function addTodo(title) {
+  const id = await db.todos.add({
+    title,
+    completed: false,
+    synced: false,
+    updatedAt: Date.now(),
+    createdAt: Date.now()
+  });
+
+  await triggerSync();
+  return id;
+}
+
+// Request background sync
+export async function triggerSync() {
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.sync.register("sync-todos");
+      console.log("[App] Background sync registered");
+    } catch (err) {
+      console.error("[App] Sync registration failed:", err);
+      // Fallback to immediate sync
+      await manualSync();
+    }
+  } else {
+    console.log("[App] SyncManager not supported, using manual sync");
+    await manualSync();
+  }
+}
+
+// Fallback manual sync
+async function manualSync() {
+  const unsynced = await db.todos.where("synced").equals(false).toArray();
+  // Implement sync logic here
+}
+```
+
+### Service Worker Sync Handler
+
+**public/sw.js**
+
+```javascript
+importScripts("https://cdn.jsdelivr.net/npm/idb@7/build/iife/index-min.js");
+
+const { openDB } = self.idb;
+const DB_NAME = "MyOfflineAppDB";
+const DB_VERSION = 1;
+
+// Background Sync event
+self.addEventListener("sync", event => {
+  console.log("[SW] Sync event triggered:", event.tag);
+
+  if (event.tag === "sync-todos") {
+    event.waitUntil(syncTodos());
+  }
+});
+
+async function syncTodos() {
+  console.log("[SW] Starting sync...");
+
+  try {
+    const db = await openDB(DB_NAME, DB_VERSION);
+    const tx = db.transaction("todos", "readwrite");
+    const store = tx.objectStore("todos");
+
+    const allTodos = await store.getAll();
+    const unsynced = allTodos.filter(todo => !todo.synced);
+
+    console.log(`[SW] Found ${unsynced.length} items to sync`);
+
+    for (const todo of unsynced) {
+      try {
+        const response = await fetch("/api/todos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: todo.title,
+            completed: todo.completed,
+            updatedAt: todo.updatedAt
+          })
+        });
+
+        if (response.ok) {
+          const serverData = await response.json();
+
+          // Update local record
+          todo.synced = true;
+          todo.serverId = serverData.id;
+          todo.serverVersion = serverData.version || Date.now();
+
+          await store.put(todo);
+          console.log(`[SW] Synced: ${todo.title}`);
+        } else {
+          console.warn("[SW] Server rejected:", response.status);
+        }
+      } catch (err) {
+        console.error("[SW] Sync failed for item:", todo.id, err);
+        // Will retry on next sync event
+      }
+    }
+
+    await tx.done;
+    console.log("[SW] Sync completed");
+
+  } catch (err) {
+    console.error("[SW] Sync process failed:", err);
+    throw err; // Rethrow to trigger retry
+  }
+}
+```
+
+---
+
+## Complete Integration Example {#complete-example}
+
+### Full App Structure
+
+**src/db.js**
+
+```javascript
+import Dexie from "dexie";
+
+export const db = new Dexie("TodoAppDB");
+
+db.version(1).stores({
+  todos: "++id, title, completed, updatedAt, synced, serverVersion"
+});
+
+export async function addTodo(title) {
+  const id = await db.todos.add({
+    title,
+    completed: false,
+    synced: false,
+    updatedAt: Date.now(),
+    serverVersion: null
+  });
+  await triggerSync();
+  return id;
+}
+
+export async function updateTodo(id, updates) {
+  await db.todos.update(id, {
+    ...updates,
+    synced: false,
+    updatedAt: Date.now()
+  });
+  await triggerSync();
+}
+
+export async function deleteTodo(id) {
+  await db.todos.delete(id);
+  // Optionally sync deletion to server
+}
+
+export async function triggerSync() {
+  if ("serviceWorker" in navigator && "SyncManager" in window) {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.sync.register("sync-todos");
+  }
+}
+```
+
+**src/App.jsx**
+
+```javascript
+import React, { useState, useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db, addTodo, updateTodo, deleteTodo, triggerSync } from "./db";
+
+function App() {
+  const [newTitle, setNewTitle] = useState("");
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const todos = useLiveQuery(() => db.todos.toArray(), []);
+  const unsyncedCount = useLiveQuery(
+    () => db.todos.where("synced").equals(false).count(),
+    []
+  );
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      triggerSync();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (newTitle.trim()) {
+      await addTodo(newTitle);
+      setNewTitle("");
+    }
+  };
+
+  const handleToggle = async (todo) => {
+    await updateTodo(todo.id, { completed: !todo.completed });
+  };
+
+  const handleDelete = async (id) => {
+    await deleteTodo(id);
+  };
+
+  return (
+    <div className="app">
+      <header>
+        <h1>Offline-First Todo App</h1>
+        <div className="status">
+          {isOnline ? "🟢 Online" : "🔴 Offline"}
+          {unsyncedCount > 0 && ` (${unsyncedCount} unsynced)`}
+        </div>
+      </header>
+
+      <form onSubmit={handleAdd}>
+        <input
+          type="text"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Add new todo"
+        />
+        <button type="submit">Add</button>
+      </form>
+
+      <ul className="todo-list">
+        {todos?.map(todo => (
+          <li key={todo.id} className={todo.completed ? "completed" : ""}>
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => handleToggle(todo)}
+            />
+            <span>{todo.title}</span>
+            <span className="sync-status">
+              {todo.synced ? "✅" : "⏳"}
+            </span>
+            <button onClick={() => handleDelete(todo.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+
+      {todos?.length === 0 && (
+        <p className="empty">No todos yet. Add one above!</p>
+      )}
+    </div>
+  );
+}
+
+export default App;
+```
+
+**src/index.js**
+
+```javascript
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+// Register Service Worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then(registration => {
+        console.log("SW registered:", registration.scope);
+      })
+      .catch(err => {
+        console.error("SW registration failed:", err);
+      });
+  });
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+```
+
+---
+
+## Conflict Resolution Strategies {#conflict-resolution}
+
+Conflicts occur when the same record is modified both offline and on the server.
+
+### Why Conflicts Happen
+
+**Scenario:**
+1. User goes offline
+2. User updates a todo: `completed = false → true`
+3. Meanwhile, another device updates the server: `title = "Buy milk" → "Buy milk + bread"`
+4. When sync happens → two versions exist
+
+### Strategy 1: Last-Write-Wins (LWW)
+
+Compare timestamps and keep the most recent version.
+
+**Pros:** Simple, fast
+**Cons:** May lose important changes
+
+```javascript
+async function syncWithLWW(todo) {
+  try {
+    // Fetch server version
+    const response = await fetch(`/api/todos/${todo.serverId}`);
+    const serverTodo = await response.json();
+
+    // Compare timestamps
+    if (todo.updatedAt > serverTodo.updatedAt) {
+      // Client is newer → send to server
+      await fetch(`/api/todos/${todo.serverId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(todo)
+      });
+    } else {
+      // Server is newer → update local
+      await db.todos.update(todo.id, {
+        ...serverTodo,
+        synced: true,
+        serverVersion: serverTodo.version
+      });
+    }
+  } catch (err) {
+    console.error("Sync failed:", err);
+  }
+}
+```
+
+### Strategy 2: Client-Wins or Server-Wins
+
+Always prefer one side.
+
+```javascript
+// Client-Wins: Always push local changes
+async function syncClientWins(todo) {
+  await fetch(`/api/todos/${todo.serverId}`, {
+    method: "PUT",
+    body: JSON.stringify(todo)
+  });
+  await db.todos.update(todo.id, { synced: true });
+}
+
+// Server-Wins: Always pull server changes
+async function syncServerWins(todo) {
+  const response = await fetch(`/api/todos/${todo.serverId}`);
+  const serverTodo = await response.json();
+  await db.todos.update(todo.id, { ...serverTodo, synced: true });
+}
+```
+
+### Strategy 3: Field-Level Merge
+
+Merge non-conflicting fields intelligently.
+
+```javascript
+async function syncWithMerge(todo) {
+  const response = await fetch(`/api/todos/${todo.serverId}`);
+  const serverTodo = await response.json();
+
+  if (serverTodo.version > todo.serverVersion) {
+    // Merge strategy: keep local completion status, server title
+    const merged = {
+      id: todo.id,
+      serverId: serverTodo.id,
+      title: serverTodo.title, // From server
+      completed: todo.completed, // From client
+      updatedAt: Math.max(todo.updatedAt, serverTodo.updatedAt),
+      synced: false,
+      serverVersion: serverTodo.version
+    };
+
+    // Push merged version to server
+    await fetch(`/api/todos/${serverTodo.id}`, {
+      method: "PUT",
+      body: JSON.stringify(merged)
+    });
+
+    // Update local
+    await db.todos.update(todo.id, { ...merged, synced: true });
+  }
+}
+```
+
+### Strategy 4: Manual Resolution
+
+Detect conflicts and let the user decide.
+
+```javascript
+// Mark conflict in database
+await db.todos.update(todo.id, {
+  conflict: true,
+  conflictData: {
+    local: todo,
+    server: serverTodo
+  }
+});
+
+// In React component
+function ConflictResolver({ todo }) {
+  const resolveKeepLocal = async () => {
+    await fetch(`/api/todos/${todo.serverId}`, {
+      method: "PUT",
+      body: JSON.stringify(todo)
+    });
+    await db.todos.update(todo.id, {
+      conflict: false,
+      synced: true
+    });
+  };
+
+  const resolveKeepServer = async () => {
+    await db.todos.update(todo.id, {
+      ...todo.conflictData.server,
+      conflict: false,
+      synced: true
+    });
+  };
+
+  return (
+    <div className="conflict-warning">
+      <p>⚠️ Conflict detected</p>
+      <button onClick={resolveKeepLocal}>Keep My Changes</button>
+      <button onClick={resolveKeepServer}>Use Server Version</button>
+    </div>
+  );
+}
+```
+
+### Complete Conflict-Aware Sync
+
+**public/sw.js**
+
+```javascript
+async function syncWithConflictDetection() {
+  const db = await openDB("TodoAppDB", 1);
+  const tx = db.transaction("todos", "readwrite");
+  const store = tx.objectStore("todos");
+  const todos = await store.getAll();
+
+  for (const todo of todos) {
+    if (!todo.synced && todo.serverId) {
+      try {
+        // Fetch server version
+        const res = await fetch(`/api/todos/${todo.serverId}`);
+        const serverTodo = await res.json();
+
+        // Check for conflict
+        if (serverTodo.version > todo.serverVersion) {
+          // Conflict detected
+          if (todo.updatedAt > serverTodo.updatedAt) {
+            // LWW: Client wins
+            await fetch(`/api/todos/${todo.serverId}`, {
+              method: "PUT",
+              body: JSON.stringify(todo)
+            });
+            todo.synced = true;
+            todo.serverVersion = Date.now();
+          } else {
+            // LWW: Server wins
+            Object.assign(todo, serverTodo);
+            todo.synced = true;
+          }
+        } else {
+          // No conflict, push local
+          await fetch(`/api/todos/${todo.serverId}`, {
+            method: "PUT",
+            body: JSON.stringify(todo)
+          });
+          todo.synced = true;
+        }
+
+        await store.put(todo);
+      } catch (err) {
+        console.error("Sync error:", err);
+      }
+    }
+  }
+
+  await tx.done;
+}
+```
+
+---
+
+## Production Best Practices {#best-practices}
+
+### 1. Database Versioning
+
+Always use proper version management when changing schema:
+
+```javascript
+const db = new Dexie("MyAppDB");
+
+// Version 1
+db.version(1).stores({
+  todos: "++id, title, completed"
+});
+
+// Version 2: Add new fields
+db.version(2).stores({
+  todos: "++id, title, completed, priority, tags"
+}).upgrade(tx => {
+  // Migrate existing data
+  return tx.table("todos").toCollection().modify(todo => {
+    todo.priority = "normal";
+    todo.tags = [];
+  });
+});
+
+// Version 3: Add new table
+db.version(3).stores({
+  todos: "++id, title, completed, priority, tags",
+  categories: "++id, name, color"
+});
+```
+
+### 2. Error Handling
+
+```javascript
+async function safeDbOperation() {
+  try {
+    await db.todos.add({ title: "Task" });
+  } catch (err) {
+    if (err.name === "QuotaExceededError") {
+      alert("Storage quota exceeded. Please delete some data.");
+    } else if (err.name === "ConstraintError") {
+      console.error("Constraint violation:", err);
+    } else {
+      console.error("Database error:", err);
+    }
+  }
+}
+```
+
+### 3. Performance Optimization
+
+```javascript
+// Use bulk operations
+await db.todos.bulkAdd(largeArray);
+await db.todos.bulkDelete([1, 2, 3, 4, 5]);
+
+// Limit query results
+const recent = await db.todos
+  .orderBy("createdAt")
+  .reverse()
+  .limit(50)
+  .toArray();
+
+// Use indexes for frequently queried fields
+db.version(1).stores({
+  todos: "++id, title, completed, [userId+completed]" // Compound index
+});
+```
+
+### 4. Security Considerations
+
+```javascript
+// Validate data before storing
+async function addTodoSafe(title) {
+  // Sanitize input
+  const sanitized = title.trim().slice(0, 500);
+
+  if (!sanitized) {
+    throw new Error("Title cannot be empty");
+  }
+
+  await db.todos.add({
+    title: sanitized,
+    completed: false,
+    createdAt: Date.now()
+  });
+}
+
+// Never store sensitive data in IndexedDB
+// Use encryption if needed
+```
+
+### 5. Testing
+
+```javascript
+// Clear database for testing
+async function resetDatabase() {
+  await db.delete();
+  await db.open();
+}
+
+// Mock data for development
+async function seedTestData() {
+  await db.todos.bulkAdd([
+    { title: "Test 1", completed: false },
+    { title: "Test 2", completed: true },
+    { title: "Test 3", completed: false }
+  ]);
+}
+```
+
+### 6. Monitoring and Debugging
+
+```javascript
+// Enable Dexie debug mode
+Dexie.debug = true;
+
+// Monitor storage usage
+async function checkStorageQuota() {
+  if (navigator.storage && navigator.storage.estimate) {
+    const estimate = await navigator.storage.estimate();
+    const percentUsed = (estimate.usage / estimate.quota) * 100;
+    console.log(`Storage: ${percentUsed.toFixed(2)}% used`);
+    console.log(`Used: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`Available: ${(estimate.quota / 1024 / 1024).toFixed(2)} MB`);
+    return { usage: estimate.usage, quota: estimate.quota, percentUsed };
+  }
+}
+
+// Log all database operations
+db.on("changes", changes => {
+  changes.forEach(change => {
+    console.log(`[DB] ${change.type} in ${change.table}:`, change);
+  });
+});
+```
+
+### 7. Cleanup and Maintenance
+
+```javascript
+// Delete old records periodically
+async function cleanupOldTodos() {
+  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+  const deleted = await db.todos
+    .where("completed")
+    .equals(true)
+    .and(todo => todo.updatedAt < thirtyDaysAgo)
+    .delete();
+
+  console.log(`Cleaned up ${deleted} old todos`);
+}
+
+// Export data for backup
+async function exportData() {
+  const todos = await db.todos.toArray();
+  const users = await db.users.toArray();
+
+  const backup = {
+    version: db.verno,
+    timestamp: Date.now(),
+    data: { todos, users }
+  };
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-${Date.now()}.json`;
+  a.click();
+}
+
+// Import data from backup
+async function importData(jsonString) {
+  const backup = JSON.parse(jsonString);
+
+  await db.transaction("rw", db.todos, db.users, async () => {
+    await db.todos.clear();
+    await db.users.clear();
+    await db.todos.bulkAdd(backup.data.todos);
+    await db.users.bulkAdd(backup.data.users);
+  });
+
+  console.log("Data imported successfully");
+}
+```
+
+### 8. Network Detection and Smart Sync
+
+```javascript
+// Enhanced network detection
+class NetworkMonitor {
+  constructor() {
+    this.isOnline = navigator.onLine;
+    this.connectionQuality = "unknown";
+    this.setupListeners();
+  }
+
+  setupListeners() {
+    window.addEventListener("online", () => {
+      this.isOnline = true;
+      this.onConnectionChange();
+    });
+
+    window.addEventListener("offline", () => {
+      this.isOnline = false;
+      this.onConnectionChange();
+    });
+
+    // Check connection quality
+    if ("connection" in navigator) {
+      const conn = navigator.connection;
+      conn.addEventListener("change", () => {
+        this.connectionQuality = conn.effectiveType;
+        console.log(`Connection: ${conn.effectiveType}`);
+      });
+    }
+  }
+
+  async onConnectionChange() {
+    if (this.isOnline) {
+      console.log("Back online, syncing...");
+      await triggerSync();
+    } else {
+      console.log("Gone offline, queueing changes");
+    }
+  }
+
+  shouldSync() {
+    // Only sync on good connections
+    return this.isOnline &&
+           (this.connectionQuality === "4g" ||
+            this.connectionQuality === "unknown");
+  }
+}
+
+const networkMonitor = new NetworkMonitor();
+```
+
+### 9. Batch Sync for Performance
+
+```javascript
+// Sync in batches to avoid overwhelming the server
+async function batchSync(batchSize = 10) {
+  const unsynced = await db.todos
+    .where("synced")
+    .equals(false)
+    .toArray();
+
+  // Process in batches
+  for (let i = 0; i < unsynced.length; i += batchSize) {
+    const batch = unsynced.slice(i, i + batchSize);
+
+    try {
+      // Send batch to server
+      const response = await fetch("/api/todos/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(batch)
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+
+        // Update local records
+        await db.transaction("rw", db.todos, async () => {
+          for (const result of results) {
+            await db.todos.update(result.localId, {
+              synced: true,
+              serverId: result.serverId,
+              serverVersion: result.version
+            });
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Batch sync failed:", err);
+      break; // Stop on error, will retry later
+    }
+
+    // Small delay between batches
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+```
+
+### 10. Progressive Web App Integration
+
+```javascript
+// Cache static assets in Service Worker
+const CACHE_NAME = "app-v1";
+const urlsToCache = [
+  "/",
+  "/index.html",
+  "/static/js/main.js",
+  "/static/css/main.css"
+];
+
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+// Serve from cache, fallback to network
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        if (response) {
+          return response;
+        }
+        return fetch(event.request).then(response => {
+          // Cache successful responses
+          if (response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME)
+              .then(cache => cache.put(event.request, responseToCache));
+          }
+          return response;
+        });
+      })
+  );
+});
+```
+
+---
+
+## Advanced Patterns
+
+### Optimistic UI Updates
+
+```javascript
+async function optimisticUpdate(todoId, updates) {
+  // Update UI immediately
+  await db.todos.update(todoId, updates);
+
+  // Sync in background
+  try {
+    await fetch(`/api/todos/${todoId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates)
+    });
+    await db.todos.update(todoId, { synced: true });
+  } catch (err) {
+    // Revert on failure (optional)
+    console.error("Update failed, marking as unsynced:", err);
+    await db.todos.update(todoId, { synced: false });
+  }
+}
+```
+
+### Delta Sync (Only Sync Changes)
+
+```javascript
+// Track field-level changes
+async function trackChanges(todoId, field, newValue) {
+  const todo = await db.todos.get(todoId);
+
+  if (!todo.changes) {
+    todo.changes = {};
+  }
+
+  todo.changes[field] = newValue;
+  todo.synced = false;
+
+  await db.todos.put(todo);
+}
+
+// Send only changed fields
+async function deltaSyncTodos() {
+  const unsynced = await db.todos
+    .where("synced")
+    .equals(false)
+    .toArray();
+
+  for (const todo of unsynced) {
+    if (todo.changes) {
+      await fetch(`/api/todos/${todo.serverId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: todo.serverId,
+          changes: todo.changes
+        })
+      });
+
+      await db.todos.update(todo.id, {
+        changes: {},
+        synced: true
+      });
+    }
+  }
+}
+```
+
+### Real-Time Sync with WebSockets
+
+```javascript
+// WebSocket integration for live updates
+class RealtimeSync {
+  constructor() {
+    this.ws = null;
+    this.connect();
+  }
+
+  connect() {
+    this.ws = new WebSocket("wss://api.example.com/sync");
+
+    this.ws.onmessage = async (event) => {
+      const update = JSON.parse(event.data);
+
+      if (update.type === "todo.updated") {
+        // Update local database
+        await db.todos.update(update.localId, {
+          ...update.data,
+          synced: true,
+          serverVersion: update.version
+        });
+      }
+    };
+
+    this.ws.onclose = () => {
+      // Reconnect after delay
+      setTimeout(() => this.connect(), 5000);
+    };
+  }
+
+  sendUpdate(todo) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: "todo.update",
+        data: todo
+      }));
+    }
+  }
+}
+```
+
+---
+
+## Troubleshooting Common Issues
+
+### Issue 1: Service Worker Not Updating
+
+```javascript
+// Force update service worker
+self.addEventListener("message", event => {
+  if (event.data === "skipWaiting") {
+    self.skipWaiting();
+  }
+});
+
+// In app code
+navigator.serviceWorker.ready.then(registration => {
+  registration.update();
+});
+```
+
+### Issue 2: IndexedDB Quota Exceeded
+
+```javascript
+async function handleQuotaExceeded() {
+  // Check current usage
+  const { usage, quota } = await checkStorageQuota();
+
+  if (usage / quota > 0.9) {
+    // Clean up old data
+    await cleanupOldTodos();
+
+    // Or request persistent storage
+    if (navigator.storage && navigator.storage.persist) {
+      const granted = await navigator.storage.persist();
+      console.log(`Persistent storage: ${granted}`);
+    }
+  }
+}
+```
+
+### Issue 3: Sync Not Triggering
+
+```javascript
+// Debug sync registration
+async function debugSync() {
+  const registration = await navigator.serviceWorker.ready;
+
+  // Check if sync is registered
+  const tags = await registration.sync.getTags();
+  console.log("Registered sync tags:", tags);
+
+  // Manual trigger for testing
+  await registration.sync.register("sync-todos");
+}
+```
+
+### Issue 4: Data Not Persisting
+
+```javascript
+// Verify database is open
+db.on("ready", () => {
+  console.log("Database ready:", db.isOpen());
+});
+
+// Check if data was actually saved
+async function verifyData(id) {
+  const todo = await db.todos.get(id);
+  console.log("Saved data:", todo);
+
+  // Check in DevTools
+  console.log("Open DevTools > Application > IndexedDB to inspect");
+}
+```
+
+---
+
+## Performance Metrics and Monitoring
+
+```javascript
+// Measure sync performance
+async function measureSyncPerformance() {
+  const startTime = performance.now();
+
+  await syncTodos();
+
+  const endTime = performance.now();
+  const duration = endTime - startTime;
+
+  console.log(`Sync completed in ${duration.toFixed(2)}ms`);
+
+  // Send to analytics
+  if (window.analytics) {
+    analytics.track("Sync Completed", {
+      duration,
+      itemCount: await db.todos.count()
+    });
+  }
+}
+
+// Monitor database size
+async function monitorDatabaseSize() {
+  const tables = ["todos", "users", "notes"];
+  const sizes = {};
+
+  for (const table of tables) {
+    const count = await db.table(table).count();
+    sizes[table] = count;
+  }
+
+  console.log("Database sizes:", sizes);
+  return sizes;
+}
+```
+
+---
+
+## Summary
+
+This guide covered:
+
+✅ **Dexie.js Fundamentals** - Setup, CRUD operations, queries, and transactions
+✅ **Offline-First Architecture** - Local-first approach with background sync
+✅ **Service Worker Integration** - Background sync and caching strategies
+✅ **React Integration** - useLiveQuery for reactive UIs
+✅ **Conflict Resolution** - Multiple strategies for handling data conflicts
+✅ **Production Best Practices** - Performance, security, monitoring, and maintenance
+
+### Key Takeaways
+
+1. **Always write locally first** - Instant feedback for users
+2. **Mark unsynced changes** - Track what needs server sync
+3. **Use Background Sync API** - Reliable sync even when app is closed
+4. **Handle conflicts gracefully** - Choose appropriate strategy for your use case
+5. **Monitor and optimize** - Track storage usage and sync performance
+
+### Next Steps
+
+- Implement end-to-end encryption for sensitive data
+- Add conflict resolution UI for user-driven decisions
+- Set up automated testing for offline scenarios
+- Implement progressive enhancement strategies
+- Add telemetry for monitoring sync success rates
+
+---
+
+## Additional Resources
+
+- **Dexie.js Documentation**: https://dexie.org
+- **Service Worker API**: https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API
+- **IndexedDB Guide**: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
+- **Background Sync**: https://developer.chrome.com/docs/workbox/modules/workbox-background-sync/
+- **PWA Best Practices**: https://web.dev/progressive-web-apps/
+
+---
+
+**Built with ❤️ for offline-first applications**
