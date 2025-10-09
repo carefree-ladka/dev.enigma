@@ -7,11 +7,10 @@ const config: Config = {
   tagline: 'Code beyond boundaries',
   favicon: 'img/favicon.ico',
 
-  url: 'https://carefree-ladka.github.io',
-  baseUrl: '/dev.enigma/',
-
-  organizationName: 'devenigma',
-  projectName: 'dev.enigma',
+  url: 'https://carefree-ladka.in',
+  baseUrl: '/',
+  // organizationName: 'devenigma',
+  // projectName: 'dev.enigma',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
