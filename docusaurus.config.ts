@@ -49,7 +49,6 @@ const config: Config = {
     ],
   ],
 
-  // Add separate docs plugin for Interview Experiences
   plugins: [
     [
       "@docusaurus/plugin-content-docs",
@@ -62,6 +61,7 @@ const config: Config = {
       },
     ],
   ],
+
   themeConfig: {
     image: "img/docusaurus-social-card.jpg",
     colorMode: {
@@ -89,6 +89,17 @@ const config: Config = {
           label: "LinkedIn",
           position: "right",
         },
+        {
+          type: "localeDropdown",
+          position: "right",
+          dropdownItemsAfter: [
+            { type: "html", value: '<hr style="margin: 0.3rem 0;">' },
+            {
+              href: "https://github.com/facebook/docusaurus/issues/3526",
+              label: "Help Us Translate",
+            },
+          ],
+        },
       ],
     },
     footer: {
@@ -100,21 +111,15 @@ const config: Config = {
             { label: "Getting Started", to: "/docs/intro" },
             { label: "Blog", to: "/blog" },
             { label: "Portfolio", to: "/portfolio" },
-            { label: "Interview Experiences", to: "/interviews/intro" },
+            { label: "Interview Experiences", href: "/interviews" },
           ],
         },
         {
           title: "Connect",
           items: [
-            {
-              label: "LinkedIn",
-              href: "https://www.linkedin.com/in/kumpawan/",
-            },
+            { label: "LinkedIn", href: "https://www.linkedin.com/in/kumpawan/" },
             { label: "GitHub", href: "https://github.com/carefree-ladka" },
-            {
-              label: "Instagram",
-              href: "https://www.instagram.com/carefree_ladka/",
-            },
+            { label: "Instagram", href: "https://www.instagram.com/carefree_ladka/" },
             { label: "LeetCode", href: "https://leetcode.com/u/Asyncy99/" },
           ],
         },
@@ -122,7 +127,6 @@ const config: Config = {
           title: "More",
           items: [
             { label: "Blog", to: "/blog" },
-            { label: "About", to: "/about" },
           ],
         },
       ],
