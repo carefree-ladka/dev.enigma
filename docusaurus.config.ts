@@ -9,8 +9,6 @@ const config: Config = {
 
   url: 'https://carefree-ladka.in',
   baseUrl: '/',
-  // organizationName: 'devenigma',
-  // projectName: 'dev.enigma',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -20,7 +18,7 @@ const config: Config = {
     locales: ['en'],
   },
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ['@docusaurus/theme-mermaid', '@docusaurus/theme-live-codeblock'],
   markdown: {
     mermaid: true,
   },
@@ -62,6 +60,9 @@ const config: Config = {
   ],
 
   themeConfig: {
+    docs: {
+      sidebar: { autoCollapseCategories: true, hideable: true },
+    },
     image: 'img/docusaurus-social-card.jpg',
     colorMode: {
       respectPrefersColorScheme: true,
@@ -82,7 +83,6 @@ const config: Config = {
           position: 'left',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
-        { to: '/portfolio', label: 'Portfolio', position: 'left' },
         {
           href: 'https://www.linkedin.com/in/kumpawan/',
           label: 'LinkedIn',
@@ -98,7 +98,6 @@ const config: Config = {
           items: [
             { label: 'Getting Started', to: '/docs/intro' },
             { label: 'Blog', to: '/blog' },
-            { label: 'Portfolio', to: '/portfolio' },
             { label: 'Interview Experiences', href: '/interviews' },
           ],
         },
@@ -125,7 +124,7 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} DevEnigma · Built with Kadak Chai ☕`,
     },
     prism: {
-      theme: prismThemes.vsLight,
+      theme: prismThemes.dracula,
       darkTheme: prismThemes.vsDark,
       additionalLanguages: ['java'],
       magicComments: [
@@ -137,6 +136,12 @@ const config: Config = {
         { className: 'code-block-error-line', line: 'error-line' },
         { className: 'code-block-success-line', line: 'success-line' },
       ],
+      // Enable line numbers globally for all code blocks
+      defaultLanguage: 'javascript',
+    },
+    // Live codeblock configuration
+    liveCodeBlock: {
+      playgroundPosition: 'bottom',
     },
   } satisfies Preset.ThemeConfig,
 };
