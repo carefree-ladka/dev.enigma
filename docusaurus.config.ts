@@ -18,7 +18,7 @@ const config: Config = {
     locales: ['en'],
   },
 
-  themes: ['@docusaurus/theme-mermaid', '@docusaurus/theme-live-codeblock'],
+  themes: ['@docusaurus/theme-mermaid'],
   markdown: {
     mermaid: true,
   },
