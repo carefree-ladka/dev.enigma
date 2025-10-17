@@ -1,0 +1,389 @@
+# java.util.Objects Methods Guide
+
+The `java.util.Objects` class provides utility methods for operating on objects. It was introduced in Java 7 and contains static methods for null-safe operations.
+
+## Table of Contents
+- [Null Checking Methods](#null-checking-methods)
+- [Comparison Methods](#comparison-methods)
+- [Hash Code Methods](#hash-code-methods)
+- [String Methods](#string-methods)
+- [Validation Methods](#validation-methods)
+
+---
+
+## Null Checking Methods
+
+### `isNull(Object obj)`
+
+**Signature:** `public static boolean isNull(Object obj)`
+
+**Purpose:** Returns `true` if the provided reference is `null`.
+
+**Example:**
+```java
+String str = null;
+System.out.println(Objects.isNull(str)); // true
+
+String name = "John";
+System.out.println(Objects.isNull(name)); // false
+```
+
+---
+
+### `nonNull(Object obj)`
+
+**Signature:** `public static boolean nonNull(Object obj)`
+
+**Purpose:** Returns `true` if the provided reference is NOT `null`.
+
+**Example:**
+```java
+String str = "Hello";
+System.out.println(Objects.nonNull(str)); // true
+
+String empty = null;
+System.out.println(Objects.nonNull(empty)); // false
+```
+
+---
+
+### `requireNonNull(T obj)`
+
+**Signature:** `public static <T> T requireNonNull(T obj)`
+
+**Purpose:** Checks that the specified object reference is not `null`. Throws `NullPointerException` if it is.
+
+**Example:**
+```java
+String name = "Alice";
+String validated = Objects.requireNonNull(name);
+System.out.println(validated); // Alice
+
+String nullName = null;
+Objects.requireNonNull(nullName); // Throws NullPointerException
+```
+
+---
+
+### `requireNonNull(T obj, String message)`
+
+**Signature:** `public static <T> T requireNonNull(T obj, String message)`
+
+**Purpose:** Checks that the object is not `null` and throws `NullPointerException` with a custom message if it is.
+
+**Example:**
+```java
+String email = null;
+try {
+    Objects.requireNonNull(email, "Email cannot be null");
+} catch (NullPointerException e) {
+    System.out.println(e.getMessage()); // Email cannot be null
+}
+```
+
+---
+
+### `requireNonNullElse(T obj, T defaultObj)`
+
+**Signature:** `public static <T> T requireNonNullElse(T obj, T defaultObj)`
+
+**Purpose:** Returns the first argument if non-null, otherwise returns the second argument (which must be non-null).
+
+**Example:**
+```java
+String name = null;
+String result = Objects.requireNonNullElse(name, "Guest");
+System.out.println(result); // Guest
+
+String actualName = "Bob";
+String result2 = Objects.requireNonNullElse(actualName, "Guest");
+System.out.println(result2); // Bob
+```
+
+---
+
+### `requireNonNullElseGet(T obj, Supplier<? extends T> supplier)`
+
+**Signature:** `public static <T> T requireNonNullElseGet(T obj, Supplier<? extends T> supplier)`
+
+**Purpose:** Returns the first argument if non-null, otherwise returns the result from the supplier.
+
+**Example:**
+```java
+String config = null;
+String result = Objects.requireNonNullElseGet(config, () -> "default-config");
+System.out.println(result); // default-config
+
+String existingConfig = "prod-config";
+String result2 = Objects.requireNonNullElseGet(existingConfig, () -> "default-config");
+System.out.println(result2); // prod-config
+```
+
+---
+
+## Comparison Methods
+
+### `equals(Object a, Object b)`
+
+**Signature:** `public static boolean equals(Object a, Object b)`
+
+**Purpose:** Returns `true` if the arguments are equal to each other, `false` otherwise. Null-safe comparison.
+
+**Example:**
+```java
+String str1 = "Java";
+String str2 = "Java";
+String str3 = null;
+String str4 = null;
+
+System.out.println(Objects.equals(str1, str2)); // true
+System.out.println(Objects.equals(str1, str3)); // false
+System.out.println(Objects.equals(str3, str4)); // true (both null)
+```
+
+---
+
+### `deepEquals(Object a, Object b)`
+
+**Signature:** `public static boolean deepEquals(Object a, Object b)`
+
+**Purpose:** Returns `true` if arguments are deeply equal. For arrays, compares elements recursively.
+
+**Example:**
+```java
+int[] arr1 = {1, 2, 3};
+int[] arr2 = {1, 2, 3};
+int[] arr3 = {1, 2, 4};
+
+System.out.println(Objects.equals(arr1, arr2)); // false (reference comparison)
+System.out.println(Objects.deepEquals(arr1, arr2)); // true (content comparison)
+System.out.println(Objects.deepEquals(arr1, arr3)); // false
+```
+
+---
+
+### `compare(T a, T b, Comparator<? super T> c)`
+
+**Signature:** `public static <T> int compare(T a, T b, Comparator<? super T> c)`
+
+**Purpose:** Compares two objects using a comparator. Returns 0 if both are null or equal.
+
+**Example:**
+```java
+String name1 = "Alice";
+String name2 = "Bob";
+String name3 = null;
+
+int result1 = Objects.compare(name1, name2, String::compareTo);
+System.out.println(result1); // negative number (Alice < Bob)
+
+int result2 = Objects.compare(name3, name3, String::compareTo);
+System.out.println(result2); // 0 (both null)
+```
+
+---
+
+## Hash Code Methods
+
+### `hashCode(Object o)`
+
+**Signature:** `public static int hashCode(Object o)`
+
+**Purpose:** Returns the hash code of a non-null argument, or 0 for `null`.
+
+**Example:**
+```java
+String str = "Hello";
+System.out.println(Objects.hashCode(str)); // 69609650 (hash code of "Hello")
+
+String nullStr = null;
+System.out.println(Objects.hashCode(nullStr)); // 0
+```
+
+---
+
+### `hash(Object... values)`
+
+**Signature:** `public static int hash(Object... values)`
+
+**Purpose:** Generates a hash code for a sequence of input values. Useful for implementing `hashCode()` methods.
+
+**Example:**
+```java
+class Person {
+    String name;
+    int age;
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, age);
+    }
+}
+
+Person p = new Person();
+p.name = "John";
+p.age = 30;
+System.out.println(p.hashCode()); // Combined hash code
+```
+
+---
+
+## String Methods
+
+### `toString(Object o)`
+
+**Signature:** `public static String toString(Object o)`
+
+**Purpose:** Returns the result of calling `toString()` on a non-null argument, or `"null"` for `null`.
+
+**Example:**
+```java
+Integer num = 42;
+System.out.println(Objects.toString(num)); // "42"
+
+Integer nullNum = null;
+System.out.println(Objects.toString(nullNum)); // "null"
+```
+
+---
+
+### `toString(Object o, String nullDefault)`
+
+**Signature:** `public static String toString(Object o, String nullDefault)`
+
+**Purpose:** Returns the string representation of the object, or a default string if the object is `null`.
+
+**Example:**
+```java
+String name = null;
+System.out.println(Objects.toString(name, "Unknown")); // Unknown
+
+String actualName = "Alice";
+System.out.println(Objects.toString(actualName, "Unknown")); // Alice
+```
+
+---
+
+## Validation Methods
+
+### `checkIndex(int index, int length)`
+
+**Signature:** `public static int checkIndex(int index, int length)`
+
+**Purpose:** Checks if the index is within bounds `[0, length)`. Throws `IndexOutOfBoundsException` if not.
+
+**Example:**
+```java
+int[] arr = {10, 20, 30, 40};
+int validIndex = Objects.checkIndex(2, arr.length);
+System.out.println(arr[validIndex]); // 30
+
+try {
+    Objects.checkIndex(5, arr.length); // Throws IndexOutOfBoundsException
+} catch (IndexOutOfBoundsException e) {
+    System.out.println("Index out of bounds!");
+}
+```
+
+---
+
+### `checkFromToIndex(int fromIndex, int toIndex, int length)`
+
+**Signature:** `public static int checkFromToIndex(int fromIndex, int toIndex, int length)`
+
+**Purpose:** Checks if the sub-range `[fromIndex, toIndex)` is within bounds.
+
+**Example:**
+```java
+int[] arr = {1, 2, 3, 4, 5};
+Objects.checkFromToIndex(1, 4, arr.length); // Valid: elements 1,2,3
+
+try {
+    Objects.checkFromToIndex(2, 6, arr.length); // Invalid
+} catch (IndexOutOfBoundsException e) {
+    System.out.println("Range out of bounds!");
+}
+```
+
+---
+
+### `checkFromIndexSize(int fromIndex, int size, int length)`
+
+**Signature:** `public static int checkFromIndexSize(int fromIndex, int size, int length)`
+
+**Purpose:** Checks if a sub-range starting at `fromIndex` with the given `size` is within bounds.
+
+**Example:**
+```java
+int[] arr = {10, 20, 30, 40, 50};
+Objects.checkFromIndexSize(1, 3, arr.length); // Valid: elements at 1,2,3
+
+try {
+    Objects.checkFromIndexSize(3, 4, arr.length); // Invalid: goes beyond array
+} catch (IndexOutOfBoundsException e) {
+    System.out.println("Invalid range!");
+}
+```
+
+---
+
+## Common Use Cases
+
+### 1. Null-Safe Equals in Entity Classes
+
+```java
+class User {
+    private String username;
+    private String email;
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof User)) return false;
+        User other = (User) obj;
+        return Objects.equals(username, other.username) &&
+               Objects.equals(email, other.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(username, email);
+    }
+}
+```
+
+### 2. Constructor Validation
+
+```java
+class Product {
+    private String name;
+    private double price;
+
+    public Product(String name, double price) {
+        this.name = Objects.requireNonNull(name, "Product name cannot be null");
+        this.price = price;
+    }
+}
+```
+
+### 3. Default Values
+
+```java
+public class Configuration {
+    public String getServerUrl(String configValue) {
+        return Objects.requireNonNullElse(configValue, "http://localhost:8080");
+    }
+}
+```
+
+---
+
+## Summary
+
+The `java.util.Objects` class provides essential utilities for:
+- **Null checking** and validation
+- **Null-safe operations** (equals, hashCode, toString)
+- **Index validation** for arrays and collections
+- **Default value handling** for null references
+
+These methods promote cleaner, more robust code by eliminating repetitive null checks and reducing the risk of `NullPointerException`.
