@@ -1,0 +1,3038 @@
+# SQL Interview Questions & Answers
+
+A comprehensive guide covering SQL fundamentals to advanced topics with practical examples and Java integration.
+
+---
+
+## 🏗️ 1. SQL Basics (for API + DB Integration)
+
+### Q1: Difference between INNER JOIN, LEFT JOIN, RIGHT JOIN, and FULL OUTER JOIN
+
+**Answer:**
+
+- **INNER JOIN**: Returns only matching rows from both tables. If no match exists, the row is excluded.
+  ```sql
+  SELECT e.name, d.name
+  FROM employees e
+  INNER JOIN departments d ON e.dept_id = d.id;
+  ```
+
+- **LEFT JOIN (LEFT OUTER JOIN)**: Returns all rows from the left table and matching rows from the right table. Non-matching rows from the right table show NULL.
+  ```sql
+  SELECT e.name, d.name
+  FROM employees e
+  LEFT JOIN departments d ON e.dept_id = d.id;
+  ```
+
+- **RIGHT JOIN (RIGHT OUTER JOIN)**: Returns all rows from the right table and matching rows from the left table. Non-matching rows from the left table show NULL.
+  ```sql
+  SELECT e.name, d.name
+  FROM employees e
+  RIGHT JOIN departments d ON e.dept_id = d.id;
+  ```
+
+- **FULL OUTER JOIN**: Returns all rows from both tables. Shows NULL where no match exists on either side.
+  ```sql
+  SELECT e.name, d.name
+  FROM employees e
+  FULL OUTER JOIN departments d ON e.dept_id = d.id;
+  ```
+
+**Real-world use case**: In a React dashboard showing employee-department mapping, use LEFT JOIN to show all employees even if they're not assigned to a department yet.
+
+---
+
+### Q2: What's the difference between WHERE and HAVING?
+
+**Answer:**
+
+- **WHERE**: Filters rows before grouping. Used with individual row conditions.
+- **HAVING**: Filters groups after aggregation. Used with aggregate functions like COUNT, SUM, AVG.
+
+```sql
+-- WHERE: Filters before grouping
+SELECT department, COUNT(*) AS emp_count
+FROM employees
+WHERE salary > 50000
+GROUP BY department;
+
+-- HAVING: Filters after grouping
+SELECT department, COUNT(*) AS emp_count
+FROM employees
+GROUP BY department
+HAVING COUNT(*) > 5;
+```
+
+**Key difference**: WHERE cannot use aggregate functions; HAVING can.
+
+**Java tie-in**: When building filter APIs in Spring Boot, WHERE clauses map to query parameters, while HAVING is used for analytical endpoints.
+
+---
+
+### Q3: How do you find duplicate records in a table?
+
+**Answer:**
+
+```sql
+-- Find duplicate emails
+SELECT email, COUNT(*) AS duplicate_count
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;
+
+-- Get all details of duplicate records
+SELECT u.*
+FROM users u
+INNER JOIN (
+    SELECT email
+    FROM users
+    GROUP BY email
+    HAVING COUNT(*) > 1
+) duplicates ON u.email = duplicates.email
+ORDER BY u.email;
+```
+
+**Alternative using window functions:**
+```sql
+SELECT *
+FROM (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY email ORDER BY id) AS rn
+    FROM users
+) subquery
+WHERE rn > 1;
+```
+
+---
+
+### Q4: Difference between DELETE, TRUNCATE, and DROP
+
+**Answer:**
+
+| Feature | DELETE | TRUNCATE | DROP |
+|---------|--------|----------|------|
+| **Purpose** | Remove specific rows | Remove all rows | Remove entire table |
+| **WHERE clause** | Yes | No | No |
+| **Rollback** | Yes (with transaction) | No (auto-commit) | No |
+| **Triggers** | Fires triggers | Doesn't fire triggers | Removes triggers too |
+| **Speed** | Slower | Faster | Fastest |
+| **Identity reset** | No | Yes | N/A |
+
+```sql
+-- DELETE: Removes specific rows
+DELETE FROM employees WHERE id = 5;
+
+-- TRUNCATE: Removes all rows, resets auto-increment
+TRUNCATE TABLE employees;
+
+-- DROP: Removes entire table structure
+DROP TABLE employees;
+```
+
+**Java tie-in**: In Spring Boot, use `@Transactional` with DELETE for rollback capability. TRUNCATE is used in test cleanup methods.
+
+---
+
+### Q5: What's the difference between UNION and UNION ALL?
+
+**Answer:**
+
+- **UNION**: Combines results from multiple queries and removes duplicates. Slower due to duplicate elimination.
+- **UNION ALL**: Combines results and keeps all duplicates. Faster.
+
+```sql
+-- UNION: Removes duplicates
+SELECT name FROM employees
+UNION
+SELECT name FROM contractors;
+
+-- UNION ALL: Keeps duplicates
+SELECT name FROM employees
+UNION ALL
+SELECT name FROM contractors;
+```
+
+**Performance tip**: Always use UNION ALL if duplicates don't matter — it's significantly faster.
+
+**Java tie-in**: When building search APIs that query multiple tables, use UNION ALL for better performance.
+
+---
+
+### Q6: How do you get the nth highest salary in a table?
+
+**Answer:**
+
+**Method 1: Using LIMIT with OFFSET**
+```sql
+-- 3rd highest salary
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 2;
+```
+
+**Method 2: Using subquery**
+```sql
+SELECT MAX(salary)
+FROM employees
+WHERE salary < (
+    SELECT MAX(salary)
+    FROM employees
+    WHERE salary < (SELECT MAX(salary) FROM employees)
+);
+```
+
+**Method 3: Using DENSE_RANK (Best approach)**
+```sql
+SELECT salary
+FROM (
+    SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rank
+    FROM employees
+) ranked
+WHERE rank = 3;
+```
+
+**Why DENSE_RANK?** Handles ties properly. If two people have the 2nd highest salary, the next salary is still ranked 3rd.
+
+---
+
+### Q7: What is the purpose of DISTINCT and GROUP BY?
+
+**Answer:**
+
+- **DISTINCT**: Removes duplicate rows from result set. Simple deduplication.
+- **GROUP BY**: Groups rows for aggregation (COUNT, SUM, AVG, etc.).
+
+```sql
+-- DISTINCT: Get unique departments
+SELECT DISTINCT department FROM employees;
+
+-- GROUP BY: Get employee count per department
+SELECT department, COUNT(*) AS emp_count
+FROM employees
+GROUP BY department;
+```
+
+**Key difference**: Use DISTINCT for simple deduplication. Use GROUP BY when you need aggregation.
+
+**Performance**: GROUP BY is generally faster for large datasets when combined with aggregation.
+
+---
+
+### Q8: Explain the difference between BETWEEN, IN, and comparison operators
+
+**Answer:**
+
+```sql
+-- BETWEEN: Range check (inclusive)
+SELECT * FROM products
+WHERE price BETWEEN 100 AND 500;
+-- Equivalent to: price >= 100 AND price <= 500
+
+-- IN: Multiple specific values
+SELECT * FROM employees
+WHERE department IN ('Engineering', 'Sales', 'Marketing');
+-- Equivalent to: department = 'Engineering' OR department = 'Sales' OR ...
+
+-- Comparison operators: Single condition
+SELECT * FROM employees WHERE salary > 60000;
+SELECT * FROM employees WHERE status = 'Active';
+```
+
+**Performance tip**: For large IN lists (>1000 values), consider using a JOIN with a temporary table instead.
+
+---
+
+### Q9: What's the purpose of COALESCE() and NULLIF()?
+
+**Answer:**
+
+**COALESCE()**: Returns the first non-NULL value from a list.
+
+```sql
+-- Return backup contact if primary is null
+SELECT name, COALESCE(phone, mobile, email, 'No contact') AS contact
+FROM customers;
+
+-- Handle null salaries
+SELECT name, COALESCE(salary, 0) AS salary
+FROM employees;
+```
+
+**NULLIF()**: Returns NULL if two values are equal, otherwise returns the first value.
+
+```sql
+-- Avoid division by zero
+SELECT sales / NULLIF(visits, 0) AS conversion_rate
+FROM analytics;
+
+-- Convert empty strings to NULL
+SELECT NULLIF(address, '') AS address
+FROM users;
+```
+
+**Java tie-in**: These functions are useful for handling Optional fields in Spring Boot responses.
+
+---
+
+### Q10: How would you get records between two dates?
+
+**Answer:**
+
+```sql
+-- Using BETWEEN (inclusive)
+SELECT * FROM orders
+WHERE order_date BETWEEN '2025-01-01' AND '2025-01-31';
+
+-- Using comparison operators (more explicit)
+SELECT * FROM orders
+WHERE order_date >= '2025-01-01'
+  AND order_date < '2025-02-01';
+
+-- Last 30 days
+SELECT * FROM orders
+WHERE order_date >= CURRENT_DATE - INTERVAL 30 DAY;
+
+-- This month
+SELECT * FROM orders
+WHERE YEAR(order_date) = YEAR(CURRENT_DATE)
+  AND MONTH(order_date) = MONTH(CURRENT_DATE);
+```
+
+**Important**: When using BETWEEN with timestamps, be careful about time components:
+```sql
+-- May miss records on end date after midnight
+WHERE created_at BETWEEN '2025-01-01 00:00:00' AND '2025-01-31 23:59:59'
+
+-- Better approach
+WHERE created_at >= '2025-01-01' AND created_at < '2025-02-01'
+```
+
+---
+
+## ⚙️ 2. Intermediate Level (Common in Java REST Backends)
+
+### Q11: What's the difference between primary key, unique key, and foreign key?
+
+**Answer:**
+
+| Feature | PRIMARY KEY | UNIQUE KEY | FOREIGN KEY |
+|---------|-------------|------------|-------------|
+| **Nulls allowed** | No | Yes (one NULL) | Yes |
+| **Per table** | Only one | Multiple allowed | Multiple allowed |
+| **Purpose** | Unique identifier | Enforce uniqueness | Referential integrity |
+| **Index** | Clustered index | Non-clustered index | Should be indexed |
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,              -- Primary key
+    email VARCHAR(255) UNIQUE,       -- Unique key
+    ssn VARCHAR(11) UNIQUE,          -- Another unique key
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(id)  -- Foreign key
+);
+```
+
+**Real-world example**:
+- PRIMARY KEY: employee id
+- UNIQUE: email, SSN (can have NULL for contractors without SSN)
+- FOREIGN KEY: department_id references departments table
+
+---
+
+### Q12: What's normalization? Explain 1NF, 2NF, and 3NF
+
+**Answer:**
+
+**Normalization**: Process of organizing data to reduce redundancy and improve integrity.
+
+**1NF (First Normal Form)**:
+- Each column contains atomic (indivisible) values
+- No repeating groups
+- Each row is unique
+
+```sql
+-- ❌ Violates 1NF (multiple values in one column)
+CREATE TABLE students (
+    id INT,
+    name VARCHAR(100),
+    subjects VARCHAR(255)  -- "Math, Physics, Chemistry"
+);
+
+-- ✅ Follows 1NF
+CREATE TABLE students (
+    id INT,
+    name VARCHAR(100)
+);
+
+CREATE TABLE student_subjects (
+    student_id INT,
+    subject VARCHAR(50)
+);
+```
+
+**2NF (Second Normal Form)**:
+- Must be in 1NF
+- All non-key attributes fully depend on the primary key
+- No partial dependencies
+
+```sql
+-- ❌ Violates 2NF (instructor depends only on subject, not on student+subject)
+CREATE TABLE enrollments (
+    student_id INT,
+    subject VARCHAR(50),
+    instructor VARCHAR(100),
+    PRIMARY KEY (student_id, subject)
+);
+
+-- ✅ Follows 2NF
+CREATE TABLE enrollments (
+    student_id INT,
+    subject_id INT,
+    PRIMARY KEY (student_id, subject_id)
+);
+
+CREATE TABLE subjects (
+    id INT PRIMARY KEY,
+    name VARCHAR(50),
+    instructor VARCHAR(100)
+);
+```
+
+**3NF (Third Normal Form)**:
+- Must be in 2NF
+- No transitive dependencies (non-key attributes depend only on the primary key)
+
+```sql
+-- ❌ Violates 3NF (department_name depends on department_id, not on employee_id)
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT,
+    department_name VARCHAR(100)
+);
+
+-- ✅ Follows 3NF
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+```
+
+---
+
+### Q13: What is denormalization, and when is it needed?
+
+**Answer:**
+
+**Denormalization**: Intentionally adding redundancy to improve read performance by reducing joins.
+
+**When to use**:
+- Heavy read operations (analytics, reporting)
+- Complex joins affecting performance
+- Data warehouse scenarios
+- Caching layer design
+
+```sql
+-- Normalized (3NF)
+SELECT e.name, d.name AS dept, d.location
+FROM employees e
+JOIN departments d ON e.dept_id = d.id;
+
+-- Denormalized (faster reads, but update complexity)
+CREATE TABLE employees_denorm (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    dept_id INT,
+    dept_name VARCHAR(100),    -- Redundant
+    dept_location VARCHAR(100)  -- Redundant
+);
+```
+
+**Trade-offs**:
+- ✅ Faster SELECT queries (no joins)
+- ✅ Better for analytics dashboards
+- ❌ More storage space
+- ❌ Update anomalies (must update multiple places)
+- ❌ Data inconsistency risk
+
+**Real-world example**: E-commerce order table storing product name and price at order time (even though product table has this info) to preserve historical data.
+
+---
+
+### Q14: Explain how indexes improve query performance and when they hurt it
+
+**Answer:**
+
+**How indexes work**: Like a book's index — helps locate data without scanning the entire table.
+
+**Benefits**:
+```sql
+-- Without index: Full table scan
+SELECT * FROM employees WHERE email = 'john@example.com';
+
+-- Create index
+CREATE INDEX idx_email ON employees(email);
+-- Now: Direct lookup using B-tree
+```
+
+**When indexes help**:
+- WHERE clauses
+- JOIN conditions
+- ORDER BY columns
+- Searching large tables
+
+**When indexes hurt**:
+
+```sql
+-- Slow INSERTs: Index must be updated
+INSERT INTO employees (name, email, department)
+VALUES ('John', 'john@example.com', 'Engineering');
+
+-- Slow UPDATEs on indexed columns
+UPDATE employees SET email = 'newemail@example.com' WHERE id = 1;
+
+-- Slow DELETEs: Index must be updated
+DELETE FROM employees WHERE id = 1;
+```
+
+**Performance impact**:
+- Too many indexes → slower writes
+- Unused indexes → wasted space and maintenance overhead
+- Wrong indexes → optimizer may choose suboptimal query plans
+
+**Best practices**:
+- Index foreign keys
+- Index frequently searched columns
+- Use composite indexes for multi-column queries
+- Remove unused indexes
+- Monitor index usage
+
+```sql
+-- Composite index for common query
+CREATE INDEX idx_dept_salary ON employees(department_id, salary);
+
+-- Benefits this query:
+SELECT * FROM employees
+WHERE department_id = 5 AND salary > 60000;
+```
+
+---
+
+### Q15: What is the difference between clustered and non-clustered indexes?
+
+**Answer:**
+
+**Clustered Index**:
+- Physical order of data matches index order
+- One per table (usually primary key)
+- Table data stored in index leaf nodes
+- Faster for range queries
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,  -- Automatically creates clustered index
+    name VARCHAR(100)
+);
+```
+
+**Non-clustered Index**:
+- Separate structure from table data
+- Multiple per table
+- Leaf nodes contain pointers to data
+- Additional lookup required
+
+```sql
+CREATE INDEX idx_name ON employees(name);  -- Non-clustered index
+```
+
+**Visual difference**:
+```
+Clustered Index:
+[10] → [Row data for ID 10]
+[20] → [Row data for ID 20]
+[30] → [Row data for ID 30]
+
+Non-clustered Index:
+['Alice'] → Pointer to row
+['Bob'] → Pointer to row
+['Charlie'] → Pointer to row
+```
+
+**Performance comparison**:
+```sql
+-- Fast: Uses clustered index
+SELECT * FROM employees WHERE id = 100;
+
+-- Slower: Uses non-clustered index + lookup
+SELECT * FROM employees WHERE name = 'Alice';
+
+-- Fastest: Covering index (non-clustered but includes all needed columns)
+CREATE INDEX idx_name_email ON employees(name, email);
+SELECT name, email FROM employees WHERE name = 'Alice';
+```
+
+---
+
+### Q16: How would you paginate large datasets efficiently in SQL?
+
+**Answer:**
+
+**Method 1: OFFSET/LIMIT (Simple but slow for large offsets)**
+```sql
+-- Page 1 (0-9)
+SELECT * FROM employees ORDER BY id LIMIT 10 OFFSET 0;
+
+-- Page 100 (990-999)
+SELECT * FROM employees ORDER BY id LIMIT 10 OFFSET 990;
+-- Problem: Database scans 990 rows before returning 10
+```
+
+**Method 2: Keyset Pagination (Seek Method - Recommended)**
+```sql
+-- Page 1
+SELECT * FROM employees ORDER BY id LIMIT 10;
+-- Returns ids 1-10, last id is 10
+
+-- Page 2
+SELECT * FROM employees WHERE id > 10 ORDER BY id LIMIT 10;
+-- Returns ids 11-20, last id is 20
+
+-- Page 3
+SELECT * FROM employees WHERE id > 20 ORDER BY id LIMIT 10;
+```
+
+**Advantages of keyset pagination**:
+- ✅ Consistent performance regardless of page number
+- ✅ No duplicate rows when data changes
+- ✅ No missing rows when data changes
+
+**Java + Spring Boot implementation**:
+```java
+// OFFSET pagination (built-in)
+@GetMapping("/employees")
+public Page<Employee> getEmployees(Pageable pageable) {
+    return employeeRepository.findAll(pageable);
+}
+
+// Keyset pagination (custom)
+@GetMapping("/employees/keyset")
+public List<Employee> getEmployeesKeyset(@RequestParam(required = false) Long lastId) {
+    return employeeRepository.findTop10ByIdGreaterThanOrderById(lastId != null ? lastId : 0);
+}
+```
+
+**React tie-in**: Keyset pagination works perfectly with infinite scroll components.
+
+---
+
+### Q17: Difference between EXISTS and IN?
+
+**Answer:**
+
+**IN**: Checks if value matches any value in a list/subquery. Returns values.
+
+```sql
+SELECT * FROM employees
+WHERE department_id IN (SELECT id FROM departments WHERE location = 'Bangalore');
+```
+
+**EXISTS**: Checks if subquery returns any rows. Returns boolean.
+
+```sql
+SELECT * FROM employees e
+WHERE EXISTS (
+    SELECT 1 FROM departments d
+    WHERE d.id = e.department_id AND d.location = 'Bangalore'
+);
+```
+
+**Performance differences**:
+
+```sql
+-- IN: Executes subquery first, then checks each row
+-- Bad for large subquery results
+SELECT * FROM orders
+WHERE customer_id IN (SELECT id FROM customers WHERE country = 'India');
+
+-- EXISTS: Stops at first match (short-circuit evaluation)
+-- Better for large datasets
+SELECT * FROM orders o
+WHERE EXISTS (
+    SELECT 1 FROM customers c
+    WHERE c.id = o.customer_id AND c.country = 'India'
+);
+```
+
+**When to use what**:
+- **Use IN**: Small, static lists `WHERE status IN ('Active', 'Pending')`
+- **Use EXISTS**: Correlated subqueries or large result sets
+- **Use JOIN**: When you need columns from both tables
+
+**NOT EXISTS vs NOT IN pitfall**:
+```sql
+-- NOT IN with NULLs returns empty result!
+SELECT * FROM employees
+WHERE id NOT IN (SELECT manager_id FROM employees);  -- If any manager_id is NULL, returns 0 rows
+
+-- NOT EXISTS handles NULLs correctly
+SELECT * FROM employees e
+WHERE NOT EXISTS (
+    SELECT 1 FROM employees m WHERE m.manager_id = e.id
+);
+```
+
+---
+
+### Q18: What's a subquery? When would you use a CTE (Common Table Expression)?
+
+**Answer:**
+
+**Subquery**: Query nested inside another query.
+
+```sql
+-- Scalar subquery (returns single value)
+SELECT name, salary,
+    (SELECT AVG(salary) FROM employees) AS avg_salary
+FROM employees;
+
+-- Row subquery
+SELECT * FROM employees
+WHERE (department_id, salary) = (SELECT id, max_salary FROM departments WHERE name = 'Engineering');
+
+-- Table subquery
+SELECT * FROM (
+    SELECT name, salary, RANK() OVER (ORDER BY salary DESC) AS rank
+    FROM employees
+) ranked
+WHERE rank <= 5;
+```
+
+**CTE (Common Table Expression)**: Named temporary result set.
+
+```sql
+WITH department_stats AS (
+    SELECT department_id,
+           AVG(salary) AS avg_salary,
+           COUNT(*) AS emp_count
+    FROM employees
+    GROUP BY department_id
+)
+SELECT e.name, e.salary, ds.avg_salary
+FROM employees e
+JOIN department_stats ds ON e.department_id = ds.department_id
+WHERE e.salary > ds.avg_salary;
+```
+
+**When to use CTE over subquery**:
+
+1. **Readability**: Complex queries are easier to understand
+```sql
+-- Hard to read subquery
+SELECT * FROM (
+    SELECT * FROM (
+        SELECT * FROM employees WHERE salary > 50000
+    ) high_earners WHERE department_id IN (1, 2, 3)
+) filtered;
+
+-- Clear CTE
+WITH high_earners AS (
+    SELECT * FROM employees WHERE salary > 50000
+),
+filtered AS (
+    SELECT * FROM high_earners WHERE department_id IN (1, 2, 3)
+)
+SELECT * FROM filtered;
+```
+
+2. **Reusability**: Reference the same result set multiple times
+```sql
+WITH active_customers AS (
+    SELECT * FROM customers WHERE status = 'Active'
+)
+SELECT
+    (SELECT COUNT(*) FROM active_customers) AS total,
+    (SELECT AVG(credit_limit) FROM active_customers) AS avg_credit;
+```
+
+3. **Recursive queries**: Only possible with CTEs
+```sql
+-- Find all employees in hierarchy
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, manager_id, 1 AS level
+    FROM employees WHERE manager_id IS NULL
+
+    UNION ALL
+
+    SELECT e.id, e.name, e.manager_id, eh.level + 1
+    FROM employees e
+    JOIN employee_hierarchy eh ON e.manager_id = eh.id
+)
+SELECT * FROM employee_hierarchy;
+```
+
+**Performance**: CTEs and subqueries generally have similar performance. Optimizer often treats them the same way.
+
+---
+
+### Q19: How do you join three or more tables efficiently?
+
+**Answer:**
+
+**Basic multi-table join**:
+```sql
+SELECT
+    o.id AS order_id,
+    c.name AS customer,
+    p.name AS product,
+    oi.quantity,
+    oi.quantity * p.price AS total
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+WHERE o.order_date >= '2025-01-01';
+```
+
+**Optimization strategies**:
+
+1. **Join order matters**: Start with smallest result set
+```sql
+-- Bad: Starts with large table
+SELECT * FROM orders o
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+WHERE p.category = 'Electronics';  -- Filters at the end
+
+-- Good: Filters early
+SELECT * FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+JOIN orders o ON oi.order_id = o.id
+WHERE p.category = 'Electronics';  -- Filters first
+```
+
+2. **Index join columns**:
+```sql
+CREATE INDEX idx_customer_id ON orders(customer_id);
+CREATE INDEX idx_order_id ON order_items(order_id);
+CREATE INDEX idx_product_id ON order_items(product_id);
+```
+
+3. **Use appropriate join types**:
+```sql
+-- Only get customers with orders
+INNER JOIN
+
+-- Get all customers, show order info if available
+LEFT JOIN
+```
+
+4. **Subquery for pre-filtering**:
+```sql
+-- Instead of joining all, filter first
+SELECT o.*, c.name, p.name
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN (
+    SELECT id, name FROM products WHERE category = 'Electronics'
+) p ON oi.product_id = p.id;
+```
+
+5. **Use EXPLAIN to analyze**:
+```sql
+EXPLAIN SELECT o.id, c.name, p.name
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id;
+```
+
+---
+
+### Q20: Explain CASE WHEN usage in SQL for conditional logic
+
+**Answer:**
+
+**Simple CASE** (equality check):
+```sql
+SELECT name,
+    CASE department_id
+        WHEN 1 THEN 'Engineering'
+        WHEN 2 THEN 'Sales'
+        WHEN 3 THEN 'Marketing'
+        ELSE 'Other'
+    END AS department_name
+FROM employees;
+```
+
+**Searched CASE** (conditional logic):
+```sql
+SELECT name, salary,
+    CASE
+        WHEN salary < 40000 THEN 'Junior'
+        WHEN salary BETWEEN 40000 AND 80000 THEN 'Mid-level'
+        WHEN salary > 80000 THEN 'Senior'
+        ELSE 'Unknown'
+    END AS seniority
+FROM employees;
+```
+
+**Real-world examples**:
+
+1. **Conditional aggregation**:
+```sql
+SELECT
+    department,
+    COUNT(*) AS total_employees,
+    SUM(CASE WHEN salary > 60000 THEN 1 ELSE 0 END) AS high_earners,
+    SUM(CASE WHEN hire_date > '2024-01-01' THEN 1 ELSE 0 END) AS new_hires
+FROM employees
+GROUP BY department;
+```
+
+2. **Dynamic sorting**:
+```sql
+SELECT * FROM products
+ORDER BY
+    CASE
+        WHEN @sort_by = 'price' THEN price
+        WHEN @sort_by = 'name' THEN name
+        ELSE id
+    END;
+```
+
+3. **Conditional updates**:
+```sql
+UPDATE employees
+SET bonus = CASE
+    WHEN performance_rating = 'Excellent' THEN salary * 0.15
+    WHEN performance_rating = 'Good' THEN salary * 0.10
+    WHEN performance_rating = 'Average' THEN salary * 0.05
+    ELSE 0
+END;
+```
+
+4. **Pivot table simulation**:
+```sql
+SELECT
+    product_id,
+    SUM(CASE WHEN MONTH(order_date) = 1 THEN quantity ELSE 0 END) AS jan_sales,
+    SUM(CASE WHEN MONTH(order_date) = 2 THEN quantity ELSE 0 END) AS feb_sales,
+    SUM(CASE WHEN MONTH(order_date) = 3 THEN quantity ELSE 0 END) AS mar_sales
+FROM order_items
+GROUP BY product_id;
+```
+
+**Java/Spring Boot tie-in**: CASE expressions are useful for creating DTO projections with computed fields:
+```java
+@Query("SELECT new com.example.EmployeeDTO(e.name, " +
+       "CASE WHEN e.salary > 60000 THEN 'Senior' ELSE 'Junior' END) " +
+       "FROM Employee e")
+List<EmployeeDTO> getEmployeesWithLevel();
+```
+
+---
+
+## 🧩 3. Advanced SQL (used in Enterprise Java Projects)
+
+### Q21: What are window functions (ROW_NUMBER(), RANK(), DENSE_RANK())?
+
+**Answer:**
+
+**Window functions**: Perform calculations across a set of rows related to the current row without collapsing the result set.
+
+**ROW_NUMBER()**: Assigns unique sequential numbers (1, 2, 3, ...)
+```sql
+SELECT name, salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) AS row_num
+FROM employees;
+-- Output: Alice-100k-1, Bob-95k-2, Charlie-95k-3
+```
+
+**RANK()**: Assigns ranks with gaps for ties (1, 2, 2, 4, ...)
+```sql
+SELECT name, salary,
+    RANK() OVER (ORDER BY salary DESC) AS rank
+FROM employees;
+-- Output: Alice-100k-1, Bob-95k-2, Charlie-95k-2, David-90k-4
+```
+
+**DENSE_RANK()**: Assigns ranks without gaps (1, 2, 2, 3, ...)
+```sql
+SELECT name, salary,
+    DENSE_RANK() OVER (ORDER BY salary DESC) AS dense_rank
+FROM employees;
+-- Output: Alice-100k-1, Bob-95k-2, Charlie-95k-2, David-90k-3
+```
+
+**Real-world examples**:
+
+1. **Top N per group**:
+```sql
+-- Top 3 earners per department
+WITH ranked AS (
+    SELECT name, department, salary,
+        ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn
+    FROM employees
+)
+SELECT * FROM ranked WHERE rn <= 3;
+```
+
+2. **Running totals**:
+```sql
+SELECT order_date, amount,
+    SUM(amount) OVER (ORDER BY order_date) AS running_total
+FROM orders;
+```
+
+3. **Moving average**:
+```sql
+SELECT order_date, amount,
+    AVG(amount) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7days
+FROM daily_sales;
+```
+
+4. **Lag/Lead (compare with previous/next row)**:
+```sql
+SELECT name, salary,
+    LAG(salary) OVER (ORDER BY salary) AS prev_salary,
+    LEAD(salary) OVER (ORDER BY salary) AS next_salary,
+    salary - LAG(salary) OVER (ORDER BY salary) AS diff_from_prev
+FROM employees;
+```
+
+5. **Percentile calculation**:
+```sql
+SELECT name, salary,
+    PERCENT_RANK() OVER (ORDER BY salary) AS percentile
+FROM employees;
+```
+
+**Java tie-in**: These queries are perfect for dashboard APIs showing rankings, trends, and analytics.
+
+---
+
+### Q22: Explain transactions and ACID properties
+
+**Answer:**
+
+**Transaction**: A unit of work that either completes entirely or not at all.
+
+```sql
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+
+-- Or if something goes wrong:
+ROLLBACK;
+```
+
+**ACID Properties**:
+
+**A - Atomicity**: All or nothing. Either all operations succeed or all fail.
+```sql
+-- Both updates happen or neither happens
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+    -- If second update fails, first is rolled back
+COMMIT;
+```
+
+**C - Consistency**: Database moves from one valid state to another. Constraints are never violated.
+```sql
+-- Constraint ensures balance never negative
+ALTER TABLE accounts ADD CONSTRAINT chk_balance CHECK (balance >= 0);
+
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    -- If this violates constraint, transaction fails
+COMMIT;
+```
+
+**I - Isolation**: Concurrent transactions don't interfere with each other.
+```sql
+-- Transaction 1
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    -- Other transactions don't see this change until COMMIT
+COMMIT;
+```
+
+**D - Durability**: Once committed, changes are permanent (even after crashes).
+```sql
+COMMIT;  -- Changes written to disk, survive system failures
+```
+
+**Real-world example**: E-commerce order placement
+```sql
+START TRANSACTION;
+    -- Deduct inventory
+    UPDATE products SET stock = stock - 1 WHERE id = 101;
+
+    -- Create order
+    INSERT INTO orders (customer_id, total) VALUES (1, 999.99);
+
+    -- Process payment
+    INSERT INTO payments (order_id, amount) VALUES (LAST_INSERT_ID(), 999.99);
+
+    -- If any step fails, all changes are rolled back
+COMMIT;
+```
+
+**Java/Spring Boot tie-in**:
+```java
+@Transactional
+public void placeOrder(Long customerId, Long productId) {
+    productRepository.decrementStock(productId);
+    Order order = orderRepository.save(new Order(customerId));
+    paymentRepository.save(new Payment(order.getId()));
+    // If any operation fails, Spring rolls back automatically
+}
+```
+
+---
+
+### Q23: What is the difference between commit and rollback?
+
+**Answer:**
+
+**COMMIT**: Permanently saves all changes made in the current transaction.
+
+```sql
+START TRANSACTION;
+    INSERT INTO orders (customer_id, amount) VALUES (1, 500);
+    UPDATE inventory SET quantity = quantity - 1 WHERE product_id = 10;
+COMMIT;  -- Changes are now permanent
+```
+
+**ROLLBACK**: Undoes all changes made in the current transaction.
+
+```sql
+START TRANSACTION;
+    DELETE FROM orders WHERE id = 100;
+    -- Oops, wrong order!
+ROLLBACK;  -- Deletion is undone, order still exists
+```
+
+**Use cases**:
+
+1. **Error handling**:
+```sql
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+
+    -- Check if balance went negative
+    IF (SELECT balance FROM accounts WHERE id = 1) < 0 THEN
+        ROLLBACK;  -- Undo the withdrawal
+    ELSE
+        COMMIT;    -- Confirm the withdrawal
+    END IF;
+```
+
+2. **Savepoints** (partial rollback):
+```sql
+START TRANSACTION;
+    INSERT INTO orders (customer_id) VALUES (1);
+    SAVEPOINT order_created;
+
+    INSERT INTO order_items (order_id, product_id) VALUES (1, 101);
+    SAVEPOINT items_added;
+
+    -- Oops, wrong item
+    ROLLBACK TO items_added;  -- Only rolls back items, keeps order
+
+    INSERT INTO order_items (order_id, product_id) VALUES (1, 102);
+COMMIT;
+```
+
+**Auto-commit behavior**:
+```sql
+-- By default, each statement auto-commits
+UPDATE users SET name = 'John' WHERE id = 1;  -- Auto-committed
+
+-- Disable auto-commit for transactions
+SET autocommit = 0;
+UPDATE users SET name = 'Jane' WHERE id = 1;
+ROLLBACK;  -- Works because auto-commit is off
+```
+
+**Java tie-in**:
+```java
+@Transactional
+public void processOrder(Order order) {
+    try {
+        orderRepository.save(order);
+        inventoryService.reduceStock(order);
+        paymentService.charge(order);
+        // Automatic COMMIT at method end
+    } catch (Exception e) {
+        // Automatic ROLLBACK on exception
+        throw e;
+    }
+}
+```
+
+---
+
+### Q24: Explain transaction isolation levels
+
+**Answer:**
+
+**Isolation levels** control how transaction changes are visible to other concurrent transactions.
+
+**1. READ UNCOMMITTED** (Lowest isolation, highest performance)
+- Transactions can see uncommitted changes from other transactions
+- **Problem**: Dirty reads
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+-- Transaction 1
+START TRANSACTION;
+UPDATE accounts SET balance = 5000 WHERE id = 1;
+-- Not committed yet
+
+-- Transaction 2 (can see uncommitted change)
+SELECT balance FROM accounts WHERE id = 1;  -- Returns 5000
+
+-- Transaction 1
+ROLLBACK;  -- Transaction 2 saw data that never existed!
+```
+
+**2. READ COMMITTED** (Default in PostgreSQL, Oracle)
+- Transactions only see committed changes
+- **Problem**: Non-repeatable reads
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- Transaction 1
+START TRANSACTION;
+SELECT balance FROM accounts WHERE id = 1;  -- Returns 1000
+
+-- Transaction 2
+UPDATE accounts SET balance = 2000 WHERE id = 1;
+COMMIT;
+
+-- Transaction 1 (reads again)
+SELECT balance FROM accounts WHERE id = 1;  -- Returns 2000 (different!)
+COMMIT;
+```
+
+**3. REPEATABLE READ** (Default in MySQL)
+- Same query returns same results throughout transaction
+- **Problem**: Phantom reads
+
+```sql
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Transaction 1
+START TRANSACTION;
+SELECT COUNT(*) FROM orders WHERE customer_id = 1;  -- Returns 5
+
+-- Transaction 2
+INSERT INTO orders (customer_id) VALUES (1);
+COMMIT;
+
+-- Transaction 1
+SELECT COUNT(*) FROM orders WHERE customer_id = 1;  -- Still returns 5 (MySQL)
+-- But range scans might see new rows (phantom reads in some DBs)
+COMMIT;
+```
+
+**4. SERIALIZABLE** (Highest isolation, lowest performance)
+- Transactions execute as if they were serial (one after another)
+- **No problems**: Prevents all anomalies
+
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Transactions are essentially queued
+-- Complete isolation but slower performance
+```
+
+**Comparison table**:
+
+| Isolation Level | Dirty Read | Non-repeatable Read | Phantom Read | Performance |
+|----------------|------------|---------------------|--------------|-------------|
+| READ UNCOMMITTED | Yes | Yes | Yes | Fastest |
+| READ COMMITTED | No | Yes | Yes | Fast |
+| REPEATABLE READ | No | No | Yes | Slower |
+| SERIALIZABLE | No | No | No | Slowest |
+
+**Real-world example**:
+```sql
+-- Banking transaction (needs SERIALIZABLE)
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+START TRANSACTION;
+    SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+COMMIT;
+
+-- Read-only report (can use READ COMMITTED)
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+START TRANSACTION;
+    SELECT * FROM sales_report WHERE date = CURRENT_DATE;
+COMMIT;
+```
+
+**Java/Spring Boot tie-in**:
+```java
+@Transactional(isolation = Isolation.SERIALIZABLE)
+public void transferMoney(Long fromAccount, Long toAccount, BigDecimal amount) {
+    // Guaranteed no concurrent modifications
+}
+
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public List<Report> generateReport() {
+    // Acceptable for reports
+}
+```
+
+---
+
+### Q25: How do you handle deadlocks and race conditions?
+
+**Answer:**
+
+**Deadlock**: Two or more transactions waiting for each other to release locks.
+
+**Example of deadlock**:
+```sql
+-- Transaction 1
+START TRANSACTION;
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;  -- Locks account 1
+-- Waiting to lock account 2...
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+
+-- Transaction 2 (runs simultaneously)
+START TRANSACTION;
+UPDATE accounts SET balance = balance - 50 WHERE id = 2;   -- Locks account 2
+-- Waiting to lock account 1...
+UPDATE accounts SET balance = balance + 50 WHERE id = 1;
+
+-- DEADLOCK! Each waits for the other
+```
+
+**Prevention strategies**:
+
+1. **Consistent lock ordering**:
+```sql
+-- Always lock accounts in order of ID
+START TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = LEAST(@from, @to);
+    UPDATE accounts SET balance = balance + 100 WHERE id = GREATEST(@from, @to);
+COMMIT;
+```
+
+2. **Use timeout**:
+```sql
+SET innodb_lock_wait_timeout = 5;  -- Wait max 5 seconds
+START TRANSACTION;
+    -- If lock not acquired in 5 seconds, transaction fails
+COMMIT;
+```
+
+3. **Lock all resources upfront**:
+```sql
+START TRANSACTION;
+    SELECT * FROM accounts WHERE id IN (1, 2) FOR UPDATE;  -- Lock both
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+```
+
+4. **Deadlock detection and retry**:
+```sql
+-- Database automatically detects deadlock and rolls back one transaction
+-- Application should retry
+```
+
+**Race conditions**: Multiple transactions accessing same data simultaneously.
+
+**Example**:
+```sql
+-- Both transactions read balance = 1000
+-- Transaction 1: UPDATE accounts SET balance = 1000 + 100
+-- Transaction 2: UPDATE accounts SET balance = 1000 + 200
+-- Final balance = 1200 (should be 1300!)
+```
+
+**Solutions**:
+
+1. **Optimistic locking** (version column):
+```sql
+-- Add version column
+ALTER TABLE accounts ADD COLUMN version INT DEFAULT 0;
+
+-- Transaction reads version
+START TRANSACTION;
+    SELECT balance, version FROM accounts WHERE id = 1;  -- balance=1000, version=5
+
+    -- Update only if version hasn't changed
+    UPDATE accounts
+    SET balance = 1100, version = version + 1
+    WHERE id = 1 AND version = 5;
+
+    -- If 0 rows updated, someone else modified it - retry
+COMMIT;
+```
+
+2. **Pessimistic locking** (explicit locks):
+```sql
+START TRANSACTION;
+    SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;  -- Exclusive lock
+    UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+COMMIT;
+```
+
+3. **Atomic operations**:
+```sql
+-- Single atomic operation (no race condition possible)
+UPDATE accounts SET balance = balance + 100 WHERE id = 1;
+```
+
+**Java/Spring Boot tie-in**:
+```java
+// Optimistic locking with JPA
+@Entity
+public class Account {
+    @Id private Long id;
+    private BigDecimal balance;
+
+    @Version
+    private Long version;  // JPA handles optimistic locking
+}
+
+// Pessimistic locking
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT a FROM Account a WHERE a.id = :id")
+Account findByIdWithLock(@Param("id") Long id);
+
+// Retry logic for deadlocks
+@Retryable(value = {DeadlockLoserDataAccessException.class}, maxAttempts = 3)
+@Transactional
+public void transferMoney(Long from, Long to, BigDecimal amount) {
+    // Transaction logic
+}
+```
+
+---
+
+### Q26: How do you ensure data consistency in concurrent updates?
+
+**Answer:**
+
+**Strategies for maintaining consistency**:
+
+1. **Database constraints**:
+```sql
+-- Ensure balance never goes negative
+ALTER TABLE accounts ADD CONSTRAINT chk_balance CHECK (balance >= 0);
+
+-- Ensure unique email
+ALTER TABLE users ADD CONSTRAINT unique_email UNIQUE (email);
+
+-- Ensure foreign key integrity
+ALTER TABLE orders
+ADD CONSTRAINT fk_customer
+FOREIGN KEY (customer_id) REFERENCES customers(id);
+```
+
+2. **Row-level locking with SELECT FOR UPDATE**:
+```sql
+START TRANSACTION;
+    -- Lock the row for update
+    SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;
+
+    -- Only this transaction can modify this row until commit
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+COMMIT;
+```
+
+3. **Serializable isolation level**:
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+START TRANSACTION;
+    -- Complete isolation from other transactions
+    SELECT * FROM inventory WHERE product_id = 1;
+    UPDATE inventory SET quantity = quantity - 1 WHERE product_id = 1;
+COMMIT;
+```
+
+4. **Application-level distributed locks** (Redis, etc.):
+```java
+// Using Redis for distributed locking
+RLock lock = redisson.getLock("account:" + accountId);
+try {
+    lock.lock();
+    // Perform database operations
+    accountRepository.updateBalance(accountId, newBalance);
+} finally {
+    lock.unlock();
+}
+```
+
+5. **Event sourcing pattern**:
+```sql
+-- Instead of updating balance directly, store events
+INSERT INTO account_events (account_id, type, amount, timestamp)
+VALUES (1, 'DEPOSIT', 100, NOW());
+
+-- Calculate balance from events
+SELECT SUM(CASE
+    WHEN type = 'DEPOSIT' THEN amount
+    WHEN type = 'WITHDRAWAL' THEN -amount
+END) AS balance
+FROM account_events
+WHERE account_id = 1;
+```
+
+6. **Two-phase commit** (distributed transactions):
+```sql
+-- Phase 1: Prepare
+PREPARE TRANSACTION 'txn_123';
+
+-- Phase 2: Commit (on all nodes) or Rollback
+COMMIT PREPARED 'txn_123';
+-- Or: ROLLBACK PREPARED 'txn_123';
+```
+
+**Real-world example: Inventory management**
+```sql
+-- Problem: Multiple users buying last item simultaneously
+
+-- Solution 1: Optimistic locking
+UPDATE inventory
+SET quantity = quantity - 1, version = version + 1
+WHERE product_id = 101
+  AND quantity >= 1  -- Check stock available
+  AND version = @current_version;  -- Check no one else updated
+
+-- Solution 2: Pessimistic locking
+START TRANSACTION;
+    SELECT quantity FROM inventory
+    WHERE product_id = 101 FOR UPDATE;  -- Lock row
+
+    UPDATE inventory SET quantity = quantity - 1
+    WHERE product_id = 101 AND quantity >= 1;
+COMMIT;
+
+-- Solution 3: Atomic decrement with check
+UPDATE inventory
+SET quantity = CASE
+    WHEN quantity > 0 THEN quantity - 1
+    ELSE quantity
+END
+WHERE product_id = 101;
+
+-- Verify update succeeded
+SELECT quantity FROM inventory WHERE product_id = 101;
+```
+
+**Java/Spring Boot best practices**:
+```java
+@Transactional(isolation = Isolation.SERIALIZABLE)
+public void purchaseProduct(Long productId, Long userId) {
+    Product product = productRepository.findByIdWithLock(productId);
+
+    if (product.getQuantity() < 1) {
+        throw new OutOfStockException();
+    }
+
+    product.setQuantity(product.getQuantity() - 1);
+    productRepository.save(product);
+
+    orderRepository.save(new Order(userId, productId));
+}
+```
+
+---
+
+### Q27: What are stored procedures, and when would you use them vs Java business logic?
+
+**Answer:**
+
+**Stored Procedure**: Precompiled SQL code stored in the database.
+
+```sql
+-- Create stored procedure
+DELIMITER //
+CREATE PROCEDURE transfer_money(
+    IN from_account INT,
+    IN to_account INT,
+    IN amount DECIMAL(10,2),
+    OUT result VARCHAR(50)
+)
+BEGIN
+    DECLARE current_balance DECIMAL(10,2);
+
+    START TRANSACTION;
+
+    -- Check balance
+    SELECT balance INTO current_balance
+    FROM accounts WHERE id = from_account FOR UPDATE;
+
+    IF current_balance < amount THEN
+        SET result = 'Insufficient funds';
+        ROLLBACK;
+    ELSE
+        UPDATE accounts SET balance = balance - amount WHERE id = from_account;
+        UPDATE accounts SET balance = balance + amount WHERE id = to_account;
+        SET result = 'Success';
+        COMMIT;
+    END IF;
+END //
+DELIMITER ;
+
+-- Call stored procedure
+CALL transfer_money(1, 2, 100, @result);
+SELECT @result;
+```
+
+**When to use stored procedures**:
+
+✅ **Use stored procedures when**:
+- Complex database operations requiring multiple queries
+- Heavy data processing better done in database
+- Need to minimize network round trips
+- Database-agnostic application layer
+- Shared logic across multiple applications
+- Performance-critical bulk operations
+- Legacy systems requiring database-centric logic
+
+```sql
+-- Good use case: Complex report generation
+CREATE PROCEDURE generate_monthly_report(IN month INT, IN year INT)
+BEGIN
+    -- Multiple complex aggregations
+    -- Temporary tables
+    -- Joins across many tables
+    -- Better performed in DB than fetching to Java
+END;
+```
+
+✅ **Use Java business logic when**:
+- Complex business rules requiring external services
+- Need to integrate with APIs, message queues, etc.
+- Logic frequently changes (easier to deploy Java than DB changes)
+- Better testability (unit tests, mocking)
+- Better maintainability (version control, code review)
+- Team expertise in Java over SQL
+- Need to log, monitor, or trace business logic
+- Microservices architecture
+
+```java
+// Good use case: Order processing with external systems
+@Service
+public class OrderService {
+    public void processOrder(Order order) {
+        // Validate with external service
+        paymentService.validateCard(order.getPaymentInfo());
+
+        // Business logic
+        if (order.getTotal() > 1000) {
+            order.setStatus(OrderStatus.NEEDS_APPROVAL);
+        }
+
+        // Save to database
+        orderRepository.save(order);
+
+        // Send notification
+        emailService.sendOrderConfirmation(order);
+
+        // Publish event
+        eventPublisher.publish(new OrderCreatedEvent(order));
+    }
+}
+```
+
+**Comparison**:
+
+| Aspect | Stored Procedures | Java Business Logic |
+|--------|------------------|-------------------|
+| **Performance** | Faster for DB-heavy ops | Faster for complex logic |
+| **Network** | Fewer round trips | More round trips |
+| **Maintainability** | Harder to version/test | Easier to maintain |
+| **Portability** | DB-specific syntax | Database agnostic |
+| **Debugging** | Limited tools | Rich debugging tools |
+| **Integration** | Limited to database | Full ecosystem access |
+| **Deployment** | Requires DB access | Standard app deployment |
+
+**Hybrid approach** (best of both worlds):
+```java
+// Java handles orchestration and business logic
+@Service
+public class ReportService {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public Report generateMonthlyReport(int month, int year) {
+        // Java handles validation and orchestration
+        if (month < 1 || month > 12) {
+            throw new InvalidMonthException();
+        }
+
+        // Stored procedure handles heavy DB operations
+        jdbcTemplate.call(
+            connection -> connection.prepareCall("{call generate_monthly_report(?, ?)}"),
+            month, year
+        );
+
+        // Java handles post-processing
+        Report report = fetchReportData();
+        emailService.sendReport(report);
+        return report;
+    }
+}
+```
+
+**Modern best practice**: Favor Java business logic with optimized SQL queries. Use stored procedures sparingly for performance-critical database operations.
+
+---
+
+### Q28: How do you handle soft deletes in SQL?
+
+**Answer:**
+
+**Soft delete**: Marking records as deleted instead of physically removing them.
+
+**Implementation**:
+
+1. **Add deleted flag**:
+```sql
+ALTER TABLE users ADD COLUMN deleted BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL;
+
+-- Soft delete
+UPDATE users SET deleted = TRUE, deleted_at = NOW() WHERE id = 1;
+
+-- Query active users
+SELECT * FROM users WHERE deleted = FALSE;
+```
+
+2. **Better approach with status enum**:
+```sql
+ALTER TABLE users ADD COLUMN status ENUM('ACTIVE', 'DELETED', 'SUSPENDED') DEFAULT 'ACTIVE';
+
+-- Soft delete
+UPDATE users SET status = 'DELETED', deleted_at = NOW() WHERE id = 1;
+
+-- Query
+SELECT * FROM users WHERE status = 'ACTIVE';
+```
+
+**Advantages**:
+- ✅ Data recovery possible
+- ✅ Audit trail maintained
+- ✅ Historical data preserved for analytics
+- ✅ Referential integrity maintained
+
+**Disadvantages**:
+- ❌ Queries must always filter deleted records
+- ❌ Unique constraints become complex
+- ❌ Database grows larger
+- ❌ Performance impact on large tables
+
+**Handling unique constraints**:
+```sql
+-- Problem: Can't reuse email after soft delete
+ALTER TABLE users ADD CONSTRAINT unique_email UNIQUE (email);
+
+-- Solution 1: Partial index (PostgreSQL)
+CREATE UNIQUE INDEX unique_active_email
+ON users(email) WHERE deleted = FALSE;
+
+-- Solution 2: Include deleted flag in constraint
+ALTER TABLE users ADD CONSTRAINT unique_email_active
+UNIQUE (email, deleted);
+
+-- Solution 3: Nullable email on delete
+UPDATE users SET email = NULL, deleted = TRUE WHERE id = 1;
+```
+
+**Indexes for soft deletes**:
+```sql
+-- Add index on deleted flag
+CREATE INDEX idx_deleted ON users(deleted);
+
+-- Composite index for common queries
+CREATE INDEX idx_status_created ON users(status, created_at);
+```
+
+**Views for convenience**:
+```sql
+-- Create view of active users
+CREATE VIEW active_users AS
+SELECT * FROM users WHERE deleted = FALSE;
+
+-- Query becomes simpler
+SELECT * FROM active_users WHERE email LIKE '%@example.com';
+```
+
+**Automated archiving**:
+```sql
+-- Move old deleted records to archive table
+CREATE TABLE users_archive LIKE users;
+
+-- Archive records deleted > 1 year ago
+INSERT INTO users_archive
+SELECT * FROM users
+WHERE deleted = TRUE AND deleted_at < DATE_SUB(NOW(), INTERVAL 1 YEAR);
+
+DELETE FROM users
+WHERE deleted = TRUE AND deleted_at < DATE_SUB(NOW(), INTERVAL 1 YEAR);
+```
+
+**Java/JPA implementation**:
+```java
+@Entity
+@Table(name = "users")
+@Where(clause = "deleted = false")  // Hibernate @Where annotation
+@SQLDelete(sql = "UPDATE users SET deleted = true, deleted_at = NOW() WHERE id = ?")
+public class User {
+    @Id
+    private Long id;
+
+    private String email;
+
+    @Column(name = "deleted")
+    private Boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+}
+
+// Repository automatically filters deleted users
+public interface UserRepository extends JpaRepository<User, Long> {
+    // This query automatically excludes deleted users
+    List<User> findByEmail(String email);
+
+    // To include deleted users
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    List<User> findByEmailIncludingDeleted(@Param("email") String email);
+}
+
+// Service layer
+@Service
+public class UserService {
+    public void softDelete(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UserNotFoundException());
+        user.setDeleted(true);
+        user.setDeletedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    public void hardDelete(Long userId) {
+        userRepository.deleteById(userId);  // Physical delete
+    }
+}
+```
+
+**Handling foreign keys**:
+```sql
+-- Allow references to soft-deleted records
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    user_id INT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    -- No ON DELETE CASCADE needed
+);
+
+-- Query active orders with active users
+SELECT o.*
+FROM orders o
+JOIN users u ON o.user_id = u.id
+WHERE o.deleted = FALSE AND u.deleted = FALSE;
+```
+
+---
+
+### Q29: Explain ON DELETE CASCADE and ON UPDATE CASCADE
+
+**Answer:**
+
+**Foreign key actions** that automatically maintain referential integrity.
+
+**ON DELETE CASCADE**: Automatically delete child records when parent is deleted.
+
+```sql
+CREATE TABLE departments (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON DELETE CASCADE  -- Delete employees when department deleted
+);
+
+-- Delete department
+DELETE FROM departments WHERE id = 1;
+-- All employees with department_id = 1 are automatically deleted
+```
+
+**ON UPDATE CASCADE**: Automatically update child records when parent key changes.
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON UPDATE CASCADE  -- Update employees when department id changes
+);
+
+-- Update department id
+UPDATE departments SET id = 100 WHERE id = 1;
+-- All employees with department_id = 1 are automatically updated to 100
+```
+
+**Other foreign key actions**:
+
+```sql
+-- ON DELETE SET NULL: Set foreign key to NULL when parent deleted
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON DELETE SET NULL
+);
+-- Result: Employees remain but department_id becomes NULL
+
+-- ON DELETE SET DEFAULT: Set to default value
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    department_id INT DEFAULT 1,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON DELETE SET DEFAULT
+);
+
+-- ON DELETE RESTRICT (default): Prevent deletion if children exist
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON DELETE RESTRICT
+);
+-- DELETE FROM departments WHERE id = 1; -- ERROR if employees exist
+
+-- ON DELETE NO ACTION: Same as RESTRICT but check can be deferred
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(id)
+        ON DELETE NO ACTION
+);
+```
+
+**Real-world examples**:
+
+1. **CASCADE - Blog with comments**:
+```sql
+CREATE TABLE posts (
+    id INT PRIMARY KEY,
+    title VARCHAR(200)
+);
+
+CREATE TABLE comments (
+    id INT PRIMARY KEY,
+    post_id INT,
+    content TEXT,
+    FOREIGN KEY (post_id)
+        REFERENCES posts(id)
+        ON DELETE CASCADE  -- Delete comments when post deleted
+);
+```
+
+2. **SET NULL - Employee-Manager relationship**:
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    manager_id INT,
+    FOREIGN KEY (manager_id)
+        REFERENCES employees(id)
+        ON DELETE SET NULL  -- Don't delete employee if manager leaves
+);
+```
+
+3. **RESTRICT - Orders system** (prevent accidental deletions):
+```sql
+CREATE TABLE customers (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT,
+    FOREIGN KEY (customer_id)
+        REFERENCES customers(id)
+        ON DELETE RESTRICT  -- Can't delete customer with existing orders
+);
+```
+
+**Multiple cascading levels**:
+```sql
+-- Three-level cascade
+CREATE TABLE departments (id INT PRIMARY KEY);
+
+CREATE TABLE teams (
+    id INT PRIMARY KEY,
+    dept_id INT,
+    FOREIGN KEY (dept_id) REFERENCES departments(id) ON DELETE CASCADE
+);
+
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    team_id INT,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+);
+
+-- Delete department → deletes teams → deletes employees (cascades down)
+DELETE FROM departments WHERE id = 1;
+```
+
+**Performance considerations**:
+```sql
+-- CASCADE can be slow on large tables
+-- Consider indexing foreign keys
+CREATE INDEX idx_employee_dept ON employees(department_id);
+
+-- Check cascade impact before delete
+SELECT COUNT(*) FROM employees WHERE department_id = 1;
+```
+
+**Java/JPA equivalent**:
+```java
+@Entity
+public class Department {
+    @Id
+    private Long id;
+
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Employee> employees;
+}
+
+@Entity
+public class Employee {
+    @Id
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+}
+
+// Deleting department automatically deletes employees
+departmentRepository.deleteById(1L);
+```
+
+**Best practices**:
+- ✅ Use CASCADE for truly dependent data (comments on posts)
+- ✅ Use SET NULL for optional relationships
+- ✅ Use RESTRICT to prevent accidental data loss
+- ❌ Avoid deep cascading chains (performance issues)
+- ❌ Be careful with CASCADE in production (can delete more than intended)
+
+---
+
+### Q30: How would you debug a slow query in production?
+
+**Answer:**
+
+**Step-by-step debugging process**:
+
+**1. Use EXPLAIN to analyze query execution**:
+```sql
+EXPLAIN SELECT e.name, d.name
+FROM employees e
+JOIN departments d ON e.dept_id = d.id
+WHERE e.salary > 50000;
+
+-- Better: EXPLAIN ANALYZE (shows actual execution)
+EXPLAIN ANALYZE SELECT e.name, d.name
+FROM employees e
+JOIN departments d ON e.dept_id = d.id
+WHERE e.salary > 50000;
+```
+
+**Reading EXPLAIN output**:
+```
+| id | select_type | table | type  | key          | rows  | Extra                 |
+|----|-------------|-------|-------|--------------|-------|-----------------------|
+| 1  | SIMPLE      | e     | ALL   | NULL         | 10000 | Using where           |
+| 1  | SIMPLE      | d     | eq_ref| PRIMARY      | 1     | NULL                  |
+
+Problems to look for:
+- type: ALL (full table scan) - BAD
+- type: index, range, ref, eq_ref - GOOD
+- key: NULL (no index used) - BAD
+- rows: Large number - investigate further
+- Extra: "Using filesort", "Using temporary" - can be slow
+```
+
+**2. Identify missing indexes**:
+```sql
+-- Check existing indexes
+SHOW INDEXES FROM employees;
+
+-- Add missing indexes
+CREATE INDEX idx_salary ON employees(salary);
+CREATE INDEX idx_dept_id ON employees(dept_id);
+
+-- Re-run EXPLAIN
+EXPLAIN SELECT * FROM employees WHERE salary > 50000;
+```
+
+**3. Check query statistics**:
+```sql
+-- MySQL: Enable profiling
+SET profiling = 1;
+SELECT * FROM employees WHERE salary > 50000;
+SHOW PROFILES;
+SHOW PROFILE FOR QUERY 1;
+
+-- PostgreSQL: pg_stat_statements
+SELECT query, calls, total_time, mean_time
+FROM pg_stat_statements
+ORDER BY mean_time DESC
+LIMIT 10;
+```
+
+**4. Look for common issues**:
+
+**Issue 1: SELECT ***
+```sql
+-- Bad: Fetches all columns
+SELECT * FROM employees;
+
+-- Good: Fetch only needed columns
+SELECT id, name, email FROM employees;
+```
+
+**Issue 2: No index on WHERE/JOIN columns**
+```sql
+-- Slow: No index on email
+SELECT * FROM users WHERE email = 'john@example.com';
+
+-- Fix
+CREATE INDEX idx_email ON users(email);
+```
+
+**Issue 3: Function on indexed column**
+```sql
+-- Bad: Function prevents index usage
+SELECT * FROM users WHERE UPPER(email) = 'JOHN@EXAMPLE.COM';
+
+-- Good: Use functional index or change query
+CREATE INDEX idx_email_upper ON users(UPPER(email));
+-- Or
+SELECT * FROM users WHERE email = LOWER('JOHN@EXAMPLE.COM');
+```
+
+**Issue 4: OR conditions**
+```sql
+-- Slow: OR prevents efficient index usage
+SELECT * FROM employees
+WHERE department_id = 1 OR department_id = 2 OR department_id = 3;
+
+-- Faster: Use IN
+SELECT * FROM employees
+WHERE department_id IN (1, 2, 3);
+```
+
+**Issue 5: NOT IN with NULL values**
+```sql
+-- Slow and incorrect with NULLs
+SELECT * FROM employees
+WHERE id NOT IN (SELECT manager_id FROM employees);
+
+-- Faster
+SELECT * FROM employees e
+WHERE NOT EXISTS (SELECT 1 FROM employees m WHERE m.manager_id = e.id);
+```
+
+**Issue 6: Implicit type conversion**
+```sql
+-- Slow: id is INT but comparing with string
+SELECT * FROM users WHERE id = '123';
+
+-- Fast: Use correct type
+SELECT * FROM users WHERE id = 123;
+```
+
+**5. Optimize joins**:
+
+**Issue: Unnecessary joins**
+```sql
+-- Bad: Joins table but doesn't use it
+SELECT o.id, o.total
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+
+-- Good: Remove unnecessary join
+SELECT id, total FROM orders;
+```
+
+**Issue: Joining on non-indexed columns**
+```sql
+-- Create indexes on join columns
+CREATE INDEX idx_customer_id ON orders(customer_id);
+CREATE INDEX idx_order_id ON order_items(order_id);
+
+-- Multiple join optimization
+SELECT o.id, SUM(oi.quantity * p.price) AS total
+FROM orders o
+JOIN order_items oi ON o.id = oi.order_id  -- Indexed
+JOIN products p ON oi.product_id = p.id     -- Indexed
+WHERE o.order_date >= '2025-01-01';
+```
+
+**6. Monitor real-time query performance**:
+```sql
+-- MySQL: Check running processes
+SHOW PROCESSLIST;
+-- Look for queries with State "Copying to tmp table" or "Sorting result"
+
+-- Kill slow query if needed
+KILL 123;
+
+-- PostgreSQL: View active queries
+SELECT pid, now() - pg_stat_activity.query_start AS duration, query
+FROM pg_stat_activity
+WHERE (now() - pg_stat_activity.query_start) > interval '5 minutes';
+```
+
+**7. Use query caching (with caution)**:
+```sql
+-- MySQL query cache
+SET QUERY_CACHE_SIZE = 10000000;  -- 10MB
+RESET QUERY_CACHE;
+
+-- Monitor cache performance
+SHOW STATUS LIKE 'Qcache%';
+
+-- Note: Query cache deprecated in MySQL 5.7+, removed in 8.0
+-- Use Redis instead for modern applications
+```
+
+**8. Archive old data**:
+```sql
+-- Slow query on large table with historical data
+SELECT * FROM orders WHERE created_at >= '2025-01-01';
+
+-- Create archive table
+CREATE TABLE orders_2024 LIKE orders;
+INSERT INTO orders_2024 SELECT * FROM orders WHERE YEAR(created_at) = 2024;
+DELETE FROM orders WHERE YEAR(created_at) = 2024;
+
+-- Add partitioning
+ALTER TABLE orders
+PARTITION BY RANGE (YEAR(created_at)) (
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION pmax VALUES LESS THAN MAXVALUE
+);
+```
+
+**9. Common anti-patterns to avoid**:
+```sql
+-- BAD: N+1 Query Problem
+// Java: Loop fetches one employee at a time
+for (int i = 1; i <= 1000; i++) {
+    Employee emp = employeeRepository.findById(i);  // 1000 separate queries!
+}
+
+-- GOOD: Fetch all at once
+List<Employee> employees = employeeRepository.findAll();
+
+-- BAD: Cartesian product
+SELECT * FROM orders o, customers c, products p;
+-- Results in orders × customers × products rows!
+
+-- GOOD: Use explicit joins
+SELECT * FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN products p ON ...;
+
+-- BAD: UPDATE without WHERE (updates entire table!)
+UPDATE employees SET salary = salary + 1000;
+
+-- GOOD: Add WHERE clause
+UPDATE employees SET salary = salary + 1000 WHERE department_id = 5;
+```
+
+**10. Production monitoring tools**:
+```sql
+-- Create slow query log
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 2;  -- Log queries taking > 2 seconds
+
+-- Analyze slow query log
+mysqldumpslow -s at /var/log/mysql/slow.log | head -20;
+
+-- PostgreSQL: Enable logging
+ALTER SYSTEM SET log_min_duration_statement = 1000;  -- 1 second
+SELECT pg_reload_conf();
+```
+
+---
+
+## 🔗 4. Fullstack-Oriented SQL Scenarios (Detailed)
+
+### 1. User Management System (Expanded)
+
+**Schema with best practices**:
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_status (status)
+);
+
+CREATE TABLE roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE user_roles (
+    user_id INT NOT NULL,
+    role_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    INDEX idx_role_id (role_id)
+);
+
+CREATE TABLE permissions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE role_permissions (
+    role_id INT NOT NULL,
+    permission_id INT NOT NULL,
+    PRIMARY KEY (role_id, permission_id),
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+);
+```
+
+**Common queries**:
+```sql
+-- Get user with all roles and permissions
+SELECT u.id, u.name, u.email,
+       GROUP_CONCAT(r.name) AS roles,
+       GROUP_CONCAT(p.name) AS permissions
+FROM users u
+LEFT JOIN user_roles ur ON u.id = ur.user_id
+LEFT JOIN roles r ON ur.role_id = r.id
+LEFT JOIN role_permissions rp ON r.id = rp.role_id
+LEFT JOIN permissions p ON rp.permission_id = p.id
+WHERE u.id = 1
+GROUP BY u.id;
+
+-- Find users with specific role
+SELECT DISTINCT u.* FROM users u
+JOIN user_roles ur ON u.id = ur.user_id
+JOIN roles r ON ur.role_id = r.id
+WHERE r.name = 'Admin' AND u.status = 'ACTIVE';
+
+-- Check if user has permission
+SELECT EXISTS (
+    SELECT 1 FROM user_roles ur
+    JOIN role_permissions rp ON ur.role_id = rp.role_id
+    JOIN permissions p ON rp.permission_id = p.id
+    WHERE ur.user_id = 1 AND p.name = 'DELETE_USER'
+) AS has_permission;
+```
+
+**Java/Spring integration**:
+```java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    @Query("SELECT u FROM User u WHERE u.status = 'ACTIVE'")
+    List<User> findActiveUsers();
+}
+
+@Service
+public class UserService {
+    public UserDTO getUserWithRoles(Long userId) {
+        return userRepository.findByIdWithRoles(userId)
+            .map(this::mapToDTO)
+            .orElseThrow(() -> new UserNotFoundException());
+    }
+}
+```
+
+---
+
+### 2. Order & Product System (Expanded)
+
+**Complete schema**:
+```sql
+CREATE TABLE customers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email)
+);
+
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    sku VARCHAR(100) UNIQUE NOT NULL,
+    price DECIMAL(10,2) NOT NULL CHECK (price > 0),
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    category VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_category (category),
+    INDEX idx_sku (sku)
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED') DEFAULT 'PENDING',
+    total_amount DECIMAL(12,2),
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT,
+    INDEX idx_customer_id (customer_id),
+    INDEX idx_order_date (order_date),
+    INDEX idx_status (status)
+);
+
+CREATE TABLE order_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price_at_purchase DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
+    INDEX idx_order_id (order_id),
+    INDEX idx_product_id (product_id)
+);
+```
+
+**Advanced queries**:
+```sql
+-- Orders with totals and product details
+SELECT
+    o.id AS order_id,
+    c.name AS customer_name,
+    p.name AS product_name,
+    oi.quantity,
+    oi.price_at_purchase,
+    (oi.quantity * oi.price_at_purchase) AS item_total,
+    SUM(oi.quantity * oi.price_at_purchase) OVER (PARTITION BY o.id) AS order_total
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+WHERE o.order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+ORDER BY o.order_date DESC;
+
+-- Revenue by product
+SELECT
+    p.id,
+    p.name,
+    COUNT(DISTINCT o.id) AS orders_count,
+    SUM(oi.quantity) AS total_quantity,
+    SUM(oi.quantity * oi.price_at_purchase) AS total_revenue,
+    AVG(oi.price_at_purchase) AS avg_price
+FROM products p
+LEFT JOIN order_items oi ON p.id = oi.product_id
+LEFT JOIN orders o ON oi.order_id = o.id AND o.status != 'CANCELLED'
+GROUP BY p.id, p.name
+ORDER BY total_revenue DESC;
+
+-- Top customers by spending
+SELECT
+    c.id,
+    c.name,
+    COUNT(o.id) AS order_count,
+    SUM(oi.quantity * oi.price_at_purchase) AS total_spent,
+    AVG(oi.quantity * oi.price_at_purchase) AS avg_order_value,
+    MAX(o.order_date) AS last_order_date
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+JOIN order_items oi ON o.id = oi.order_id
+WHERE o.status != 'CANCELLED'
+GROUP BY c.id
+HAVING total_spent > 1000
+ORDER BY total_spent DESC
+LIMIT 20;
+
+-- Inventory alerts (low stock)
+SELECT
+    id,
+    name,
+    sku,
+    stock,
+    CASE
+        WHEN stock = 0 THEN 'OUT_OF_STOCK'
+        WHEN stock < 10 THEN 'LOW_STOCK'
+        WHEN stock < 50 THEN 'MEDIUM_STOCK'
+        ELSE 'HEALTHY'
+    END AS stock_status
+FROM products
+WHERE stock < 50
+ORDER BY stock ASC;
+```
+
+---
+
+### 3. Pagination API Deep Dive
+
+**Offset pagination with Spring Data**:
+```java
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    @Autowired
+    private EmployeeRepository employeeRepository;
+
+    // Traditional pagination
+    @GetMapping
+    public Page<Employee> getEmployees(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "id,desc") String sort
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return employeeRepository.findAll(pageable);
+    }
+
+    // With filtering
+    @GetMapping("/by-department")
+    public Page<Employee> getEmployeesByDepartment(
+        @RequestParam Long departmentId,
+        Pageable pageable
+    ) {
+        return employeeRepository.findByDepartmentId(departmentId, pageable);
+    }
+}
+```
+
+**SQL for offset pagination**:
+```sql
+-- Page 0 (rows 0-9)
+SELECT * FROM employees ORDER BY id LIMIT 10 OFFSET 0;
+
+-- Page 5 (rows 50-59)
+SELECT * FROM employees ORDER BY id LIMIT 10 OFFSET 50;
+
+-- Performance: OFFSET scans N rows before limiting
+-- With 1M rows on page 100,000: Scans 1M rows!
+```
+
+**Keyset pagination (cursor-based)**:
+```sql
+-- First request
+SELECT * FROM employees ORDER BY id LIMIT 11;
+-- Returns rows 1-11, last ID is cursor for next page
+
+-- Second request (cursor = 11)
+SELECT * FROM employees WHERE id > 11 ORDER BY id LIMIT 11;
+-- Returns rows 12-22
+
+-- Multi-column cursor
+SELECT * FROM employees
+WHERE (department_id, id) > (5, 100)
+ORDER BY department_id, id
+LIMIT 10;
+```
+
+**React infinite scroll implementation**:
+```javascript
+// Using keyset pagination
+const [employees, setEmployees] = useState([]);
+const [lastId, setLastId] = useState(null);
+const [hasMore, setHasMore] = useState(true);
+
+const loadMore = async () => {
+    const response = await fetch(
+        `/api/employees?lastId=${lastId}&limit=20`
+    );
+    const data = await response.json();
+
+    setEmployees(prev => [...prev, ...data]);
+    setLastId(data[data.length - 1].id);
+    setHasMore(data.length === 20);
+};
+```
+
+---
+
+## ⚡ 5. Performance & Optimization (Advanced)
+
+### Index Deep Dive
+
+**B-tree index structure**:
+```sql
+-- How indexes organize data
+Root Node
+├── [1-100]
+│   ├── Leaf: [1, 5, 15, 25, 50, 75, 100]
+├── [100-200]
+│   ├── Leaf: [101, 120, 150, 175, 200]
+└── [200-300]
+    └── Leaf: [210, 250, 275, 300]
+
+-- Binary search through tree is O(log n)
+-- Scan of values is O(k) where k = results
+-- Total: O(log n + k)
+
+-- Example: Find employees with id between 100-200
+SELECT * FROM employees WHERE id BETWEEN 100 AND 200;
+-- Finds starting node in B-tree (log n)
+-- Scans linked leaf nodes (k results)
+```
+
+**Hash index usage**:
+```sql
+-- Hash index: Perfect for equality, useless for ranges
+CREATE INDEX idx_email_hash ON users (email) USING HASH;
+
+-- Good: Equality
+SELECT * FROM users WHERE email = 'john@example.com';
+-- Uses hash index directly
+
+-- Bad: Range query (full scan)
+SELECT * FROM users WHERE email LIKE 'john%';
+-- Hash index can't help, falls back to full table scan
+```
+
+**Covering index optimization**:
+```sql
+-- Regular index (requires row lookup)
+CREATE INDEX idx_salary ON employees(salary);
+
+SELECT id, name, salary FROM employees WHERE salary > 50000;
+-- 1. Find rows using index (O(log n + k))
+-- 2. Lookup full row for each result
+-- 3. Extract needed columns
+
+-- Covering index (no row lookup)
+CREATE INDEX idx_salary_covering ON employees(salary, id, name);
+
+-- Now all columns are in index - no row lookup needed!
+-- Pure index scan: O(log n + k), faster
+```
+
+**Partial index for filtering**:
+```sql
+-- Index only active users
+CREATE INDEX idx_email_active ON users(email)
+WHERE status = 'ACTIVE';
+
+-- Saves space and speeds up queries on active users
+SELECT * FROM users WHERE email = 'john@example.com' AND status = 'ACTIVE';
+
+-- But slows down:
+SELECT * FROM users WHERE email = 'john@example.com' AND status = 'DELETED';
+-- Partial index doesn't help
+```
+
+### N+1 Query Problem
+
+**The problem**:
+```java
+// N+1 queries: 1 query for employees + N queries for departments
+List<Employee> employees = employeeRepository.findAll();  // Query 1
+for (Employee emp : employees) {
+    Department dept = emp.getDepartment();  // Query 2, 3, 4... N+1
+}
+
+// Resulting SQL:
+// Query 1: SELECT * FROM employees;  (1000 rows)
+// Query 2-1001: SELECT * FROM departments WHERE id = ?;  (1000 queries!)
+```
+
+**Solutions**:
+
+1. **JOIN FETCH (Eager loading)**:
+```java
+@Query("SELECT e FROM Employee e JOIN FETCH e.department")
+List<Employee> findAllWithDepartments();
+
+// Single query with join
+// SELECT e.*, d.* FROM employees e JOIN departments d
+```
+
+2. **@EntityGraph**:
+```java
+@EntityGraph(attributePaths = {"department", "manager"})
+@Query("SELECT e FROM Employee e")
+List<Employee> findAllEager();
+```
+
+3. **Manual JOIN**:
+```sql
+-- Fetch employees with departments
+SELECT e.*, d.* FROM employees e
+LEFT JOIN departments d ON e.dept_id = d.id;
+
+-- Then map to objects in Java
+```
+
+4. **Projection queries**:
+```java
+public interface EmployeeSummary {
+    Long getId();
+    String getName();
+    String getDepartmentName();
+}
+
+@Query("SELECT new map(e.id, e.name, d.name as departmentName) " +
+       "FROM Employee e JOIN e.department d")
+List<EmployeeSummary> findEmployeeSummaries();
+```
+
+### Lazy vs Eager Loading
+
+**Lazy loading**:
+```java
+@Entity
+public class Employee {
+    @ManyToOne(fetch = FetchType.LAZY)  // Default
+    private Department department;
+}
+
+// Only loads when accessed
+Employee emp = employeeRepository.findById(1);
+emp.getDepartment();  // Second query executed here
+```
+
+**Eager loading**:
+```java
+@Entity
+public class Employee {
+    @ManyToOne(fetch = FetchType.EAGER)
+    private Department department;
+}
+
+// Loads immediately
+Employee emp = employeeRepository.findById(1);  // Already loaded
+emp.getDepartment();  // No second query
+```
+
+**Best practice**: Default to lazy loading, use JOIN FETCH in specific queries when needed.
+
+---
+
+## 🧰 6. Java Integration - Advanced Topics
+
+### Connection Pooling with HikariCP
+
+```java
+// Hikari configuration
+@Configuration
+public class DataSourceConfig {
+
+    @Bean
+    public DataSource dataSource() {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mysql://localhost:3306/mydb");
+        config.setUsername("root");
+        config.setPassword("password");
+        config.setMaximumPoolSize(20);        // Max connections
+        config.setMinimumIdle(5);             // Min idle connections
+        config.setConnectionTimeout(20000);   // 20 seconds
+        config.setIdleTimeout(300000);        // 5 minutes
+        config.setMaxLifetime(1200000);       // 20 minutes
+
+        return new HikariDataSource(config);
+    }
+}
+
+// Connection pooling benefits
+// Without: Create connection for each request (~500ms per connection)
+// With HikariCP: Reuse existing connections (~1ms)
+```
+
+### Batch Operations
+
+```java
+// Batch insert
+@Repository
+public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    @Modifying
+    @Query(value = "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
+           nativeQuery = true)
+    void batchInsert(List<Object[]> data);
+}
+
+@Service
+public class ProductService {
+
+    @Autowired
+    private ProductRepository repository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    public void importProducts(List<Product> products) {
+        List<Object[]> batch = products.stream()
+            .map(p -> new Object[]{p.getName(), p.getPrice(), p.getStock()})
+            .collect(Collectors.toList());
+
+        // Execute batch insert
+        String sql = "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)";
+        jdbcTemplate.batchUpdate(sql, batch);
+    }
+
+    // Batch update
+    public void updatePrices(Map<Long, BigDecimal> priceUpdates) {
+        List<Object[]> batch = priceUpdates.entrySet().stream()
+            .map(e -> new Object[]{e.getValue(), e.getKey()})
+            .collect(Collectors.toList());
+
+        String sql = "UPDATE products SET price = ? WHERE id = ?";
+        jdbcTemplate.batchUpdate(sql, batch);
+    }
+}
+
+// Enable batch processing in application.properties
+spring.jpa.properties.hibernate.jdbc.batch_size=20
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+```
+
+### Pagination with Spring Data JPA
+
+```java
+@RestController
+@RequestMapping("/api/employees")
+public class EmployeeController {
+
+    @Autowired
+    private EmployeeRepository repository;
+
+    // Pageable automatically handles page, size, sort
+    @GetMapping
+    public ResponseEntity<Page<Employee>> listEmployees(
+        Pageable pageable
+    ) {
+        Page<Employee> page = repository.findAll(pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    // Usage: /api/employees?page=0&size=20&sort=salary,desc
+    // Returns: {
+    //   "content": [...],
+    //   "pageable": {...},
+    //   "totalElements": 1000,
+    //   "totalPages": 50,
+    //   "currentPage": 0
+    // }
+
+    // Filtering + pagination
+    @GetMapping("/by-department/{deptId}")
+    public ResponseEntity<Page<Employee>> listByDepartment(
+        @PathVariable Long deptId,
+        Pageable pageable
+    ) {
+        Page<Employee> page = repository.findByDepartmentId(deptId, pageable);
+        return ResponseEntity.ok(page);
+    }
+}
+
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+    @Query("SELECT e FROM Employee e WHERE e.department.id = :deptId")
+    Page<Employee> findByDepartmentId(@Param("deptId") Long deptId, Pageable pageable);
+
+    // Custom query with projection
+    @Query("SELECT new com.example.EmployeeDTO(e.id, e.name, e.salary) " +
+           "FROM Employee e WHERE e.salary > :minSalary")
+    Page<EmployeeDTO> findHighEarners(@Param("minSalary") BigDecimal minSalary, Pageable pageable);
+}
+```
+
+### SQL Injection Prevention
+
+```java
+// VULNERABLE: String concatenation
+String query = "SELECT * FROM users WHERE email = '" + email + "'";
+// Input: " OR '1'='1
+// Result: SELECT * FROM users WHERE email = '' OR '1'='1' -- Returns all users!
+
+// SAFE: PreparedStatement with parameterization
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    Optional<User> findByEmail(@Param("email") String email);  // Parameterized
+}
+
+// SAFE: Native query with parameterization
+@Query(value = "SELECT * FROM users WHERE email = ?1", nativeQuery = true)
+Optional<User> findByEmailNative(String email);  // Parameter substitution
+
+// Java code example
+String email = userInput;  // Could be malicious
+User user = userRepository.findByEmail(email);  // Safe - parameterized
+
+// How PreparedStatement works:
+// 1. Send query structure to database: "SELECT * FROM users WHERE email = ?"
+// 2. Send parameters separately: ["malicious']
+// Database treats parameter as data, not code - injection impossible
+```
+
+### @Transactional Best Practices
+
+```java
+@Service
+public class OrderService {
+
+    // Basic transactional method
+    @Transactional
+    public Order createOrder(Long customerId, List<OrderItem> items) {
+        Customer customer = customerRepository.findById(customerId)
+            .orElseThrow();
+
+        Order order = new Order(customer);
+        orderRepository.save(order);
+
+        items.forEach(item -> {
+            item.setOrder(order);
+            orderItemRepository.save(item);
+        });
+
+        return order;
+        // Auto-commit on success, auto-rollback on exception
+    }
+
+    // Specify isolation level for critical operations
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public void transferMoney(Long fromId, Long toId, BigDecimal amount) {
+        // Complete isolation from other transactions
+    }
+
+    // Read-only optimization
+    @Transactional(readOnly = true)
+    public Order getOrderDetails(Long orderId) {
+        // No locks acquired, optimized for read
+        return orderRepository.findById(orderId).orElseThrow();
+    }
+
+    // Specify rollback conditions
+    @Transactional(rollbackFor = Exception.class)
+    public void risky Operation() {
+        // Rollback on any exception
+    }
+
+    // Propagation levels
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void independentOperation() {
+        // Creates new transaction, independent of caller
+    }
+
+    // Timeout
+    @Transactional(timeout = 30)  // 30 seconds
+    public void longRunningOperation() {
+        // Auto-rollback if takes > 30 seconds
+    }
+}
+```
+
+### Custom Query Projections
+
+```java
+// DTO projection
+public class EmployeeDTO {
+    private Long id;
+    private String name;
+    private String department;
+
+    public EmployeeDTO(Long id, String name, String department) {
+        this.id = id;
+        this.name = name;
+        this.department = department;
+    }
+}
+
+@Repository
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+
+    // Constructor projection
+    @Query("SELECT new com.example.EmployeeDTO(e.id, e.name, d.name) " +
+           "FROM Employee e JOIN e.department d")
+    List<EmployeeDTO> findAllWithDepartment();
+
+    // Interface projection
+    public interface EmployeeSummary {
+        Long getId();
+        String getName();
+        String getDepartmentName();
+    }
+
+    @Query("SELECT e.id, e.name, d.name as departmentName FROM Employee e JOIN e.department d")
+    List<EmployeeSummary> findEmployeeSummaries();
+
+    // Dynamic projection
+    <T> List<T> findAll(Class<T> type);  // Can project to any class
+
+    // Usage
+    List<EmployeeDTO> dtos = repository.findAllWithDepartment();
+    List<EmployeeSummary> summaries = repository.findEmployeeSummaries();
+}
+```
+
+---
+
+## Summary of Best Practices
+
+1. **Always index foreign keys** - Required for join performance
+2. **Use appropriate join types** - INNER vs LEFT JOIN matters
+3. **Avoid SELECT *** - Fetch only needed columns
+4. **Use prepared statements** - Prevents SQL injection
+5. **Monitor query performance** - Regular EXPLAIN analysis
+6. **Implement soft deletes carefully** - Update queries accordingly
+7. **Use transactions properly** - ACID guarantees matter
+8. **Profile before optimizing** - Data-driven decisions
+9. **Consider database design** - Normalization vs denormalization trade-offs
+10. **Keep logic in application** - When appropriate, easier to maintain and test
