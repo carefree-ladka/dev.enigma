@@ -1,0 +1,486 @@
+# Thread Safety in System Design
+
+## What Does "Make It Thread-Safe" Mean?
+
+When an interviewer asks you to make your design thread-safe, they're evaluating:
+
+- ✅ Can multiple threads safely access your class/API simultaneously?
+- ✅ Will shared data remain consistent under concurrent access?
+- ✅ Have you prevented race conditions, deadlocks, and data corruption?
+
+---
+
+## Step 1: Identify Shared Mutable State
+
+Thread safety concerns arise only when you have **shared mutable state** — data that:
+1. Can be modified (mutable)
+2. Is accessed by multiple threads (shared)
+
+### Common Examples:
+- Caches (Map, List, Set)
+- Singleton instances
+- Counters, queues, session managers
+- Database/file access coordinators
+
+**Already Thread-Safe:**
+- Immutable objects (String, records with final fields)
+- Local variables (confined to thread stack)
+
+---
+
+## Step 2: Choose the Right Synchronization Strategy
+
+| Problem | Solution | Java Implementation |
+|---------|----------|---------------------|
+| Shared variable updates | Lock critical sections | `synchronized`, `ReentrantLock` |
+| Atomic operations (counters/flags) | Lock-free atomics | `AtomicInteger`, `AtomicBoolean` |
+| Shared collections | Concurrent data structures | `ConcurrentHashMap`, `CopyOnWriteArrayList` |
+| Singleton initialization | Thread-safe Singleton | `volatile` + double-checked locking |
+| Limited resource access | Semaphores | `Semaphore` |
+| Read-heavy workloads | Read-write locks | `ReentrantReadWriteLock` |
+
+---
+
+## Step 3: Thread-Safety Patterns
+
+### 1. Synchronized Methods
+Protects shared state with implicit locks:
+
+```java
+class BankAccount {
+    private int balance;
+
+    public synchronized void deposit(int amount) {
+        balance += amount;
+    }
+
+    public synchronized void withdraw(int amount) {
+        if (balance >= amount) {
+            balance -= amount;
+        }
+    }
+
+    public synchronized int getBalance() {
+        return balance;
+    }
+}
+```
+
+**Pros:** Simple, prevents race conditions
+**Cons:** Entire method is locked, can be slow
+
+---
+
+### 2. Concurrent Collections
+Replace standard collections with thread-safe alternatives:
+
+```java
+// ❌ Not thread-safe
+Map<String, User> cache = new HashMap<>();
+
+// ✅ Thread-safe
+Map<String, User> cache = new ConcurrentHashMap<>();
+```
+
+**Benefits:**
+- Segment-level locking (better performance)
+- No explicit synchronization needed
+- Built-in atomic operations like `putIfAbsent()`
+
+---
+
+### 3. Atomic Variables
+For counters and flags without explicit locks:
+
+```java
+import java.util.concurrent.atomic.AtomicInteger;
+
+class RequestCounter {
+    private AtomicInteger count = new AtomicInteger(0);
+
+    public void increment() {
+        count.incrementAndGet();
+    }
+
+    public int getCount() {
+        return count.get();
+    }
+}
+```
+
+**Why?** Lock-free, CAS-based (Compare-And-Swap), faster than synchronized
+
+---
+
+### 4. Thread-Safe Singleton
+Ensures only one instance is created, even with multiple threads:
+
+```java
+class CacheManager {
+    private static volatile CacheManager instance;
+
+    private CacheManager() {}
+
+    public static CacheManager getInstance() {
+        if (instance == null) {
+            synchronized (CacheManager.class) {
+                if (instance == null) {
+                    instance = new CacheManager();
+                }
+            }
+        }
+        return instance;
+    }
+}
+```
+
+**Key Points:**
+- `volatile` prevents instruction reordering
+- Double-checked locking minimizes synchronization overhead
+
+---
+
+### 5. Explicit Locks (ReentrantLock)
+More flexible than synchronized:
+
+```java
+import java.util.concurrent.locks.ReentrantLock;
+
+class SafeCounter {
+    private int count = 0;
+    private final ReentrantLock lock = new ReentrantLock();
+
+    public void increment() {
+        lock.lock();
+        try {
+            count++;
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+**Advantages over synchronized:**
+- Try-lock with timeout
+- Fairness policies
+- Interruptible locking
+
+---
+
+### 6. Read-Write Locks
+Optimized for read-heavy scenarios:
+
+```java
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+class ConfigStore {
+    private Map<String, String> config = new HashMap<>();
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+    public void updateConfig(String key, String value) {
+        rwLock.writeLock().lock();
+        try {
+            config.put(key, value);
+        } finally {
+            rwLock.writeLock().unlock();
+        }
+    }
+
+    public String getConfig(String key) {
+        rwLock.readLock().lock();
+        try {
+            return config.get(key);
+        } finally {
+            rwLock.readLock().unlock();
+        }
+    }
+}
+```
+
+**Benefits:** Multiple concurrent readers, exclusive writer
+
+---
+
+## Step 4: Avoiding Deadlocks
+
+### Best Practices:
+1. **Consistent lock ordering** — Always acquire locks in the same order
+2. **Always release locks** — Use try-finally blocks
+3. **Minimize lock scope** — Hold locks for shortest time possible
+4. **Use tryLock()** — Timeout-based lock attempts
+5. **Avoid nested locks** — Unless absolutely necessary
+
+```java
+// ❌ Potential deadlock
+synchronized(lockA) {
+    synchronized(lockB) { ... }
+}
+
+// ✅ Use tryLock with timeout
+if (lockA.tryLock(100, TimeUnit.MILLISECONDS)) {
+    try {
+        if (lockB.tryLock(100, TimeUnit.MILLISECONDS)) {
+            try {
+                // Critical section
+            } finally {
+                lockB.unlock();
+            }
+        }
+    } finally {
+        lockA.unlock();
+    }
+}
+```
+
+---
+
+## Step 5: Interview Communication Strategy
+
+**When asked:** *"Now make your design thread-safe"*
+
+**Your response:**
+
+> "I'll identify shared mutable state in the design — like the cache and request counter. For the cache, I'll replace HashMap with ConcurrentHashMap to allow concurrent reads/writes safely. For the counter, I'll use AtomicInteger for lock-free increments.
+>
+> If we have a singleton, I'll implement double-checked locking with volatile to prevent race conditions during initialization.
+>
+> For read-heavy components like configuration stores, I'll use ReentrantReadWriteLock to allow multiple concurrent readers while ensuring exclusive write access.
+>
+> Finally, I'll ensure consistent lock ordering to prevent deadlocks and keep critical sections minimal to avoid performance bottlenecks."
+
+---
+
+## Quick Reference Checklist
+
+| Concern | Solution |
+|---------|----------|
+| Shared mutable state | `synchronized` or `ReentrantLock` |
+| Collections | `ConcurrentHashMap`, `CopyOnWriteArrayList` |
+| Counters/flags | `AtomicInteger`, `AtomicBoolean` |
+| Singleton | Double-checked locking + `volatile` |
+| Read-heavy workload | `ReentrantReadWriteLock` |
+| Resource limits | `Semaphore` |
+| Deadlock prevention | Consistent ordering, `tryLock()` |
+| Best approach | Prefer immutability when possible |
+
+---
+
+## Key Takeaway
+
+**Thread safety isn't about making everything synchronized — it's about:**
+1. Identifying what truly needs protection
+2. Choosing the right tool for the job
+3. Balancing safety with performance
+4. Communicating your reasoning clearly
+
+```java
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * Thread-Safe URL Shortener Service
+ * Demonstrates multiple thread-safety techniques
+ */
+public class URLShortenerService {
+
+    // Thread-safe collections for storing mappings
+    private final Map<String, String> shortToLongURL = new ConcurrentHashMap<>();
+    private final Map<String, URLStats> urlStats = new ConcurrentHashMap<>();
+
+    // Atomic counter for generating unique IDs
+    private final AtomicLong idGenerator = new AtomicLong(1000);
+
+    // Read-write lock for rate limiting configuration
+    private final RateLimitConfig rateLimitConfig = new RateLimitConfig();
+
+    // Thread-safe Singleton instance
+    private static volatile URLShortenerService instance;
+
+    private URLShortenerService() {}
+
+    // Thread-safe Singleton with double-checked locking
+    public static URLShortenerService getInstance() {
+        if (instance == null) {
+            synchronized (URLShortenerService.class) {
+                if (instance == null) {
+                    instance = new URLShortenerService();
+                }
+            }
+        }
+        return instance;
+    }
+
+    /**
+     * Creates a shortened URL
+     * Thread-safe: Uses atomic counter and concurrent map
+     */
+    public String createShortURL(String longURL) {
+        if (longURL == null || longURL.isEmpty()) {
+            throw new IllegalArgumentException("URL cannot be empty");
+        }
+
+        // Generate unique short code using atomic counter
+        long id = idGenerator.getAndIncrement();
+        String shortCode = encodeBase62(id);
+
+        // Store mapping atomically
+        shortToLongURL.put(shortCode, longURL);
+
+        // Initialize statistics
+        urlStats.put(shortCode, new URLStats(longURL));
+
+        return "short.ly/" + shortCode;
+    }
+
+    /**
+     * Retrieves original URL and updates statistics
+     * Thread-safe: Uses concurrent map and atomic operations
+     */
+    public String getOriginalURL(String shortCode) {
+        String longURL = shortToLongURL.get(shortCode);
+
+        if (longURL != null) {
+            // Update statistics atomically
+            URLStats stats = urlStats.get(shortCode);
+            if (stats != null) {
+                stats.incrementClicks();
+            }
+        }
+
+        return longURL;
+    }
+
+    /**
+     * Gets click statistics for a URL
+     * Thread-safe: Reads from concurrent map
+     */
+    public long getClickCount(String shortCode) {
+        URLStats stats = urlStats.get(shortCode);
+        return stats != null ? stats.getClicks() : 0;
+    }
+
+    /**
+     * Deletes a shortened URL
+     * Thread-safe: Atomic removal from concurrent maps
+     */
+    public boolean deleteShortURL(String shortCode) {
+        String removed = shortToLongURL.remove(shortCode);
+        if (removed != null) {
+            urlStats.remove(shortCode);
+            return true;
+        }
+        return false;
+    }
+
+    // Simple Base62 encoding
+    private String encodeBase62(long num) {
+        String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        StringBuilder sb = new StringBuilder();
+
+        while (num > 0) {
+            sb.append(chars.charAt((int)(num % 62)));
+            num /= 62;
+        }
+
+        return sb.reverse().toString();
+    }
+
+    /**
+     * Thread-safe statistics tracker using atomic operations
+     */
+    static class URLStats {
+        private final String originalURL;
+        private final AtomicLong clickCount = new AtomicLong(0);
+        private final long createdAt;
+
+        public URLStats(String originalURL) {
+            this.originalURL = originalURL;
+            this.createdAt = System.currentTimeMillis();
+        }
+
+        public void incrementClicks() {
+            clickCount.incrementAndGet();
+        }
+
+        public long getClicks() {
+            return clickCount.get();
+        }
+
+        public String getOriginalURL() {
+            return originalURL;
+        }
+    }
+
+    /**
+     * Thread-safe rate limit configuration using Read-Write Lock
+     * Optimized for many reads, few writes
+     */
+    static class RateLimitConfig {
+        private int maxRequestsPerMinute = 100;
+        private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+
+        public int getMaxRequests() {
+            rwLock.readLock().lock();
+            try {
+                return maxRequestsPerMinute;
+            } finally {
+                rwLock.readLock().unlock();
+            }
+        }
+
+        public void setMaxRequests(int max) {
+            rwLock.writeLock().lock();
+            try {
+                maxRequestsPerMinute = max;
+            } finally {
+                rwLock.writeLock().unlock();
+            }
+        }
+    }
+
+    /**
+     * Demo: Simulating concurrent access
+     */
+    public static void main(String[] args) throws InterruptedException {
+        URLShortenerService service = URLShortenerService.getInstance();
+
+        System.out.println("=== Thread-Safe URL Shortener Demo ===\n");
+
+        // Create a short URL
+        String shortURL = service.createShortURL("https://example.com/very/long/url");
+        String shortCode = shortURL.replace("short.ly/", "");
+        System.out.println("Created: " + shortURL);
+
+        // Simulate concurrent access from 10 threads
+        System.out.println("\nSimulating 10 concurrent threads accessing the URL...");
+
+        Thread[] threads = new Thread[10];
+        for (int i = 0; i < 10; i++) {
+            threads[i] = new Thread(() -> {
+                for (int j = 0; j < 100; j++) {
+                    service.getOriginalURL(shortCode);
+                }
+            });
+            threads[i].start();
+        }
+
+        // Wait for all threads to complete
+        for (Thread thread : threads) {
+            thread.join();
+        }
+
+        // Check final count - should be exactly 1000 (10 threads × 100 requests)
+        long finalCount = service.getClickCount(shortCode);
+        System.out.println("\nTotal clicks recorded: " + finalCount);
+        System.out.println("Expected: 1000");
+        System.out.println("Thread-safe: " + (finalCount == 1000 ? "✅ YES" : "❌ NO"));
+
+        // Test thread-safe deletion
+        boolean deleted = service.deleteShortURL(shortCode);
+        System.out.println("\nDeleted URL: " + deleted);
+    }
+}
+```
