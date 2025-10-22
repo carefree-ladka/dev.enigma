@@ -1,0 +1,2036 @@
+# Spring Boot Microservices Interview Questions & Answers
+
+### 1. Service Communication & Discovery
+
+**Q: Your Order Service needs to call Inventory Service. How would you implement this communication?**
+
+**A:** I'd use:
+- **Synchronous**: RestTemplate/WebClient with Service Discovery (Eureka)
+- **Asynchronous**: Message Queue (RabbitMQ/Kafka) for eventual consistency
+- Register both services with Eureka, use service name instead of hardcoded URLs
+- Add circuit breaker (Resilience4j) for fault tolerance
+
+**Real Example**: Amazon - Order service checks inventory availability before confirming order.
+
+---
+
+**Q: Multiple instances of Payment Service are running. How does Order Service know which instance to call?**
+
+**A:**
+- Use **Spring Cloud LoadBalancer** (or Ribbon in older versions)
+- Services register with Eureka with multiple instances
+- LoadBalancer automatically does client-side load balancing (Round Robin, Random, etc.)
+- Example: `restTemplate.getForObject("http://PAYMENT-SERVICE/api/pay", PaymentResponse.class)`
+
+**Real Example**: Netflix - Thousands of instances of streaming service, Eureka distributes load.
+
+---
+
+### 2. Distributed Transactions
+
+**Q: User places an order: Order Service → Payment Service → Inventory Service. If payment succeeds but inventory update fails, how do you handle it?**
+
+**A:**
+- **Saga Pattern** (choreography or orchestration)
+- **Choreography**: Each service publishes events, others listen and react
+  - Order Created → Payment Processes → Inventory Updates
+  - If fails: Publish compensation events (refund payment)
+- **Orchestration**: Central orchestrator manages the flow
+- Use eventual consistency, avoid distributed 2PC
+- Implement compensating transactions for rollback
+
+**Real Example**: Uber Eats - Order placed → Restaurant confirms → Delivery assigned. If restaurant cancels, refund payment automatically.
+
+---
+
+**Q: How would you implement Saga pattern with Spring Boot?**
+
+**A:**
+```java
+// Choreography with Kafka
+@KafkaListener(topics = "order-created")
+public void processPayment(OrderEvent event) {
+    try {
+        paymentService.processPayment(event);
+        kafkaTemplate.send("payment-success", event);
+    } catch (Exception e) {
+        kafkaTemplate.send("payment-failed", event);
+    }
+}
+
+// Compensation
+@KafkaListener(topics = "payment-failed")
+public void cancelOrder(OrderEvent event) {
+    orderService.cancelOrder(event.getOrderId());
+}
+```
+
+**Real Example**: Airbnb - Booking → Payment → Host notification → Calendar block. Any failure triggers compensating transactions.
+
+---
+
+### 3. Circuit Breaker & Fault Tolerance
+
+**Q: Your Order Service calls Payment Service, but Payment Service is down. How do you handle this?**
+
+**A:**
+- Implement **Circuit Breaker** using Resilience4j
+- Three states: Closed → Open → Half-Open
+- After threshold failures, circuit opens (stops calling service)
+- Provide fallback response
+- Periodically retry (half-open state)
+
+```java
+@CircuitBreaker(name = "paymentService", fallbackMethod = "paymentFallback")
+public PaymentResponse processPayment(PaymentRequest request) {
+    return restTemplate.postForObject(url, request, PaymentResponse.class);
+}
+
+public PaymentResponse paymentFallback(PaymentRequest request, Exception e) {
+    return new PaymentResponse("Payment service unavailable, order queued");
+}
+```
+
+**Real Example**: Netflix - If recommendation service fails, show default content instead of error page.
+
+---
+
+**Q: Circuit breaker keeps opening during peak hours. How do you debug?**
+
+**A:**
+- Check Actuator metrics: `/actuator/health`, `/actuator/circuitbreakers`
+- Review circuit breaker config (failure threshold, wait duration)
+- Check downstream service logs and health
+- Monitor using Micrometer + Prometheus/Grafana
+- Verify timeout settings aren't too aggressive
+- Scale downstream service if consistently overloaded
+
+**Real Example**: Flipkart during Big Billion Days - Circuit breakers prevent cascade failures when services get overloaded.
+
+---
+
+### 4. API Gateway
+
+**Q: You have 15 microservices. Frontend needs to call multiple services. How do you manage this?**
+
+**A:**
+- Implement **API Gateway** (Spring Cloud Gateway or Netflix Zuul)
+- Single entry point for all clients
+- Routes requests to appropriate microservices
+- Handles cross-cutting concerns:
+  - Authentication/Authorization
+  - Rate limiting
+  - Request/Response transformation
+  - Load balancing
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: order-service
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderService
+                fallbackUri: forward:/fallback/orders
+```
+
+**Real Example**: Amazon AWS API Gateway - Single entry point for all AWS services.
+
+---
+
+**Q: How do you secure APIs in API Gateway?**
+
+**A:**
+- Integrate with OAuth2/JWT authentication
+- Validate tokens at gateway level
+- Use Spring Security with resource server
+- Pass user context to downstream services via headers
+- Implement rate limiting per user/API key
+
+**Real Example**: Stripe API - All requests go through gateway, authenticated via API keys.
+
+---
+
+### 5. Configuration Management
+
+**Q: You need to change database URL across 10 microservices without redeployment. How?**
+
+**A:**
+- Use **Spring Cloud Config Server**
+- Centralized configuration in Git repository
+- Services fetch config on startup
+- Use `@RefreshScope` for runtime refresh
+- Trigger refresh via `/actuator/refresh` endpoint or Spring Cloud Bus
+
+```java
+@RestController
+@RefreshScope
+public class OrderController {
+    @Value("${database.url}")
+    private String dbUrl;
+}
+```
+
+**Real Example**: Spotify - Configuration changes pushed to thousands of microservices without restart.
+
+---
+
+**Q: How do you handle sensitive data like passwords in Config Server?**
+
+**A:**
+- **Encrypt** properties using Spring Cloud Config encryption
+- Use **Vault** for secrets management
+- Environment variables for cloud deployments
+- Never commit plain text secrets to Git
+- Example: `{cipher}AQA7h8fj3h4k5...` in properties file
+
+**Real Example**: PayPal - All secrets stored in HashiCorp Vault, never in code.
+
+---
+
+### 6. Service Discovery Issues
+
+**Q: Service registered with Eureka but other services can't discover it. How do you troubleshoot?**
+
+**A:**
+1. Check Eureka dashboard: `http://eureka-server:8761`
+2. Verify service registration config:
+   ```yaml
+   eureka:
+     client:
+       service-url:
+         defaultZone: http://localhost:8761/eureka/
+       register-with-eureka: true
+       fetch-registry: true
+   ```
+3. Check network connectivity between services
+4. Verify application name is correct
+5. Check if instance is showing as UP in Eureka
+6. Review heartbeat intervals and renewal thresholds
+
+**Real Example**: Netflix - Eureka was created to handle their massive service discovery needs.
+
+---
+
+### 7. Database per Service
+
+**Q: Order Service needs customer email from User Service for sending confirmation. How do you handle this?**
+
+**A:**
+- **Option 1**: API call to User Service (synchronous)
+- **Option 2**: Event-driven - User Service publishes user events, Order Service maintains read replica
+- **Option 3**: API Composition in API Gateway
+- **Option 4**: CQRS pattern with shared read database
+
+For critical data: Synchronous call with caching
+For non-critical: Event-driven eventual consistency
+
+**Real Example**: Uber - Ride service maintains denormalized user data to avoid constant calls to user service.
+
+---
+
+**Q: How do you handle database joins across microservices?**
+
+**A:**
+- Avoid joins across services
+- Use API composition in application layer
+- Implement CQRS with materialized views
+- Denormalize data where necessary
+- Use event sourcing to maintain consistency
+
+**Real Example**: Twitter - Tweet service maintains denormalized user info to display tweets without calling user service every time.
+
+---
+
+### 8. Monitoring & Observability
+
+**Q: Production issue: API response time suddenly increased from 200ms to 5 seconds. How do you debug?**
+
+**A:**
+1. **Check APM tools**: Zipkin/Sleuth for distributed tracing
+2. **Review logs**: Aggregate logs (ELK stack)
+3. **Metrics**: Prometheus/Grafana for CPU, memory, DB connections
+4. **Trace ID**: Follow request across services
+5. Check:
+   - Database query performance
+   - External API latency
+   - Network issues
+   - Circuit breaker state
+   - Resource exhaustion (threads, connections)
+
+**Real Example**: LinkedIn - Uses distributed tracing to identify bottlenecks in their feed generation pipeline.
+
+---
+
+**Q: How do you implement distributed tracing?**
+
+**A:**
+```java
+// Add dependencies
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-sleuth</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-sleuth-zipkin</artifactId>
+</dependency>
+
+// Configuration
+spring:
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1.0  # 100% sampling for dev
+```
+- Each request gets unique Trace ID
+- Span ID for each service hop
+- Visualize in Zipkin UI
+
+**Real Example**: Google Dapper - Pioneered distributed tracing for their microservices.
+
+---
+
+### 9. Rate Limiting & Throttling
+
+**Q: External API allows only 100 requests/minute. Multiple instances of your service exist. How do you implement rate limiting?**
+
+**A:**
+- Use **distributed rate limiter**:
+  - Redis-based rate limiting (Spring Cloud Gateway + Redis)
+  - Bucket4j with distributed backend
+- Store counter in Redis with TTL
+- Implement token bucket or sliding window algorithm
+- Return 429 Too Many Requests when limit exceeded
+
+```java
+@Bean
+public RouteLocator routes(RouteLocatorBuilder builder) {
+    return builder.routes()
+        .route("limited-route", r -> r.path("/api/**")
+            .filters(f -> f.requestRateLimiter(c -> c
+                .setRateLimiter(redisRateLimiter())
+                .setKeyResolver(userKeyResolver())))
+            .uri("lb://BACKEND-SERVICE"))
+        .build();
+}
+```
+
+**Real Example**: Twitter API - Rate limits per user/app to prevent abuse.
+
+---
+
+**Q: How do you implement per-user rate limiting across multiple gateway instances?**
+
+**A:**
+- Use Redis with user ID as key
+- Implement sliding window counter
+- Store request timestamps in Redis sorted set
+- Clean up old entries beyond time window
+- Atomic operations to prevent race conditions
+
+**Real Example**: GitHub API - Different rate limits for authenticated vs unauthenticated users.
+
+---
+
+### 10. Data Consistency
+
+**Q: User updates profile in User Service. Order Service shows old data. How do you ensure consistency?**
+
+**A:**
+- **Event-Driven Architecture**:
+  - User Service publishes "UserUpdated" event to Kafka
+  - Order Service subscribes and updates its cache/read replica
+- **Cache invalidation**: Invalidate cache on update
+- **TTL on cache**: Set expiration time
+- **CQRS**: Separate read/write models
+- **Eventual consistency**: Accept slight delay (usually acceptable)
+
+**Real Example**: Facebook - Profile updates eventually propagate to all services through event streams.
+
+---
+
+### 11. Security Scenarios
+
+**Q: How do you secure inter-service communication?**
+
+**A:**
+- **mTLS** (mutual TLS) for service-to-service
+- **JWT tokens** passed via headers
+- **Service mesh** (Istio) for automatic encryption
+- **API Gateway** validates external requests
+- Internal services validate JWT and check roles
+- Use Spring Security OAuth2 Resource Server
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .oauth2ResourceServer()
+            .jwt()
+            .jwtAuthenticationConverter(jwtConverter());
+    }
+}
+```
+
+**Real Example**: Google Cloud - All internal service communication encrypted with mTLS.
+
+---
+
+**Q: How do you implement SSO across microservices?**
+
+**A:**
+- Use **OAuth2/OpenID Connect** with Keycloak/Okta
+- API Gateway handles authentication
+- Issues JWT token after login
+- Token contains user info and roles
+- All services validate same token
+- Centralized user session management
+
+**Real Example**: Microsoft 365 - Single sign-on across all Microsoft services (Teams, Outlook, OneDrive).
+
+---
+
+**Q: JWT token is compromised. How do you revoke it before expiration?**
+
+**A:**
+- Maintain **token blacklist** in Redis with expiry
+- Check blacklist on each request
+- Use short-lived access tokens (5-15 min)
+- Long-lived refresh tokens stored securely
+- Implement token versioning (increment version on password change)
+- Force re-authentication if needed
+
+**Real Example**: AWS - Uses temporary security tokens that expire after short duration.
+
+---
+
+### 12. Deployment & Scaling
+
+**Q: Order Service receives 10x traffic during sale. How do you auto-scale?**
+
+**A:**
+- **Kubernetes HPA** (Horizontal Pod Autoscaler):
+  ```yaml
+  apiVersion: autoscaling/v2
+  kind: HorizontalPodAutoscaler
+  metadata:
+    name: order-service-hpa
+  spec:
+    scaleTargetRef:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: order-service
+    minReplicas: 2
+    maxReplicas: 10
+    metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  ```
+- Monitor CPU/Memory metrics
+- Scale based on custom metrics (queue depth, request rate)
+- Use caching (Redis) to reduce database load
+
+**Real Example**: Amazon Prime Day - Auto-scales services to handle massive traffic spikes.
+
+---
+
+**Q: Database becomes bottleneck during scaling. How do you handle?**
+
+**A:**
+- **Read replicas** for read-heavy operations
+- **Connection pooling** optimization
+- **Caching layer** (Redis/Memcached)
+- **Database sharding** for write scalability
+- **CQRS** with separate read/write databases
+- **Queue-based writes** for non-critical operations
+
+**Real Example**: Instagram - Uses read replicas and aggressive caching to handle billions of requests.
+
+---
+
+### 13. Caching Strategy
+
+**Q: Product catalog changes rarely but is queried frequently. How do you optimize?**
+
+**A:**
+- **Multi-level caching**:
+  - L1: In-memory cache (Caffeine) in each service instance
+  - L2: Distributed cache (Redis) shared across instances
+- **Cache-aside pattern**: Check cache → if miss, query DB → update cache
+- Set appropriate TTL based on data freshness requirement
+- Cache invalidation on product updates via events
+
+```java
+@Cacheable(value = "products", key = "#productId")
+public Product getProduct(Long productId) {
+    return productRepository.findById(productId);
+}
+
+@CacheEvict(value = "products", key = "#product.id")
+public void updateProduct(Product product) {
+    productRepository.save(product);
+}
+```
+
+**Real Example**: Netflix - Caches movie metadata to reduce database load.
+
+---
+
+**Q: Cache stampede occurs when popular cache expires. How do you prevent?**
+
+**A:**
+- **Mutex/Lock**: First thread refreshes, others wait
+- **Probabilistic early expiration**: Refresh before actual expiry
+- **Background refresh**: Async refresh before expiry
+- **Stale-while-revalidate**: Serve stale data while refreshing
+
+```java
+public Product getProduct(Long id) {
+    RLock lock = redisson.getLock("product:" + id);
+    if (lock.tryLock()) {
+        try {
+            return refreshCache(id);
+        } finally {
+            lock.unlock();
+        }
+    } else {
+        return getFromCache(id); // Wait and get from cache
+    }
+}
+```
+
+**Real Example**: Reddit - Handles cache stampede during major events using distributed locks.
+
+---
+
+### 14. Message Queue Failures
+
+**Q: Message sent to Kafka but consumer fails to process. How do you handle?**
+
+**A:**
+- **Retry mechanism**: Retry with exponential backoff
+- **Dead Letter Queue (DLQ)**: Move failed messages after max retries
+- **Idempotency**: Ensure consumers can handle duplicate messages
+- **Manual intervention**: Monitor DLQ and fix issues
+
+```java
+@KafkaListener(topics = "orders", groupId = "order-processor")
+public void processOrder(Order order) {
+    try {
+        orderService.process(order);
+    } catch (Exception e) {
+        log.error("Failed to process order: {}", order.getId(), e);
+        throw e; // Message goes to DLQ after max retries
+    }
+}
+```
+
+**Real Example**: Uber - Uses Kafka with DLQ for ride matching failures.
+
+---
+
+**Q: Kafka consumer lags behind producer significantly. How do you handle?**
+
+**A:**
+- **Increase consumer instances** (scale out)
+- **Increase partition count** for parallelism
+- **Optimize consumer processing** (batch processing, async ops)
+- **Separate slow vs fast processing** paths
+- **Monitor consumer lag** with Prometheus
+- **Backpressure mechanism** to slow down producer if needed
+
+**Real Example**: LinkedIn - Monitors consumer lag closely for their feed generation pipeline.
+
+---
+
+### 15. API Versioning
+
+**Q: Breaking changes needed in User API. Existing clients can't update immediately. How do you handle?**
+
+**A:**
+- **URI versioning**: `/api/v1/users` vs `/api/v2/users`
+- **Header versioning**: `Accept: application/vnd.api.v2+json`
+- **Run both versions** simultaneously
+- Gradual migration with deprecation notices
+- Use API Gateway to route based on version
+
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserControllerV1 {
+    // Old implementation
+}
+
+@RestController
+@RequestMapping("/api/v2/users")
+public class UserControllerV2 {
+    // New implementation
+}
+```
+
+**Real Example**: Stripe - Maintains multiple API versions with clear deprecation timeline.
+
+---
+
+### 16. Testing Microservices
+
+**Q: How do you test integration between Order Service and Payment Service without actual Payment Service?**
+
+**A:**
+- **Contract Testing**: Use Pact or Spring Cloud Contract
+- **WireMock**: Mock HTTP responses for testing
+- **TestContainers**: Run actual service in Docker for integration tests
+- **Component Tests**: Test with in-memory implementations
+
+```java
+@SpringBootTest
+@AutoConfigureWireMock(port = 8081)
+class OrderServiceTest {
+
+    @Test
+    void testPaymentIntegration() {
+        stubFor(post(urlEqualTo("/api/payment"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"status\":\"SUCCESS\"}")));
+
+        PaymentResponse response = orderService.processPayment(request);
+        assertEquals("SUCCESS", response.getStatus());
+    }
+}
+```
+
+**Real Example**: Spotify - Uses contract testing to ensure service compatibility.
+
+---
+
+### 17. Handling Duplicate Requests
+
+**Q: Network issue causes client to retry payment request. How do you prevent duplicate charges?**
+
+**A:**
+- **Idempotency Key**: Client sends unique ID with request
+- Store processed request IDs in Redis/DB with TTL
+- Check if ID already processed before executing
+- Return cached response for duplicate requests
+
+```java
+@PostMapping("/api/payment")
+public ResponseEntity<PaymentResponse> processPayment(
+    @RequestHeader("Idempotency-Key") String idempotencyKey,
+    @RequestBody PaymentRequest request) {
+
+    PaymentResponse cached = redisTemplate.opsForValue()
+        .get("payment:" + idempotencyKey);
+    if (cached != null) {
+        return ResponseEntity.ok(cached);
+    }
+
+    PaymentResponse response = paymentService.process(request);
+    redisTemplate.opsForValue()
+        .set("payment:" + idempotencyKey, response, 24, TimeUnit.HOURS);
+
+    return ResponseEntity.ok(response);
+}
+```
+
+**Real Example**: Stripe - All API requests support idempotency keys to prevent duplicate operations.
+
+---
+
+### 18. Database Connection Pool Exhaustion
+
+**Q: Service crashes with "Too many connections" error during peak load. How do you fix?**
+
+**A:**
+1. **Tune connection pool**:
+   ```yaml
+   spring:
+     datasource:
+       hikari:
+         maximum-pool-size: 20
+         minimum-idle: 5
+         connection-timeout: 30000
+         idle-timeout: 600000
+         max-lifetime: 1800000
+   ```
+2. **Monitor active connections**: Use Actuator metrics
+3. **Fix connection leaks**: Ensure proper try-with-resources
+4. **Read replicas**: Separate read/write connections
+5. **Caching**: Reduce database queries
+6. **Async processing**: Move long operations to message queue
+
+**Real Example**: Stack Overflow - Optimizes connection pools to handle traffic spikes efficiently.
+
+---
+
+### 19. Service Mesh
+
+**Q: Managing service-to-service communication is complex. How does service mesh help?**
+
+**A:**
+- **Istio/Linkerd** handles:
+  - Traffic management (routing, load balancing)
+  - Security (mTLS, authentication)
+  - Observability (tracing, metrics)
+  - Resilience (retries, timeouts, circuit breakers)
+- **Sidecar proxy** injected into each pod
+- Configuration via YAML, no code changes
+- Centralized policy enforcement
+
+**Real Example**: Lyft - Created Envoy proxy, foundation for Istio service mesh.
+
+---
+
+### 20. Graceful Shutdown
+
+**Q: Kubernetes terminates pod while processing requests. How do you handle gracefully?**
+
+**A:**
+```yaml
+# Deployment configuration
+spec:
+  template:
+    spec:
+      containers:
+      - name: order-service
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+      terminationGracePeriodSeconds: 30
+```
+
+```java
+@Component
+public class GracefulShutdown {
+    @PreDestroy
+    public void onShutdown() {
+        log.info("Shutting down gracefully...");
+        // Stop accepting new requests
+        // Wait for existing requests to complete
+        // Close database connections
+        // Flush caches
+    }
+}
+```
+
+**Real Example**: Google - Drains traffic before pod termination to ensure zero downtime.
+
+---
+
+### 21. Async Communication Patterns
+
+**Q: Order placed needs to trigger email, SMS, push notification. How do you design this?**
+
+**A:**
+- **Publish-Subscribe pattern** with Kafka
+- Order Service publishes "OrderPlaced" event
+- Multiple consumers: Email Service, SMS Service, Notification Service
+- Each consumes independently, no blocking
+- Failures don't affect order placement
+
+```java
+@Service
+public class OrderService {
+    public void placeOrder(Order order) {
+        orderRepository.save(order);
+        kafkaTemplate.send("order-placed", new OrderEvent(order));
+    }
+}
+```
+
+**Real Example**: Amazon - Order confirmation triggers multiple async notifications.
+
+---
+
+### 22. Backward Compatibility
+
+**Q: You added a new mandatory field to User API. Old clients break. How to fix?**
+
+**A:**
+- **Never make fields mandatory** in breaking way
+- Use optional fields with default values
+- Implement backward-compatible changes only
+- If mandatory: create new version endpoint
+- Use `@JsonIgnoreProperties` to ignore unknown fields
+
+**Real Example**: Google APIs - Maintain backward compatibility for years.
+
+---
+
+### 23. Health Checks & Readiness
+
+**Q: Service starts but isn't ready to serve traffic. How do you handle in Kubernetes?**
+
+**A:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+```
+
+```java
+@Component
+public class DatabaseHealthIndicator implements HealthIndicator {
+    @Override
+    public Health health() {
+        try {
+            // Check DB connection
+            return Health.up().build();
+        } catch (Exception e) {
+            return Health.down(e).build();
+        }
+    }
+}
+```
+
+**Real Example**: Netflix - Uses sophisticated health checks to route traffic only to healthy instances.
+
+---
+
+### 24. Service Dependency Management
+
+**Q: Service A depends on B, C, D. If D is down, should A start?**
+
+**A:**
+- **Fail-fast approach**: Don't start if critical dependencies down
+- **Resilient approach**: Start with circuit breakers, fallbacks for non-critical deps
+- Use health checks to verify dependencies
+- Implement retry logic with exponential backoff
+- Distinguish critical vs non-critical dependencies
+
+**Real Example**: Airbnb - Services start even if non-critical dependencies are down.
+
+---
+
+### 25. Data Migration in Microservices
+
+**Q: Need to migrate 10 million users from monolith to User microservice. How?**
+
+**A:**
+- **Strangler pattern**: Gradually route traffic to new service
+- **Dual-write pattern**: Write to both old and new systems
+- **Background sync**: Async migration of existing data
+- **Feature flags**: Toggle between old/new system
+- **Verify data consistency** before full cutover
+- **Rollback plan** if issues arise
+
+**Real Example**: Netflix - Migrated from monolith to microservices over several years using strangler pattern.
+
+---
+
+### 26. Bulkhead Pattern
+
+**Q: One slow API endpoint is consuming all threads, affecting other endpoints. How to isolate?**
+
+**A:**
+- **Bulkhead pattern**: Separate thread pools per operation
+- Configure thread pools in Resilience4j
+- Prevent one operation from exhausting resources
+
+```java
+@Bulkhead(name = "slowOperation", type = Bulkhead.Type.THREADPOOL)
+public CompletableFuture<Report> generateReport() {
+    return CompletableFuture.supplyAsync(() -> reportService.generate());
+}
+
+// Configuration
+resilience4j.bulkhead:
+  configs:
+    default:
+      maxConcurrentCalls: 10
+  instances:
+    slowOperation:
+      maxConcurrentCalls: 5
+```
+
+**Real Example**: Amazon - Isolates resources for different operations to prevent cascading failures.
+
+---
+
+### 27. API Composition vs Aggregation
+
+**Q: Frontend needs data from 5 microservices for dashboard. How do you optimize?**
+
+**A:**
+- **API Gateway aggregation**: Gateway calls all services, combines response
+- **GraphQL**: Let client specify exactly what data needed
+- **Backend for Frontend (BFF)**: Dedicated backend for each frontend type
+- **Parallel calls** with CompletableFuture
+- **Caching** for frequently accessed data
+
+```java
+public DashboardResponse getDashboard(String userId) {
+    CompletableFuture<User> userFuture =
+        CompletableFuture.supplyAsync(() -> userService.getUser(userId));
+    CompletableFuture<List<Order>> ordersFuture =
+        CompletableFuture.supplyAsync(() -> orderService.getOrders(userId));
+    CompletableFuture<Wallet> walletFuture =
+        CompletableFuture.supplyAsync(() -> walletService.getWallet(userId));
+
+    CompletableFuture.allOf(userFuture, ordersFuture, walletFuture).join();
+
+    return new DashboardResponse(
+        userFuture.get(), ordersFuture.get(), walletFuture.get()
+    );
+}
+```
+
+**Real Example**: Netflix - Uses GraphQL for efficient data fetching across services.
+
+---
+
+### 28. Correlation ID for Debugging
+
+**Q: Customer complains order failed, but you have logs from 50 microservices. How to debug?**
+
+**A:**
+- Generate **correlation/trace ID** at API Gateway
+- Pass via HTTP header to all downstream services
+- Log correlation ID in every log statement
+- Use ELK/Splunk to search by correlation ID
+- Trace entire request flow across services
+
+```java
+@Component
+public class CorrelationIdFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                   HttpServletResponse response,
+                                   FilterChain filterChain) {
+        String correlationId = request.getHeader("X-Correlation-ID");
+        if (correlationId == null) {
+            correlationId = UUID.randomUUID().toString();
+        }
+        MDC.put("correlationId", correlationId);
+        response.setHeader("X-Correlation-ID", correlationId);
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+**Real Example**: Uber - Traces every ride request across hundreds of microservices using correlation IDs.
+
+---
+
+### 29. Handling File Uploads
+
+**Q: User uploads product images. Where do you store and how do you handle large files in microservices?**
+
+**A:**
+- **Never store in database** (use blob storage)
+- Upload to **S3/Azure Blob/GCS** directly from client
+- Generate **pre-signed URLs** for secure upload
+- Store only file metadata in database
+- Use **CDN** for serving images
+- Implement **chunked uploads** for large files
+
+```java
+@PostMapping("/upload")
+public ResponseEntity<String> generateUploadUrl(@RequestParam String fileName) {
+    String key = UUID.randomUUID() + "/" + fileName;
+    URL presignedUrl = s3Client.generatePresignedUrl(bucketName, key, expiration);
+
+    fileMetadataRepo.save(new FileMetadata(key, fileName, userId));
+    return ResponseEntity.ok(presignedUrl.toString());
+}
+```
+
+**Real Example**: Instagram - Uploads photos directly to S3, serves via CloudFront CDN.
+
+---
+
+### 30. Service-to-Service Authentication
+
+**Q: How do you ensure only Order Service can call Inventory Service, not any unauthorized service?**
+
+**A:**
+- **Service accounts** with unique credentials
+- **mTLS** with certificate verification
+- **API keys** per service
+- **JWT tokens** with service identity in claims
+- **Service mesh** automatic authentication (Istio)
+- **Network policies** in Kubernetes
+
+```java
+@Configuration
+public class ServiceAuthConfig {
+    @Bean
+    public RestTemplate restTemplate() {
+        RestTemplate template = new RestTemplate();
+        template.getInterceptors().add((request, body, execution) -> {
+            request.getHeaders().add("X-Service-Key", serviceKey);
+            return execution.execute(request, body);
+        });
+        return template;
+    }
+}
+```
+
+**Real Example**: Google Cloud - Uses service accounts for inter-service authentication.
+
+---
+
+### 31. Timeout Management
+
+**Q: Payment gateway takes 30 seconds sometimes. Your Order Service times out at 5 seconds. How to handle?**
+
+**A:**
+- **Async processing**: Queue payment requests
+- **Webhook callback**: Payment gateway calls back when done
+- **Polling**: Check payment status periodically
+- **Circuit breaker**: Stop calling if consistently slow
+- **Different timeouts** for different operations
+
+```java
+@HystrixCommand(
+    commandProperties = {
+        @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds",
+                        value = "30000")
+    },
+    fallbackMethod = "paymentFallback"
+)
+public PaymentResponse processPayment(PaymentRequest request) {
+    return paymentGateway.charge(request);
+}
+```
+
+**Real Example**: PayPal - Uses webhooks for payment confirmation instead of synchronous responses.
+
+---
+
+### 32. Multi-Tenancy
+
+**Q: Same microservices serve multiple clients (tenants). How do you isolate data?**
+
+**A:**
+- **Database per tenant**: Complete isolation (expensive)
+- **Schema per tenant**: Shared DB, separate schemas
+- **Shared schema with tenant_id**: Row-level security
+- Use **tenant context** in request headers
+- Implement **tenant resolver** interceptor
+
+```java
+@Component
+public class TenantInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest request,
+                            HttpServletResponse response,
+                            Object handler) {
+        String tenantId = request.getHeader("X-Tenant-ID");
+        TenantContext.setCurrentTenant(tenantId);
+        return true;
+    }
+}
+
+@Aspect
+public class TenantAspect {
+    @Before("@annotation(MultiTenant)")
+    public void setTenantFilter() {
+        String tenantId = TenantContext.getCurrentTenant();
+        // Set hibernate filter or query parameter
+    }
+}
+```
+
+**Real Example**: Salesforce - Multi-tenant architecture serving thousands of organizations on shared infrastructure.
+
+---
+
+### 33. Retry Logic with Exponential Backoff
+
+**Q: External API occasionally fails with 503. How do you implement smart retry?**
+
+**A:**
+- Use **Resilience4j Retry** with exponential backoff
+- Retry only on **retriable errors** (5xx, timeout)
+- Don't retry on **4xx errors** (client errors)
+- Implement **jitter** to avoid thundering herd
+- Set **max retry attempts**
+
+```java
+@Retry(name = "externalApi", fallbackMethod = "apiFallback")
+public ApiResponse callExternalApi() {
+    return restTemplate.getForObject(externalApiUrl, ApiResponse.class);
+}
+
+// Configuration
+resilience4j.retry:
+  instances:
+    externalApi:
+      maxAttempts: 3
+      waitDuration: 1000ms
+      exponentialBackoffMultiplier: 2
+      retryExceptions:
+        - org.springframework.web.client.HttpServerErrorException
+      ignoreExceptions:
+        - org.springframework.web.client.HttpClientErrorException
+```
+
+**Real Example**: AWS SDK - Implements exponential backoff for API retries.
+
+---
+
+### 34. Canary Deployment
+
+**Q: New version of Payment Service deployed. How do you test with real traffic before full rollout?**
+
+**A:**
+- **Canary deployment**: Route small % of traffic to new version
+- Monitor metrics (error rate, latency, success rate)
+- Gradually increase traffic if stable
+- Automatic rollback if metrics degrade
+- Use **feature flags** for functionality toggle
+
+```yaml
+# Istio virtual service for canary
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: payment-service
+spec:
+  hosts:
+    - payment-service
+  http:
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: payment-service
+        subset: v2
+  - route:
+    - destination:
+        host: payment-service
+        subset: v1
+      weight: 90
+    - destination:
+        host: payment-service
+        subset: v2
+      weight: 10
+```
+
+**Real Example**: Facebook - Uses canary deployments to test changes on small user percentage first.
+
+---
+
+### 35. Database Migration in Production
+
+**Q: Need to add new column to Users table with 100 million rows. Zero downtime required. How?**
+
+**A:**
+- **Backward compatible changes first**:
+  1. Add column as nullable
+  2. Deploy code that writes to new column
+  3. Backfill existing data (batch processing)
+  4. Deploy code that reads from new column
+  5. Make column non-null if needed
+- Use **database migration tools** (Flyway/Liquibase)
+- **Blue-green deployment** for safety
+
+```java
+// Flyway migration
+@Component
+public class V2__Add_Email_Column implements JavaMigration {
+    @Override
+    public void migrate(Context context) throws Exception {
+        try (Statement statement = context.getConnection().createStatement()) {
+            statement.execute("ALTER TABLE users ADD COLUMN email VARCHAR(255)");
+        }
+    }
+}
+```
+
+**Real Example**: GitHub - Performs zero-downtime migrations on massive databases.
+
+---
+
+### 36. Event Sourcing
+
+**Q: Need audit trail of all order changes. How do you implement?**
+
+**A:**
+- **Event Sourcing**: Store all state changes as events
+- Don't update records, append events
+- Rebuild current state by replaying events
+- Provides complete audit trail
+- Enables time-travel debugging
+
+```java
+@Service
+public class OrderEventStore {
+    public void saveEvent(OrderEvent event) {
+        eventRepository.save(event);
+        kafkaTemplate.send("order-events", event);
+    }
+
+    public Order rebuildOrder(String orderId) {
+        List<OrderEvent> events = eventRepository.findByOrderId(orderId);
+        Order order = new Order();
+        events.forEach(event -> order.apply(event));
+        return order;
+    }
+}
+
+// Events
+public class OrderCreatedEvent { }
+public class OrderPaidEvent { }
+public class OrderShippedEvent { }
+public class OrderCancelledEvent { }
+```
+
+**Real Example**: Banking systems - Maintain complete audit trail of all transactions using event sourcing.
+
+---
+
+### 37. Handling Third-Party Service Outages
+
+**Q: Payment gateway is down for 2 hours. How do you handle orders?**
+
+**A:**
+- **Queue orders** for later processing
+- Show user "Payment pending" status
+- **Background job** retries payment
+- Send notification when payment succeeds
+- Circuit breaker prevents constant failures
+- Implement **fallback payment gateways**
+
+```java
+@Service
+public class ResilientPaymentService {
+    @CircuitBreaker(name = "primaryGateway", fallbackMethod = "useSecondaryGateway")
+    public PaymentResponse processPrimary(PaymentRequest request) {
+        return primaryGateway.process(request);
+    }
+
+    public PaymentResponse useSecondaryGateway(PaymentRequest request, Exception e) {
+        log.warn("Primary gateway failed, using secondary");
+        return secondaryGateway.process(request);
+    }
+}
+```
+
+**Real Example**: Amazon - Uses multiple payment processors with automatic failover.
+
+---
+
+### 38. API Response Time SLA
+
+**Q: Your API must respond within 500ms for 99.9% requests. How do you ensure this?**
+
+**A:**
+- **Performance monitoring**: Track P50, P95, P99 latencies
+- **Database optimization**: Proper indexes, query optimization
+- **Caching**: Redis for frequently accessed data
+- **Connection pooling**: Optimize DB connections
+- **Async processing**: Move heavy operations to background
+- **CDN**: Static content from edge locations
+- **Rate limiting**: Prevent abuse
+
+```java
+@Timed(value = "api.latency", percentiles = {0.5, 0.95, 0.99})
+@GetMapping("/products/{id}")
+public Product getProduct(@PathVariable Long id) {
+    return productService.findById(id);
+}
+
+// Alert configuration
+- alert: HighApiLatency
+  expr: histogram_quantile(0.99, api_latency_bucket) > 0.5
+  annotations:
+    summary: "P99 latency exceeded 500ms"
+```
+
+**Real Example**: Stripe - Maintains strict SLAs with comprehensive monitoring.
+
+---
+
+### 39. Implementing CQRS
+
+**Q: Order read queries are slow affecting write performance. How to separate?**
+
+**A:**
+- **CQRS**: Separate Command (write) and Query (read) models
+- **Write model**: Normalized, optimized for consistency
+- **Read model**: Denormalized, optimized for queries
+- Sync via events (Kafka)
+- Different databases for read/write
+
+```java
+// Command side
+@Service
+public class OrderCommandService {
+    public void createOrder(CreateOrderCommand cmd) {
+        Order order = new Order(cmd);
+        orderWriteRepo.save(order);
+        eventPublisher.publish(new OrderCreatedEvent(order));
+    }
+}
+
+// Query side
+@Service
+public class OrderQueryService {
+    @EventListener
+    public void onOrderCreated(OrderCreatedEvent event) {
+        OrderReadModel readModel = new OrderReadModel(event);
+        orderReadRepo.save(readModel); // Optimized for queries
+    }
+
+    public List<OrderDTO> getOrders(String userId) {
+        return orderReadRepo.findByUserId(userId);
+    }
+}
+```
+
+**Real Example**: LinkedIn - Uses CQRS for feed generation separating read/write workloads.
+
+---
+
+### 40. Dealing with Clock Skew
+
+**Q: Distributed services on different servers have time differences. How do you handle?**
+
+**A:**
+- Use **NTP** (Network Time Protocol) to sync clocks
+- Don't rely on local timestamps for ordering
+- Use **vector clocks** or **logical clocks**
+- Implement **Lamport timestamps**
+- Use centralized time service (Google TrueTime)
+- Database timestamps instead of application timestamps
+
+```java
+@Entity
+public class Order {
+    @CreationTimestamp // Database timestamp, not application
+    private Instant createdAt;
+
+    private Long lamportClock; // Logical clock for ordering
+}
+```
+
+**Real Example**: Google Spanner - Uses TrueTime API for globally consistent timestamps.
+
+---
+
+### 41. Implementing Feature Flags
+
+**Q: New recommendation algorithm ready but want to test on 10% users first. How?**
+
+**A:**
+- **Feature flags/toggles** with LaunchDarkly/Unleash
+- Control features without deployment
+- A/B testing capabilities
+- Gradual rollout
+- Quick rollback if issues
+
+```java
+@Service
+public class RecommendationService {
+
+    @Autowired
+    private FeatureFlagService featureFlagService;
+
+    public List<Product> getRecommendations(String userId) {
+        if (featureFlagService.isEnabled("new-algorithm", userId)) {
+            return newRecommendationEngine.recommend(userId);
+        } else {
+            return oldRecommendationEngine.recommend(userId);
+        }
+    }
+}
+```
+
+**Real Example**: Netflix - Uses feature flags extensively to test and deploy features incrementally.
+
+---
+
+### 42. Handling Large Payload
+
+**Q: User uploads 100MB file to your API. How do you handle without memory issues?**
+
+**A:**
+- **Streaming upload**: Don't load entire file in memory
+- **Chunked transfer encoding**
+- Direct upload to **S3 with presigned URLs**
+- **Async processing** with status callback
+- Set **max request size limits**
+
+```java
+@PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    String uploadId = UUID.randomUUID().toString();
+
+    // Stream directly to S3
+    s3Client.putObject(PutObjectRequest.builder()
+        .bucket(bucketName)
+        .key(uploadId)
+        .build(),
+        RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+    // Process async
+    kafkaTemplate.send("file-uploaded", new FileEvent(uploadId));
+
+    return ResponseEntity.accepted().body(uploadId);
+}
+```
+
+**Real Example**: Dropbox - Uploads large files in chunks with resume capability.
+
+---
+
+### 43. Cross-Cutting Concerns
+
+**Q: Need to log request/response, track metrics, validate auth for all endpoints. How to avoid duplication?**
+
+**A:**
+- Use **Spring AOP** (Aspect-Oriented Programming)
+- **Interceptors** for cross-cutting concerns
+- **Filters** for request/response modification
+- **API Gateway** for centralized concerns
+
+```java
+@Aspect
+@Component
+public class LoggingAspect {
+
+    @Around("@annotation(org.springframework.web.bind.annotation.RequestMapping)")
+    public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
+        long start = System.currentTimeMillis();
+
+        log.info("Method: {} started", joinPoint.getSignature());
+        Object result = joinPoint.proceed();
+
+        long duration = System.currentTimeMillis() - start;
+        log.info("Method: {} completed in {}ms", joinPoint.getSignature(), duration);
+
+        return result;
+    }
+}
+```
+
+**Real Example**: Netflix - Uses Zuul filters for cross-cutting concerns across all services.
+
+---
+
+### 44. Handling Time Zones
+
+**Q: Users in different time zones book appointments. How do you handle datetime consistently?**
+
+**A:**
+- **Always store in UTC** in database
+- Convert to user timezone only in presentation layer
+- Use **ISO 8601 format** for APIs
+- Store user timezone preference
+- Use `Instant` or `ZonedDateTime` in Java
+
+```java
+@Entity
+public class Appointment {
+    private Instant appointmentTime; // Always UTC
+
+    public ZonedDateTime getLocalTime(String timezone) {
+        return appointmentTime.atZone(ZoneId.of(timezone));
+    }
+}
+
+// API response
+public AppointmentDTO toDTO(Appointment apt, String userTimezone) {
+    return AppointmentDTO.builder()
+        .time(apt.getLocalTime(userTimezone))
+        .timezone(userTimezone)
+        .build();
+}
+```
+
+**Real Example**: Booking.com - Handles hotel bookings across all time zones.
+
+---
+
+### 45. Implementing Search Functionality
+
+**Q: Need to search products by name, category, price range across millions of records. How?**
+
+**A:**
+- Use **Elasticsearch** for full-text search
+- **Sync data** from database to Elasticsearch
+- Use **change data capture** (Debezium) for real-time sync
+- Implement **search analytics**
+
+```java
+@Service
+public class ProductSearchService {
+
+    @Autowired
+    private ElasticsearchRestTemplate elasticsearchTemplate;
+
+    public List<Product> search(String query, PriceRange range, String category) {
+        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
+            .withQuery(multiMatchQuery(query, "name", "description"))
+            .withFilter(boolQuery()
+                .must(rangeQuery("price").gte(range.getMin()).lte(range.getMax()))
+                .must(termQuery("category", category)))
+            .build();
+
+        return elasticsearchTemplate.search(searchQuery, Product.class)
+            .stream()
+            .map(SearchHit::getContent)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+**Real Example**: Amazon - Uses Elasticsearch for product search across millions of items.
+
+---
+
+### 46. Handling Partial Failures
+
+**Q: Dashboard needs data from 5 services. 2 services are down. What do you show?**
+
+**A:**
+- **Fail gracefully**: Show available data
+- Use **circuit breaker** with fallbacks
+- **Timeout quickly** for failing services
+- Show **partial UI** with error indicators
+- Cache stale data as fallback
+
+```java
+public DashboardResponse getDashboard(String userId) {
+    DashboardResponse response = new DashboardResponse();
+
+    try {
+        response.setUser(userService.getUser(userId));
+    } catch (Exception e) {
+        log.error("User service failed", e);
+        response.setUser(getCachedUser(userId));
+        response.addError("user-service-unavailable");
+    }
+
+    try {
+        response.setOrders(orderService.getOrders(userId));
+    } catch (Exception e) {
+        log.error("Order service failed", e);
+        response.setOrders(Collections.emptyList());
+        response.addError("order-service-unavailable");
+    }
+
+    return response;
+}
+```
+
+**Real Example**: Facebook - Shows partial feed if some services fail.
+
+---
+
+### 47. Implementing Saga Orchestration
+
+**Q: Complex workflow: Book hotel → Book flight → Book car. If flight fails, rollback hotel. How?**
+
+**A:**
+- **Saga Orchestration**: Central coordinator manages workflow
+- Defines compensating transactions
+- State machine for workflow
+- Persists saga state for recovery
+
+```java
+@Service
+public class TravelBookingSaga {
+
+    public void bookTravel(TravelRequest request) {
+        String sagaId = UUID.randomUUID().toString();
+        SagaState state = new SagaState(sagaId);
+
+        try {
+            // Step 1: Book hotel
+            HotelBooking hotel = hotelService.book(request);
+            state.setHotelBookingId(hotel.getId());
+            sagaStateRepo.save(state);
+
+            // Step 2: Book flight
+            FlightBooking flight = flightService.book(request);
+            state.setFlightBookingId(flight.getId());
+            sagaStateRepo.save(state);
+
+            // Step 3: Book car
+            CarBooking car = carService.book(request);
+            state.setCarBookingId(car.getId());
+            state.setStatus(SagaStatus.COMPLETED);
+            sagaStateRepo.save(state);
+
+        } catch (Exception e) {
+            // Compensate
+            compensate(state);
+        }
+    }
+
+    private void compensate(SagaState state) {
+        if (state.getCarBookingId() != null) {
+            carService.cancel(state.getCarBookingId());
+        }
+        if (state.getFlightBookingId() != null) {
+            flightService.cancel(state.getFlightBookingId());
+        }
+        if (state.getHotelBookingId() != null) {
+            hotelService.cancel(state.getHotelBookingId());
+        }
+        state.setStatus(SagaStatus.FAILED);
+        sagaStateRepo.save(state);
+    }
+}
+```
+
+**Real Example**: Uber Eats - Orchestrates restaurant, delivery, and payment in single workflow.
+
+---
+
+### 48. Implementing API Gateway Aggregation
+
+**Q: Mobile app has limited bandwidth. How do you reduce API calls?**
+
+**A:**
+- **Backend for Frontend (BFF)**: API specifically for mobile
+- **GraphQL**: Let client request exact data needed
+- **Gateway aggregation**: Combine multiple calls
+- **Data compression**: GZIP responses
+
+```java
+@RestController
+@RequestMapping("/api/mobile")
+public class MobileBFFController {
+
+    @GetMapping("/home")
+    public MobileHomeResponse getHome(@AuthenticationPrincipal User user) {
+        // Aggregate data from multiple services
+        CompletableFuture<UserProfile> profileFuture =
+            CompletableFuture.supplyAsync(() -> userService.getProfile(user.getId()));
+        CompletableFuture<List<Recommendation>> recsFuture =
+            CompletableFuture.supplyAsync(() -> recommendationService.get(user.getId()));
+        CompletableFuture<List<Notification>> notifsFuture =
+            CompletableFuture.supplyAsync(() -> notificationService.getUnread(user.getId()));
+
+        CompletableFuture.allOf(profileFuture, recsFuture, notifsFuture).join();
+
+        return MobileHomeResponse.builder()
+            .profile(profileFuture.get())
+            .recommendations(recsFuture.get())
+            .notifications(notifsFuture.get())
+            .build();
+    }
+}
+```
+
+**Real Example**: Twitter - BFF pattern for mobile apps to reduce API calls.
+
+---
+
+### 49. Handling Webhook Retries
+
+**Q: You send webhooks to customer systems. Their server is down. How do you retry?**
+
+**A:**
+- **Exponential backoff** for retries
+- **Maximum retry attempts** (e.g., 10)
+- **Dead letter queue** for failed webhooks
+- Store webhook **delivery history**
+- Provide **manual retry** option in dashboard
+
+```java
+@Service
+public class WebhookService {
+
+    @Async
+    @Retryable(
+        value = {RestClientException.class},
+        maxAttempts = 10,
+        backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 3600000)
+    )
+    public void sendWebhook(WebhookEvent event) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Webhook-Signature", generateSignature(event));
+
+            HttpEntity<WebhookEvent> request = new HttpEntity<>(event, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                event.getCallbackUrl(), request, String.class);
+
+            webhookLogRepo.save(new WebhookLog(event.getId(), "SUCCESS", response.getStatusCode()));
+
+        } catch (Exception e) {
+            webhookLogRepo.save(new WebhookLog(event.getId(), "FAILED", e.getMessage()));
+            throw e;
+        }
+    }
+
+    @Recover
+    public void recover(RestClientException e, WebhookEvent event) {
+        log.error("Webhook delivery failed after all retries: {}", event.getId());
+        deadLetterQueueService.add(event);
+    }
+}
+```
+
+**Real Example**: Stripe - Sophisticated webhook retry system with exponential backoff.
+
+---
+
+### 50. Blue-Green Deployment
+
+**Q: Zero-downtime deployment needed. How do you switch between versions?**
+
+**A:**
+- **Two identical environments**: Blue (current) and Green (new)
+- Deploy to Green environment
+- Test thoroughly
+- Switch traffic from Blue to Green
+- Keep Blue for quick rollback
+- Use load balancer to switch traffic
+
+```yaml
+# Kubernetes service switching
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  selector:
+    app: payment-service
+    version: blue  # Change to 'green' to switch
+  ports:
+  - port: 8080
+---
+# Blue deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service-blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment-service
+      version: blue
+---
+# Green deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service-green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: payment-service
+      version: green
+```
+
+**Real Example**: Amazon - Uses blue-green deployments for zero-downtime updates.
+
+---
+
+### 51. Implementing Request Deduplication
+
+**Q: User accidentally clicks "Submit Order" twice. How do you prevent duplicate orders?**
+
+**A:**
+- **Client-side**: Disable button after first click
+- **Server-side**: Idempotency key or unique constraint
+- **Time window**: Check for duplicate within 5 minutes
+- **Redis**: Store request hash with TTL
+
+```java
+@Service
+public class OrderDeduplicationService {
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    public boolean isDuplicate(OrderRequest request, String userId) {
+        String key = "order:" + userId + ":" + generateHash(request);
+        Boolean isNew = redisTemplate.opsForValue()
+            .setIfAbsent(key, "processing", Duration.ofMinutes(5));
+        return !Boolean.TRUE.equals(isNew);
+    }
+
+    private String generateHash(OrderRequest request) {
+        return DigestUtils.sha256Hex(
+            request.getProductIds().toString() +
+            request.getTotalAmount());
+    }
+}
+
+@PostMapping("/orders")
+public ResponseEntity<?> createOrder(@RequestBody OrderRequest request,
+                                    @AuthenticationPrincipal User user) {
+    if (orderDeduplicationService.isDuplicate(request, user.getId())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body("Duplicate order detected");
+    }
+
+    Order order = orderService.create(request);
+    return ResponseEntity.ok(order);
+}
+```
+
+**Real Example**: PayPal - Prevents duplicate payments with sophisticated deduplication.
+
+---
+
+### 52. Handling Schema Evolution
+
+**Q: Need to change event schema in Kafka. Old consumers still running. How?**
+
+**A:**
+- **Schema Registry** (Confluent/Apicurio)
+- **Backward compatibility**: New fields optional
+- **Forward compatibility**: Old producers work with new consumers
+- **Version field** in events
+- **Avro/Protobuf** for schema evolution
+
+```java
+// Version 1
+public class OrderEventV1 {
+    private String orderId;
+    private BigDecimal amount;
+}
+
+// Version 2 - backward compatible
+public class OrderEventV2 {
+    private String orderId;
+    private BigDecimal amount;
+    private String currency = "USD"; // Default value
+    private List<String> tags = new ArrayList<>(); // Optional field
+}
+
+@KafkaListener(topics = "orders")
+public void handleOrderEvent(String message) {
+    JsonNode event = objectMapper.readTree(message);
+    int version = event.get("version").asInt(1);
+
+    if (version == 1) {
+        OrderEventV1 orderV1 = objectMapper.readValue(message, OrderEventV1.class);
+        // Handle V1
+    } else if (version == 2) {
+        OrderEventV2 orderV2 = objectMapper.readValue(message, OrderEventV2.class);
+        // Handle V2
+    }
+}
+```
+
+**Real Example**: LinkedIn - Uses Avro with Schema Registry for event schema evolution.
+
+---
+
+### 53. Implementing Circuit Breaker Dashboard
+
+**Q: Multiple services using circuit breakers. How do you monitor them centrally?**
+
+**A:**
+- **Hystrix Dashboard** (deprecated) or **Resilience4j Dashboard**
+- **Spring Boot Admin** with Actuator
+- Export metrics to **Prometheus/Grafana**
+- Set up **alerts** for circuit breaker state changes
+
+```yaml
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers,circuitbreakerevents
+  health:
+    circuitbreakers:
+      enabled: true
+
+# Prometheus metrics
+resilience4j.circuitbreaker:
+  instances:
+    paymentService:
+      registerHealthIndicator: true
+      ringBufferSizeInClosedState: 100
+      ringBufferSizeInHalfOpenState: 10
+      waitDurationInOpenState: 10000
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 10
+```
+
+**Real Example**: Netflix - Hystrix Dashboard (now deprecated) showed real-time circuit breaker status.
+
+---
+
+### 54. Implementing Distributed Locking
+
+**Q: Two instances try to process same order simultaneously. How do you prevent?**
+
+**A:**
+- **Redis distributed lock** (Redisson)
+- **Database pessimistic locking**
+- **Optimistic locking** with version field
+- **ZooKeeper** for coordination
+
+```java
+@Service
+public class OrderProcessingService {
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    public void processOrder(String orderId) {
+        RLock lock = redissonClient.getLock("order-lock:" + orderId);
+
+        try {
+            // Wait for lock, auto-release after 10 seconds
+            boolean acquired = lock.tryLock(100, 10000, TimeUnit.MILLISECONDS);
+
+            if (acquired) {
+                // Check if already processed
+                if (orderRepository.findById(orderId).getStatus() == PROCESSED) {
+                    return;
+                }
+
+                // Process order
+                processOrderInternal(orderId);
+            } else {
+                log.warn("Could not acquire lock for order: {}", orderId);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
+    }
+}
+```
+
+**Real Example**: Airbnb - Uses distributed locking for concurrent booking prevention.
+
+---
+
+### 55. Implementing Rate Limiter
+
+**Q: API should allow max 100 requests per minute per user. How do you implement across multiple instances?**
+
+**A:**
+- **Redis-based rate limiter**
+- **Token bucket** or **sliding window** algorithm
+- Store counters in Redis with TTL
+
+```java
+@Component
+public class RedisRateLimiter {
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    public boolean isAllowed(String userId, int maxRequests, Duration window) {
+        String key = "rate_limit:" + userId;
+        long currentTime = System.currentTimeMillis();
+        long windowStart = currentTime - window.toMillis();
+
+        // Remove old entries
+        redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
+
+        // Count requests in current window
+        Long count = redisTemplate.opsForZSet().count(key, windowStart, currentTime);
+
+        if (count != null && count < maxRequests) {
+            // Add current request
+            redisTemplate.opsForZSet().add(key, UUID.randomUUID().toString(), currentTime);
+            redisTemplate.expire(key, window);
+            return true;
+        }
+
+        return false;
+    }
+}
+
+@RestController
+public class ApiController {
+
+    @GetMapping("/api/resource")
+    public ResponseEntity<?> getResource(@AuthenticationPrincipal User user) {
+        if (!rateLimiter.isAllowed(user.getId(), 100, Duration.ofMinutes(1))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body("Rate limit exceeded");
+        }
+
+        return ResponseEntity.ok(resourceService.get());
+    }
+}
+```
+
+**Real Example**: GitHub API - Implements per-user rate limiting across global infrastructure.
+
+---
+
+## Quick Fire Concepts
+
+### Event Sourcing
+**Q: What is it?**
+**A:** Store all changes as events instead of current state. Rebuild state by replaying events. Provides audit trail, time travel debugging.
+**Example**: Banking - Every transaction stored as event, account balance derived.
+
+### CQRS
+**Q: What is it?**
+**A:** Separate read and write models. Write to normalized DB, project to optimized read models. Improves scalability and performance.
+**Example**: E-commerce - Write to transactional DB, read from Elasticsearch.
+
+### Strangler Pattern
+**Q: What is it?**
+**A:** Gradually replace legacy system by "strangling" it. Route new features to microservices, old features to monolith.
+**Example**: Migrating from monolith to microservices incrementally.
+
+### Backend for Frontend (BFF)
+**Q: What is it?**
+**A:** Separate backend for each frontend type (web, mobile, IoT). Optimized APIs for each client.
+**Example**: Netflix - Different APIs for TV, mobile, web.
+
+### Bulkhead Pattern
+**Q: What is it?**
+**A:** Isolate resources (thread pools, connections) per service/operation. One failing service doesn't exhaust all resources.
+**Example**: Ship compartments - one leak doesn't sink entire ship.
+
+### Sidecar Pattern
+**Q: What is it?**
+**A:** Deploy helper container alongside main container. Handles logging, monitoring, proxying.
+**Example**: Istio Envoy sidecar for service mesh.
+
+### Ambassador Pattern
+**Q: What is it?**
+**A:** Proxy that handles external service communication. Retry, circuit breaker, monitoring.
+**Example**: Database connection pooling sidecar.
+
+### Anti-Corruption Layer
+**Q: What is it?**
+**A:** Translation layer between new microservices and legacy system. Prevents legacy complexity from leaking.
+**Example**: Adapter for legacy SOAP services in REST world.
+
+---

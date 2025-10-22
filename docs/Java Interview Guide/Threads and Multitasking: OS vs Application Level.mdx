@@ -1,0 +1,544 @@
+# Threads and Multitasking: OS vs Application Level
+
+## Overview
+
+Multitasking allows computers to execute multiple tasks concurrently. Understanding the difference between OS-level and application-level threading is crucial for building efficient applications.
+
+## Types of Multitasking
+
+### 1. **Process-Based Multitasking**
+Multiple independent programs run simultaneously (e.g., browser, music player, text editor).
+
+### 2. **Thread-Based Multitasking**
+Multiple threads within a single program execute concurrently (e.g., downloading while rendering UI).
+
+## Process vs Thread
+
+```mermaid
+graph TB
+    subgraph "Operating System"
+        P1[Process 1<br/>Browser]
+        P2[Process 2<br/>Music Player]
+        P3[Process 3<br/>Text Editor]
+    end
+
+    subgraph "Process 1 - Browser"
+        T1[Thread 1<br/>UI Rendering]
+        T2[Thread 2<br/>Network Requests]
+        T3[Thread 3<br/>JavaScript Execution]
+        T4[Thread 4<br/>Image Decoding]
+    end
+
+    P1 -.-> T1
+    P1 -.-> T2
+    P1 -.-> T3
+    P1 -.-> T4
+
+    M1[Memory Space 1<br/>Independent]
+    M2[Memory Space 2<br/>Independent]
+    M3[Memory Space 3<br/>Independent]
+
+    P1 --> M1
+    P2 --> M2
+    P3 --> M3
+
+    SM[Shared Memory<br/>within Process]
+    T1 --> SM
+    T2 --> SM
+    T3 --> SM
+    T4 --> SM
+
+    style P1 fill:#ff6b6b
+    style P2 fill:#4ecdc4
+    style P3 fill:#45b7d1
+    style T1 fill:#a8e6cf
+    style T2 fill:#a8e6cf
+    style T3 fill:#a8e6cf
+    style T4 fill:#a8e6cf
+    style SM fill:#ffd93d
+```
+
+## Key Differences
+
+| Aspect | Process | Thread |
+|--------|---------|--------|
+| **Memory** | Separate memory space | Shared memory within process |
+| **Communication** | Inter-process communication (IPC) | Direct memory access |
+| **Creation Cost** | Expensive | Lightweight |
+| **Context Switching** | Slower | Faster |
+| **Independence** | Fully independent | Share process resources |
+| **Crash Impact** | Isolated | Can crash entire process |
+
+## OS-Level Threading
+
+### How Operating System Manages Threads
+
+```mermaid
+flowchart TD
+    A[CPU Cores] --> B[OS Scheduler]
+    B --> C{Thread<br/>Scheduling}
+
+    C --> D[Running State]
+    C --> E[Ready State]
+    C --> F[Blocked/Waiting State]
+    C --> G[Terminated State]
+
+    E --> |Scheduler assigns CPU| D
+    D --> |Time slice expired| E
+    D --> |I/O request or wait| F
+    F --> |I/O complete or notify| E
+    D --> |Execution complete| G
+    E --> |Kill signal| G
+
+    subgraph "CPU 1"
+        T1[Thread A]
+    end
+
+    subgraph "CPU 2"
+        T2[Thread B]
+    end
+
+    subgraph "CPU 3"
+        T3[Thread C]
+    end
+
+    subgraph "CPU 4"
+        T4[Thread D]
+    end
+
+    D -.-> T1
+    D -.-> T2
+    D -.-> T3
+    D -.-> T4
+
+    style D fill:#90EE90
+    style E fill:#FFD700
+    style F fill:#FF6347
+    style G fill:#A9A9A9
+```
+
+### OS Thread Types
+
+#### **1. Kernel-Level Threads (OS Threads)**
+- Managed directly by the operating system kernel
+- OS scheduler handles thread scheduling
+- True parallel execution on multiple CPU cores
+- Higher overhead but better parallelism
+
+#### **2. User-Level Threads (Green Threads)**
+- Managed by application or runtime library
+- OS sees them as a single process
+- Faster context switching
+- Cannot utilize multiple CPU cores directly
+
+```mermaid
+graph LR
+    subgraph "Kernel-Level Threading"
+        A[Application] --> B[Thread Library]
+        B --> C[Kernel]
+        C --> D[CPU Core 1]
+        C --> E[CPU Core 2]
+        C --> F[CPU Core 3]
+        C --> G[CPU Core 4]
+    end
+
+    subgraph "User-Level Threading"
+        H[Application] --> I[User Thread Library]
+        I --> J[Single Kernel Thread]
+        J --> K[CPU Core 1]
+    end
+
+    style C fill:#ff6b6b
+    style I fill:#4ecdc4
+```
+
+## Application-Level Threading
+
+### Thread Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> New: Create Thread
+    New --> Runnable: start()
+    Runnable --> Running: Scheduler assigns CPU
+    Running --> Runnable: yield() or time slice end
+    Running --> Waiting: wait(), sleep(), join()
+    Waiting --> Runnable: notify(), time elapsed, thread completes
+    Running --> Blocked: I/O operation, lock unavailable
+    Blocked --> Runnable: I/O complete, lock acquired
+    Running --> Terminated: Execution complete
+    Terminated --> [*]
+
+    note right of New
+        Thread object created
+        but not started
+    end note
+
+    note right of Runnable
+        Ready to run
+        waiting for CPU time
+    end note
+
+    note right of Running
+        Currently executing
+        on CPU
+    end note
+
+    note right of Waiting
+        Waiting for specific
+        condition or time
+    end note
+
+    note right of Blocked
+        Waiting for resource
+        (I/O, lock)
+    end note
+```
+
+### Java Threading Model
+
+```mermaid
+flowchart TD
+    A[Java Application] --> B[Java Threads]
+    B --> C[JVM]
+
+    C --> D{Thread Mapping}
+
+    D --> E[Native OS Threads<br/>1:1 mapping]
+    D --> F[Green Threads<br/>M:N mapping<br/>Historical]
+
+    E --> G[OS Scheduler]
+    G --> H[CPU Core 1]
+    G --> I[CPU Core 2]
+    G --> J[CPU Core 3]
+    G --> K[CPU Core 4]
+
+    subgraph "Modern JVM"
+        E
+    end
+
+    subgraph "Legacy JVM"
+        F
+    end
+
+    style E fill:#90EE90
+    style F fill:#FFD700
+    style G fill:#FF6347
+```
+
+## Thread Scheduling Algorithms
+
+### 1. **Preemptive Scheduling**
+OS can interrupt a running thread to give CPU time to another thread.
+
+### 2. **Cooperative Scheduling**
+Threads voluntarily yield control (used in user-level threading).
+
+### 3. **Priority-Based Scheduling**
+Higher priority threads get CPU time first.
+
+```mermaid
+gantt
+    title Thread Scheduling Timeline (Preemptive)
+    dateFormat X
+    axisFormat %L ms
+
+    section CPU Core 1
+    Thread A (High Priority)    :active, 0, 30
+    Thread B (Medium Priority)  :active, 30, 50
+    Thread A (High Priority)    :active, 50, 80
+    Thread C (Low Priority)     :active, 80, 90
+    Thread A (High Priority)    :active, 90, 120
+
+    section CPU Core 2
+    Thread D (High Priority)    :active, 0, 40
+    Thread E (Medium Priority)  :active, 40, 70
+    Thread D (High Priority)    :active, 70, 100
+    Thread F (Low Priority)     :active, 100, 120
+```
+
+## Multithreading in Practice
+
+### Example: Web Server Handling Requests
+
+```mermaid
+sequenceDiagram
+    participant C1 as Client 1
+    participant C2 as Client 2
+    participant C3 as Client 3
+    participant S as Web Server
+    participant T1 as Thread 1
+    participant T2 as Thread 2
+    participant T3 as Thread 3
+    participant DB as Database
+
+    C1->>S: HTTP Request
+    S->>T1: Assign to Thread 1
+
+    C2->>S: HTTP Request
+    S->>T2: Assign to Thread 2
+
+    C3->>S: HTTP Request
+    S->>T3: Assign to Thread 3
+
+    par Parallel Execution
+        T1->>DB: Query Database
+        T2->>DB: Query Database
+        T3->>DB: Query Database
+    end
+
+    DB-->>T1: Results
+    DB-->>T2: Results
+    DB-->>T3: Results
+
+    T1-->>C1: HTTP Response
+    T2-->>C2: HTTP Response
+    T3-->>C3: HTTP Response
+```
+
+## Thread Synchronization
+
+When multiple threads access shared resources, synchronization is needed.
+
+```mermaid
+flowchart TD
+    A[Thread 1] --> B{Critical Section<br/>Lock Available?}
+    C[Thread 2] --> B
+    D[Thread 3] --> B
+
+    B -->|Yes| E[Acquire Lock]
+    B -->|No| F[Wait in Queue]
+
+    E --> G[Execute Critical Section<br/>Access Shared Resource]
+    G --> H[Release Lock]
+
+    H --> I[Notify Waiting Threads]
+    I --> F
+    F --> B
+
+    style B fill:#FFD700
+    style E fill:#90EE90
+    style F fill:#FF6347
+    style G fill:#87CEEB
+```
+
+### Common Synchronization Mechanisms
+
+1. **Mutex (Mutual Exclusion)**: Only one thread can access resource
+2. **Semaphore**: Limited number of threads can access resource
+3. **Monitor**: High-level synchronization construct
+4. **Read-Write Locks**: Multiple readers or single writer
+5. **Atomic Operations**: Lock-free synchronization
+
+## Thread Pool Pattern
+
+```mermaid
+flowchart LR
+    A[Incoming Tasks] --> B[Task Queue]
+
+    B --> C{Thread Pool}
+
+    C --> T1[Worker Thread 1]
+    C --> T2[Worker Thread 2]
+    C --> T3[Worker Thread 3]
+    C --> T4[Worker Thread 4]
+    C --> T5[Worker Thread 5]
+
+    T1 --> D[Execute Task]
+    T2 --> D
+    T3 --> D
+    T4 --> D
+    T5 --> D
+
+    D --> E[Return to Pool]
+    E --> C
+
+    D --> F[Task Complete]
+
+    style B fill:#FFD93D
+    style C fill:#6BCF7F
+    style D fill:#4ECDC4
+    style F fill:#95E1D3
+```
+
+### Benefits of Thread Pools
+- **Reuse**: Threads are reused instead of created/destroyed repeatedly
+- **Control**: Limit number of concurrent threads
+- **Performance**: Reduced overhead of thread creation
+- **Resource Management**: Prevent resource exhaustion
+
+## OS-Level vs Application-Level Comparison
+
+```mermaid
+graph TB
+    subgraph "OS-Level Threading"
+        OS[Operating System Kernel]
+        OS --> OST1[OS Thread 1]
+        OS --> OST2[OS Thread 2]
+        OS --> OST3[OS Thread 3]
+
+        OST1 --> CPU1[CPU Core 1]
+        OST2 --> CPU2[CPU Core 2]
+        OST3 --> CPU3[CPU Core 3]
+
+        Note1[✓ True parallelism<br/>✓ OS handles scheduling<br/>✗ Higher overhead<br/>✗ Context switch cost]
+    end
+
+    subgraph "Application-Level Threading"
+        APP[Application Runtime]
+        APP --> AT1[App Thread 1]
+        APP --> AT2[App Thread 2]
+        APP --> AT3[App Thread 3]
+
+        AT1 --> ROST[Single OS Thread]
+        AT2 --> ROST
+        AT3 --> ROST
+
+        ROST --> CPUX[CPU Core]
+
+        Note2[✓ Fast context switch<br/>✓ Low overhead<br/>✗ No true parallelism<br/>✗ Blocking issues]
+    end
+
+    style OS fill:#ff6b6b
+    style APP fill:#4ecdc4
+```
+
+## Context Switching
+
+### What Happens During Context Switch?
+
+```mermaid
+sequenceDiagram
+    participant CPU as CPU
+    participant T1 as Thread 1
+    participant OS as OS Scheduler
+    participant T2 as Thread 2
+
+    T1->>CPU: Executing
+    Note over T1,CPU: Time slice expires
+
+    CPU->>OS: Interrupt
+    OS->>OS: Save Thread 1 state<br/>(registers, PC, stack)
+    OS->>OS: Select Thread 2<br/>(scheduling decision)
+    OS->>OS: Load Thread 2 state<br/>(registers, PC, stack)
+    OS->>T2: Resume execution
+    T2->>CPU: Executing
+
+    Note over OS: Context Switch Overhead:<br/>- Save/restore registers<br/>- Update memory mappings<br/>- Cache invalidation<br/>- TLB flush
+```
+
+## Concurrency vs Parallelism
+
+```mermaid
+graph TD
+    subgraph "Concurrency (Single Core)"
+        A[Task A] -.-> B[Task B]
+        B -.-> C[Task A]
+        C -.-> D[Task B]
+        D -.-> E[Task A]
+
+        Note1[Tasks take turns<br/>Interleaved execution<br/>Appears simultaneous]
+    end
+
+    subgraph "Parallelism (Multi-Core)"
+        F[Task A] --> G[Core 1]
+        H[Task B] --> I[Core 2]
+        J[Task C] --> K[Core 3]
+
+        Note2[Tasks run truly<br/>simultaneously<br/>on different cores]
+    end
+
+    style A fill:#FFB6C1
+    style B fill:#87CEEB
+    style C fill:#FFB6C1
+    style D fill:#87CEEB
+    style E fill:#FFB6C1
+    style F fill:#FFB6C1
+    style H fill:#87CEEB
+    style J fill:#98FB98
+```
+
+## Real-World Threading Examples
+
+### 1. **GUI Applications**
+```mermaid
+flowchart LR
+    A[Main Thread<br/>UI Rendering] --> B[Responsive UI]
+    C[Background Thread<br/>Heavy Computation] --> D[Process Data]
+    E[Network Thread<br/>API Calls] --> F[Fetch Data]
+
+    D -.Update.-> A
+    F -.Update.-> A
+
+    style A fill:#FF6B6B
+    style C fill:#4ECDC4
+    style E fill:#45B7D1
+```
+
+### 2. **Database Server**
+```mermaid
+flowchart TD
+    A[Connection Pool Threads] --> B[Handle Client Connections]
+    C[Query Executor Threads] --> D[Execute SQL Queries]
+    E[Buffer Manager Thread] --> F[Manage Memory Cache]
+    G[Checkpoint Thread] --> H[Write to Disk]
+    I[Lock Manager Thread] --> J[Handle Deadlocks]
+
+    style A fill:#a8e6cf
+    style C fill:#ffd3b6
+    style E fill:#ffaaa5
+    style G fill:#ff8b94
+    style I fill:#a8e6cf
+```
+
+## Performance Considerations
+
+### Thread Overhead
+
+| Operation | Approximate Cost |
+|-----------|-----------------|
+| Thread creation | 10-100 microseconds |
+| Context switch | 1-10 microseconds |
+| Lock acquisition (uncontended) | ~25 nanoseconds |
+| Lock acquisition (contended) | ~500 nanoseconds |
+
+### Optimal Thread Count
+
+```
+Optimal Threads = Number of CPU Cores × (1 + Wait Time / Compute Time)
+```
+
+- **CPU-bound tasks**: Threads ≈ CPU cores
+- **I/O-bound tasks**: Threads > CPU cores
+- **Mixed workload**: Balance based on wait/compute ratio
+
+## Best Practices
+
+1. **Use Thread Pools** instead of creating threads manually
+2. **Minimize Shared State** to reduce synchronization needs
+3. **Prefer Immutable Objects** for thread safety
+4. **Avoid Blocking Operations** in critical threads
+5. **Use Async/Await Patterns** for I/O operations
+6. **Profile Before Optimizing** thread counts
+7. **Handle Thread Interruption** gracefully
+8. **Consider Lock-Free Algorithms** for high contention
+
+## Summary
+
+### OS-Level Threading
+- Managed by operating system kernel
+- True parallelism on multi-core systems
+- Higher overhead but better resource utilization
+- Modern approach for most applications
+
+### Application-Level Threading
+- Managed by runtime or library
+- Fast context switching
+- Limited to single core historically
+- Useful for specific scenarios (coroutines, fibers)
+
+### Modern Trend
+Most modern languages and runtimes use **hybrid approaches**:
+- Map application threads to OS threads (Java, Python, C#)
+- Use async/await for I/O operations
+- Employ work-stealing thread pools for efficiency
