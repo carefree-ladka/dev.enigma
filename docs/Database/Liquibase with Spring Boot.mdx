@@ -1,0 +1,516 @@
+# Liquibase with Spring Boot
+
+## Introduction
+
+Liquibase is a database schema change management solution that enables you to track, version, and deploy database changes. When integrated with Spring Boot, it provides a seamless way to manage your database migrations as part of your application lifecycle.
+
+## Why Use Liquibase?
+
+- **Version Control**: Track database changes alongside your code
+- **Database Independence**: Write changes once, deploy to multiple database platforms
+- **Rollback Support**: Easily revert changes when needed
+- **Team Collaboration**: Avoid conflicts when multiple developers modify the database
+- **Automated Deployment**: Integrate database changes into your CI/CD pipeline
+
+## Getting Started
+
+### Prerequisites
+
+- Java 17 or higher
+- Spring Boot 3.x
+- Maven or Gradle
+- A database (PostgreSQL, MySQL, H2, etc.)
+
+### Project Setup
+
+#### Maven Dependencies
+
+Add the following dependencies to your `pom.xml`:
+
+```xml
+<dependencies>
+    <!-- Spring Boot Starter -->
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- Liquibase -->
+    <dependency>
+        <groupId>org.liquibase</groupId>
+        <artifactId>liquibase-core</artifactId>
+    </dependency>
+
+    <!-- Database Driver (example: PostgreSQL) -->
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+</dependencies>
+```
+
+#### Gradle Dependencies
+
+For `build.gradle`:
+
+```gradle
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.liquibase:liquibase-core'
+    runtimeOnly 'org.postgresql:postgresql'
+}
+```
+
+### Application Configuration
+
+Configure your database and Liquibase in `application.properties`:
+
+```properties
+# Database Configuration
+spring.datasource.url=jdbc:postgresql://localhost:5432/myapp
+spring.datasource.username=myuser
+spring.datasource.password=mypassword
+
+# JPA Configuration
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.show-sql=true
+
+# Liquibase Configuration
+spring.liquibase.change-log=classpath:db/changelog/db.changelog-master.yaml
+spring.liquibase.enabled=true
+```
+
+Or in `application.yml`:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/myapp
+    username: myuser
+    password: mypassword
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
+```
+
+## Creating Your First Migration
+
+### Directory Structure
+
+Create the following directory structure in your resources folder:
+
+```
+src/main/resources/
+└── db/
+    └── changelog/
+        ├── db.changelog-master.yaml
+        └── changes/
+            ├── 001-create-user-table.yaml
+            └── 002-create-product-table.yaml
+```
+
+### Master Changelog
+
+Create `db.changelog-master.yaml`:
+
+```yaml
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-user-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-product-table.yaml
+```
+
+### Creating Tables
+
+Create `001-create-user-table.yaml`:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-user-table
+      author: john.doe
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+```
+
+Create `002-create-product-table.yaml`:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-product-table
+      author: john.doe
+      changes:
+        - createTable:
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: price
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: products
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_products_users
+```
+
+## Spring Boot Entities
+
+Create corresponding JPA entities:
+
+```java
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String username;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "user")
+    private List<Product> products;
+
+    // Getters and setters
+}
+
+@Entity
+@Table(name = "products")
+public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    private String description;
+
+    @Column(nullable = false)
+    private BigDecimal price;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // Getters and setters
+}
+```
+
+## Common Liquibase Operations
+
+### Adding a Column
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 003-add-phone-to-users
+      author: john.doe
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: phone
+                  type: VARCHAR(20)
+```
+
+### Modifying a Column
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 004-modify-username-length
+      author: john.doe
+      changes:
+        - modifyDataType:
+            tableName: users
+            columnName: username
+            newDataType: VARCHAR(150)
+```
+
+### Creating an Index
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-email-index
+      author: john.doe
+      changes:
+        - createIndex:
+            indexName: idx_users_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+```
+
+### Inserting Data
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 006-insert-default-users
+      author: john.doe
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: admin
+              - column:
+                  name: email
+                  value: admin@example.com
+```
+
+### Rollback Configuration
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 007-add-status-column
+      author: john.doe
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
+      rollback:
+        - dropColumn:
+            tableName: users
+            columnName: status
+```
+
+## Using SQL Format
+
+You can also write migrations in SQL:
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 008-custom-sql
+      author: john.doe
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/008-custom-migration.sql
+```
+
+Then create `db/changelog/sql/008-custom-migration.sql`:
+
+```sql
+CREATE TABLE IF NOT EXISTS orders (
+    id BIGSERIAL PRIMARY KEY,
+    order_number VARCHAR(50) UNIQUE NOT NULL,
+    user_id BIGINT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+## Best Practices
+
+### 1. Never Modify Existing ChangeSets
+
+Once a changeSet has been deployed, never modify it. Instead, create a new changeSet to make changes.
+
+### 2. Use Meaningful IDs
+
+Use descriptive IDs that indicate what the changeSet does:
+
+```yaml
+id: 001-create-user-table  # Good
+id: 1                       # Bad
+```
+
+### 3. Use Contexts for Environment-Specific Changes
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 009-insert-test-data
+      author: john.doe
+      context: test
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: username
+                  value: testuser
+```
+
+Then control execution:
+
+```properties
+spring.liquibase.contexts=development,test
+```
+
+### 4. Use Preconditions
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: 010-conditional-change
+      author: john.doe
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: audit_log
+      changes:
+        - createTable:
+            tableName: audit_log
+```
+
+### 5. Tag Important Releases
+
+```yaml
+databaseChangeLog:
+  - changeSet:
+      id: tag-version-1.0
+      author: john.doe
+      changes:
+        - tagDatabase:
+            tag: version-1.0
+```
+
+## Testing
+
+Create a test configuration with H2:
+
+```properties
+# application-test.properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.liquibase.enabled=true
+```
+
+## Disabling Liquibase
+
+For certain environments or testing scenarios:
+
+```properties
+spring.liquibase.enabled=false
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: ChangeSets run every time
+- **Solution**: Ensure your database connection is persistent and not in-memory
+
+**Issue**: Checksum validation failed
+- **Solution**: If you must modify a changeSet, use `validCheckSum` or run `liquibase clearCheckSums`
+
+**Issue**: Foreign key constraint errors
+- **Solution**: Ensure proper order of changeSets and tables are created before adding foreign keys
+
+## Command Line Operations
+
+You can also use Liquibase Maven plugin:
+
+```xml
+<plugin>
+    <groupId>org.liquibase</groupId>
+    <artifactId>liquibase-maven-plugin</artifactId>
+    <version>4.24.0</version>
+    <configuration>
+        <propertyFile>liquibase.properties</propertyFile>
+    </configuration>
+</plugin>
+```
+
+Commands:
+```bash
+mvn liquibase:update
+mvn liquibase:rollback -Dliquibase.rollbackCount=1
+mvn liquibase:status
+mvn liquibase:diff
+```
+
+## Conclusion
+
+Liquibase with Spring Boot provides a robust solution for managing database migrations. By following these patterns and best practices, you can maintain a clean, version-controlled database schema that evolves with your application.
+
+## Additional Resources
+
+- [Liquibase Documentation](https://docs.liquibase.com/)
+- [Spring Boot Liquibase Reference](https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html#howto.data-initialization.migration-tool.liquibase)
+- [Liquibase Best Practices](https://www.liquibase.org/get-started/best-practices)
