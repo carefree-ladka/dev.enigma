@@ -1,0 +1,586 @@
+# Production-Level Spring Boot Folder Structure
+
+## Complete Project Structure
+
+```
+project-root/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── company/
+│   │   │           └── project/
+│   │   │               ├── ProjectApplication.java
+│   │   │               ├── config/
+│   │   │               ├── controller/
+│   │   │               ├── service/
+│   │   │               ├── repository/
+│   │   │               ├── model/
+│   │   │               ├── dto/
+│   │   │               ├── mapper/
+│   │   │               ├── exception/
+│   │   │               ├── security/
+│   │   │               ├── util/
+│   │   │               ├── validator/
+│   │   │               ├── aspect/
+│   │   │               ├── event/
+│   │   │               └── constant/
+│   │   └── resources/
+│   │       ├── application.yml
+│   │       ├── application-dev.yml
+│   │       ├── application-prod.yml
+│   │       ├── application-test.yml
+│   │       ├── db/
+│   │       │   └── migration/
+│   │       ├── static/
+│   │       ├── templates/
+│   │       ├── i18n/
+│   │       └── logback-spring.xml
+│   └── test/
+│       ├── java/
+│       │   └── com/
+│       │       └── company/
+│       │           └── project/
+│       │               ├── controller/
+│       │               ├── service/
+│       │               ├── repository/
+│       │               ├── integration/
+│       │               └── unit/
+│       └── resources/
+│           └── application-test.yml
+├── docker/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── docker-compose.dev.yml
+├── docs/
+│   ├── API.md
+│   ├── DEPLOYMENT.md
+│   └── ARCHITECTURE.md
+├── scripts/
+│   ├── deploy.sh
+│   ├── backup.sh
+│   └── healthcheck.sh
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       └── cd.yml
+├── .gitignore
+├── README.md
+├── pom.xml (or build.gradle)
+├── Dockerfile
+└── docker-compose.yml
+```
+
+## Detailed Layer Breakdown
+
+### 1. Controller Layer (`controller/`)
+
+Handles HTTP requests and responses. Should be thin and delegate business logic to services.
+
+```java
+// UserController.java
+@RestController
+@RequestMapping("/api/v1/users")
+@Validated
+public class UserController {
+    // REST endpoints
+}
+```
+
+**Responsibilities:**
+- Request/response handling
+- Input validation
+- HTTP status codes
+- Delegating to service layer
+
+**Naming Convention:** `{Entity}Controller.java`
+
+---
+
+### 2. Service Layer (`service/`)
+
+Contains business logic and orchestrates operations.
+
+```
+service/
+├── UserService.java (interface)
+├── impl/
+│   └── UserServiceImpl.java
+├── AuthenticationService.java
+└── EmailService.java
+```
+
+**Responsibilities:**
+- Business logic implementation
+- Transaction management
+- Service orchestration
+- Calling multiple repositories
+
+**Best Practices:**
+- Use interfaces for service contracts
+- Keep implementations in `impl/` subdirectory
+- Use `@Transactional` annotations appropriately
+
+---
+
+### 3. Repository Layer (`repository/`)
+
+Data access layer using Spring Data JPA or other persistence mechanisms.
+
+```java
+// UserRepository.java
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmail(String email);
+    List<User> findByStatus(UserStatus status);
+}
+```
+
+**Responsibilities:**
+- Database operations
+- Custom queries
+- Data persistence
+
+**Types:**
+- JPA Repositories
+- Custom Repository implementations
+- Query methods
+
+---
+
+### 4. Model/Entity Layer (`model/` or `entity/`)
+
+JPA entities representing database tables.
+
+```java
+// User.java
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    // getters, setters, builders
+}
+```
+
+**Annotations Used:**
+- `@Entity`, `@Table`
+- `@Id`, `@GeneratedValue`
+- `@OneToMany`, `@ManyToOne`, etc.
+- `@Column`, `@JoinColumn`
+
+---
+
+### 5. DTO Layer (`dto/`)
+
+Data Transfer Objects for API requests and responses.
+
+```
+dto/
+├── request/
+│   ├── CreateUserRequest.java
+│   └── UpdateUserRequest.java
+└── response/
+    ├── UserResponse.java
+    └── ApiResponse.java
+```
+
+**Purpose:**
+- Decouple API contract from domain models
+- Validation annotations
+- Version control of APIs
+- Hide sensitive entity data
+
+```java
+// CreateUserRequest.java
+public class CreateUserRequest {
+    @NotBlank
+    @Email
+    private String email;
+
+    @Size(min = 8)
+    private String password;
+}
+```
+
+---
+
+### 6. Mapper Layer (`mapper/`)
+
+Converts between entities and DTOs.
+
+```java
+// UserMapper.java
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+    UserResponse toResponse(User user);
+    User toEntity(CreateUserRequest request);
+    List<UserResponse> toResponseList(List<User> users);
+}
+```
+
+**Options:**
+- MapStruct (recommended for production)
+- Manual mapping
+- ModelMapper library
+
+---
+
+### 7. Configuration Layer (`config/`)
+
+Application configuration classes.
+
+```
+config/
+├── SecurityConfig.java
+├── DatabaseConfig.java
+├── CacheConfig.java
+├── AsyncConfig.java
+├── SwaggerConfig.java
+└── RestTemplateConfig.java
+```
+
+**Common Configurations:**
+- Security (Spring Security)
+- Database (DataSource, JPA)
+- Caching (Redis, Caffeine)
+- Async processing
+- API documentation (Swagger/OpenAPI)
+- CORS settings
+
+---
+
+### 8. Exception Layer (`exception/`)
+
+Custom exceptions and global exception handling.
+
+```
+exception/
+├── BusinessException.java
+├── ResourceNotFoundException.java
+├── ValidationException.java
+├── UnauthorizedException.java
+└── GlobalExceptionHandler.java
+```
+
+```java
+// GlobalExceptionHandler.java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(
+        ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse(ex.getMessage()));
+    }
+}
+```
+
+---
+
+### 9. Security Layer (`security/`)
+
+Authentication and authorization components.
+
+```
+security/
+├── JwtTokenProvider.java
+├── JwtAuthenticationFilter.java
+├── CustomUserDetailsService.java
+├── SecurityUtils.java
+└── PasswordEncoderConfig.java
+```
+
+**Components:**
+- JWT token handling
+- Custom authentication filters
+- User details service
+- Security utilities
+
+---
+
+### 10. Util Layer (`util/`)
+
+Utility and helper classes.
+
+```
+util/
+├── DateUtils.java
+├── StringUtils.java
+├── ValidationUtils.java
+└── ResponseBuilder.java
+```
+
+**Guidelines:**
+- Static utility methods
+- No business logic
+- Reusable across layers
+
+---
+
+### 11. Validator Layer (`validator/`)
+
+Custom validation logic.
+
+```
+validator/
+├── EmailValidator.java
+├── PhoneNumberValidator.java
+└── annotation/
+    ├── ValidEmail.java
+    └── ValidPhone.java
+```
+
+---
+
+### 12. Aspect Layer (`aspect/`)
+
+Cross-cutting concerns using AOP.
+
+```
+aspect/
+├── LoggingAspect.java
+├── PerformanceAspect.java
+└── SecurityAspect.java
+```
+
+**Use Cases:**
+- Logging
+- Performance monitoring
+- Transaction management
+- Security checks
+
+---
+
+### 13. Event Layer (`event/`)
+
+Event-driven architecture components.
+
+```
+event/
+├── UserCreatedEvent.java
+├── OrderPlacedEvent.java
+├── listener/
+│   ├── UserEventListener.java
+│   └── OrderEventListener.java
+└── publisher/
+    └── EventPublisher.java
+```
+
+---
+
+### 14. Constant Layer (`constant/`)
+
+Application constants and enums.
+
+```
+constant/
+├── AppConstants.java
+├── ErrorMessages.java
+├── ApiEndpoints.java
+└── enums/
+    ├── UserStatus.java
+    ├── OrderStatus.java
+    └── Role.java
+```
+
+---
+
+## Resources Directory Structure
+
+### Application Properties
+
+```yaml
+# application.yml (base configuration)
+spring:
+  application:
+    name: project-name
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
+
+# application-dev.yml (development)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/devdb
+
+# application-prod.yml (production)
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+```
+
+### Database Migrations (`db/migration/`)
+
+Using Flyway or Liquibase:
+
+```
+db/
+└── migration/
+    ├── V1__create_users_table.sql
+    ├── V2__create_orders_table.sql
+    └── V3__add_user_status_column.sql
+```
+
+---
+
+## Testing Structure
+
+### Unit Tests
+
+```
+test/
+└── java/
+    └── com/company/project/
+        ├── service/
+        │   └── UserServiceTest.java
+        └── util/
+            └── DateUtilsTest.java
+```
+
+### Integration Tests
+
+```
+integration/
+├── UserIntegrationTest.java
+├── OrderFlowIntegrationTest.java
+└── config/
+    └── TestConfig.java
+```
+
+---
+
+## Docker Configuration
+
+### Dockerfile
+
+```dockerfile
+FROM eclipse-temurin:17-jdk-alpine AS build
+WORKDIR /workspace/app
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+COPY src src
+RUN ./mvnw install -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+VOLUME /tmp
+ARG DEPENDENCY=/workspace/app/target/dependency
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+ENTRYPOINT ["java","-cp","app:app/lib/*","com.company.project.ProjectApplication"]
+```
+
+### docker-compose.yml
+
+```yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+```
+
+---
+
+## Best Practices Summary
+
+### Package Organization
+- Use feature-based or layer-based organization consistently
+- Keep packages cohesive and loosely coupled
+- Avoid circular dependencies
+
+### Naming Conventions
+- Controllers: `{Entity}Controller`
+- Services: `{Entity}Service` and `{Entity}ServiceImpl`
+- Repositories: `{Entity}Repository`
+- DTOs: `{Purpose}{Entity}Request/Response`
+
+### Security
+- Never commit secrets to version control
+- Use environment variables for sensitive data
+- Implement proper authentication and authorization
+- Use HTTPS in production
+
+### Performance
+- Implement caching strategically
+- Use connection pooling
+- Optimize database queries
+- Use async processing for long-running tasks
+
+### Monitoring
+- Implement health checks
+- Add application metrics (Micrometer/Prometheus)
+- Use structured logging
+- Set up alerting
+
+### Documentation
+- Maintain updated README
+- Document API using OpenAPI/Swagger
+- Keep architecture documentation current
+- Add inline comments for complex logic
+
+---
+
+## Additional Production Considerations
+
+### CI/CD Pipeline
+- Automated testing
+- Code quality checks (SonarQube)
+- Security scanning
+- Automated deployment
+
+### Monitoring & Logging
+- Centralized logging (ELK stack)
+- APM tools (New Relic, Datadog)
+- Health check endpoints
+- Custom metrics
+
+### Database Management
+- Migration scripts (Flyway/Liquibase)
+- Backup strategies
+- Read replicas for scaling
+- Connection pooling (HikariCP)
+
+### API Versioning
+```
+/api/v1/users
+/api/v2/users
+```
+
+### Rate Limiting & Throttling
+- Implement request rate limiting
+- Use API gateway when scaling
+
+This structure provides a solid foundation for building production-ready Spring Boot applications that are maintainable, scalable, and follow industry best practices.
