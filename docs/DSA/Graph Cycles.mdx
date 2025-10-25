@@ -1,0 +1,1099 @@
+# Complete Guide to Graph Cycles
+
+## Table of Contents
+
+### Part 1: Cycle Detection Techniques
+1. [Introduction to Cycle Detection](#cycle-detection-intro)
+2. [Cycle Detection in Undirected Graphs](#cycle-detection-undirected)
+   - [DFS-based Detection](#undirected-dfs)
+   - [BFS-based Detection](#undirected-bfs)
+   - [Union-Find (Disjoint Set Union)](#undirected-union-find)
+3. [Cycle Detection in Directed Graphs](#cycle-detection-directed)
+   - [DFS with Recursion Stack](#directed-dfs)
+   - [BFS with Kahn's Algorithm (Topological Sort)](#directed-topo-sort)
+   - [Graph Coloring (Three-Color Method)](#directed-coloring)
+
+### Part 2: Finding Shortest and Longest Cycles
+4. [Shortest Cycle in Undirected Graphs](#shortest-cycle-undirected)
+5. [Shortest Cycle in Directed Graphs](#shortest-cycle-directed)
+6. [Longest Cycle in Undirected Graphs](#longest-cycle-undirected)
+7. [Longest Cycle in Directed Graphs](#longest-cycle-directed)
+8. [Summary and Comparison](#summary)
+
+---
+
+# Part 1: Cycle Detection Techniques
+
+## Introduction to Cycle Detection {#cycle-detection-intro}
+
+Cycle detection is fundamental in graph theory with applications in:
+- Deadlock detection in operating systems
+- Dependency resolution
+- Circuit design verification
+- Detecting infinite loops in state machines
+
+**Key Difference:**
+- **Undirected Graphs**: A cycle exists if we visit a vertex that's already visited (excluding parent)
+- **Directed Graphs**: A cycle exists if we visit a vertex that's in the current recursion stack/path
+
+---
+
+## Cycle Detection in Undirected Graphs {#cycle-detection-undirected}
+
+### DFS-based Detection {#undirected-dfs}
+
+**Algorithm Overview:**
+- Use DFS traversal
+- Track visited vertices
+- If we encounter a visited vertex that's not the parent, cycle exists
+
+**Time Complexity**: O(V + E)
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionUndirectedDFS {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    public CycleDetectionUndirectedDFS(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+        adjList.get(v).add(u);
+    }
+
+    private boolean dfsUtil(int v, boolean[] visited, int parent) {
+        visited[v] = true;
+
+        for (int neighbor : adjList.get(v)) {
+            // If neighbor is not visited, recurse
+            if (!visited[neighbor]) {
+                if (dfsUtil(neighbor, visited, v)) {
+                    return true;
+                }
+            }
+            // If visited and not parent, cycle found
+            else if (neighbor != parent) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasCycle() {
+        boolean[] visited = new boolean[vertices];
+
+        // Check for all components
+        for (int i = 0; i < vertices; i++) {
+            if (!visited[i]) {
+                if (dfsUtil(i, visited, -1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionUndirectedDFS graph = new CycleDetectionUndirectedDFS(5);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 4);
+        graph.addEdge(4, 1); // Creates cycle
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Mark current vertex as visited
+2. Explore all adjacent vertices
+3. If adjacent vertex is visited and not parent → cycle exists
+4. If adjacent vertex is not visited → recurse
+5. Check all disconnected components
+
+---
+
+### BFS-based Detection {#undirected-bfs}
+
+**Algorithm Overview:**
+- Use BFS with parent tracking
+- Similar logic to DFS but iterative with queue
+
+**Time Complexity**: O(V + E)
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionUndirectedBFS {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    static class Node {
+        int vertex;
+        int parent;
+
+        Node(int v, int p) {
+            vertex = v;
+            parent = p;
+        }
+    }
+
+    public CycleDetectionUndirectedBFS(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+        adjList.get(v).add(u);
+    }
+
+    private boolean bfsUtil(int start, boolean[] visited) {
+        Queue<Node> queue = new LinkedList<>();
+        visited[start] = true;
+        queue.add(new Node(start, -1));
+
+        while (!queue.isEmpty()) {
+            Node current = queue.poll();
+            int v = current.vertex;
+            int parent = current.parent;
+
+            for (int neighbor : adjList.get(v)) {
+                if (!visited[neighbor]) {
+                    visited[neighbor] = true;
+                    queue.add(new Node(neighbor, v));
+                } else if (neighbor != parent) {
+                    // Visited neighbor that's not parent = cycle
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean hasCycle() {
+        boolean[] visited = new boolean[vertices];
+
+        for (int i = 0; i < vertices; i++) {
+            if (!visited[i]) {
+                if (bfsUtil(i, visited)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionUndirectedBFS graph = new CycleDetectionUndirectedBFS(4);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 0); // Creates cycle
+        graph.addEdge(2, 3);
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Initialize queue with starting vertex and parent -1
+2. For each vertex in queue:
+   - Check all neighbors
+   - If neighbor is visited and not parent → cycle
+   - If neighbor is unvisited → add to queue with current as parent
+3. Process all components
+
+---
+
+### Union-Find (Disjoint Set Union) {#undirected-union-find}
+
+**Algorithm Overview:**
+- Initially, each vertex is in its own set
+- For each edge (u, v):
+  - If u and v are already in same set → cycle exists
+  - Otherwise, union the sets
+
+**Time Complexity**: O(E × α(V)) ≈ O(E) with path compression
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionUnionFind {
+    private int vertices;
+    private List<int[]> edges;
+    private int[] parent;
+    private int[] rank;
+
+    public CycleDetectionUnionFind(int v) {
+        vertices = v;
+        edges = new ArrayList<>();
+        parent = new int[v];
+        rank = new int[v];
+
+        // Initialize each vertex as its own parent
+        for (int i = 0; i < v; i++) {
+            parent[i] = i;
+            rank[i] = 0;
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        edges.add(new int[]{u, v});
+    }
+
+    // Find with path compression
+    private int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]); // Path compression
+        }
+        return parent[x];
+    }
+
+    // Union by rank
+    private void union(int x, int y) {
+        int rootX = find(x);
+        int rootY = find(y);
+
+        if (rootX != rootY) {
+            if (rank[rootX] < rank[rootY]) {
+                parent[rootX] = rootY;
+            } else if (rank[rootX] > rank[rootY]) {
+                parent[rootY] = rootX;
+            } else {
+                parent[rootY] = rootX;
+                rank[rootX]++;
+            }
+        }
+    }
+
+    public boolean hasCycle() {
+        for (int[] edge : edges) {
+            int u = edge[0];
+            int v = edge[1];
+
+            int setU = find(u);
+            int setV = find(v);
+
+            // If both endpoints are in same set, cycle exists
+            if (setU == setV) {
+                return true;
+            }
+
+            // Otherwise, union the sets
+            union(setU, setV);
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionUnionFind graph = new CycleDetectionUnionFind(4);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(0, 2); // Creates cycle
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Initialize DSU with each vertex as separate set
+2. For each edge (u, v):
+   - Find root of u and v
+   - If roots are same → cycle detected
+   - If roots are different → perform union
+3. Return whether cycle was found
+
+---
+
+## Cycle Detection in Directed Graphs {#cycle-detection-directed}
+
+### DFS with Recursion Stack {#directed-dfs}
+
+**Algorithm Overview:**
+- Use DFS with recursion stack tracking
+- A cycle exists if we visit a vertex that's in the current recursion stack
+
+**Time Complexity**: O(V + E)
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionDirectedDFS {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    public CycleDetectionDirectedDFS(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+    }
+
+    private boolean dfsUtil(int v, boolean[] visited, boolean[] recStack) {
+        visited[v] = true;
+        recStack[v] = true;
+
+        for (int neighbor : adjList.get(v)) {
+            // If neighbor not visited, recurse
+            if (!visited[neighbor]) {
+                if (dfsUtil(neighbor, visited, recStack)) {
+                    return true;
+                }
+            }
+            // If neighbor is in recursion stack, cycle found
+            else if (recStack[neighbor]) {
+                return true;
+            }
+        }
+
+        // Remove from recursion stack before returning
+        recStack[v] = false;
+        return false;
+    }
+
+    public boolean hasCycle() {
+        boolean[] visited = new boolean[vertices];
+        boolean[] recStack = new boolean[vertices];
+
+        // Check all vertices (for disconnected components)
+        for (int i = 0; i < vertices; i++) {
+            if (!visited[i]) {
+                if (dfsUtil(i, visited, recStack)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionDirectedDFS graph = new CycleDetectionDirectedDFS(4);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 1); // Creates cycle
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Maintain two arrays: visited and recursion stack
+2. Mark current vertex as visited and in recursion stack
+3. For each neighbor:
+   - If unvisited → recurse
+   - If in recursion stack → cycle exists
+4. Remove from recursion stack before backtracking
+
+---
+
+### BFS with Kahn's Algorithm (Topological Sort) {#directed-topo-sort}
+
+**Algorithm Overview:**
+- Calculate in-degree for all vertices
+- Process vertices with in-degree 0
+- If we can't process all vertices → cycle exists
+
+**Time Complexity**: O(V + E)
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionKahnAlgorithm {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    public CycleDetectionKahnAlgorithm(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+    }
+
+    public boolean hasCycle() {
+        int[] inDegree = new int[vertices];
+
+        // Calculate in-degree for all vertices
+        for (int i = 0; i < vertices; i++) {
+            for (int neighbor : adjList.get(i)) {
+                inDegree[neighbor]++;
+            }
+        }
+
+        // Queue for vertices with in-degree 0
+        Queue<Integer> queue = new LinkedList<>();
+        for (int i = 0; i < vertices; i++) {
+            if (inDegree[i] == 0) {
+                queue.add(i);
+            }
+        }
+
+        int processedCount = 0;
+
+        while (!queue.isEmpty()) {
+            int v = queue.poll();
+            processedCount++;
+
+            // Reduce in-degree of neighbors
+            for (int neighbor : adjList.get(v)) {
+                inDegree[neighbor]--;
+                if (inDegree[neighbor] == 0) {
+                    queue.add(neighbor);
+                }
+            }
+        }
+
+        // If we couldn't process all vertices, cycle exists
+        return processedCount != vertices;
+    }
+
+    public List<Integer> topologicalSort() {
+        int[] inDegree = new int[vertices];
+        List<Integer> result = new ArrayList<>();
+
+        for (int i = 0; i < vertices; i++) {
+            for (int neighbor : adjList.get(i)) {
+                inDegree[neighbor]++;
+            }
+        }
+
+        Queue<Integer> queue = new LinkedList<>();
+        for (int i = 0; i < vertices; i++) {
+            if (inDegree[i] == 0) {
+                queue.add(i);
+            }
+        }
+
+        while (!queue.isEmpty()) {
+            int v = queue.poll();
+            result.add(v);
+
+            for (int neighbor : adjList.get(v)) {
+                inDegree[neighbor]--;
+                if (inDegree[neighbor] == 0) {
+                    queue.add(neighbor);
+                }
+            }
+        }
+
+        // If result size != vertices, cycle exists
+        return result.size() == vertices ? result : null;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionKahnAlgorithm graph = new CycleDetectionKahnAlgorithm(6);
+
+        graph.addEdge(5, 2);
+        graph.addEdge(5, 0);
+        graph.addEdge(4, 0);
+        graph.addEdge(4, 1);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 1);
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+        System.out.println("Topological order: " + graph.topologicalSort());
+
+        // Add cycle
+        graph.addEdge(1, 4);
+        System.out.println("\nAfter adding cycle:");
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Calculate in-degree for all vertices
+2. Add all vertices with in-degree 0 to queue
+3. Process queue:
+   - Remove vertex from queue
+   - Decrease in-degree of neighbors
+   - Add neighbors with in-degree 0 to queue
+4. If processed count < total vertices → cycle exists
+
+---
+
+### Graph Coloring (Three-Color Method) {#directed-coloring}
+
+**Algorithm Overview:**
+- Use three colors: WHITE (unvisited), GRAY (in progress), BLACK (finished)
+- If we encounter a GRAY vertex → cycle exists
+
+**Time Complexity**: O(V + E)
+**Space Complexity**: O(V)
+
+```java
+import java.util.*;
+
+class CycleDetectionGraphColoring {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    enum Color {
+        WHITE,  // Unvisited
+        GRAY,   // In progress (in recursion stack)
+        BLACK   // Finished
+    }
+
+    public CycleDetectionGraphColoring(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+    }
+
+    private boolean dfsUtil(int v, Color[] color) {
+        color[v] = Color.GRAY;
+
+        for (int neighbor : adjList.get(v)) {
+            // If neighbor is GRAY, cycle found
+            if (color[neighbor] == Color.GRAY) {
+                return true;
+            }
+
+            // If neighbor is WHITE, recurse
+            if (color[neighbor] == Color.WHITE) {
+                if (dfsUtil(neighbor, color)) {
+                    return true;
+                }
+            }
+
+            // If neighbor is BLACK, do nothing (already processed)
+        }
+
+        color[v] = Color.BLACK;
+        return false;
+    }
+
+    public boolean hasCycle() {
+        Color[] color = new Color[vertices];
+        Arrays.fill(color, Color.WHITE);
+
+        for (int i = 0; i < vertices; i++) {
+            if (color[i] == Color.WHITE) {
+                if (dfsUtil(i, color)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void main(String[] args) {
+        CycleDetectionGraphColoring graph = new CycleDetectionGraphColoring(4);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 0); // Creates cycle
+        graph.addEdge(2, 3);
+
+        System.out.println("Graph has cycle: " + graph.hasCycle());
+    }
+}
+```
+
+**Steps:**
+1. Initialize all vertices as WHITE
+2. For each WHITE vertex, start DFS:
+   - Mark vertex as GRAY (in progress)
+   - For each neighbor:
+     - If GRAY → cycle exists
+     - If WHITE → recurse
+     - If BLACK → skip (already processed)
+   - Mark vertex as BLACK (finished)
+
+---
+
+# Part 2: Finding Shortest and Longest Cycles
+
+## Shortest Cycle in Undirected Graphs {#shortest-cycle-undirected}
+
+**Algorithm**: BFS from each vertex to find girth (shortest cycle)
+
+**Time Complexity**: O(V × (V + E))
+
+```java
+import java.util.*;
+
+class ShortestCycleUndirected {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    public ShortestCycleUndirected(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+        adjList.get(v).add(u);
+    }
+
+    public int findShortestCycle() {
+        int minCycle = Integer.MAX_VALUE;
+
+        // Try BFS from each vertex
+        for (int src = 0; src < vertices; src++) {
+            int[] dist = new int[vertices];
+            int[] parent = new int[vertices];
+            Arrays.fill(dist, -1);
+            Arrays.fill(parent, -1);
+
+            Queue<Integer> queue = new LinkedList<>();
+            dist[src] = 0;
+            queue.add(src);
+
+            while (!queue.isEmpty()) {
+                int u = queue.poll();
+
+                for (int v : adjList.get(u)) {
+                    if (dist[v] == -1) {
+                        dist[v] = dist[u] + 1;
+                        parent[v] = u;
+                        queue.add(v);
+                    } else if (parent[u] != v) {
+                        minCycle = Math.min(minCycle, dist[u] + dist[v] + 1);
+                    }
+                }
+            }
+        }
+
+        return minCycle == Integer.MAX_VALUE ? -1 : minCycle;
+    }
+
+    public static void main(String[] args) {
+        ShortestCycleUndirected graph = new ShortestCycleUndirected(7);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 0);
+        graph.addEdge(3, 4);
+        graph.addEdge(4, 5);
+        graph.addEdge(5, 6);
+        graph.addEdge(6, 3);
+
+        int result = graph.findShortestCycle();
+        System.out.println("Shortest cycle length: " + result);
+    }
+}
+```
+
+---
+
+## Shortest Cycle in Directed Graphs {#shortest-cycle-directed}
+
+**Algorithm**: BFS from each vertex to find shortest path back to itself
+
+**Time Complexity**: O(V × (V + E))
+
+```java
+import java.util.*;
+
+class ShortestCycleDirected {
+    private int vertices;
+    private List<List<Integer>> adjList;
+
+    public ShortestCycleDirected(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+    }
+
+    public int findShortestCycle() {
+        int minCycle = Integer.MAX_VALUE;
+
+        for (int src = 0; src < vertices; src++) {
+            int[] dist = new int[vertices];
+            Arrays.fill(dist, Integer.MAX_VALUE);
+            dist[src] = 0;
+
+            Queue<Integer> queue = new LinkedList<>();
+            queue.add(src);
+            boolean first = true;
+
+            while (!queue.isEmpty()) {
+                int u = queue.poll();
+
+                for (int v : adjList.get(u)) {
+                    if (v == src && !first) {
+                        minCycle = Math.min(minCycle, dist[u] + 1);
+                    } else if (dist[v] == Integer.MAX_VALUE) {
+                        dist[v] = dist[u] + 1;
+                        queue.add(v);
+                    }
+                }
+                first = false;
+            }
+        }
+
+        return minCycle == Integer.MAX_VALUE ? -1 : minCycle;
+    }
+
+    public static void main(String[] args) {
+        ShortestCycleDirected graph = new ShortestCycleDirected(4);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 0);
+        graph.addEdge(1, 3);
+
+        int result = graph.findShortestCycle();
+        System.out.println("Shortest cycle length: " + result);
+    }
+}
+```
+
+---
+
+## Longest Cycle in Undirected Graphs {#longest-cycle-undirected}
+
+**Algorithm**: Backtracking with DFS (NP-Hard)
+
+**Time Complexity**: O(V!) - Exponential
+
+```java
+import java.util.*;
+
+class LongestCycleUndirected {
+    private int vertices;
+    private List<List<Integer>> adjList;
+    private int maxCycleLength;
+    private List<Integer> longestCycle;
+
+    public LongestCycleUndirected(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+        maxCycleLength = 0;
+        longestCycle = new ArrayList<>();
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+        adjList.get(v).add(u);
+    }
+
+    private void dfs(int current, int start, boolean[] visited,
+                     List<Integer> path, int parent) {
+        visited[current] = true;
+        path.add(current);
+
+        for (int neighbor : adjList.get(current)) {
+            if (!visited[neighbor]) {
+                dfs(neighbor, start, visited, path, current);
+            } else if (neighbor == start && path.size() > 2 && neighbor != parent) {
+                if (path.size() > maxCycleLength) {
+                    maxCycleLength = path.size();
+                    longestCycle = new ArrayList<>(path);
+                }
+            }
+        }
+
+        path.remove(path.size() - 1);
+        visited[current] = false;
+    }
+
+    public int findLongestCycle() {
+        for (int i = 0; i < vertices; i++) {
+            boolean[] visited = new boolean[vertices];
+            List<Integer> path = new ArrayList<>();
+            dfs(i, i, visited, path, -1);
+        }
+
+        return maxCycleLength;
+    }
+
+    public List<Integer> getLongestCycle() {
+        return longestCycle;
+    }
+
+    public static void main(String[] args) {
+        LongestCycleUndirected graph = new LongestCycleUndirected(6);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 4);
+        graph.addEdge(4, 5);
+        graph.addEdge(5, 0);
+        graph.addEdge(1, 5);
+        graph.addEdge(2, 4);
+
+        int result = graph.findLongestCycle();
+        System.out.println("Longest cycle length: " + result);
+        System.out.println("Longest cycle: " + graph.getLongestCycle());
+    }
+}
+```
+
+---
+
+## Longest Cycle in Directed Graphs {#longest-cycle-directed}
+
+**Algorithm**: Backtracking with DFS (NP-Hard)
+
+**Time Complexity**: O(V!) - Exponential
+
+```java
+import java.util.*;
+
+class LongestCycleDirected {
+    private int vertices;
+    private List<List<Integer>> adjList;
+    private int maxCycleLength;
+    private List<Integer> longestCycle;
+
+    public LongestCycleDirected(int v) {
+        vertices = v;
+        adjList = new ArrayList<>(v);
+        for (int i = 0; i < v; i++) {
+            adjList.add(new ArrayList<>());
+        }
+        maxCycleLength = 0;
+        longestCycle = new ArrayList<>();
+    }
+
+    public void addEdge(int u, int v) {
+        adjList.get(u).add(v);
+    }
+
+    private void dfs(int current, int start, boolean[] visited,
+                     List<Integer> path, Map<Integer, Integer> pathIndex) {
+        visited[current] = true;
+        pathIndex.put(current, path.size());
+        path.add(current);
+
+        for (int neighbor : adjList.get(current)) {
+            if (!visited[neighbor]) {
+                dfs(neighbor, start, visited, path, pathIndex);
+            } else if (pathIndex.containsKey(neighbor)) {
+                int cycleStart = pathIndex.get(neighbor);
+                int cycleLength = path.size() - cycleStart;
+
+                if (cycleLength > maxCycleLength) {
+                    maxCycleLength = cycleLength;
+                    longestCycle = new ArrayList<>(path.subList(cycleStart, path.size()));
+                }
+            }
+        }
+
+        path.remove(path.size() - 1);
+        pathIndex.remove(current);
+        visited[current] = false;
+    }
+
+    public int findLongestCycle() {
+        for (int i = 0; i < vertices; i++) {
+            boolean[] visited = new boolean[vertices];
+            List<Integer> path = new ArrayList<>();
+            Map<Integer, Integer> pathIndex = new HashMap<>();
+            dfs(i, i, visited, path, pathIndex);
+        }
+
+        return maxCycleLength;
+    }
+
+    public List<Integer> getLongestCycle() {
+        return longestCycle;
+    }
+
+    public static void main(String[] args) {
+        LongestCycleDirected graph = new LongestCycleDirected(6);
+
+        graph.addEdge(0, 1);
+        graph.addEdge(1, 2);
+        graph.addEdge(2, 3);
+        graph.addEdge(3, 4);
+        graph.addEdge(4, 5);
+        graph.addEdge(5, 0);
+        graph.addEdge(2, 0);
+        graph.addEdge(3, 1);
+
+        int result = graph.findLongestCycle();
+        System.out.println("Longest cycle length: " + result);
+        System.out.println("Longest cycle: " + graph.getLongestCycle());
+    }
+}
+```
+
+---
+
+## Summary and Comparison {#summary}
+
+### Cycle Detection Algorithms Comparison
+
+#### Undirected Graphs
+
+| Algorithm | Time Complexity | Space Complexity | Best Use Case |
+|-----------|----------------|------------------|---------------|
+| DFS | O(V + E) | O(V) | Most intuitive, good for finding any cycle |
+| BFS | O(V + E) | O(V) | Level-by-level traversal needed |
+| Union-Find | O(E × α(V)) | O(V) | Edge list representation, incremental edge addition |
+
+**Recommendation**: DFS is typically preferred for its simplicity and efficiency.
+
+#### Directed Graphs
+
+| Algorithm | Time Complexity | Space Complexity | Best Use Case |
+|-----------|----------------|------------------|---------------|
+| DFS with Recursion Stack | O(V + E) | O(V) | Most common, intuitive approach |
+| Kahn's Algorithm | O(V + E) | O(V) | Also need topological sort |
+| Graph Coloring | O(V + E) | O(V) | Clear state visualization |
+
+**Recommendation**: DFS with recursion stack is the most commonly used approach.
+
+---
+
+### Shortest and Longest Cycle Algorithms
+
+| Problem | Graph Type | Time Complexity | Difficulty |
+|---------|-----------|----------------|------------|
+| Shortest Cycle | Undirected | O(V × (V + E)) | Polynomial |
+| Shortest Cycle | Directed | O(V × (V + E)) | Polynomial |
+| Longest Cycle | Undirected | O(V!) | NP-Hard |
+| Longest Cycle | Directed | O(V!) | NP-Hard |
+
+---
+
+### Key Takeaways
+
+1. **Cycle Detection**:
+   - Undirected: Check if visited neighbor is not parent
+   - Directed: Check if neighbor is in current recursion stack
+
+2. **Shortest Cycle**:
+   - Use BFS from each vertex
+   - For undirected: detect cross-edges
+   - For directed: find shortest path back to source
+
+3. **Longest Cycle**:
+   - NP-Hard problem
+   - Requires backtracking/exhaustive search
+   - Not practical for large graphs
+
+4. **Choosing the Right Algorithm**:
+   - For simple cycle detection: Use DFS
+   - For topological sort + cycle detection: Use Kahn's algorithm
+   - For incremental edge addition: Use Union-Find
+   - For shortest cycle: Use BFS from each vertex
+   - For longest cycle: Use backtracking (small graphs only)
+
+---
+
+### Practice Problems
+
+**Easy**:
+1. Detect if a graph has a cycle
+2. Find if a directed graph is a DAG (Directed Acyclic Graph)
+
+**Medium**:
+1. Find the shortest cycle in an undirected graph
+2. Count the number of cycles in a graph
+3. Find all vertices that are part of at least one cycle
+
+**Hard**:
+1. Find the longest cycle in a small graph
+2. Find all simple cycles in a directed graph
+3. Find the minimum spanning tree avoiding cycles (Kruskal's/Prim's)
+
+---
+
+### Common Interview Questions
+
+1. **"How do you detect a cycle in a linked list?"**
+   - Use Floyd's cycle detection (fast and slow pointers)
+   - Related to graph cycle detection concepts
+
+2. **"How do you detect a cycle in a dependency graph?"**
+   - Use DFS with recursion stack on directed graph
+   - Application: build systems, package managers
+
+3. **"How do you find if a course schedule is possible?"**
+   - Use topological sort (Kahn's algorithm)
+   - If cycle exists, schedule is impossible
+
+4. **"How do you detect deadlock in an operating system?"**
+   - Model as directed graph (resource allocation graph)
+   - Cycle indicates potential deadlock
+
+---
+
+### Additional Resources
+
+**Topics to Explore Next**:
+- Strongly Connected Components (Tarjan's/Kosaraju's algorithms)
+- Eulerian and Hamiltonian Cycles
+- Minimum Cycle Basis
+- Cycle space in graph theory
+- Applications in network flow problems
+
+**Related Algorithms**:
+- Floyd-Warshall (all-pairs shortest paths)
+- Bellman-Ford (negative cycle detection)
+- Tarjan's algorithm (finding bridges and articulation points)
+- Johnson's algorithm (all-pairs shortest paths with negative edges)
+
+---
+
+### Complexity Summary Table
+
+| Operation | Best Algorithm | Time | Space |
+|-----------|---------------|------|-------|
+| Detect cycle (undirected) | DFS | O(V + E) | O(V) |
+| Detect cycle (directed) | DFS + Rec Stack | O(V + E) | O(V) |
+| Shortest cycle (undirected) | BFS from each vertex | O(V(V + E)) | O(V) |
+| Shortest cycle (directed) | BFS from each vertex | O(V(V + E)) | O(V) |
+| Longest cycle | Backtracking DFS | O(V!) | O(V) |
+| Topological sort + cycle | Kahn's algorithm | O(V + E) | O(V) |
