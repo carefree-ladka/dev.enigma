@@ -1,0 +1,1566 @@
+# 🚀 Proven Ways to Improve Spring Boot Applications
+
+## 🟢 Performance Optimization (1-15)
+
+### 1️⃣ Use Lazy Initialization
+```java
+// application.properties
+spring.main.lazy-initialization=true
+```
+**Benefit:** Reduces startup time by 20-40% by loading beans only when needed.
+
+**Trade-off:** First request might be slower. Use selectively for large applications.
+
+---
+
+### 2️⃣ Enable HTTP/2
+```yaml
+# application.yml
+server:
+  http2:
+    enabled: true
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-password: secret
+```
+**Benefit:** Multiplexing, header compression, server push → faster page loads.
+
+**Impact:** 30-50% improvement in page load times for complex UIs.
+
+---
+
+### 3️⃣ Optimize Database Connection Pool
+```java
+@Configuration
+public class DataSourceConfig {
+    @Bean
+    public HikariConfig hikariConfig() {
+        HikariConfig config = new HikariConfig();
+        config.setMaximumPoolSize(20);           // Default: 10
+        config.setMinimumIdle(5);                // Default: 10
+        config.setConnectionTimeout(30000);      // 30 seconds
+        config.setIdleTimeout(600000);           // 10 minutes
+        config.setMaxLifetime(1800000);          // 30 minutes
+        config.setLeakDetectionThreshold(60000); // 1 minute
+        return config;
+    }
+}
+```
+**Benefit:** Prevents connection exhaustion and improves response time.
+
+**Rule of Thumb:** `connections = ((core_count * 2) + effective_spindle_count)`
+
+---
+
+### 4️⃣ Enable Database Query Caching
+```java
+@Entity
+@Cacheable
+@org.hibernate.annotations.Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+public class Product {
+    @Id
+    private Long id;
+    private String name;
+}
+
+// application.properties
+spring.jpa.properties.hibernate.cache.use_second_level_cache=true
+spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.jcache.JCacheRegionFactory
+spring.cache.jcache.provider=org.ehcache.jsr107.EhcacheCachingProvider
+```
+**Benefit:** Reduces database roundtrips by 60-80% for read-heavy operations.
+
+---
+
+### 5️⃣ Use @Async for Non-blocking Operations
+```java
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+    @Bean
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+@Service
+public class EmailService {
+    @Async
+    public CompletableFuture<Void> sendEmail(String to, String message) {
+        // Send email logic
+        return CompletableFuture.completedFuture(null);
+    }
+}
+```
+**Benefit:** Improves throughput by not blocking request threads for long-running tasks.
+
+**Use Case:** Email sending, report generation, external API calls.
+
+---
+
+### 6️⃣ Enable Response Compression
+```yaml
+# application.yml
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+```
+**Benefit:** Reduces payload size by 70-90%, faster data transfer.
+
+---
+
+### 7️⃣ Implement Database Indexing Strategy
+```java
+@Entity
+@Table(indexes = {
+    @Index(name = "idx_email", columnList = "email"),
+    @Index(name = "idx_created_date", columnList = "createdDate"),
+    @Index(name = "idx_status_date", columnList = "status,createdDate")
+})
+public class User {
+    @Id
+    private Long id;
+
+    @Column(unique = true)
+    private String email;
+
+    private LocalDateTime createdDate;
+    private String status;
+}
+```
+**Benefit:** Query performance improvement from seconds to milliseconds.
+
+**Warning:** Don't over-index; each index adds overhead to INSERT/UPDATE operations.
+
+---
+
+### 8️⃣ Use Pagination for Large Datasets
+```java
+@RestController
+public class ProductController {
+
+    @GetMapping("/products")
+    public Page<Product> getProducts(
+        @PageableDefault(size = 20, sort = "id") Pageable pageable) {
+        return productRepository.findAll(pageable);
+    }
+}
+
+// Usage: /products?page=0&size=20&sort=name,asc
+```
+**Benefit:** Prevents memory overflow and improves response times.
+
+**Best Practice:** Default page size should be 20-50 items.
+
+---
+
+### 9️⃣ Implement DTO Pattern to Avoid N+1 Queries
+```java
+// Bad - N+1 Query Problem
+@Entity
+public class Order {
+    @Id
+    private Long id;
+
+    @OneToMany(mappedBy = "order")
+    private List<OrderItem> items; // Lazy loading causes N+1
+}
+
+// Good - Use DTO with JOIN FETCH
+@Query("SELECT o FROM Order o JOIN FETCH o.items WHERE o.id = :id")
+Optional<Order> findByIdWithItems(@Param("id") Long id);
+
+// Or use DTO projection
+public interface OrderSummary {
+    Long getId();
+    String getCustomerName();
+    @Value("#{target.items.size()}")
+    Integer getItemCount();
+}
+```
+**Benefit:** Reduces queries from N+1 to 1, massive performance gain.
+
+---
+
+### 🔟 Enable Actuator for Monitoring
+```yaml
+# application.yml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  endpoint:
+    health:
+      show-details: when-authorized
+```
+**Benefit:** Real-time monitoring, performance metrics, health checks.
+
+**Tools:** Integrate with Prometheus + Grafana for visualization.
+
+---
+
+### 1️⃣1️⃣ Use @Transactional Properly
+```java
+@Service
+public class OrderService {
+
+    // Good - Transactional on service layer
+    @Transactional
+    public void createOrder(OrderRequest request) {
+        Order order = orderRepository.save(new Order());
+        orderItemRepository.saveAll(order.getItems());
+        notificationService.sendConfirmation(order); // Should be async
+    }
+
+    // Better - Read-only for queries
+    @Transactional(readOnly = true)
+    public List<Order> findRecentOrders() {
+        return orderRepository.findTop10ByOrderByCreatedDateDesc();
+    }
+}
+```
+**Benefit:** `readOnly=true` optimizes Hibernate's dirty checking and improves performance.
+
+---
+
+### 1️⃣2️⃣ Implement Circuit Breaker Pattern
+```java
+@Configuration
+public class ResilienceConfig {
+    @Bean
+    public CircuitBreaker circuitBreaker() {
+        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+            .failureRateThreshold(50)
+            .waitDurationInOpenState(Duration.ofSeconds(30))
+            .slidingWindowSize(10)
+            .build();
+        return CircuitBreaker.of("externalService", config);
+    }
+}
+
+@Service
+public class ExternalService {
+    private final CircuitBreaker circuitBreaker;
+
+    @CircuitBreaker(name = "externalService", fallbackMethod = "fallback")
+    public String callExternalAPI() {
+        // External API call
+        return restTemplate.getForObject("https://api.example.com/data", String.class);
+    }
+
+    public String fallback(Exception e) {
+        return "Fallback response";
+    }
+}
+```
+**Benefit:** Prevents cascading failures, improves system resilience.
+
+**Dependency:** Spring Cloud Circuit Breaker / Resilience4j
+
+---
+
+### 1️⃣3️⃣ Use Batch Processing for Bulk Operations
+```java
+@Service
+public class UserService {
+
+    @Transactional
+    public void importUsers(List<User> users) {
+        int batchSize = 100;
+        for (int i = 0; i < users.size(); i++) {
+            userRepository.save(users.get(i));
+
+            if (i % batchSize == 0 && i > 0) {
+                entityManager.flush();
+                entityManager.clear();
+            }
+        }
+    }
+}
+
+// application.properties
+spring.jpa.properties.hibernate.jdbc.batch_size=100
+spring.jpa.properties.hibernate.order_inserts=true
+spring.jpa.properties.hibernate.order_updates=true
+```
+**Benefit:** 10-50x faster for bulk inserts/updates.
+
+---
+
+### 1️⃣4️⃣ Optimize Jackson Serialization
+```java
+@Configuration
+public class JacksonConfig {
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
+}
+
+// Use @JsonView for selective serialization
+public class Views {
+    public static class Public {}
+    public static class Internal extends Public {}
+}
+
+@Entity
+public class User {
+    @JsonView(Views.Public.class)
+    private String name;
+
+    @JsonView(Views.Internal.class)
+    private String email;
+}
+```
+**Benefit:** Reduces payload size, improves serialization performance.
+
+---
+
+### 1️⃣5️⃣ Use Native Queries for Complex Operations
+```java
+@Repository
+public interface OrderRepository extends JpaRepository<Order, Long> {
+
+    @Query(value = """
+        SELECT o.*, COUNT(oi.id) as item_count
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.status = :status
+        GROUP BY o.id
+        HAVING COUNT(oi.id) > :minItems
+        """, nativeQuery = true)
+    List<Order> findOrdersWithMinItems(
+        @Param("status") String status,
+        @Param("minItems") int minItems
+    );
+}
+```
+**Benefit:** Better performance for complex queries vs. JPQL/Criteria API.
+
+**Warning:** Database-specific, less portable.
+
+---
+
+## 🟡 Security Best Practices (16-28)
+
+### 1️⃣6️⃣ Implement JWT Token Authentication
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        return http.build();
+    }
+}
+```
+**Benefit:** Stateless authentication, scalable, mobile-friendly.
+
+---
+
+### 1️⃣7️⃣ Enable HTTPS/SSL
+```yaml
+# application.yml
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: tomcat
+```
+**Benefit:** Data encryption in transit, prevents MITM attacks.
+
+**Production:** Use Let's Encrypt or proper CA-signed certificates.
+
+---
+
+### 1️⃣8️⃣ Implement Rate Limiting
+```java
+@Configuration
+public class RateLimitConfig {
+    @Bean
+    public RateLimiter rateLimiter() {
+        RateLimiterConfig config = RateLimiterConfig.custom()
+            .limitForPeriod(10)
+            .limitRefreshPeriod(Duration.ofSeconds(1))
+            .timeoutDuration(Duration.ofMillis(500))
+            .build();
+        return RateLimiter.of("api", config);
+    }
+}
+
+@RestController
+public class ApiController {
+
+    @GetMapping("/api/data")
+    @RateLimiter(name = "api")
+    public ResponseEntity<String> getData() {
+        return ResponseEntity.ok("Data");
+    }
+}
+```
+**Benefit:** Prevents abuse, DDoS protection, ensures fair usage.
+
+---
+
+### 1️⃣9️⃣ Use Environment Variables for Secrets
+```java
+// application.yml
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000}
+```
+**Benefit:** Never commit secrets to version control.
+
+**Tools:** Use Spring Cloud Config, Vault, AWS Secrets Manager.
+
+---
+
+### 2️⃣0️⃣ Implement CORS Properly
+```java
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/api/**")
+                    .allowedOrigins("https://yourdomain.com")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE")
+                    .allowedHeaders("*")
+                    .allowCredentials(true)
+                    .maxAge(3600);
+            }
+        };
+    }
+}
+```
+**Benefit:** Controlled cross-origin access, prevents unauthorized domains.
+
+---
+
+### 2️⃣1️⃣ Enable Security Headers
+```java
+@Configuration
+public class SecurityHeadersConfig {
+
+    @Bean
+    public SecurityFilterChain securityHeaders(HttpSecurity http) throws Exception {
+        http.headers(headers -> headers
+            .contentSecurityPolicy(csp -> csp
+                .policyDirectives("default-src 'self'; script-src 'self' 'unsafe-inline'")
+            )
+            .frameOptions(frame -> frame.deny())
+            .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+            .httpStrictTransportSecurity(hsts -> hsts
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000)
+            )
+        );
+        return http.build();
+    }
+}
+```
+**Benefit:** Protects against XSS, clickjacking, and other attacks.
+
+---
+
+### 2️⃣2️⃣ Validate Input Data
+```java
+public class UserRequest {
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 50)
+    private String name;
+
+    @Email(message = "Invalid email format")
+    @NotBlank
+    private String email;
+
+    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%]).{8,}$",
+             message = "Password must meet complexity requirements")
+    private String password;
+}
+
+@RestController
+public class UserController {
+
+    @PostMapping("/users")
+    public ResponseEntity<User> createUser(@Valid @RequestBody UserRequest request) {
+        // Process request
+        return ResponseEntity.ok(user);
+    }
+}
+```
+**Benefit:** Prevents SQL injection, XSS, and malformed data.
+
+---
+
+### 2️⃣3️⃣ Implement API Versioning
+```java
+@RestController
+@RequestMapping("/api/v1/users")
+public class UserControllerV1 {
+    @GetMapping
+    public List<UserDto> getUsers() {
+        return userService.findAll();
+    }
+}
+
+@RestController
+@RequestMapping("/api/v2/users")
+public class UserControllerV2 {
+    @GetMapping
+    public Page<UserDtoV2> getUsers(Pageable pageable) {
+        return userService.findAll(pageable);
+    }
+}
+```
+**Benefit:** Backward compatibility, smooth migration for API consumers.
+
+---
+
+### 2️⃣4️⃣ Enable Method-Level Security
+```java
+@Configuration
+@EnableMethodSecurity
+public class MethodSecurityConfig {
+}
+
+@Service
+public class UserService {
+
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    @PreAuthorize("hasRole('USER') and #userId == authentication.principal.id")
+    public User updateProfile(Long userId, UserRequest request) {
+        return userRepository.save(user);
+    }
+}
+```
+**Benefit:** Fine-grained access control at method level.
+
+---
+
+### 2️⃣5️⃣ Implement Audit Logging
+```java
+@Configuration
+@EnableJpaAuditing
+public class AuditConfig {
+
+    @Bean
+    public AuditorAware<String> auditorProvider() {
+        return () -> Optional.ofNullable(SecurityContextHolder.getContext())
+            .map(SecurityContext::getAuthentication)
+            .filter(Authentication::isAuthenticated)
+            .map(Authentication::getName);
+    }
+}
+
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+public class Order {
+    @Id
+    private Long id;
+
+    @CreatedBy
+    private String createdBy;
+
+    @CreatedDate
+    private LocalDateTime createdDate;
+
+    @LastModifiedBy
+    private String lastModifiedBy;
+
+    @LastModifiedDate
+    private LocalDateTime lastModifiedDate;
+}
+```
+**Benefit:** Track who did what and when, compliance requirements.
+
+---
+
+### 2️⃣6️⃣ Use Password Encoding
+```java
+@Configuration
+public class PasswordConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12); // Strength: 12
+    }
+}
+
+@Service
+public class AuthService {
+
+    public void registerUser(UserRequest request) {
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        User user = new User(request.getEmail(), encodedPassword);
+        userRepository.save(user);
+    }
+
+    public boolean validatePassword(String rawPassword, String encodedPassword) {
+        return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+}
+```
+**Benefit:** Never store plain text passwords, protects against data breaches.
+
+---
+
+### 2️⃣7️⃣ Implement CSRF Protection for State-changing Operations
+```java
+@Configuration
+public class CsrfConfig {
+
+    @Bean
+    public SecurityFilterChain csrfProtection(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers("/api/public/**")
+            );
+        return http.build();
+    }
+}
+```
+**Benefit:** Prevents cross-site request forgery attacks.
+
+**Note:** Not needed for stateless JWT APIs.
+
+---
+
+### 2️⃣8️⃣ Sanitize User Input
+```java
+@Component
+public class InputSanitizer {
+
+    public String sanitizeHtml(String input) {
+        if (input == null) return null;
+        return Jsoup.clean(input, Safelist.basic());
+    }
+
+    public String sanitizeSql(String input) {
+        if (input == null) return null;
+        return input.replaceAll("[';\"\\-\\-]", "");
+    }
+}
+
+@RestController
+public class CommentController {
+
+    @PostMapping("/comments")
+    public Comment createComment(@RequestBody CommentRequest request) {
+        String sanitizedContent = sanitizer.sanitizeHtml(request.getContent());
+        Comment comment = new Comment(sanitizedContent);
+        return commentRepository.save(comment);
+    }
+}
+```
+**Benefit:** Prevents XSS and SQL injection attacks.
+
+---
+
+## 🔵 Code Quality & Maintainability (29-40)
+
+### 2️⃣9️⃣ Use Constructor Injection
+```java
+// Bad - Field Injection
+@Service
+public class OrderService {
+    @Autowired
+    private OrderRepository orderRepository;
+}
+
+// Good - Constructor Injection
+@Service
+@RequiredArgsConstructor // Lombok
+public class OrderService {
+    private final OrderRepository orderRepository;
+    private final EmailService emailService;
+
+    // Constructor auto-generated by Lombok
+}
+```
+**Benefit:** Testability, immutability, null safety, clear dependencies.
+
+---
+
+### 3️⃣0️⃣ Implement Global Exception Handling
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = ex.getBindingResult()
+            .getFieldErrors()
+            .stream()
+            .collect(Collectors.toMap(
+                FieldError::getField,
+                FieldError::getDefaultMessage
+            ));
+
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            "Validation failed",
+            errors
+        );
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
+        log.error("Unexpected error", ex);
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+            "An unexpected error occurred",
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+}
+```
+**Benefit:** Consistent error responses, better debugging, cleaner controllers.
+
+---
+
+### 3️⃣1️⃣ Use Profiles for Different Environments
+```yaml
+# application-dev.yml
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+  h2:
+    console:
+      enabled: true
+
+# application-prod.yml
+spring:
+  datasource:
+    url: jdbc:postgresql://prod-db:5432/myapp
+  jpa:
+    show-sql: false
+
+# application.yml
+spring:
+  profiles:
+    active: ${SPRING_PROFILE:dev}
+```
+**Benefit:** Environment-specific configurations, easier deployments.
+
+**Usage:** `java -jar app.jar --spring.profiles.active=prod`
+
+---
+
+### 3️⃣2️⃣ Implement Custom Validation Annotations
+```java
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = PhoneNumberValidator.class)
+public @interface ValidPhoneNumber {
+    String message() default "Invalid phone number";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+
+public class PhoneNumberValidator implements ConstraintValidator<ValidPhoneNumber, String> {
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?[1-9]\\d{9,14}$");
+
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null) return true;
+        return PHONE_PATTERN.matcher(value).matches();
+    }
+}
+
+public class UserRequest {
+    @ValidPhoneNumber
+    private String phoneNumber;
+}
+```
+**Benefit:** Reusable validation logic, cleaner domain models.
+
+---
+
+### 3️⃣3️⃣ Use MapStruct for Object Mapping
+```java
+@Mapper(componentModel = "spring")
+public interface UserMapper {
+
+    UserDto toDto(User user);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdDate", ignore = true)
+    User toEntity(UserRequest request);
+
+    List<UserDto> toDtoList(List<User> users);
+}
+
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserMapper userMapper;
+
+    public UserDto getUser(Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return userMapper.toDto(user);
+    }
+}
+```
+**Benefit:** 10x faster than reflection-based mappers, compile-time safety.
+
+---
+
+### 3️⃣4️⃣ Implement Custom Health Indicators
+```java
+@Component
+public class DatabaseHealthIndicator implements HealthIndicator {
+
+    private final DataSource dataSource;
+
+    @Override
+    public Health health() {
+        try (Connection conn = dataSource.getConnection()) {
+            Statement stmt = conn.createStatement();
+            stmt.execute("SELECT 1");
+            return Health.up()
+                .withDetail("database", "PostgreSQL")
+                .withDetail("status", "reachable")
+                .build();
+        } catch (Exception e) {
+            return Health.down()
+                .withDetail("error", e.getMessage())
+                .build();
+        }
+    }
+}
+```
+**Benefit:** Custom health checks for dependencies, better monitoring.
+
+---
+
+### 3️⃣5️⃣ Use OpenAPI/Swagger Documentation
+```java
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+            .info(new Info()
+                .title("My API")
+                .version("1.0")
+                .description("API Documentation")
+                .contact(new Contact()
+                    .name("Support Team")
+                    .email("support@example.com")
+                )
+            )
+            .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+            .components(new Components()
+                .addSecuritySchemes("bearerAuth",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                )
+            );
+    }
+}
+
+@Tag(name = "Users", description = "User management APIs")
+@RestController
+public class UserController {
+
+    @Operation(summary = "Get user by ID", description = "Returns a single user")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Successful operation"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @GetMapping("/users/{id}")
+    public UserDto getUser(@Parameter(description = "User ID") @PathVariable Long id) {
+        return userService.findById(id);
+    }
+}
+```
+**Benefit:** Auto-generated API docs, interactive testing UI, client SDK generation.
+
+**URL:** `http://localhost:8080/swagger-ui.html`
+
+---
+
+### 3️⃣6️⃣ Implement Request/Response Logging
+```java
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class RequestResponseLoggingFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                     HttpServletResponse response,
+                                     FilterChain filterChain) throws ServletException, IOException {
+
+        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            filterChain.doFilter(wrappedRequest, wrappedResponse);
+        } finally {
+            long duration = System.currentTimeMillis() - startTime;
+
+            log.info("Request: {} {} - Status: {} - Duration: {}ms",
+                request.getMethod(),
+                request.getRequestURI(),
+                response.getStatus(),
+                duration
+            );
+
+            wrappedResponse.copyBodyToResponse();
+        }
+    }
+}
+```
+**Benefit:** Debug issues, audit trail, performance monitoring.
+
+---
+
+### 3️⃣7️⃣ Use Feature Flags
+```java
+@Configuration
+public class FeatureFlagConfig {
+
+    @Bean
+    public FeatureManager featureManager() {
+        return new FeatureManager(Map.of(
+            "new-checkout", true,
+            "beta-features", false,
+            "maintenance-mode", false
+        ));
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+public class CheckoutController {
+    private final FeatureManager featureManager;
+
+    @PostMapping("/checkout")
+    public ResponseEntity<Order> checkout(@RequestBody OrderRequest request) {
+        if (featureManager.isEnabled("new-checkout")) {
+            return newCheckoutService.process(request);
+        }
+        return legacyCheckoutService.process(request);
+    }
+}
+```
+**Benefit:** Toggle features without deployment, A/B testing, gradual rollouts.
+
+---
+
+### 3️⃣8️⃣ Implement Soft Delete
+```java
+@Entity
+@SQLDelete(sql = "UPDATE users SET deleted = true WHERE id = ?")
+@Where(clause = "deleted = false")
+public class User {
+    @Id
+    private Long id;
+
+    private String email;
+
+    private boolean deleted = false;
+
+    private LocalDateTime deletedAt;
+}
+
+@Service
+public class UserService {
+
+    public void deleteUser(Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setDeleted(true);
+        user.setDeletedAt(LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findDeletedUsers() {
+        return entityManager
+            .createQuery("SELECT u FROM User u WHERE u.deleted = true", User.class)
+            .getResultList();
+    }
+}
+```
+**Benefit:** Data recovery, audit compliance, safer operations.
+
+---
+
+### 3️⃣9️⃣ Use Builder Pattern for Complex Objects
+```java
+@Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String customerEmail;
+    private BigDecimal totalAmount;
+    private OrderStatus status;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private List<OrderItem> items;
+
+    private LocalDateTime createdDate;
+}
+
+@Service
+public class OrderService {
+
+    public Order createOrder(OrderRequest request) {
+        return Order.builder()
+            .customerEmail(request.getEmail())
+            .totalAmount(calculateTotal(request.getItems()))
+            .status(OrderStatus.PENDING)
+            .items(mapToOrderItems(request.getItems()))
+            .createdDate(LocalDateTime.now())
+            .build();
+    }
+}
+```
+**Benefit:** Immutable objects, readable code, fluent API, optional parameters.
+
+---
+
+### 4️⃣0️⃣ Implement Repository Custom Methods
+```java
+public interface CustomUserRepository {
+    List<User> findByComplexCriteria(UserSearchCriteria criteria);
+}
+
+@Repository
+public class CustomUserRepositoryImpl implements CustomUserRepository {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    public List<User> findByComplexCriteria(UserSearchCriteria criteria) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<User> query = cb.createQuery(User.class);
+        Root<User> user = query.from(User.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (criteria.getName() != null) {
+            predicates.add(cb.like(user.get("name"), "%" + criteria.getName() + "%"));
+        }
+        if (criteria.getMinAge() != null) {
+            predicates.add(cb.greaterThanOrEqualTo(user.get("age"), criteria.getMinAge()));
+        }
+
+        query.where(predicates.toArray(new Predicate[0]));
+        return entityManager.createQuery(query).getResultList();
+    }
+}
+
+public interface UserRepository extends JpaRepository<User, Long>, CustomUserRepository {
+}
+```
+**Benefit:** Type-safe queries, dynamic criteria, better maintainability.
+
+---
+
+## 🟣 Testing & DevOps (41-50)
+
+### 4️⃣1️⃣ Write Integration Tests with TestContainers
+```java
+@SpringBootTest
+@Testcontainers
+public class UserServiceIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
+        .withDatabaseName("testdb")
+        .withUsername("test")
+        .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private UserService userService;
+
+    @Test
+    void shouldCreateUser() {
+        UserRequest request = new UserRequest("John", "john@example.com");
+        User user = userService.createUser(request);
+
+        assertThat(user.getId()).isNotNull();
+        assertThat(user.getName()).isEqualTo("John");
+    }
+}
+```
+**Benefit:** Real database testing, reproducible tests, isolated environment.
+
+---
+
+### 4️⃣2️⃣ Use @WebMvcTest for Controller Testing
+```java
+@WebMvcTest(UserController.class)
+public class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @Test
+    void shouldReturnUser() throws Exception {
+        User user = new User(1L, "John", "john@example.com");
+        when(userService.findById(1L)).thenReturn(user);
+
+        mockMvc.perform(get("/users/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("John"))
+            .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    void shouldReturn404WhenUserNotFound() throws Exception {
+        when(userService.findById(999L))
+            .thenThrow(new ResourceNotFoundException("User not found"));
+
+        mockMvc.perform(get("/users/999"))
+            .andExpect(status().isNotFound());
+    }
+}
+```
+**Benefit:** Fast controller tests, no full context loading, focused testing.
+
+---
+
+### 4️⃣3️⃣ Implement Custom Metrics
+```java
+@Configuration
+public class MetricsConfig {
+
+    @Bean
+    public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+        return registry -> registry.config()
+            .commonTags("application", "myapp", "environment", "prod");
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+
+    private final MeterRegistry meterRegistry;
+    private final Counter orderCounter;
+    private final Timer orderProcessingTimer;
+
+    @PostConstruct
+    public void init() {
+        orderCounter = Counter.builder("orders.created")
+            .description("Total orders created")
+            .tag("type", "online")
+            .register(meterRegistry);
+
+        orderProcessingTimer = Timer.builder("orders.processing.time")
+            .description("Order processing time")
+            .register(meterRegistry);
+    }
+
+    public Order createOrder(OrderRequest request) {
+        return orderProcessingTimer.record(() -> {
+            Order order = processOrder(request);
+            orderCounter.increment();
+            return order;
+        });
+    }
+}
+```
+**Benefit:** Business metrics, performance monitoring, better observability.
+
+---
+
+### 4️⃣4️⃣ Use Docker Multi-stage Builds
+```dockerfile
+# Dockerfile
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Optional: JVM tuning
+# ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+```
+**Benefit:** Smaller images (100MB vs 500MB+), faster deployments, better security.
+
+---
+
+### 4️⃣5️⃣ Implement Graceful Shutdown
+```yaml
+# application.yml
+server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+```
+```java
+@Component
+public class GracefulShutdownListener {
+
+    @EventListener
+    public void handleContextClosedEvent(ContextClosedEvent event) {
+        log.info("Application is shutting down gracefully...");
+        // Cleanup resources, close connections
+    }
+}
+```
+**Benefit:** Completes in-flight requests, prevents data loss, zero-downtime deployments.
+
+---
+
+### 4️⃣6️⃣ Use Kubernetes Liveness & Readiness Probes
+```yaml
+# application.yml
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis
+        liveness:
+          include: livenessState,ping
+```
+```yaml
+# kubernetes deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: myapp
+        image: myapp:latest
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+```
+**Benefit:** Auto-recovery from crashes, controlled traffic routing, better availability.
+
+---
+
+### 4️⃣7️⃣ Implement Database Migration with Flyway
+```yaml
+# application.yml
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+```
+```sql
+-- src/main/resources/db/migration/V1__Create_users_table.sql
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+
+-- V2__Add_user_status.sql
+ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'ACTIVE';
+```
+**Benefit:** Version-controlled schema, repeatable deployments, rollback capability.
+
+---
+
+### 4️⃣8️⃣ Enable Application Insights & APM
+```xml
+<!-- pom.xml -->
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-tracing-bridge-brave</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.zipkin.reporter2</groupId>
+    <artifactId>zipkin-reporter-brave</artifactId>
+</dependency>
+```
+```yaml
+# application.yml
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
+
+logging:
+  pattern:
+    level: '%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]'
+```
+**Benefit:** Distributed tracing, performance bottleneck identification, request flow visualization.
+
+---
+
+### 4️⃣9️⃣ Implement Chaos Engineering Tests
+```java
+@Configuration
+@Profile("chaos")
+public class ChaosConfig {
+
+    @Bean
+    public ChaosMonkeyScheduler chaosMonkeyScheduler() {
+        return new ChaosMonkeyScheduler();
+    }
+}
+
+@Service
+public class OrderService {
+
+    @ChaosMonkey
+    public Order createOrder(OrderRequest request) {
+        // Random failures injected in chaos profile
+        return orderRepository.save(order);
+    }
+}
+```
+```yaml
+# application-chaos.yml
+chaos:
+  monkey:
+    enabled: true
+    assaults:
+      level: 5
+      latency-active: true
+      latency-range-start: 1000
+      latency-range-end: 5000
+      exceptions-active: true
+      exception-rate: 0.1
+```
+**Benefit:** Test resilience, identify weaknesses, improve fault tolerance.
+
+---
+
+### 5️⃣0️⃣ Use GitHub Actions for CI/CD
+```yaml
+# .github/workflows/ci-cd.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run tests
+        run: mvn test
+
+      - name: Build
+        run: mvn clean package -DskipTests
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: docker build -t myapp:${{ github.sha }} .
+
+      - name: Push to registry
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          docker push myapp:${{ github.sha }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/myapp myapp=myapp:${{ github.sha }}
+```
+**Benefit:** Automated testing, consistent deployments, faster feedback loops.
+
+---
+
+## 📊 Summary Table
+
+| Category | Key Improvements | Expected Impact |
+|----------|-----------------|-----------------|
+| **Performance** | Caching, connection pooling, async operations | 50-80% faster response times |
+| **Security** | JWT, HTTPS, rate limiting, input validation | Prevents 99% of common attacks |
+| **Code Quality** | Constructor injection, exception handling, profiles | 40% fewer bugs, easier maintenance |
+| **Testing** | Integration tests, TestContainers, coverage | 90%+ code coverage, fewer production bugs |
+| **DevOps** | Docker, K8s probes, CI/CD, monitoring | 99.9% uptime, faster deployments |
+
+## 🎯 Quick Wins (Implement First)
+
+1. ✅ Enable lazy initialization (1)
+2. ✅ Optimize HikariCP settings (3)
+3. ✅ Enable response compression (6)
+4. ✅ Implement global exception handling (30)
+5. ✅ Use constructor injection (29)
+6. ✅ Add environment-specific profiles (31)
+7. ✅ Enable Actuator monitoring (10)
+8. ✅ Implement proper logging (36)
+9. ✅ Use Docker multi-stage builds (44)
+10. ✅ Add health probes (46)
+
+## 🚀 Performance Checklist
+
+- [ ] Database indexes on frequently queried columns
+- [ ] Connection pool properly sized
+- [ ] Caching enabled for read-heavy operations
+- [ ] Pagination for large datasets
+- [ ] Async processing for long-running tasks
+- [ ] Response compression enabled
+- [ ] HTTP/2 enabled
+- [ ] N+1 query problems resolved
+- [ ] Native queries for complex operations
+- [ ] Batch processing for bulk operations
+
+## 🔒 Security Checklist
+
+- [ ] HTTPS/SSL enabled
+- [ ] JWT or OAuth2 authentication
+- [ ] Rate limiting implemented
+- [ ] CORS properly configured
+- [ ] Security headers enabled
+- [ ] Input validation on all endpoints
+- [ ] Passwords encrypted (BCrypt)
+- [ ] Secrets in environment variables
+- [ ] CSRF protection (for stateful apps)
+- [ ] SQL injection prevention
+
+## 📈 Monitoring Checklist
+
+- [ ] Actuator endpoints exposed
+- [ ] Custom health indicators
+- [ ] Business metrics tracked
+- [ ] Request/response logging
+- [ ] Distributed tracing enabled
+- [ ] APM integration (New Relic/Datadog)
+- [ ] Error tracking (Sentry)
+- [ ] Log aggregation (ELK/Splunk)
+- [ ] Alerting configured
+- [ ] Dashboard visualization
+
+---
+
+**Remember:** Don't implement everything at once. Start with quick wins, measure impact, and iterate! 🎯
