@@ -1,0 +1,1919 @@
+# AWS Services Guide for Java Developers
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Core Compute Services](#core-compute-services)
+   - [EC2 (Elastic Compute Cloud)](#ec2-elastic-compute-cloud)
+   - [Lambda](#lambda)
+   - [Elastic Beanstalk](#elastic-beanstalk)
+3. [Container Services](#container-services)
+   - [ECS (Elastic Container Service)](#ecs-elastic-container-service)
+   - [EKS (Elastic Kubernetes Service)](#eks-elastic-kubernetes-service)
+4. [Storage Services](#storage-services)
+   - [S3 (Simple Storage Service)](#s3-simple-storage-service)
+   - [EBS (Elastic Block Store)](#ebs-elastic-block-store)
+   - [EFS (Elastic File System)](#efs-elastic-file-system)
+5. [Database Services](#database-services)
+   - [RDS (Relational Database Service)](#rds-relational-database-service)
+   - [DynamoDB](#dynamodb)
+   - [ElastiCache](#elasticache)
+6. [Messaging & Integration](#messaging--integration)
+   - [SQS (Simple Queue Service)](#sqs-simple-queue-service)
+   - [SNS (Simple Notification Service)](#sns-simple-notification-service)
+   - [EventBridge](#eventbridge)
+7. [API & Networking](#api--networking)
+   - [API Gateway](#api-gateway)
+   - [CloudFront](#cloudfront)
+   - [Route 53](#route-53)
+8. [Monitoring & Logging](#monitoring--logging)
+   - [CloudWatch](#cloudwatch)
+   - [X-Ray](#x-ray)
+9. [Security & Identity](#security--identity)
+   - [IAM (Identity and Access Management)](#iam-identity-and-access-management)
+   - [Secrets Manager](#secrets-manager)
+   - [KMS (Key Management Service)](#kms-key-management-service)
+10. [Developer Tools](#developer-tools)
+    - [CodePipeline](#codepipeline)
+    - [CodeBuild](#codebuild)
+    - [CodeDeploy](#codedeploy)
+11. [AWS SDK for Java](#aws-sdk-for-java)
+12. [Common Architecture Patterns](#common-architecture-patterns)
+
+---
+
+## Introduction
+
+As a Java developer working with AWS, understanding cloud services is essential for building scalable, resilient, and cost-effective applications. AWS provides a comprehensive suite of services that integrate seamlessly with Java applications through the AWS SDK for Java.
+
+**Why AWS for Java Developers?**
+- Native Java SDK support (both v1 and v2)
+- Extensive Spring Boot and Spring Cloud integration
+- Managed services reduce infrastructure overhead
+- Pay-as-you-go pricing model
+- Global infrastructure for low-latency applications
+- Enterprise-grade security and compliance
+
+---
+
+## Core Compute Services
+
+### EC2 (Elastic Compute Cloud)
+
+**What is it?**
+Virtual servers in the cloud where you can deploy your Java applications.
+
+**Why Java Developers Need It:**
+- Full control over the server environment
+- Install any JDK version (OpenJDK, Oracle JDK, Amazon Corretto)
+- Run Spring Boot, Jakarta EE, or any Java framework
+- SSH access for debugging and maintenance
+- Suitable for legacy applications that need specific configurations
+
+**Common Use Cases:**
+- Deploying monolithic Java applications
+- Running application servers (Tomcat, WildFly, WebLogic)
+- Background processing jobs
+- Development and testing environments
+
+**Java Example:**
+
+```java
+// Using AWS SDK v2 to launch an EC2 instance
+import software.amazon.awssdk.services.ec2.Ec2Client;
+import software.amazon.awssdk.services.ec2.model.*;
+
+public class EC2Manager {
+    public String launchInstance(Ec2Client ec2, String amiId, String keyName) {
+        RunInstancesRequest runRequest = RunInstancesRequest.builder()
+            .imageId(amiId)
+            .instanceType(InstanceType.T2_MICRO)
+            .maxCount(1)
+            .minCount(1)
+            .keyName(keyName)
+            .build();
+
+        RunInstancesResponse response = ec2.runInstances(runRequest);
+        return response.instances().get(0).instanceId();
+    }
+}
+```
+
+---
+
+### Lambda
+
+**What is it?**
+Serverless compute service that runs code in response to events without managing servers.
+
+**Why Java Developers Need It:**
+- No server management required
+- Pay only for compute time used
+- Auto-scaling built-in
+- Perfect for microservices and event-driven architectures
+- Supports Java 8, 11, 17, and 21 runtimes
+
+**Common Use Cases:**
+- REST API backends
+- Data processing pipelines
+- Scheduled jobs (cron alternatives)
+- Event handlers (S3 uploads, DynamoDB changes)
+- Microservices
+
+**Java Example:**
+
+```java
+// Simple Lambda handler
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+
+public class HelloLambda implements RequestHandler<Map<String, String>, String> {
+
+    @Override
+    public String handleRequest(Map<String, String> event, Context context) {
+        String name = event.getOrDefault("name", "World");
+        context.getLogger().log("Processing request for: " + name);
+        return "Hello, " + name + "!";
+    }
+}
+```
+
+**Lambda Architecture:**
+
+```mermaid
+graph LR
+    A[API Gateway] --> B[Lambda Function]
+    B --> C[DynamoDB]
+    B --> D[S3]
+    B --> E[RDS]
+    F[CloudWatch Events] --> B
+    G[SQS Queue] --> B
+```
+
+---
+
+### Elastic Beanstalk
+
+**What is it?**
+Platform-as-a-Service (PaaS) that handles deployment, capacity provisioning, load balancing, and monitoring.
+
+**Why Java Developers Need It:**
+- Deploy Java applications with minimal configuration
+- Supports JAR and WAR files
+- Automatic environment setup (EC2, load balancer, auto-scaling)
+- Built-in support for Tomcat, Java SE
+- Easy rollback and versioning
+
+**Common Use Cases:**
+- Quick deployment of Spring Boot applications
+- Web applications with minimal DevOps overhead
+- Development and staging environments
+- Applications that need auto-scaling
+
+**Deployment Steps:**
+1. Package your application as JAR or WAR
+2. Upload to Elastic Beanstalk
+3. Select Java platform version
+4. Configure environment variables
+5. Deploy!
+
+---
+
+## Container Services
+
+### ECS (Elastic Container Service)
+
+**What is it?**
+Fully managed container orchestration service for Docker containers.
+
+**Why Java Developers Need It:**
+- Run containerized Java applications
+- Better resource utilization than EC2
+- Service discovery and load balancing
+- Integration with other AWS services
+- No Kubernetes complexity
+
+**Common Use Cases:**
+- Microservices architecture
+- Containerized Spring Boot applications
+- Batch processing jobs
+- Migration from on-premise containers
+
+**Docker + Java Example:**
+
+```java
+// Dockerfile for Spring Boot app
+FROM amazoncorretto:17-alpine
+WORKDIR /app
+COPY target/myapp.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+---
+
+### EKS (Elastic Kubernetes Service)
+
+**What is it?**
+Managed Kubernetes service for container orchestration.
+
+**Why Java Developers Need It:**
+- Standard Kubernetes API
+- Portable across cloud providers
+- Advanced orchestration features
+- Helm chart support
+- Service mesh capabilities (Istio, App Mesh)
+
+**When to Use EKS vs ECS:**
+- Use EKS if you need Kubernetes-specific features
+- Use ECS if you want simpler AWS-native solution
+- Use ECS for smaller teams, EKS for Kubernetes expertise
+
+---
+
+## Storage Services
+
+### S3 (Simple Storage Service)
+
+**What is it?**
+Object storage service for storing and retrieving any amount of data.
+
+**Why Java Developers Need It:**
+- Store application files (images, PDFs, documents)
+- Serve static content (HTML, CSS, JS)
+- Data backup and archival
+- Data lake for analytics
+- Host static websites
+
+**Common Use Cases:**
+- User-uploaded files
+- Application logs
+- Database backups
+- CDN origin for CloudFront
+- Data processing pipelines
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.core.sync.RequestBody;
+import java.nio.file.Paths;
+
+public class S3Manager {
+
+    public void uploadFile(S3Client s3, String bucketName, String key, String filePath) {
+        PutObjectRequest request = PutObjectRequest.builder()
+            .bucket(bucketName)
+            .key(key)
+            .contentType("application/octet-stream")
+            .build();
+
+        s3.putObject(request, RequestBody.fromFile(Paths.get(filePath)));
+    }
+
+    public void downloadFile(S3Client s3, String bucketName, String key, String downloadPath) {
+        GetObjectRequest request = GetObjectRequest.builder()
+            .bucket(bucketName)
+            .key(key)
+            .build();
+
+        s3.getObject(request, Paths.get(downloadPath));
+    }
+}
+```
+
+**S3 Storage Classes:**
+- **S3 Standard**: Frequently accessed data
+- **S3 IA (Infrequent Access)**: Less frequent access, lower cost
+- **S3 Glacier**: Archive storage, very low cost
+- **S3 Intelligent-Tiering**: Automatic cost optimization
+
+---
+
+### EBS (Elastic Block Store)
+
+**What is it?**
+Block-level storage volumes for EC2 instances (like hard drives).
+
+**Why Java Developers Need It:**
+- Persistent storage for EC2 instances
+- Database storage (if not using RDS)
+- Application data that needs fast I/O
+- Snapshots for backups
+
+---
+
+### EFS (Elastic File System)
+
+**What is it?**
+Managed NFS file system that can be mounted by multiple EC2 instances.
+
+**Why Java Developers Need It:**
+- Shared file storage across multiple servers
+- Scalable file storage
+- Content management systems
+- Shared application logs
+
+---
+
+## Database Services
+
+### RDS (Relational Database Service)
+
+**What is it?**
+Managed relational database service supporting MySQL, PostgreSQL, Oracle, SQL Server, and MariaDB.
+
+**Why Java Developers Need It:**
+- No database server management
+- Automated backups and patching
+- High availability with Multi-AZ deployments
+- Read replicas for scaling reads
+- Works with Hibernate, JPA, Spring Data JPA
+
+**Common Use Cases:**
+- Primary application database
+- User data storage
+- Transaction processing
+- Reporting databases
+
+**Java Example (Spring Boot):**
+
+```java
+// application.properties
+spring.datasource.url=jdbc:postgresql://mydb.abc123.us-east-1.rds.amazonaws.com:5432/mydb
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.jpa.hibernate.ddl-auto=update
+
+// Entity class
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String email;
+
+    // getters and setters
+}
+
+// Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+}
+```
+
+**RDS Architecture:**
+
+```mermaid
+graph TB
+    A[Application] --> B[RDS Primary]
+    B --> C[RDS Standby Multi-AZ]
+    B --> D[Read Replica 1]
+    B --> E[Read Replica 2]
+    F[Automated Backups] --> B
+```
+
+---
+
+### DynamoDB
+
+**What is it?**
+Fully managed NoSQL database service with single-digit millisecond performance.
+
+**Why Java Developers Need It:**
+- Serverless database (no server management)
+- Automatic scaling
+- Low latency at any scale
+- Pay per request or provisioned capacity
+- Perfect for Lambda functions
+
+**Common Use Cases:**
+- Session storage
+- User profiles
+- Shopping carts
+- Real-time analytics
+- IoT data storage
+- Gaming leaderboards
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.*;
+
+public class DynamoDBManager {
+
+    public void putItem(DynamoDbClient ddb, String tableName, String id, String name) {
+        Map<String, AttributeValue> itemValues = new HashMap<>();
+        itemValues.put("id", AttributeValue.builder().s(id).build());
+        itemValues.put("name", AttributeValue.builder().s(name).build());
+        itemValues.put("timestamp", AttributeValue.builder()
+            .n(String.valueOf(System.currentTimeMillis())).build());
+
+        PutItemRequest request = PutItemRequest.builder()
+            .tableName(tableName)
+            .item(itemValues)
+            .build();
+
+        ddb.putItem(request);
+    }
+
+    public Map<String, AttributeValue> getItem(DynamoDbClient ddb, String tableName, String id) {
+        Map<String, AttributeValue> key = new HashMap<>();
+        key.put("id", AttributeValue.builder().s(id).build());
+
+        GetItemRequest request = GetItemRequest.builder()
+            .tableName(tableName)
+            .key(key)
+            .build();
+
+        return ddb.getItem(request).item();
+    }
+}
+```
+
+---
+
+### ElastiCache
+
+**What is it?**
+Managed in-memory caching service supporting Redis and Memcached.
+
+**Why Java Developers Need It:**
+- Reduce database load
+- Improve application performance
+- Session management
+- Real-time analytics
+- Pub/Sub messaging (Redis)
+
+**Common Use Cases:**
+- Caching database query results
+- Storing session data
+- Rate limiting
+- Leaderboards
+- Real-time analytics
+
+**Java Example (Spring Boot + Redis):**
+
+```java
+// Configuration
+@Configuration
+@EnableCaching
+public class RedisConfig {
+    @Bean
+    public RedisConnectionFactory redisConnectionFactory() {
+        return new LettuceConnectionFactory("my-redis.abc123.cache.amazonaws.com", 6379);
+    }
+}
+
+// Service with caching
+@Service
+public class UserService {
+
+    @Cacheable(value = "users", key = "#userId")
+    public User getUserById(Long userId) {
+        // This will be cached after first call
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    @CacheEvict(value = "users", key = "#user.id")
+    public User updateUser(User user) {
+        return userRepository.save(user);
+    }
+}
+```
+
+---
+
+## Messaging & Integration
+
+### SQS (Simple Queue Service)
+
+**What is it?**
+Fully managed message queuing service for decoupling application components.
+
+**Why Java Developers Need It:**
+- Decouple microservices
+- Handle asynchronous processing
+- Reliable message delivery
+- Dead letter queues for failed messages
+- No message broker management
+
+**Common Use Cases:**
+- Order processing workflows
+- Image/video processing pipelines
+- Email sending queues
+- Background job processing
+- Event-driven architectures
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.*;
+
+public class SQSManager {
+
+    public void sendMessage(SqsClient sqs, String queueUrl, String message) {
+        SendMessageRequest request = SendMessageRequest.builder()
+            .queueUrl(queueUrl)
+            .messageBody(message)
+            .delaySeconds(0)
+            .build();
+
+        sqs.sendMessage(request);
+    }
+
+    public void receiveMessages(SqsClient sqs, String queueUrl) {
+        ReceiveMessageRequest request = ReceiveMessageRequest.builder()
+            .queueUrl(queueUrl)
+            .maxNumberOfMessages(10)
+            .waitTimeSeconds(20) // Long polling
+            .build();
+
+        List<Message> messages = sqs.receiveMessage(request).messages();
+
+        for (Message msg : messages) {
+            System.out.println("Message: " + msg.body());
+
+            // Delete message after processing
+            DeleteMessageRequest deleteRequest = DeleteMessageRequest.builder()
+                .queueUrl(queueUrl)
+                .receiptHandle(msg.receiptHandle())
+                .build();
+            sqs.deleteMessage(deleteRequest);
+        }
+    }
+}
+```
+
+**SQS Architecture Pattern:**
+
+```mermaid
+graph LR
+    A[Order Service] -->|Send Message| B[SQS Queue]
+    B -->|Receive Message| C[Processing Service]
+    B -->|Failed Messages| D[Dead Letter Queue]
+    C -->|Success| E[Database]
+    C -->|Failure| D
+```
+
+---
+
+### SNS (Simple Notification Service)
+
+**What is it?**
+Pub/Sub messaging service for application-to-application and application-to-person notifications.
+
+**Why Java Developers Need It:**
+- Fan-out pattern (one message to many subscribers)
+- Send emails, SMS, mobile push notifications
+- Event broadcasting
+- Integration with SQS, Lambda, HTTP endpoints
+
+**Common Use Cases:**
+- Sending notifications to multiple services
+- Alert systems
+- Broadcasting events
+- Mobile push notifications
+- Email notifications
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.*;
+
+public class SNSManager {
+
+    public void publishMessage(SnsClient sns, String topicArn, String message) {
+        PublishRequest request = PublishRequest.builder()
+            .topicArn(topicArn)
+            .message(message)
+            .subject("Order Update")
+            .build();
+
+        PublishResponse response = sns.publish(request);
+        System.out.println("Message ID: " + response.messageId());
+    }
+
+    public String subscribeEmail(SnsClient sns, String topicArn, String email) {
+        SubscribeRequest request = SubscribeRequest.builder()
+            .topicArn(topicArn)
+            .protocol("email")
+            .endpoint(email)
+            .build();
+
+        return sns.subscribe(request).subscriptionArn();
+    }
+}
+```
+
+---
+
+### EventBridge
+
+**What is it?**
+Serverless event bus for building event-driven applications.
+
+**Why Java Developers Need It:**
+- Connect AWS services, SaaS apps, and custom applications
+- Event pattern matching
+- Scheduled events (cron jobs)
+- Schema registry for event validation
+
+**Common Use Cases:**
+- Event-driven microservices
+- Scheduled Lambda executions
+- Cross-account event routing
+- Integration with third-party SaaS
+
+---
+
+## API & Networking
+
+### API Gateway
+
+**What is it?**
+Fully managed service for creating, publishing, and managing REST and WebSocket APIs.
+
+**Why Java Developers Need It:**
+- Create REST APIs for Lambda or HTTP backends
+- Request/response transformation
+- API throttling and caching
+- API key management
+- CORS support
+- Integration with Cognito for authentication
+
+**Common Use Cases:**
+- Exposing Lambda functions as REST APIs
+- API gateway for microservices
+- WebSocket APIs for real-time features
+- API versioning and stage management
+
+**Architecture:**
+
+```mermaid
+graph LR
+    A[Client] --> B[API Gateway]
+    B --> C[Lambda]
+    B --> D[EC2/ECS]
+    B --> E[HTTP Endpoint]
+    F[WAF] --> B
+    B --> G[CloudWatch Logs]
+```
+
+---
+
+### CloudFront
+
+**What is it?**
+Content Delivery Network (CDN) for distributing content globally with low latency.
+
+**Why Java Developers Need It:**
+- Serve static assets (CSS, JS, images)
+- Cache API responses
+- DDoS protection
+- HTTPS by default
+- Edge locations worldwide
+
+**Common Use Cases:**
+- Serving static websites from S3
+- Caching API Gateway responses
+- Global content distribution
+- Video streaming
+
+---
+
+### Route 53
+
+**What is it?**
+Scalable DNS and domain registration service.
+
+**Why Java Developers Need It:**
+- Domain name management
+- DNS routing policies (failover, geolocation, weighted)
+- Health checks
+- Domain registration
+
+---
+
+## Monitoring & Logging
+
+### CloudWatch
+
+**What is it?**
+Monitoring and observability service for AWS resources and applications.
+
+**Why Java Developers Need It:**
+- Monitor application metrics
+- Centralized logging
+- Set alarms for anomalies
+- Create dashboards
+- Log aggregation from multiple sources
+
+**Common Use Cases:**
+- Application performance monitoring
+- Log analysis
+- Error tracking
+- Resource utilization monitoring
+- Custom business metrics
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.cloudwatch.CloudWatchClient;
+import software.amazon.awssdk.services.cloudwatch.model.*;
+
+public class CloudWatchManager {
+
+    public void putMetric(CloudWatchClient cw, String namespace, String metricName, double value) {
+        MetricDatum datum = MetricDatum.builder()
+            .metricName(metricName)
+            .unit(StandardUnit.COUNT)
+            .value(value)
+            .timestamp(Instant.now())
+            .build();
+
+        PutMetricDataRequest request = PutMetricDataRequest.builder()
+            .namespace(namespace)
+            .metricData(datum)
+            .build();
+
+        cw.putMetricData(request);
+    }
+}
+
+// Spring Boot example with Micrometer
+@Configuration
+public class MetricsConfig {
+    @Bean
+    public MeterRegistry meterRegistry() {
+        return new CloudWatchMeterRegistry(
+            CloudWatchConfig.DEFAULT,
+            Clock.SYSTEM,
+            CloudWatchAsyncClient.create()
+        );
+    }
+}
+
+// Usage
+@Service
+public class OrderService {
+    private final Counter orderCounter;
+
+    public OrderService(MeterRegistry registry) {
+        this.orderCounter = registry.counter("orders.created");
+    }
+
+    public void createOrder(Order order) {
+        // Process order
+        orderCounter.increment();
+    }
+}
+```
+
+---
+
+### X-Ray
+
+**What is it?**
+Distributed tracing system for debugging and analyzing microservices.
+
+**Why Java Developers Need It:**
+- Trace requests across microservices
+- Identify performance bottlenecks
+- Visualize service dependencies
+- Error analysis
+
+**Java Example:**
+
+```java
+// Add X-Ray SDK dependency
+// Maven: com.amazonaws:aws-xray-recorder-sdk-core
+
+import com.amazonaws.xray.AWSXRay;
+import com.amazonaws.xray.entities.Subsegment;
+
+public class OrderService {
+
+    public void processOrder(Order order) {
+        Subsegment subsegment = AWSXRay.beginSubsegment("processOrder");
+        try {
+            // Your business logic
+            validateOrder(order);
+            saveOrder(order);
+            subsegment.putMetadata("orderId", order.getId());
+        } catch (Exception e) {
+            subsegment.addException(e);
+            throw e;
+        } finally {
+            AWSXRay.endSubsegment();
+        }
+    }
+}
+```
+
+---
+
+## Security & Identity
+
+### IAM (Identity and Access Management)
+
+**What is it?**
+Service for managing access to AWS resources securely.
+
+**Why Java Developers Need It:**
+- Control who can access AWS resources
+- Assign permissions to users, groups, and roles
+- Temporary credentials for applications
+- Fine-grained access control
+
+**Key Concepts:**
+- **Users**: Individual identities
+- **Groups**: Collections of users
+- **Roles**: Assumed by AWS services or applications
+- **Policies**: JSON documents defining permissions
+
+**Best Practices:**
+- Use IAM roles for EC2/Lambda instead of hardcoded credentials
+- Follow principle of least privilege
+- Enable MFA for sensitive operations
+- Rotate access keys regularly
+
+---
+
+### Secrets Manager
+
+**What is it?**
+Service for securely storing and managing secrets like database passwords and API keys.
+
+**Why Java Developers Need It:**
+- No hardcoded credentials in code
+- Automatic rotation of secrets
+- Encryption at rest and in transit
+- Audit trail of secret access
+
+**Java Example:**
+
+```java
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class SecretsManager {
+
+    public DatabaseCredentials getDbCredentials(SecretsManagerClient client, String secretName) {
+        GetSecretValueRequest request = GetSecretValueRequest.builder()
+            .secretId(secretName)
+            .build();
+
+        GetSecretValueResponse response = client.getSecretValue(request);
+        String secret = response.secretString();
+
+        // Parse JSON secret
+        ObjectMapper mapper = new ObjectMapper();
+        return mapper.readValue(secret, DatabaseCredentials.class);
+    }
+}
+
+// Spring Boot integration
+@Configuration
+public class DataSourceConfig {
+    @Bean
+    public DataSource dataSource(SecretsManagerClient secretsManager) {
+        DatabaseCredentials creds = getDbCredentials(secretsManager, "prod/db/credentials");
+
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(creds.getUrl());
+        config.setUsername(creds.getUsername());
+        config.setPassword(creds.getPassword());
+
+        return new HikariDataSource(config);
+    }
+}
+```
+
+---
+
+### KMS (Key Management Service)
+
+**What is it?**
+Managed service for creating and controlling encryption keys.
+
+**Why Java Developers Need It:**
+- Encrypt sensitive data
+- Server-side encryption for S3, RDS, etc.
+- Client-side encryption
+- Key rotation
+
+---
+
+## Developer Tools
+
+### CodePipeline
+
+**What is it?**
+Continuous delivery service for automating release pipelines.
+
+**Why Java Developers Need It:**
+- Automate build, test, and deploy
+- Integration with GitHub, Bitbucket, CodeCommit
+- Multi-stage deployments
+- Approval gates
+
+**Pipeline Stages:**
+1. **Source**: Pull code from repository
+2. **Build**: Compile and test with CodeBuild
+3. **Test**: Run integration tests
+4. **Deploy**: Deploy to Elastic Beanstalk/ECS/Lambda
+
+---
+
+### CodeBuild
+
+**What is it?**
+Fully managed build service for compiling code and running tests.
+
+**Why Java Developers Need It:**
+- No build server management
+- Parallel builds
+- Supports Maven, Gradle
+- Docker support
+- Custom build environments
+
+**buildspec.yml Example:**
+
+```yaml
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+  pre_build:
+    commands:
+      - echo Running tests...
+      - mvn test
+  build:
+    commands:
+      - echo Building JAR...
+      - mvn clean package
+  post_build:
+    commands:
+      - echo Build completed
+
+artifacts:
+  files:
+    - target/*.jar
+```
+
+---
+
+### CodeDeploy
+
+**What is it?**
+Automated deployment service for EC2, Lambda, and on-premises servers.
+
+**Why Java Developers Need It:**
+- Zero-downtime deployments
+- Blue/green deployments
+- Rollback capabilities
+- Deployment health monitoring
+
+---
+
+## AWS SDK for Java
+
+**Two Versions Available:**
+
+### AWS SDK for Java 1.x
+- Synchronous clients
+- Legacy applications
+- Maintenance mode
+
+### AWS SDK for Java 2.x (Recommended)
+- Non-blocking I/O
+- Better performance
+- Async and sync clients
+- Fluent builders
+- Better error handling
+
+**Maven Dependency:**
+
+```xml
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>s3</artifactId>
+    <version>2.20.0</version>
+</dependency>
+
+<!-- Or use BOM for version management -->
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bom</artifactId>
+            <version>2.20.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
+
+**Client Configuration:**
+
+```java
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+
+public class AWSClientFactory {
+
+    public static S3Client createS3Client() {
+        return S3Client.builder()
+            .region(Region.US_EAST_1)
+            .credentialsProvider(ProfileCredentialsProvider.create())
+            .build();
+    }
+
+    // For production, use IAM roles (no credentials needed)
+    public static S3Client createS3ClientWithIAMRole() {
+        return S3Client.builder()
+            .region(Region.US_EAST_1)
+            .build(); // Automatically uses IAM role
+    }
+}
+```
+
+---
+
+## Common Architecture Patterns
+
+### 1. Serverless REST API
+
+```mermaid
+graph LR
+    A[Client] --> B[API Gateway]
+    B --> C[Lambda]
+    C --> D[DynamoDB]
+    C --> E[S3]
+    F[CloudWatch] -.Monitor.-> C
+```
+
+**Use Case**: Building scalable REST APIs without managing servers
+
+**Services**: API Gateway + Lambda + DynamoDB/RDS + S3
+
+---
+
+### 2. Microservices with Containers
+
+```mermaid
+graph TB
+    A[ALB] --> B[ECS Service 1]
+    A --> C[ECS Service 2]
+    A --> D[ECS Service 3]
+    B --> E[(RDS)]
+    C --> E
+    D --> F[(DynamoDB)]
+    G[CloudWatch] -.Monitor.-> B
+    G -.Monitor.-> C
+    G -.Monitor.-> D
+```
+
+**Use Case**: Containerized microservices with auto-scaling
+
+**Services**: ECS/EKS + ALB + RDS/DynamoDB + ECR + CloudWatch
+
+---
+
+### 3. Event-Driven Architecture
+
+```mermaid
+graph LR
+    A[API Gateway] --> B[Lambda 1]
+    B --> C[SNS Topic]
+    C --> D[Lambda 2]
+    C --> E[Lambda 3]
+    C --> F[SQS Queue]
+    F --> G[Lambda 4]
+```
+
+**Use Case**: Decoupled services with asynchronous processing
+
+**Services**: Lambda + SNS + SQS + EventBridge + DynamoDB
+
+---
+
+### 4. Traditional Web Application
+
+```mermaid
+graph TB
+    A[Route 53] --> B[CloudFront]
+    B --> C[S3 Static Assets]
+    B --> D[ALB]
+    D --> E[EC2 Auto Scaling Group]
+    E --> F[(RDS Multi-AZ)]
+    G[ElastiCache] --> E
+```
+
+**Use Case**: Traditional multi-tier web application
+
+**Services**: EC2 + ALB + RDS + ElastiCache + S3 + CloudFront
+
+---
+
+### 5. Data Processing Pipeline
+
+```mermaid
+graph LR
+    A[S3 Upload] -->|Trigger| B[Lambda]
+    B --> C[SQS]
+    C --> D[EC2 Workers]
+    D --> E[(DynamoDB)]
+    D --> F[S3 Processed]
+```
+
+**Use Case**: Processing large files or data streams
+
+**Services**: S3 + Lambda + SQS + EC2/Fargate + DynamoDB
+
+---
+
+## Best Practices for Java Developers on AWS
+
+### 1. Credential Management
+```java
+// ❌ BAD - Never hardcode credentials
+AmazonS3 s3 = AmazonS3ClientBuilder.standard()
+    .withCredentials(new AWSStaticCredentialsProvider(
+        new BasicAWSCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+    ))
+    .build();
+
+// ✅ GOOD - Use IAM roles or default credential provider chain
+S3Client s3 = S3Client.builder()
+    .region(Region.US_EAST_1)
+    .build(); // Automatically uses IAM role, environment vars, or ~/.aws/credentials
+```
+
+### 2. Connection Management
+```java
+// ❌ BAD - Creating client for each request
+public void processFile(String bucket, String key) {
+    S3Client s3 = S3Client.create();
+    // ... use s3
+    s3.close();
+}
+
+// ✅ GOOD - Reuse clients (they are thread-safe)
+@Component
+public class S3Service {
+    private final S3Client s3Client;
+
+    public S3Service() {
+        this.s3Client = S3Client.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    public void processFile(String bucket, String key) {
+        // Reuse s3Client
+    }
+}
+```
+
+### 3. Error Handling and Retries
+```java
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
+
+public class ResilientAWSClient {
+
+    public static DynamoDbClient createResilientClient() {
+        return DynamoDbClient.builder()
+            .region(Region.US_EAST_1)
+            .overrideConfiguration(config -> config
+                .retryPolicy(RetryPolicy.builder()
+                    .numRetries(5)
+                    .backoffStrategy(BackoffStrategy.defaultStrategy())
+                    .build())
+            )
+            .build();
+    }
+}
+
+// Handling specific exceptions
+public User getUser(String userId) {
+    try {
+        return dynamoDb.getItem(request).item();
+    } catch (ResourceNotFoundException e) {
+        logger.warn("User not found: {}", userId);
+        return null;
+    } catch (ProvisionedThroughputExceededException e) {
+        logger.error("DynamoDB throttled, consider increasing capacity");
+        throw new ServiceUnavailableException("Service temporarily unavailable");
+    } catch (DynamoDbException e) {
+        logger.error("DynamoDB error", e);
+        throw new RuntimeException("Database error", e);
+    }
+}
+```
+
+### 4. Async Operations for Better Performance
+```java
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import java.util.concurrent.CompletableFuture;
+
+@Service
+public class AsyncS3Service {
+
+    private final S3AsyncClient s3AsyncClient;
+
+    public AsyncS3Service() {
+        this.s3AsyncClient = S3AsyncClient.builder()
+            .region(Region.US_EAST_1)
+            .build();
+    }
+
+    public CompletableFuture<Void> uploadFileAsync(String bucket, String key, Path file) {
+        PutObjectRequest request = PutObjectRequest.builder()
+            .bucket(bucket)
+            .key(key)
+            .build();
+
+        return s3AsyncClient.putObject(request, AsyncRequestBody.fromFile(file))
+            .thenAccept(response ->
+                logger.info("Upload completed: {}", response.eTag())
+            )
+            .exceptionally(throwable -> {
+                logger.error("Upload failed", throwable);
+                return null;
+            });
+    }
+
+    // Process multiple files in parallel
+    public CompletableFuture<Void> uploadMultipleFiles(Map<String, Path> files) {
+        List<CompletableFuture<Void>> futures = files.entrySet().stream()
+            .map(entry -> uploadFileAsync("my-bucket", entry.getKey(), entry.getValue()))
+            .collect(Collectors.toList());
+
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+    }
+}
+```
+
+### 5. Pagination for Large Result Sets
+```java
+public List<String> listAllObjects(String bucketName) {
+    List<String> allKeys = new ArrayList<>();
+
+    ListObjectsV2Request request = ListObjectsV2Request.builder()
+        .bucket(bucketName)
+        .maxKeys(1000)
+        .build();
+
+    ListObjectsV2Response response;
+    do {
+        response = s3Client.listObjectsV2(request);
+        response.contents().forEach(obj -> allKeys.add(obj.key()));
+
+        // Prepare for next page
+        request = request.toBuilder()
+            .continuationToken(response.nextContinuationToken())
+            .build();
+    } while (response.isTruncated());
+
+    return allKeys;
+}
+
+// Or use paginator (cleaner)
+public List<String> listAllObjectsWithPaginator(String bucketName) {
+    ListObjectsV2Request request = ListObjectsV2Request.builder()
+        .bucket(bucketName)
+        .build();
+
+    return s3Client.listObjectsV2Paginator(request)
+        .contents()
+        .stream()
+        .map(S3Object::key)
+        .collect(Collectors.toList());
+}
+```
+
+### 6. Environment-Specific Configuration
+```java
+// application.yml
+spring:
+  profiles:
+    active: ${ENV:dev}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+aws:
+  region: us-east-1
+  s3:
+    bucket: my-app-dev
+  dynamodb:
+    table: users-dev
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+aws:
+  region: us-east-1
+  s3:
+    bucket: my-app-prod
+  dynamodb:
+    table: users-prod
+
+// Configuration class
+@Configuration
+public class AWSConfig {
+
+    @Value("${aws.region}")
+    private String region;
+
+    @Value("${aws.s3.bucket}")
+    private String s3Bucket;
+
+    @Bean
+    public S3Client s3Client() {
+        return S3Client.builder()
+            .region(Region.of(region))
+            .build();
+    }
+
+    @Bean
+    public DynamoDbClient dynamoDbClient() {
+        return DynamoDbClient.builder()
+            .region(Region.of(region))
+            .build();
+    }
+
+    @Bean
+    public String s3BucketName() {
+        return s3Bucket;
+    }
+}
+```
+
+### 7. Monitoring and Logging
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+@Service
+public class OrderService {
+
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
+
+    public Order processOrder(OrderRequest request) {
+        // Add correlation ID for tracking
+        MDC.put("orderId", request.getOrderId());
+        MDC.put("userId", request.getUserId());
+
+        try {
+            logger.info("Processing order started");
+
+            // Business logic
+            Order order = createOrder(request);
+
+            logger.info("Order processed successfully",
+                Map.of("orderTotal", order.getTotal()));
+
+            return order;
+
+        } catch (Exception e) {
+            logger.error("Order processing failed", e);
+            throw e;
+        } finally {
+            MDC.clear();
+        }
+    }
+}
+
+// Structured logging with JSON (Logback configuration)
+// logback-spring.xml
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeContext>true</includeContext>
+            <includeMdc>true</includeMdc>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
+```
+
+---
+
+## Cost Optimization Tips
+
+### 1. Right-Sizing Resources
+- Use AWS Cost Explorer to identify underutilized resources
+- Start with smaller instance types and scale up based on metrics
+- Use Spot Instances for non-critical workloads (up to 90% savings)
+
+### 2. Storage Optimization
+```java
+// Use S3 Lifecycle policies
+public void configureS3Lifecycle(S3Client s3, String bucketName) {
+    LifecycleRule rule = LifecycleRule.builder()
+        .id("MoveToIA")
+        .status(ExpirationStatus.ENABLED)
+        .transitions(
+            Transition.builder()
+                .days(30)
+                .storageClass(TransitionStorageClass.STANDARD_IA)
+                .build(),
+            Transition.builder()
+                .days(90)
+                .storageClass(TransitionStorageClass.GLACIER)
+                .build()
+        )
+        .expiration(e -> e.days(365))
+        .build();
+
+    PutBucketLifecycleConfigurationRequest request =
+        PutBucketLifecycleConfigurationRequest.builder()
+            .bucket(bucketName)
+            .lifecycleConfiguration(c -> c.rules(rule))
+            .build();
+
+    s3.putBucketLifecycleConfiguration(request);
+}
+```
+
+### 3. Lambda Optimization
+```java
+// ❌ BAD - Creating resources inside handler
+public class SlowLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+
+    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
+        // Creating client on every invocation (slow!)
+        S3Client s3 = S3Client.create();
+        DynamoDbClient ddb = DynamoDbClient.create();
+        // ... use clients
+        return response;
+    }
+}
+
+// ✅ GOOD - Initialize outside handler (reused across invocations)
+public class FastLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+
+    private static final S3Client s3 = S3Client.create();
+    private static final DynamoDbClient ddb = DynamoDbClient.create();
+
+    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
+        // Clients are already initialized
+        return response;
+    }
+}
+```
+
+### 4. Database Optimization
+- Use connection pooling for RDS
+- Enable caching with ElastiCache
+- Use DynamoDB on-demand pricing for unpredictable workloads
+- Use RDS read replicas for read-heavy workloads
+
+### 5. Data Transfer Optimization
+- Use CloudFront to reduce data transfer costs
+- Keep data in the same region when possible
+- Compress data before uploading to S3
+- Use S3 Transfer Acceleration for large uploads
+
+---
+
+## Security Best Practices
+
+### 1. Never Store Secrets in Code
+```java
+// ❌ BAD
+public class DatabaseConfig {
+    private static final String DB_PASSWORD = "myP@ssw0rd123";
+}
+
+// ✅ GOOD - Use Secrets Manager or Parameter Store
+@Component
+public class SecureDbConfig {
+
+    @Bean
+    public DataSource dataSource(SecretsManagerClient secretsManager) {
+        String secretValue = secretsManager.getSecretValue(
+            GetSecretValueRequest.builder()
+                .secretId("prod/database/credentials")
+                .build()
+        ).secretString();
+
+        // Parse and use secret
+        DatabaseCredentials creds = parseCredentials(secretValue);
+        return createDataSource(creds);
+    }
+}
+```
+
+### 2. Use VPC for Network Isolation
+```mermaid
+graph TB
+    subgraph VPC
+        subgraph Public Subnet
+            A[ALB]
+            B[NAT Gateway]
+        end
+        subgraph Private Subnet
+            C[EC2/ECS]
+            D[Lambda]
+        end
+        subgraph Database Subnet
+            E[(RDS)]
+            F[(ElastiCache)]
+        end
+    end
+    G[Internet] --> A
+    A --> C
+    C --> E
+    C --> B
+    B --> G
+```
+
+### 3. Encrypt Data
+```java
+// S3 Server-Side Encryption
+public void uploadWithEncryption(S3Client s3, String bucket, String key, Path file) {
+    PutObjectRequest request = PutObjectRequest.builder()
+        .bucket(bucket)
+        .key(key)
+        .serverSideEncryption(ServerSideEncryption.AES256)
+        // Or use KMS
+        // .serverSideEncryption(ServerSideEncryption.AWS_KMS)
+        // .ssekmsKeyId("arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012")
+        .build();
+
+    s3.putObject(request, RequestBody.fromFile(file));
+}
+
+// DynamoDB Encryption at Rest
+// Enable through console or CloudFormation - enabled by default for new tables
+```
+
+### 4. Implement Least Privilege IAM Policies
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::my-app-bucket/uploads/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:123456789012:table/Users"
+    }
+  ]
+}
+```
+
+### 5. Enable MFA for Sensitive Operations
+```java
+// Require MFA for S3 delete operations
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Action": "s3:DeleteObject",
+      "Resource": "arn:aws:s3:::my-app-bucket/*",
+      "Condition": {
+        "BoolIfExists": {
+          "aws:MultiFactorAuthPresent": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Testing AWS Applications
+
+### 1. LocalStack for Local Development
+```java
+// Using LocalStack for local AWS testing
+@Configuration
+@Profile("local")
+public class LocalStackConfig {
+
+    @Bean
+    public S3Client localS3Client() {
+        return S3Client.builder()
+            .endpointOverride(URI.create("http://localhost:4566"))
+            .region(Region.US_EAST_1)
+            .credentialsProvider(StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test")
+            ))
+            .build();
+    }
+}
+
+// docker-compose.yml for LocalStack
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3,dynamodb,sqs,sns
+      - DEBUG=1
+    volumes:
+      - "./init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh"
+```
+
+### 2. Integration Tests
+```java
+@SpringBootTest
+@Testcontainers
+class S3ServiceIntegrationTest {
+
+    @Container
+    static LocalStackContainer localstack = new LocalStackContainer(
+        DockerImageName.parse("localstack/localstack:latest")
+    ).withServices(LocalStackContainer.Service.S3);
+
+    private S3Client s3Client;
+
+    @BeforeEach
+    void setUp() {
+        s3Client = S3Client.builder()
+            .endpointOverride(localstack.getEndpointOverride(LocalStackContainer.Service.S3))
+            .credentialsProvider(StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("test", "test")
+            ))
+            .region(Region.US_EAST_1)
+            .build();
+
+        // Create test bucket
+        s3Client.createBucket(b -> b.bucket("test-bucket"));
+    }
+
+    @Test
+    void testUploadAndDownload() {
+        // Test your S3 operations
+        String key = "test-file.txt";
+        String content = "Hello AWS!";
+
+        s3Client.putObject(
+            PutObjectRequest.builder().bucket("test-bucket").key(key).build(),
+            RequestBody.fromString(content)
+        );
+
+        String downloaded = s3Client.getObjectAsBytes(
+            GetObjectRequest.builder().bucket("test-bucket").key(key).build()
+        ).asUtf8String();
+
+        assertEquals(content, downloaded);
+    }
+}
+```
+
+### 3. Mocking AWS SDK Calls
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private DynamoDbClient dynamoDbClient;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void testGetUser() {
+        String userId = "user123";
+        Map<String, AttributeValue> item = Map.of(
+            "userId", AttributeValue.builder().s(userId).build(),
+            "name", AttributeValue.builder().s("John Doe").build()
+        );
+
+        when(dynamoDbClient.getItem(any(GetItemRequest.class)))
+            .thenReturn(GetItemResponse.builder().item(item).build());
+
+        User user = userService.getUser(userId);
+
+        assertNotNull(user);
+        assertEquals("John Doe", user.getName());
+        verify(dynamoDbClient).getItem(any(GetItemRequest.class));
+    }
+}
+```
+
+---
+
+## Spring Boot Integration
+
+### Spring Cloud AWS
+```xml
+<!-- Maven Dependencies -->
+<dependency>
+    <groupId>io.awspring.cloud</groupId>
+    <artifactId>spring-cloud-aws-starter</artifactId>
+    <version>3.0.0</version>
+</dependency>
+```
+
+### Configuration
+```java
+// application.yml
+spring:
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        instance-profile: true # Use IAM role
+      s3:
+        enabled: true
+      sns:
+        enabled: true
+      sqs:
+        enabled: true
+
+// Auto-configured beans available
+@RestController
+public class FileController {
+
+    private final S3Template s3Template;
+
+    public FileController(S3Template s3Template) {
+        this.s3Template = s3Template;
+    }
+
+    @PostMapping("/upload")
+    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) {
+        S3Resource resource = s3Template.upload("my-bucket", file.getOriginalFilename(), file.getInputStream());
+        return ResponseEntity.ok(resource.getURL().toString());
+    }
+}
+```
+
+### SQS Listener
+```java
+@Component
+public class OrderQueueListener {
+
+    @SqsListener("order-queue")
+    public void processOrder(Order order) {
+        logger.info("Processing order: {}", order.getId());
+        // Process order logic
+    }
+
+    // With message attributes
+    @SqsListener("notification-queue")
+    public void processNotification(
+        @Payload String message,
+        @Header("MessageId") String messageId,
+        @Header("ApproximateReceiveCount") int receiveCount
+    ) {
+        logger.info("Received message {} (attempt {})", messageId, receiveCount);
+    }
+}
+```
+
+### SNS Publishing
+```java
+@Service
+public class NotificationService {
+
+    private final SnsTemplate snsTemplate;
+
+    public NotificationService(SnsTemplate snsTemplate) {
+        this.snsTemplate = snsTemplate;
+    }
+
+    public void sendNotification(String topicName, String message) {
+        snsTemplate.sendNotification(topicName, message, "Order Update");
+    }
+}
+```
+
+---
+
+## Performance Optimization Checklist
+
+### Application Level
+- ✅ Use connection pooling for databases
+- ✅ Implement caching (ElastiCache, in-memory)
+- ✅ Use async operations where possible
+- ✅ Batch operations (DynamoDB BatchGetItem, BatchWriteItem)
+- ✅ Optimize Lambda cold starts (reduce package size, use provisioned concurrency)
+- ✅ Use streaming for large S3 objects
+
+### Database Level
+- ✅ Create appropriate indexes (DynamoDB GSI, RDS indexes)
+- ✅ Use connection pooling (HikariCP)
+- ✅ Implement read replicas for read-heavy workloads
+- ✅ Use DynamoDB DAX for microsecond latency
+- ✅ Optimize query patterns
+
+### Network Level
+- ✅ Use CloudFront for static content
+- ✅ Enable compression (gzip)
+- ✅ Use VPC endpoints to avoid internet gateway
+- ✅ Keep resources in same region/AZ when possible
+- ✅ Use API Gateway caching
+
+---
+
+## Quick Reference: Service Selection Guide
+
+### Compute
+| Need | Use |
+|------|-----|
+| Serverless functions | Lambda |
+| Full server control | EC2 |
+| Easy deployment | Elastic Beanstalk |
+| Containers (simple) | ECS |
+| Containers (K8s) | EKS |
+
+### Storage
+| Need | Use |
+|------|-----|
+| Object storage | S3 |
+| Block storage | EBS |
+| Shared file system | EFS |
+
+### Database
+| Need | Use |
+|------|-----|
+| Relational DB | RDS |
+| NoSQL (key-value) | DynamoDB |
+| In-memory cache | ElastiCache |
+| Graph database | Neptune |
+
+### Messaging
+| Need | Use |
+|------|-----|
+| Queue | SQS |
+| Pub/Sub | SNS |
+| Event bus | EventBridge |
+| Streaming | Kinesis |
+
+---
+
+## Conclusion
+
+As a Java developer, AWS provides powerful tools to build scalable, reliable, and cost-effective applications. Key takeaways:
+
+1. **Start with managed services** (RDS, Lambda, DynamoDB) to reduce operational overhead
+2. **Use IAM roles** instead of hardcoded credentials
+3. **Implement proper error handling and retries**
+4. **Monitor everything** with CloudWatch and X-Ray
+5. **Test locally** using LocalStack or Testcontainers
+6. **Optimize for cost** by right-sizing resources and using appropriate storage classes
+7. **Follow security best practices** from day one
+8. **Leverage Spring Cloud AWS** for easier integration
+
+### Next Steps
+- Set up AWS account and create IAM user
+- Install AWS CLI and configure credentials
+- Try AWS SDK examples in this guide
+- Build a simple Spring Boot app with S3 and DynamoDB
+- Explore AWS Free Tier services
+- Take AWS Certified Developer - Associate exam
+
+### Useful Resources
+- AWS SDK for Java Documentation: https://docs.aws.amazon.com/sdk-for-java/
+- Spring Cloud AWS: https://spring.io/projects/spring-cloud-aws
+- AWS Samples GitHub: https://github.com/aws-samples
+- AWS Java Developer Guide: https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/
+
+---
+
+*Last Updated: November 2025*
