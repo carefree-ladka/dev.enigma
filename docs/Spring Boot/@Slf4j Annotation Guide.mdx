@@ -1,0 +1,693 @@
+# @Slf4j Annotation Guide
+
+## Overview
+
+`@Slf4j` is a Lombok annotation that automatically generates a logger field in your class. It eliminates boilerplate code for logger initialization and provides a clean, consistent way to add logging to your applications.
+
+## What is SLF4J?
+
+**SLF4J** (Simple Logging Facade for Java) is a logging facade that provides a simple abstraction for various logging frameworks like Logback, Log4j2, and Java Util Logging. It allows you to switch logging implementations without changing your code.
+
+## Setup
+
+### Maven Dependencies
+
+```xml
+<dependencies>
+    <!-- Lombok -->
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>1.18.30</version>
+        <scope>provided</scope>
+    </dependency>
+
+    <!-- SLF4J API -->
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>2.0.9</version>
+    </dependency>
+
+    <!-- Logback (SLF4J Implementation) - Spring Boot includes this by default -->
+    <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.4.11</version>
+    </dependency>
+</dependencies>
+```
+
+### Gradle Dependencies
+
+```gradle
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'ch.qos.logback:logback-classic:1.4.11'
+}
+```
+
+**Note:** Spring Boot Starter already includes SLF4J and Logback, so you only need to add Lombok.
+
+## Basic Usage
+
+### Without @Slf4j (Traditional Way)
+
+```java
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    public void createUser(String username) {
+        log.info("Creating user: {}", username);
+        // Business logic
+        log.debug("User created successfully");
+    }
+}
+```
+
+### With @Slf4j (Lombok Way)
+
+```java
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class UserService {
+
+    public void createUser(String username) {
+        log.info("Creating user: {}", username);
+        // Business logic
+        log.debug("User created successfully");
+    }
+}
+```
+
+**Benefits:**
+- No need to declare logger field manually
+- Less boilerplate code
+- Consistent logger naming across classes
+- Reduces copy-paste errors
+
+## Logging Levels
+
+SLF4J supports five logging levels in order of severity:
+
+```java
+@Slf4j
+public class LoggingExample {
+
+    public void demonstrateLevels() {
+        // TRACE - Very detailed information, typically for diagnosing problems
+        log.trace("Entering method with parameters: x={}, y={}", x, y);
+
+        // DEBUG - Detailed information for debugging
+        log.debug("Processing item: {}", item);
+
+        // INFO - Informational messages about application progress
+        log.info("Application started successfully");
+
+        // WARN - Potentially harmful situations
+        log.warn("Configuration file not found, using defaults");
+
+        // ERROR - Error events that might still allow application to continue
+        log.error("Failed to connect to database: {}", e.getMessage());
+    }
+}
+```
+
+## Parameterized Logging (Best Practice)
+
+Always use parameterized logging instead of string concatenation for better performance.
+
+### ❌ Bad Practice
+
+```java
+@Slf4j
+public class BadExample {
+
+    public void processOrder(Order order) {
+        // String concatenation - Always evaluated even if logging is disabled
+        log.debug("Processing order: " + order.getId() + " for user: " + order.getUserId());
+
+        // Using toString() unnecessarily
+        log.info("Order details: " + order.toString());
+    }
+}
+```
+
+### ✅ Good Practice
+
+```java
+@Slf4j
+public class GoodExample {
+
+    public void processOrder(Order order) {
+        // Parameterized logging - Only evaluated if logging level is enabled
+        log.debug("Processing order: {} for user: {}", order.getId(), order.getUserId());
+
+        // Object is converted to string only if needed
+        log.info("Order details: {}", order);
+    }
+}
+```
+
+## Exception Logging
+
+### Logging Exceptions
+
+```java
+@Slf4j
+public class PaymentService {
+
+    public void processPayment(Payment payment) {
+        try {
+            // Payment processing logic
+            chargeCard(payment);
+            log.info("Payment processed successfully: {}", payment.getId());
+
+        } catch (PaymentException e) {
+            // Log exception with message
+            log.error("Payment processing failed for payment: {}", payment.getId(), e);
+            throw e;
+
+        } catch (Exception e) {
+            // Log unexpected exceptions
+            log.error("Unexpected error during payment processing", e);
+            throw new RuntimeException("Payment failed", e);
+        }
+    }
+
+    public void refundPayment(String paymentId) {
+        try {
+            processRefund(paymentId);
+        } catch (RefundException e) {
+            // Log with context
+            log.error("Refund failed for payment: {}. Reason: {}",
+                      paymentId, e.getMessage(), e);
+        }
+    }
+}
+```
+
+### Exception with Custom Message
+
+```java
+@Slf4j
+public class FileProcessor {
+
+    public void readFile(String filename) {
+        try {
+            Files.readString(Path.of(filename));
+        } catch (IOException e) {
+            // Custom message with exception
+            log.error("Unable to read file: {}. Error: {}", filename, e.getMessage(), e);
+        }
+    }
+}
+```
+
+## Conditional Logging
+
+Check if logging is enabled before expensive operations.
+
+```java
+@Slf4j
+public class PerformanceExample {
+
+    public void processLargeDataset(List<Data> dataset) {
+
+        // Check if debug is enabled before expensive operation
+        if (log.isDebugEnabled()) {
+            String summary = generateExpensiveSummary(dataset);
+            log.debug("Dataset summary: {}", summary);
+        }
+
+        // Check trace level
+        if (log.isTraceEnabled()) {
+            log.trace("Full dataset: {}", serializeDataset(dataset));
+        }
+
+        // Process dataset
+        dataset.forEach(this::processItem);
+    }
+
+    private String generateExpensiveSummary(List<Data> dataset) {
+        // Expensive computation
+        return dataset.stream()
+                .map(Data::toString)
+                .collect(Collectors.joining(", "));
+    }
+}
+```
+
+## Spring Boot Integration
+
+### Service Layer
+
+```java
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    public User createUser(UserDto userDto) {
+        log.info("Creating new user with email: {}", userDto.getEmail());
+
+        try {
+            User user = new User();
+            user.setEmail(userDto.getEmail());
+            user.setName(userDto.getName());
+
+            User savedUser = userRepository.save(user);
+
+            log.info("User created successfully with ID: {}", savedUser.getId());
+            return savedUser;
+
+        } catch (DataIntegrityViolationException e) {
+            log.error("Failed to create user. Email already exists: {}",
+                      userDto.getEmail(), e);
+            throw new UserAlreadyExistsException("User with this email already exists");
+        } catch (Exception e) {
+            log.error("Unexpected error creating user: {}", userDto.getEmail(), e);
+            throw new RuntimeException("Failed to create user", e);
+        }
+    }
+
+    public Optional<User> getUserById(Long id) {
+        log.debug("Fetching user by ID: {}", id);
+        Optional<User> user = userRepository.findById(id);
+
+        if (user.isEmpty()) {
+            log.warn("User not found with ID: {}", id);
+        }
+
+        return user;
+    }
+
+    public void deleteUser(Long id) {
+        log.info("Deleting user with ID: {}", id);
+
+        if (!userRepository.existsById(id)) {
+            log.warn("Attempted to delete non-existent user: {}", id);
+            throw new UserNotFoundException("User not found");
+        }
+
+        userRepository.deleteById(id);
+        log.info("User deleted successfully: {}", id);
+    }
+}
+```
+
+### REST Controller
+
+```java
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @PostMapping
+    public ResponseEntity<User> createUser(@RequestBody UserDto userDto) {
+        log.info("Received request to create user: {}", userDto.getEmail());
+
+        User user = userService.createUser(userDto);
+
+        log.debug("Returning created user response: {}", user.getId());
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        log.debug("GET request for user ID: {}", id);
+
+        return userService.getUserById(id)
+                .map(user -> {
+                    log.debug("User found: {}", id);
+                    return ResponseEntity.ok(user);
+                })
+                .orElseGet(() -> {
+                    log.warn("User not found: {}", id);
+                    return ResponseEntity.notFound().build();
+                });
+    }
+}
+```
+
+### Configuration Class
+
+```java
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Slf4j
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public RestTemplate restTemplate() {
+        log.info("Initializing RestTemplate bean");
+        RestTemplate restTemplate = new RestTemplate();
+        log.debug("RestTemplate configured with default settings");
+        return restTemplate;
+    }
+
+    @PostConstruct
+    public void init() {
+        log.info("Application configuration initialized");
+    }
+}
+```
+
+## Advanced Usage
+
+### Logging with MDC (Mapped Diagnostic Context)
+
+Add contextual information to logs across multiple method calls.
+
+```java
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+
+@Slf4j
+public class OrderProcessor {
+
+    public void processOrder(Order order) {
+        // Add order ID to MDC
+        MDC.put("orderId", order.getId().toString());
+        MDC.put("userId", order.getUserId().toString());
+
+        try {
+            log.info("Starting order processing");
+            validateOrder(order);
+            chargePayment(order);
+            fulfillOrder(order);
+            log.info("Order processing completed");
+
+        } finally {
+            // Always clean up MDC
+            MDC.clear();
+        }
+    }
+
+    private void validateOrder(Order order) {
+        log.debug("Validating order");
+        // Validation logic
+    }
+
+    private void chargePayment(Order order) {
+        log.info("Charging payment amount: {}", order.getAmount());
+        // Payment logic
+    }
+}
+```
+
+**Logback configuration for MDC:**
+```xml
+<pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} [orderId=%X{orderId}] - %msg%n</pattern>
+```
+
+### Logging with Markers
+
+Use markers to categorize and filter logs.
+
+```java
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
+@Slf4j
+public class SecurityService {
+
+    private static final Marker SECURITY = MarkerFactory.getMarker("SECURITY");
+    private static final Marker AUDIT = MarkerFactory.getMarker("AUDIT");
+
+    public void authenticateUser(String username, String password) {
+        log.info(SECURITY, "Authentication attempt for user: {}", username);
+
+        if (authenticate(username, password)) {
+            log.info(AUDIT, "User logged in successfully: {}", username);
+        } else {
+            log.warn(SECURITY, "Failed authentication attempt for user: {}", username);
+        }
+    }
+
+    public void performSensitiveOperation(String userId, String operation) {
+        log.info(AUDIT, "User {} performed operation: {}", userId, operation);
+    }
+}
+```
+
+### Structured Logging with JSON
+
+```java
+import lombok.extern.slf4j.Slf4j;
+import net.logstash.logback.argument.StructuredArguments;
+
+@Slf4j
+public class StructuredLoggingExample {
+
+    public void processTransaction(Transaction transaction) {
+        // Using structured arguments for better log parsing
+        log.info("Processing transaction",
+                StructuredArguments.keyValue("transactionId", transaction.getId()),
+                StructuredArguments.keyValue("amount", transaction.getAmount()),
+                StructuredArguments.keyValue("currency", transaction.getCurrency()),
+                StructuredArguments.keyValue("status", transaction.getStatus())
+        );
+    }
+}
+```
+
+## Other Lombok Logging Annotations
+
+Lombok provides annotations for different logging frameworks:
+
+```java
+// SLF4J (most common)
+@Slf4j
+public class MyClass { }
+
+// Java Util Logging
+@Log
+public class MyClass { }
+
+// Log4j
+@Log4j
+public class MyClass { }
+
+// Log4j2
+@Log4j2
+public class MyClass { }
+
+// Apache Commons Logging
+@CommonsLog
+public class MyClass { }
+
+// XSlf4j (Extended SLF4J)
+@XSlf4j
+public class MyClass { }
+
+// JBoss Logging
+@JBossLog
+public class MyClass { }
+
+// Flogger (Google)
+@Flogger
+public class MyClass { }
+```
+
+## Configuration Examples
+
+### application.yml (Spring Boot)
+
+```yaml
+logging:
+  level:
+    root: INFO
+    com.mycompany: DEBUG
+    com.mycompany.service: TRACE
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 30
+```
+
+### logback-spring.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Console Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/application-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Root Logger -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Package-specific logging -->
+    <logger name="com.mycompany.service" level="DEBUG" />
+    <logger name="org.springframework.web" level="INFO" />
+
+</configuration>
+```
+
+## Best Practices
+
+1. **Use Parameterized Logging**: Always use `{}` placeholders instead of string concatenation
+   ```java
+   log.info("User {} logged in", username); // Good
+   log.info("User " + username + " logged in"); // Bad
+   ```
+
+2. **Choose Appropriate Log Levels**:
+   - **TRACE**: Very detailed, method entry/exit
+   - **DEBUG**: Debugging information
+   - **INFO**: Important business events
+   - **WARN**: Recoverable issues
+   - **ERROR**: Serious problems
+
+3. **Log Exceptions Properly**: Always pass exception as last parameter
+   ```java
+   log.error("Failed to process: {}", id, exception);
+   ```
+
+4. **Use Conditional Logging for Expensive Operations**:
+   ```java
+   if (log.isDebugEnabled()) {
+       log.debug("Complex data: {}", expensiveMethod());
+   }
+   ```
+
+5. **Don't Log Sensitive Information**: Avoid logging passwords, tokens, credit cards, PII
+   ```java
+   log.info("User login: {}", user.getEmail()); // Good
+   log.info("User login: {} with password: {}", user.getEmail(), password); // Bad
+   ```
+
+6. **Add Context**: Include relevant identifiers in log messages
+   ```java
+   log.error("Payment failed for order: {}, user: {}", orderId, userId);
+   ```
+
+7. **Be Consistent**: Use same logging style across your application
+
+8. **Don't Over-Log**: Avoid logging in tight loops or high-frequency methods
+
+9. **Clean Up MDC**: Always clear MDC in finally blocks
+
+10. **Test Logging Configuration**: Verify logs appear in correct locations
+
+## Common Pitfalls to Avoid
+
+```java
+@Slf4j
+public class CommonMistakes {
+
+    // ❌ DON'T: String concatenation
+    public void bad1(String user) {
+        log.info("Processing: " + user);
+    }
+
+    // ✅ DO: Parameterized logging
+    public void good1(String user) {
+        log.info("Processing: {}", user);
+    }
+
+    // ❌ DON'T: Missing exception parameter
+    public void bad2() {
+        try {
+            riskyOperation();
+        } catch (Exception e) {
+            log.error("Error: " + e.getMessage()); // Stack trace lost!
+        }
+    }
+
+    // ✅ DO: Include exception
+    public void good2() {
+        try {
+            riskyOperation();
+        } catch (Exception e) {
+            log.error("Error occurred", e); // Full stack trace logged
+        }
+    }
+
+    // ❌ DON'T: Log and rethrow without adding value
+    public void bad3() throws Exception {
+        try {
+            process();
+        } catch (Exception e) {
+            log.error("Error", e);
+            throw e; // Creates duplicate logs up the call stack
+        }
+    }
+
+    // ✅ DO: Log at the appropriate level
+    public void good3() throws Exception {
+        try {
+            process();
+        } catch (Exception e) {
+            log.debug("Process failed, rethrowing", e);
+            throw e;
+        }
+    }
+}
+```
+
+## Summary
+
+`@Slf4j` is a powerful Lombok annotation that simplifies logging in Java applications. It provides:
+
+- **Clean code**: No boilerplate logger declarations
+- **Consistency**: Same logger setup across all classes
+- **Flexibility**: Easy to switch logging implementations
+- **Performance**: Parameterized logging avoids unnecessary string operations
+- **Integration**: Works seamlessly with Spring Boot and other frameworks
+
+By following best practices and using appropriate log levels, you can create maintainable, debuggable applications with effective logging strategies.
