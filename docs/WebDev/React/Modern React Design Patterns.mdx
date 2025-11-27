@@ -1,0 +1,534 @@
+# Modern React Design Patterns
+
+A comprehensive guide to contemporary React patterns and best practices for building maintainable, scalable applications.
+
+---
+
+## 1. Component Composition Patterns
+
+### Compound Components
+
+Create components that work together seamlessly while maintaining a flexible API.
+
+```jsx
+const Card = ({ children }) => <div className="card">{children}</div>;
+Card.Header = ({ children }) => <div className="card-header">{children}</div>;
+Card.Body = ({ children }) => <div className="card-body">{children}</div>;
+Card.Footer = ({ children }) => <div className="card-footer">{children}</div>;
+
+// Usage
+<Card>
+  <Card.Header>Title</Card.Header>
+  <Card.Body>Content</Card.Body>
+  <Card.Footer>Actions</Card.Footer>
+</Card>
+```
+
+### Children as a Function (Render Props)
+
+Pass rendering logic to child components for maximum flexibility.
+
+```jsx
+const DataFetcher = ({ url, children }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setData(data);
+        setLoading(false);
+      });
+  }, [url]);
+
+  return children({ data, loading });
+};
+
+// Usage
+<DataFetcher url="/api/users">
+  {({ data, loading }) =>
+    loading ? <Spinner /> : <UserList users={data} />
+  }
+</DataFetcher>
+```
+
+---
+
+## 2. Custom Hooks Patterns
+
+### Encapsulate Reusable Logic
+
+Extract common stateful logic into custom hooks.
+
+```jsx
+const useToggle = (initialValue = false) => {
+  const [value, setValue] = useState(initialValue);
+
+  const toggle = useCallback(() => setValue(v => !v), []);
+  const setTrue = useCallback(() => setValue(true), []);
+  const setFalse = useCallback(() => setValue(false), []);
+
+  return [value, { toggle, setTrue, setFalse }];
+};
+
+// Usage
+const Modal = () => {
+  const [isOpen, { toggle, setFalse }] = useToggle();
+
+  return (
+    <>
+      <button onClick={toggle}>Open Modal</button>
+      {isOpen && <ModalContent onClose={setFalse} />}
+    </>
+  );
+};
+```
+
+### Fetching with useQuery Pattern
+
+```jsx
+const useQuery = (url, options = {}) => {
+  const [state, setState] = useState({
+    data: null,
+    loading: true,
+    error: null
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        const response = await fetch(url, options);
+        const json = await response.json();
+
+        if (!cancelled) {
+          setState({ data: json, loading: false, error: null });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setState({ data: null, loading: false, error });
+        }
+      }
+    };
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  return state;
+};
+```
+
+---
+
+## 3. State Management Patterns
+
+### Context with useReducer
+
+Manage complex state logic with predictable updates.
+
+```jsx
+const AuthContext = createContext();
+
+const authReducer = (state, action) => {
+  switch (action.type) {
+    case 'LOGIN':
+      return { ...state, user: action.payload, isAuthenticated: true };
+    case 'LOGOUT':
+      return { ...state, user: null, isAuthenticated: false };
+    case 'UPDATE_PROFILE':
+      return { ...state, user: { ...state.user, ...action.payload } };
+    default:
+      return state;
+  }
+};
+
+export const AuthProvider = ({ children }) => {
+  const [state, dispatch] = useReducer(authReducer, {
+    user: null,
+    isAuthenticated: false
+  });
+
+  const login = useCallback((user) => {
+    dispatch({ type: 'LOGIN', payload: user });
+  }, []);
+
+  const logout = useCallback(() => {
+    dispatch({ type: 'LOGOUT' });
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ ...state, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+```
+
+### Zustand-style Store Pattern
+
+Create lightweight stores without Context API overhead.
+
+```jsx
+const createStore = (initialState) => {
+  let state = initialState;
+  const listeners = new Set();
+
+  const getState = () => state;
+
+  const setState = (partial) => {
+    state = typeof partial === 'function' ? partial(state) : { ...state, ...partial };
+    listeners.forEach(listener => listener(state));
+  };
+
+  const subscribe = (listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+
+  return { getState, setState, subscribe };
+};
+
+const useStore = (store, selector = s => s) => {
+  const [state, setState] = useState(() => selector(store.getState()));
+
+  useEffect(() => {
+    return store.subscribe((newState) => {
+      setState(selector(newState));
+    });
+  }, [store, selector]);
+
+  return state;
+};
+```
+
+---
+
+## 4. Performance Optimization Patterns
+
+### Memoization Strategy
+
+Use memoization judiciously to prevent unnecessary re-renders.
+
+```jsx
+const ExpensiveComponent = memo(({ data, onAction }) => {
+  const processedData = useMemo(() => {
+    return data.map(item => heavyComputation(item));
+  }, [data]);
+
+  const handleAction = useCallback((id) => {
+    onAction(id);
+  }, [onAction]);
+
+  return (
+    <div>
+      {processedData.map(item => (
+        <Item key={item.id} {...item} onClick={handleAction} />
+      ))}
+    </div>
+  );
+});
+```
+
+### Virtual Lists for Large Datasets
+
+```jsx
+const VirtualList = ({ items, itemHeight, containerHeight }) => {
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const visibleStart = Math.floor(scrollTop / itemHeight);
+  const visibleEnd = Math.ceil((scrollTop + containerHeight) / itemHeight);
+  const visibleItems = items.slice(visibleStart, visibleEnd);
+
+  return (
+    <div
+      style={{ height: containerHeight, overflow: 'auto' }}
+      onScroll={(e) => setScrollTop(e.target.scrollTop)}
+    >
+      <div style={{ height: items.length * itemHeight, position: 'relative' }}>
+        {visibleItems.map((item, index) => (
+          <div
+            key={item.id}
+            style={{
+              position: 'absolute',
+              top: (visibleStart + index) * itemHeight,
+              height: itemHeight
+            }}
+          >
+            {item.content}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## 5. Error Handling Patterns
+
+### Error Boundaries
+
+Catch and handle errors gracefully in component trees.
+
+```jsx
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || <ErrorFallback error={this.state.error} />;
+    }
+    return this.props.children;
+  }
+}
+
+// Usage
+<ErrorBoundary fallback={<ErrorMessage />}>
+  <MyComponent />
+</ErrorBoundary>
+```
+
+### Async Error Handling Hook
+
+```jsx
+const useAsyncError = () => {
+  const [, setError] = useState();
+
+  return useCallback((error) => {
+    setError(() => { throw error; });
+  }, []);
+};
+
+// Usage in async operations
+const MyComponent = () => {
+  const throwError = useAsyncError();
+
+  const fetchData = async () => {
+    try {
+      await fetch('/api/data');
+    } catch (error) {
+      throwError(error); // Will be caught by Error Boundary
+    }
+  };
+};
+```
+
+---
+
+## 6. Form Management Patterns
+
+### Controlled Components with Validation
+
+```jsx
+const useForm = (initialValues, validate) => {
+  const [values, setValues] = useState(initialValues);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setValues(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+
+    if (validate) {
+      const fieldErrors = validate(values);
+      setErrors(fieldErrors);
+    }
+  };
+
+  const handleSubmit = (onSubmit) => (e) => {
+    e.preventDefault();
+    const validationErrors = validate ? validate(values) : {};
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length === 0) {
+      onSubmit(values);
+    }
+  };
+
+  return {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    handleSubmit
+  };
+};
+```
+
+---
+
+## 7. Code Splitting Patterns
+
+### Route-based Lazy Loading
+
+```jsx
+const Home = lazy(() => import('./pages/Home'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+
+const App = () => (
+  <Router>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+    </Suspense>
+  </Router>
+);
+```
+
+### Component-level Lazy Loading
+
+```jsx
+const LazyComponent = ({ shouldLoad, loader, fallback }) => {
+  const [Component, setComponent] = useState(null);
+
+  useEffect(() => {
+    if (shouldLoad && !Component) {
+      loader().then(module => setComponent(() => module.default));
+    }
+  }, [shouldLoad, loader, Component]);
+
+  if (!Component) return fallback || null;
+  return <Component />;
+};
+```
+
+---
+
+## 8. Server Components Patterns (React 18+)
+
+### Mixing Server and Client Components
+
+```jsx
+// ServerComponent.server.jsx
+async function ServerComponent() {
+  const data = await fetchFromDatabase();
+
+  return (
+    <div>
+      <h1>Server Rendered Data</h1>
+      <ClientComponent data={data} />
+    </div>
+  );
+}
+
+// ClientComponent.client.jsx
+'use client';
+
+function ClientComponent({ data }) {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>Client state: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>Increment</button>
+      <DataDisplay data={data} />
+    </div>
+  );
+}
+```
+
+---
+
+## 9. Testing Patterns
+
+### Custom Render Function
+
+```jsx
+const customRender = (ui, { initialState, ...options } = {}) => {
+  const Wrapper = ({ children }) => (
+    <Provider store={createStore(initialState)}>
+      <Router>
+        {children}
+      </Router>
+    </Provider>
+  );
+
+  return render(ui, { wrapper: Wrapper, ...options });
+};
+
+// Usage
+test('component works', () => {
+  customRender(<MyComponent />, {
+    initialState: { user: mockUser }
+  });
+
+  expect(screen.getByText(/welcome/i)).toBeInTheDocument();
+});
+```
+
+---
+
+## 10. TypeScript Patterns
+
+### Generic Component Props
+
+```typescript
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => ReactNode;
+  keyExtractor: (item: T) => string | number;
+}
+
+function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
+  return (
+    <div>
+      {items.map(item => (
+        <div key={keyExtractor(item)}>
+          {renderItem(item)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Usage with type inference
+<List
+  items={users}
+  renderItem={(user) => <UserCard user={user} />}
+  keyExtractor={(user) => user.id}
+/>
+```
+
+---
+
+## Best Practices Summary
+
+1. **Composition over Configuration**: Build flexible components through composition
+2. **Custom Hooks**: Extract reusable logic into well-named hooks
+3. **Memoization**: Use strategically, not by default
+4. **Error Boundaries**: Wrap critical sections of your app
+5. **Code Splitting**: Load code progressively based on routes or user actions
+6. **Type Safety**: Leverage TypeScript for better developer experience
+7. **Testing**: Write tests that resemble how users interact with your app
+8. **Separation of Concerns**: Keep server logic separate from client interactivity
+
+---
+
+**Remember**: Patterns are tools, not rules. Choose patterns that solve your specific problems and align with your team's expertise.

@@ -1,0 +1,603 @@
+# React 19+ Features Guide
+
+A comprehensive overview of the latest features and improvements in React 19 and beyond.
+
+---
+
+## 1. React Compiler (Automatic Memoization)
+
+React 19 introduces an automatic compiler that optimizes your components without manual memoization.
+
+### What It Does
+
+The React Compiler automatically memoizes components and hooks, eliminating the need for `useMemo`, `useCallback`, and `memo` in most cases.
+
+```jsx
+// Before React 19 - Manual optimization
+const ExpensiveComponent = memo(({ data, onAction }) => {
+  const processedData = useMemo(() => {
+    return data.map(item => expensiveOperation(item));
+  }, [data]);
+
+  const handleClick = useCallback(() => {
+    onAction();
+  }, [onAction]);
+
+  return <div onClick={handleClick}>{processedData}</div>;
+});
+
+// React 19 - Compiler handles it automatically
+const ExpensiveComponent = ({ data, onAction }) => {
+  const processedData = data.map(item => expensiveOperation(item));
+
+  const handleClick = () => {
+    onAction();
+  };
+
+  return <div onClick={handleClick}>{processedData}</div>;
+};
+```
+
+### Benefits
+
+- Write simpler, more readable code
+- Compiler optimizes based on actual usage patterns
+- No more manual performance tuning for most cases
+- Better optimization than manual memoization in many scenarios
+
+---
+
+## 2. Actions and useTransition Enhancements
+
+React 19 significantly improves the Actions API for handling async operations.
+
+### useActionState Hook (Replaces useFormState)
+
+```jsx
+import { useActionState } from 'react';
+
+function SignupForm() {
+  const [state, submitAction, isPending] = useActionState(
+    async (prevState, formData) => {
+      const email = formData.get('email');
+      const password = formData.get('password');
+
+      try {
+        await signup(email, password);
+        return { success: true, message: 'Account created!' };
+      } catch (error) {
+        return { success: false, message: error.message };
+      }
+    },
+    { success: null, message: '' }
+  );
+
+  return (
+    <form action={submitAction}>
+      <input name="email" type="email" required />
+      <input name="password" type="password" required />
+      <button disabled={isPending}>
+        {isPending ? 'Creating account...' : 'Sign up'}
+      </button>
+      {state.message && (
+        <p className={state.success ? 'success' : 'error'}>
+          {state.message}
+        </p>
+      )}
+    </form>
+  );
+}
+```
+
+### useOptimistic Hook
+
+Update UI optimistically while waiting for async operations to complete.
+
+```jsx
+import { useOptimistic } from 'react';
+
+function TodoList({ todos }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (state, newTodo) => [...state, { ...newTodo, pending: true }]
+  );
+
+  async function addTodo(formData) {
+    const title = formData.get('title');
+    const tempTodo = { id: crypto.randomUUID(), title };
+
+    addOptimisticTodo(tempTodo);
+
+    try {
+      await saveTodoToServer(tempTodo);
+    } catch (error) {
+      console.error('Failed to save todo');
+    }
+  }
+
+  return (
+    <>
+      <form action={addTodo}>
+        <input name="title" placeholder="New todo" />
+        <button>Add</button>
+      </form>
+      <ul>
+        {optimisticTodos.map(todo => (
+          <li key={todo.id} className={todo.pending ? 'pending' : ''}>
+            {todo.title}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+```
+
+---
+
+## 3. Server Actions
+
+Server Actions allow you to run server-side code directly from client components.
+
+### Basic Server Action
+
+```jsx
+// actions.js
+'use server';
+
+export async function createPost(formData) {
+  const title = formData.get('title');
+  const content = formData.get('content');
+
+  const post = await db.posts.create({
+    data: { title, content }
+  });
+
+  revalidatePath('/posts');
+  return { success: true, postId: post.id };
+}
+
+// PostForm.jsx
+'use client';
+
+import { createPost } from './actions';
+
+export function PostForm() {
+  const [state, formAction] = useActionState(createPost, null);
+
+  return (
+    <form action={formAction}>
+      <input name="title" placeholder="Post title" />
+      <textarea name="content" placeholder="Post content" />
+      <button type="submit">Create Post</button>
+      {state?.success && <p>Post created: {state.postId}</p>}
+    </form>
+  );
+}
+```
+
+### Progressive Enhancement
+
+Forms work without JavaScript when using Server Actions.
+
+```jsx
+'use server';
+
+export async function subscribe(formData) {
+  const email = formData.get('email');
+  await saveEmailToDatabase(email);
+  redirect('/thank-you');
+}
+
+// Component
+<form action={subscribe}>
+  <input name="email" type="email" required />
+  <button>Subscribe</button>
+</form>
+```
+
+---
+
+## 4. use() Hook
+
+The new `use()` hook allows you to unwrap promises and context in components.
+
+### Reading Promises
+
+```jsx
+import { use } from 'react';
+
+function UserProfile({ userPromise }) {
+  // Suspends until promise resolves
+  const user = use(userPromise);
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+// Parent component
+function App() {
+  const userPromise = fetchUser(userId);
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <UserProfile userPromise={userPromise} />
+    </Suspense>
+  );
+}
+```
+
+### Reading Context
+
+```jsx
+import { use, createContext } from 'react';
+
+const ThemeContext = createContext('light');
+
+function ThemedButton() {
+  // Can be called conditionally!
+  const theme = use(ThemeContext);
+
+  return <button className={theme}>Click me</button>;
+}
+```
+
+### Conditional Usage
+
+Unlike hooks, `use()` can be called conditionally.
+
+```jsx
+function DataDisplay({ dataPromise, showData }) {
+  // This is allowed with use()!
+  const data = showData ? use(dataPromise) : null;
+
+  return showData ? <div>{data.value}</div> : <div>Hidden</div>;
+}
+```
+
+---
+
+## 5. Enhanced Ref Handling
+
+### ref as a Prop
+
+No more `forwardRef`! Use `ref` directly as a prop.
+
+```jsx
+// Before React 19
+const MyInput = forwardRef((props, ref) => {
+  return <input ref={ref} {...props} />;
+});
+
+// React 19
+function MyInput({ ref, ...props }) {
+  return <input ref={ref} {...props} />;
+}
+
+// Usage remains the same
+<MyInput ref={inputRef} />
+```
+
+### Cleanup Functions in Refs
+
+Refs can now return cleanup functions.
+
+```jsx
+function VideoPlayer() {
+  return (
+    <video
+      ref={(node) => {
+        if (node) {
+          node.play();
+          // Cleanup function
+          return () => {
+            node.pause();
+          };
+        }
+      }}
+    />
+  );
+}
+```
+
+---
+
+## 6. Document Metadata
+
+Render `<title>`, `<meta>`, and `<link>` tags directly in components.
+
+```jsx
+function BlogPost({ post }) {
+  return (
+    <>
+      <title>{post.title} - My Blog</title>
+      <meta name="description" content={post.excerpt} />
+      <meta property="og:title" content={post.title} />
+      <meta property="og:image" content={post.coverImage} />
+      <link rel="canonical" href={`https://myblog.com/posts/${post.slug}`} />
+
+      <article>
+        <h1>{post.title}</h1>
+        <div>{post.content}</div>
+      </article>
+    </>
+  );
+}
+```
+
+### Benefits
+
+- No need for external libraries like `react-helmet`
+- Works with Server Components
+- Automatically hoisted to document head
+- Duplicate tags are automatically deduplicated
+
+---
+
+## 7. Asset Loading
+
+React 19 includes built-in support for preloading resources.
+
+### Preloading Resources
+
+```jsx
+import { preload, preinit } from 'react-dom';
+
+function MyApp() {
+  // Preload data
+  preload('/api/data.json', { as: 'fetch' });
+
+  // Preload and execute scripts
+  preinit('/analytics.js', { as: 'script' });
+
+  // Preload stylesheets
+  preload('/styles/theme.css', { as: 'style' });
+
+  return <div>My App</div>;
+}
+```
+
+### Async Scripts
+
+Scripts with `async` are deduplicated automatically.
+
+```jsx
+function MyComponent() {
+  return (
+    <>
+      <script async src="/widget.js" />
+      {/* This won't load twice even if rendered multiple times */}
+    </>
+  );
+}
+```
+
+### Stylesheet Precedence
+
+Control stylesheet loading order.
+
+```jsx
+function LayoutComponent() {
+  return (
+    <>
+      <link rel="stylesheet" href="/base.css" precedence="default" />
+      <link rel="stylesheet" href="/theme.css" precedence="high" />
+      {/* Base styles load before theme */}
+    </>
+  );
+}
+```
+
+---
+
+## 8. Improved Hydration
+
+### Selective Hydration Improvements
+
+React 19 improves selective hydration for better performance.
+
+```jsx
+function App() {
+  return (
+    <html>
+      <body>
+        {/* Critical content hydrates first */}
+        <Header />
+
+        {/* Deferred content hydrates on interaction or when visible */}
+        <Suspense fallback={<Skeleton />}>
+          <Comments />
+        </Suspense>
+
+        <Suspense fallback={<Skeleton />}>
+          <RecommendedPosts />
+        </Suspense>
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## 9. Error Handling Improvements
+
+### Error Reporting
+
+Better error messages and automatic error reporting to Error Boundaries.
+
+```jsx
+function ErrorBoundary({ children }) {
+  const [error, setError] = useState(null);
+
+  if (error) {
+    return (
+      <div>
+        <h2>Something went wrong</h2>
+        <details>
+          <summary>Error details</summary>
+          <pre>{error.message}</pre>
+          <pre>{error.stack}</pre>
+        </details>
+        <button onClick={() => setError(null)}>Try again</button>
+      </div>
+    );
+  }
+
+  return children;
+}
+```
+
+### Error Recovery
+
+```jsx
+'use client';
+
+export default function GlobalError({ error, reset }) {
+  return (
+    <html>
+      <body>
+        <h2>Something went wrong!</h2>
+        <button onClick={() => reset()}>Try again</button>
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## 10. Context Improvements
+
+### Context as a Provider
+
+No more `.Provider` - use Context directly as a component.
+
+```jsx
+import { createContext } from 'react';
+
+const ThemeContext = createContext('light');
+
+// Before React 19
+<ThemeContext.Provider value="dark">
+  <App />
+</ThemeContext.Provider>
+
+// React 19
+<ThemeContext value="dark">
+  <App />
+</ThemeContext>
+```
+
+---
+
+## 11. Support for Custom Elements
+
+Full support for Web Components and Custom Elements.
+
+```jsx
+function MyComponent() {
+  return (
+    <my-custom-element
+      customProp="value"
+      onCustomEvent={(e) => console.log(e.detail)}
+    >
+      <span slot="header">Header Content</span>
+    </my-custom-element>
+  );
+}
+```
+
+---
+
+## 12. New APIs
+
+### useFormStatus
+
+Get the status of the parent form.
+
+```jsx
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+  const { pending, data, method, action } = useFormStatus();
+
+  return (
+    <button disabled={pending}>
+      {pending ? 'Submitting...' : 'Submit'}
+    </button>
+  );
+}
+
+function MyForm() {
+  return (
+    <form action={submitAction}>
+      <input name="email" />
+      <SubmitButton />
+    </form>
+  );
+}
+```
+
+---
+
+## Migration Checklist
+
+### What to Update
+
+1. **Remove forwardRef**: Replace with direct ref props
+2. **Simplify Context**: Use Context directly instead of `.Provider`
+3. **Remove manual memoization**: Let the compiler optimize
+4. **Update to useActionState**: Replace `useFormState` calls
+5. **Add metadata**: Replace `react-helmet` with native tags
+6. **Use Server Actions**: Replace API routes for form submissions
+
+### What Stays the Same
+
+- Core hooks (useState, useEffect, etc.)
+- Component patterns and composition
+- Testing approaches
+- Most third-party libraries
+
+---
+
+## Performance Benefits
+
+React 19 brings significant performance improvements:
+
+- **50% faster hydration** on average
+- **30% smaller bundle sizes** with the compiler
+- **Instant visual feedback** with useOptimistic
+- **Better Core Web Vitals** with automatic optimization
+
+---
+
+## When to Upgrade
+
+✅ **Upgrade if you:**
+- Want automatic performance optimization
+- Use forms extensively
+- Build server-rendered applications
+- Want better developer experience
+
+⚠️ **Wait if you:**
+- Have heavily customized build tooling
+- Rely on libraries not yet compatible
+- Need to prioritize stability over new features
+
+---
+
+## Resources
+
+- [Official React 19 Documentation](https://react.dev)
+- [React Compiler Playground](https://playground.react.dev)
+- [Upgrade Guide](https://react.dev/blog)
+- [Community Discussions](https://github.com/facebook/react/discussions)
+
+---
+
+**Note**: React 19 represents a major step forward in both developer experience and application performance. The automatic compiler and improved async handling make building fast, responsive UIs easier than ever.
