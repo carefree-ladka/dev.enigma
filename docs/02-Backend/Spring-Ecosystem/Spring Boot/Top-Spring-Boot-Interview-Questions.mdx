@@ -1,0 +1,1364 @@
+---
+title: "Top Spring Boot Interview Questions & Answers"
+description: "Most asked Spring Boot interview questions with concise answers and code examples for 2025"
+sidebar_position: 15
+tags: [spring-boot, interview, java, backend, questions, answers]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Top Spring Boot Interview Questions & Answers
+
+A comprehensive collection of the most frequently asked Spring Boot interview questions with concise answers and practical code examples.
+
+---
+
+## 📋 Table of Contents
+
+1. [Spring Boot Basics](#spring-boot-basics)
+2. [Auto Configuration](#auto-configuration)
+3. [Annotations](#annotations)
+4. [Configuration & Properties](#configuration--properties)
+5. [Data Access](#data-access)
+6. [Web Development](#web-development)
+7. [Security](#security)
+8. [Testing](#testing)
+9. [Actuator & Monitoring](#actuator--monitoring)
+10. [Advanced Topics](#advanced-topics)
+
+---
+
+## Spring Boot Basics
+
+### 1. What is Spring Boot and its advantages?
+
+**Answer:** Spring Boot is a framework that simplifies Spring application development by providing:
+
+- **Auto-configuration**: Automatically configures beans based on classpath
+- **Starter dependencies**: Pre-configured dependency sets
+- **Embedded servers**: No need for external server deployment
+- **Production-ready features**: Metrics, health checks, externalized config
+
+```java
+@SpringBootApplication
+public class MyApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MyApplication.class, args);
+    }
+}
+```
+
+### 2. What is @SpringBootApplication annotation?
+
+**Answer:** It's a composite annotation combining:
+- `@Configuration`: Marks class as configuration source
+- `@EnableAutoConfiguration`: Enables auto-configuration
+- `@ComponentScan`: Scans for components in current package and sub-packages
+
+```java
+// Equivalent to:
+@Configuration
+@EnableAutoConfiguration
+@ComponentScan
+public class MyApplication { }
+```
+
+### 3. Difference between Spring and Spring Boot?
+
+**Answer:**
+
+| Spring | Spring Boot |
+|--------|-------------|
+| Manual configuration | Auto-configuration |
+| XML/Java config | Convention over configuration |
+| External server needed | Embedded server |
+| Manual dependency management | Starter dependencies |
+
+### 4. What are Spring Boot Starters?
+
+**Answer:** Pre-configured dependency descriptors that include all necessary dependencies for specific functionality.
+
+```xml
+<!-- Web starter includes Spring MVC, Tomcat, Jackson, etc. -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+
+<!-- Data JPA starter includes Hibernate, JPA, etc. -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+```
+
+### 5. How does Spring Boot work internally?
+
+**Answer:**
+1. `@SpringBootApplication` triggers auto-configuration
+2. Scans classpath for dependencies
+3. Creates beans based on conditions (`@ConditionalOn*`)
+4. Starts embedded server
+5. Deploys application
+
+---
+
+## Auto Configuration
+
+### 6. What is Auto Configuration in Spring Boot?
+
+**Answer:** Automatic configuration of beans based on classpath dependencies and existing beans.
+
+```java
+@Configuration
+@ConditionalOnClass(DataSource.class)
+@ConditionalOnMissingBean(DataSource.class)
+public class DataSourceAutoConfiguration {
+    
+    @Bean
+    public DataSource dataSource() {
+        return new HikariDataSource();
+    }
+}
+```
+
+### 7. How to disable specific auto-configuration?
+
+**Answer:**
+
+<Tabs>
+<TabItem value="annotation" label="Using Annotation">
+
+```java
+@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+public class MyApplication { }
+```
+
+</TabItem>
+<TabItem value="properties" label="Using Properties">
+
+```properties
+spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+```
+
+</TabItem>
+</Tabs>
+
+### 8. What are Conditional annotations?
+
+**Answer:** Annotations that conditionally create beans:
+
+```java
+@ConditionalOnClass(Redis.class)          // If Redis class exists
+@ConditionalOnMissingBean(RedisTemplate.class) // If bean doesn't exist
+@ConditionalOnProperty(name = "redis.enabled", havingValue = "true")
+@ConditionalOnWebApplication              // If web application
+@ConditionalOnProfile("dev")              // If profile is active
+```
+
+### 9. How to create custom auto-configuration?
+
+**Answer:**
+
+```java
+@Configuration
+@ConditionalOnClass(MyService.class)
+@EnableConfigurationProperties(MyProperties.class)
+public class MyAutoConfiguration {
+    
+    @Bean
+    @ConditionalOnMissingBean
+    public MyService myService(MyProperties properties) {
+        return new MyService(properties);
+    }
+}
+```
+
+Create `META-INF/spring.factories`:
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.example.MyAutoConfiguration
+```
+
+---
+
+## Annotations
+
+### 10. Explain @RestController vs @Controller
+
+**Answer:**
+
+<Tabs>
+<TabItem value="controller" label="@Controller">
+
+```java
+@Controller
+public class UserController {
+    
+    @RequestMapping("/users")
+    @ResponseBody  // Need this for JSON response
+    public List<User> getUsers() {
+        return userService.getAllUsers();
+    }
+}
+```
+
+</TabItem>
+<TabItem value="restcontroller" label="@RestController">
+
+```java
+@RestController  // @Controller + @ResponseBody
+public class UserController {
+    
+    @GetMapping("/users")  // No need for @ResponseBody
+    public List<User> getUsers() {
+        return userService.getAllUsers();
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### 11. What is @RequestMapping and its variants?
+
+**Answer:**
+
+```java
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+    
+    @GetMapping("/{id}")           // GET /api/users/1
+    public User getUser(@PathVariable Long id) { }
+    
+    @PostMapping                   // POST /api/users
+    public User createUser(@RequestBody User user) { }
+    
+    @PutMapping("/{id}")          // PUT /api/users/1
+    public User updateUser(@PathVariable Long id, @RequestBody User user) { }
+    
+    @DeleteMapping("/{id}")       // DELETE /api/users/1
+    public void deleteUser(@PathVariable Long id) { }
+    
+    @PatchMapping("/{id}")        // PATCH /api/users/1
+    public User patchUser(@PathVariable Long id, @RequestBody Map<String, Object> updates) { }
+}
+```
+
+### 12. Explain @Autowired and its alternatives
+
+**Answer:**
+
+<Tabs>
+<TabItem value="field" label="Field Injection">
+
+```java
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository; // Not recommended
+}
+```
+
+</TabItem>
+<TabItem value="constructor" label="Constructor Injection (Recommended)">
+
+```java
+@Service
+public class UserService {
+    private final UserRepository userRepository;
+    
+    public UserService(UserRepository userRepository) { // @Autowired optional
+        this.userRepository = userRepository;
+    }
+}
+```
+
+</TabItem>
+<TabItem value="setter" label="Setter Injection">
+
+```java
+@Service
+public class UserService {
+    private UserRepository userRepository;
+    
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### 13. What is @Value annotation?
+
+**Answer:** Injects values from properties files or expressions:
+
+```java
+@Component
+public class AppConfig {
+    
+    @Value("${app.name}")
+    private String appName;
+    
+    @Value("${app.timeout:30}")  // Default value 30
+    private int timeout;
+    
+    @Value("#{systemProperties['java.home']}")  // SpEL expression
+    private String javaHome;
+    
+    @Value("${app.features}")
+    private List<String> features;  // Comma-separated values
+}
+```
+
+### 14. Explain @ConfigurationProperties
+
+**Answer:** Type-safe configuration properties binding:
+
+```java
+@ConfigurationProperties(prefix = "app.database")
+@Component
+public class DatabaseProperties {
+    private String url;
+    private String username;
+    private String password;
+    private int maxConnections = 10;
+    
+    // Getters and setters
+}
+```
+
+```yaml
+app:
+  database:
+    url: jdbc:mysql://localhost:3306/mydb
+    username: user
+    password: pass
+    max-connections: 20
+```
+
+---
+
+## Configuration & Properties
+
+### 15. What are Spring Boot Profiles?
+
+**Answer:** Environment-specific configurations:
+
+<Tabs>
+<TabItem value="properties" label="Properties Files">
+
+```properties
+# application.properties (default)
+spring.profiles.active=dev
+
+# application-dev.properties
+server.port=8080
+logging.level.com.example=DEBUG
+
+# application-prod.properties
+server.port=80
+logging.level.com.example=WARN
+```
+
+</TabItem>
+<TabItem value="yaml" label="YAML Configuration">
+
+```yaml
+# application.yml
+spring:
+  profiles:
+    active: dev
+---
+spring:
+  profiles: dev
+server:
+  port: 8080
+logging:
+  level:
+    com.example: DEBUG
+---
+spring:
+  profiles: prod
+server:
+  port: 80
+logging:
+  level:
+    com.example: WARN
+```
+
+</TabItem>
+</Tabs>
+
+### 16. How to activate profiles?
+
+**Answer:**
+
+```bash
+# Command line
+java -jar app.jar --spring.profiles.active=prod
+
+# Environment variable
+export SPRING_PROFILES_ACTIVE=prod
+
+# application.properties
+spring.profiles.active=dev,security
+
+# Programmatically
+SpringApplication app = new SpringApplication(MyApp.class);
+app.setAdditionalProfiles("dev");
+```
+
+### 17. What is @Profile annotation?
+
+**Answer:**
+
+```java
+@Configuration
+@Profile("dev")
+public class DevConfig {
+    @Bean
+    public DataSource dataSource() {
+        return new H2DataSource(); // In-memory for dev
+    }
+}
+
+@Configuration
+@Profile("prod")
+public class ProdConfig {
+    @Bean
+    public DataSource dataSource() {
+        return new HikariDataSource(); // Production DB
+    }
+}
+
+@Service
+@Profile("!prod")  // Active when NOT prod
+public class MockEmailService implements EmailService { }
+```
+
+### 18. Configuration precedence in Spring Boot?
+
+**Answer:** (Higher number = higher precedence)
+
+1. Command line arguments
+2. JNDI attributes
+3. Java System properties
+4. OS environment variables
+5. `application-{profile}.properties` outside jar
+6. `application-{profile}.properties` inside jar
+7. `application.properties` outside jar
+8. `application.properties` inside jar
+9. `@PropertySource` annotations
+10. Default properties
+
+---
+
+## Data Access
+
+### 19. What is Spring Data JPA?
+
+**Answer:** Simplifies data access layer with repository pattern:
+
+```java
+@Entity
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+    private String email;
+    // getters/setters
+}
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    List<User> findByName(String name);
+    List<User> findByEmailContaining(String email);
+    
+    @Query("SELECT u FROM User u WHERE u.name = ?1")
+    User findByNameCustom(String name);
+    
+    @Modifying
+    @Query("UPDATE User u SET u.name = ?2 WHERE u.id = ?1")
+    int updateUserName(Long id, String name);
+}
+```
+
+### 20. How to configure multiple DataSources?
+
+**Answer:**
+
+```java
+@Configuration
+public class DatabaseConfig {
+    
+    @Primary
+    @Bean
+    @ConfigurationProperties("spring.datasource.primary")
+    public DataSource primaryDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+    
+    @Bean
+    @ConfigurationProperties("spring.datasource.secondary")
+    public DataSource secondaryDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+    
+    @Primary
+    @Bean
+    public JdbcTemplate primaryJdbcTemplate(@Qualifier("primaryDataSource") DataSource ds) {
+        return new JdbcTemplate(ds);
+    }
+}
+```
+
+### 21. What is @Transactional?
+
+**Answer:** Manages database transactions declaratively:
+
+```java
+@Service
+@Transactional(readOnly = true)  // Default for all methods
+public class UserService {
+    
+    @Transactional  // Read-write transaction
+    public User createUser(User user) {
+        User saved = userRepository.save(user);
+        emailService.sendWelcomeEmail(saved.getEmail());
+        return saved;
+    }
+    
+    @Transactional(
+        propagation = Propagation.REQUIRES_NEW,
+        isolation = Isolation.READ_COMMITTED,
+        timeout = 30,
+        rollbackFor = Exception.class
+    )
+    public void complexOperation() { }
+}
+```
+
+---
+
+## Web Development
+
+### 22. How to handle exceptions globally?
+
+**Answer:**
+
+```java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleUserNotFound(UserNotFoundException ex) {
+        return new ErrorResponse("USER_NOT_FOUND", ex.getMessage());
+    }
+    
+    @ExceptionHandler(ValidationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleValidation(ValidationException ex) {
+        return new ErrorResponse("VALIDATION_ERROR", ex.getMessage());
+    }
+    
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleGeneral(Exception ex) {
+        return new ErrorResponse("INTERNAL_ERROR", "Something went wrong");
+    }
+}
+```
+
+### 23. How to implement validation?
+
+**Answer:**
+
+```java
+@Entity
+public class User {
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 50, message = "Name must be between 2 and 50 characters")
+    private String name;
+    
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email is required")
+    private String email;
+    
+    @Min(value = 18, message = "Age must be at least 18")
+    @Max(value = 100, message = "Age must be less than 100")
+    private Integer age;
+}
+
+@RestController
+public class UserController {
+    
+    @PostMapping("/users")
+    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
+        User saved = userService.save(user);
+        return ResponseEntity.ok(saved);
+    }
+}
+```
+
+### 24. How to implement CORS?
+
+**Answer:**
+
+<Tabs>
+<TabItem value="annotation" label="Using Annotation">
+
+```java
+@RestController
+@CrossOrigin(origins = "http://localhost:3000")
+public class UserController {
+    
+    @CrossOrigin(origins = "http://example.com", maxAge = 3600)
+    @GetMapping("/users")
+    public List<User> getUsers() { }
+}
+```
+
+</TabItem>
+<TabItem value="global" label="Global Configuration">
+
+```java
+@Configuration
+public class CorsConfig {
+    
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+### 25. How to implement file upload?
+
+**Answer:**
+
+```java
+@RestController
+public class FileController {
+    
+    @PostMapping("/upload")
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is empty");
+        }
+        
+        try {
+            String fileName = file.getOriginalFilename();
+            Path path = Paths.get("uploads/" + fileName);
+            Files.copy(file.getInputStream(), path, StandardCopyOption.REPLACE_EXISTING);
+            
+            return ResponseEntity.ok("File uploaded: " + fileName);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Upload failed");
+        }
+    }
+}
+```
+
+```properties
+# File upload configuration
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+```
+
+---
+
+## Security
+
+### 26. How to implement basic authentication?
+
+**Answer:**
+
+```java
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+    
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/public/**").permitAll()
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .httpBasic(Customizer.withDefaults())
+            .csrf(csrf -> csrf.disable());
+        
+        return http.build();
+    }
+    
+    @Bean
+    public UserDetailsService userDetailsService() {
+        UserDetails user = User.builder()
+            .username("user")
+            .password(passwordEncoder().encode("password"))
+            .roles("USER")
+            .build();
+            
+        UserDetails admin = User.builder()
+            .username("admin")
+            .password(passwordEncoder().encode("admin"))
+            .roles("ADMIN")
+            .build();
+            
+        return new InMemoryUserDetailsManager(user, admin);
+    }
+    
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+```
+
+### 27. How to implement JWT authentication?
+
+**Answer:**
+
+```java
+@Component
+public class JwtUtil {
+    private String secret = "mySecret";
+    private int expiration = 86400; // 24 hours
+    
+    public String generateToken(String username) {
+        return Jwts.builder()
+            .setSubject(username)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000))
+            .signWith(SignatureAlgorithm.HS512, secret)
+            .compact();
+    }
+    
+    public String getUsernameFromToken(String token) {
+        return Jwts.parser()
+            .setSigningKey(secret)
+            .parseClaimsJws(token)
+            .getBody()
+            .getSubject();
+    }
+    
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+}
+
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, 
+                                   HttpServletResponse response, 
+                                   FilterChain filterChain) throws ServletException, IOException {
+        String token = getTokenFromRequest(request);
+        
+        if (token != null && jwtUtil.validateToken(token)) {
+            String username = jwtUtil.getUsernameFromToken(token);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            
+            UsernamePasswordAuthenticationToken auth = 
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+        
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+---
+
+## Testing
+
+### 28. How to write unit tests in Spring Boot?
+
+**Answer:**
+
+```java
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    
+    @Mock
+    private UserRepository userRepository;
+    
+    @InjectMocks
+    private UserService userService;
+    
+    @Test
+    void shouldCreateUser() {
+        // Given
+        User user = new User("John", "john@example.com");
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        
+        // When
+        User result = userService.createUser(user);
+        
+        // Then
+        assertThat(result.getName()).isEqualTo("John");
+        verify(userRepository).save(user);
+    }
+}
+```
+
+### 29. How to write integration tests?
+
+**Answer:**
+
+```java
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+class UserControllerIntegrationTest {
+    
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+    
+    @Autowired
+    private TestRestTemplate restTemplate;
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Test
+    void shouldCreateUser() {
+        // Given
+        User user = new User("John", "john@example.com");
+        
+        // When
+        ResponseEntity<User> response = restTemplate.postForEntity("/users", user, User.class);
+        
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getName()).isEqualTo("John");
+        assertThat(userRepository.count()).isEqualTo(1);
+    }
+}
+```
+
+### 30. What is @MockBean vs @Mock?
+
+**Answer:**
+
+<Tabs>
+<TabItem value="mock" label="@Mock (Mockito)">
+
+```java
+@ExtendWith(MockitoExtension.class)
+class ServiceTest {
+    @Mock
+    private UserRepository userRepository; // Pure Mockito mock
+    
+    @InjectMocks
+    private UserService userService;
+}
+```
+
+</TabItem>
+<TabItem value="mockbean" label="@MockBean (Spring Boot)">
+
+```java
+@SpringBootTest
+class ServiceTest {
+    @MockBean
+    private UserRepository userRepository; // Spring Boot mock, replaces bean in context
+    
+    @Autowired
+    private UserService userService; // Real service with mocked dependency
+}
+```
+
+</TabItem>
+</Tabs>
+
+---
+
+## Actuator & Monitoring
+
+### 31. What is Spring Boot Actuator?
+
+**Answer:** Production-ready features for monitoring and managing applications:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+```properties
+# Expose all endpoints
+management.endpoints.web.exposure.include=*
+
+# Custom management port
+management.server.port=9090
+
+# Custom base path
+management.endpoints.web.base-path=/manage
+```
+
+### 32. Important Actuator endpoints?
+
+**Answer:**
+
+| Endpoint | Description | URL |
+|----------|-------------|-----|
+| `/health` | Application health | `/actuator/health` |
+| `/info` | Application info | `/actuator/info` |
+| `/metrics` | Application metrics | `/actuator/metrics` |
+| `/env` | Environment properties | `/actuator/env` |
+| `/loggers` | Logger configuration | `/actuator/loggers` |
+| `/httptrace` | HTTP request traces | `/actuator/httptrace` |
+| `/beans` | Spring beans | `/actuator/beans` |
+| `/configprops` | Configuration properties | `/actuator/configprops` |
+
+### 33. How to create custom health indicator?
+
+**Answer:**
+
+```java
+@Component
+public class DatabaseHealthIndicator implements HealthIndicator {
+    
+    @Autowired
+    private DataSource dataSource;
+    
+    @Override
+    public Health health() {
+        try (Connection connection = dataSource.getConnection()) {
+            if (connection.isValid(1)) {
+                return Health.up()
+                    .withDetail("database", "Available")
+                    .withDetail("validationQuery", "SELECT 1")
+                    .build();
+            }
+        } catch (Exception e) {
+            return Health.down()
+                .withDetail("database", "Unavailable")
+                .withException(e)
+                .build();
+        }
+        return Health.down().withDetail("database", "Connection invalid").build();
+    }
+}
+```
+
+### 34. How to add custom metrics?
+
+**Answer:**
+
+```java
+@RestController
+public class UserController {
+    
+    private final MeterRegistry meterRegistry;
+    private final Counter userCreationCounter;
+    private final Timer userCreationTimer;
+    
+    public UserController(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        this.userCreationCounter = Counter.builder("user.creation.count")
+            .description("Number of users created")
+            .register(meterRegistry);
+        this.userCreationTimer = Timer.builder("user.creation.time")
+            .description("Time taken to create user")
+            .register(meterRegistry);
+    }
+    
+    @PostMapping("/users")
+    public User createUser(@RequestBody User user) {
+        return Timer.Sample.start(meterRegistry)
+            .stop(userCreationTimer.wrap(() -> {
+                userCreationCounter.increment();
+                return userService.createUser(user);
+            }));
+    }
+}
+```
+
+---
+
+## Advanced Topics
+
+### 35. How to implement caching?
+
+**Answer:**
+
+```java
+@Configuration
+@EnableCaching
+public class CacheConfig {
+    
+    @Bean
+    public CacheManager cacheManager() {
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("users", "products");
+        cacheManager.setCaffeine(Caffeine.newBuilder()
+            .maximumSize(1000)
+            .expireAfterWrite(10, TimeUnit.MINUTES));
+        return cacheManager;
+    }
+}
+
+@Service
+public class UserService {
+    
+    @Cacheable(value = "users", key = "#id")
+    public User findById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
+    
+    @CacheEvict(value = "users", key = "#user.id")
+    public User updateUser(User user) {
+        return userRepository.save(user);
+    }
+    
+    @CacheEvict(value = "users", allEntries = true)
+    public void clearCache() {
+        // Method implementation
+    }
+}
+```
+
+### 36. How to implement async processing?
+
+**Answer:**
+
+```java
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+    
+    @Bean
+    public TaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("async-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+@Service
+public class EmailService {
+    
+    @Async
+    public CompletableFuture<String> sendEmail(String to, String subject, String body) {
+        // Simulate email sending
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return CompletableFuture.completedFuture("Email sent to " + to);
+    }
+}
+
+@RestController
+public class UserController {
+    
+    @PostMapping("/users")
+    public ResponseEntity<User> createUser(@RequestBody User user) {
+        User savedUser = userService.save(user);
+        
+        // Async email sending
+        emailService.sendEmail(user.getEmail(), "Welcome", "Welcome to our platform!");
+        
+        return ResponseEntity.ok(savedUser);
+    }
+}
+```
+
+### 37. How to implement event handling?
+
+**Answer:**
+
+```java
+// Custom event
+public class UserRegisteredEvent extends ApplicationEvent {
+    private final User user;
+    
+    public UserRegisteredEvent(Object source, User user) {
+        super(source);
+        this.user = user;
+    }
+    
+    public User getUser() { return user; }
+}
+
+// Event publisher
+@Service
+public class UserService {
+    
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+    
+    public User registerUser(User user) {
+        User savedUser = userRepository.save(user);
+        
+        // Publish event
+        eventPublisher.publishEvent(new UserRegisteredEvent(this, savedUser));
+        
+        return savedUser;
+    }
+}
+
+// Event listeners
+@Component
+public class UserEventListener {
+    
+    @EventListener
+    @Async
+    public void handleUserRegistered(UserRegisteredEvent event) {
+        User user = event.getUser();
+        emailService.sendWelcomeEmail(user.getEmail());
+    }
+    
+    @EventListener
+    @Async
+    public void createUserProfile(UserRegisteredEvent event) {
+        User user = event.getUser();
+        profileService.createDefaultProfile(user.getId());
+    }
+}
+```
+
+### 38. How to implement custom starter?
+
+**Answer:**
+
+```java
+// Auto-configuration class
+@Configuration
+@ConditionalOnClass(MyService.class)
+@EnableConfigurationProperties(MyProperties.class)
+public class MyAutoConfiguration {
+    
+    @Bean
+    @ConditionalOnMissingBean
+    public MyService myService(MyProperties properties) {
+        return new MyService(properties);
+    }
+}
+
+// Properties class
+@ConfigurationProperties(prefix = "myservice")
+public class MyProperties {
+    private String apiKey;
+    private int timeout = 30;
+    // getters/setters
+}
+
+// Service class
+public class MyService {
+    private final MyProperties properties;
+    
+    public MyService(MyProperties properties) {
+        this.properties = properties;
+    }
+    
+    public void doSomething() {
+        // Implementation
+    }
+}
+```
+
+Create `META-INF/spring.factories`:
+```properties
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.example.MyAutoConfiguration
+```
+
+### 39. How to implement custom banner?
+
+**Answer:**
+
+Create `banner.txt` in `src/main/resources`:
+```
+  __  __                          
+ |  \/  |_   _     /\   _ __  _ __  
+ | |\/| | | | |   /  \ | '_ \| '_ \ 
+ | |  | | |_| |  / /\ \| |_) | |_) |
+ |_|  |_|\__, | /_/  \_\ .__/| .__/ 
+         |___/         |_|   |_|    
+
+Application Version: ${application.version}
+Spring Boot Version: ${spring-boot.version}
+```
+
+Or programmatically:
+```java
+@SpringBootApplication
+public class MyApplication {
+    public static void main(String[] args) {
+        SpringApplication app = new SpringApplication(MyApplication.class);
+        app.setBanner(new CustomBanner());
+        app.run(args);
+    }
+}
+
+public class CustomBanner implements Banner {
+    @Override
+    public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out) {
+        out.println("=== My Custom Application ===");
+    }
+}
+```
+
+### 40. How to implement graceful shutdown?
+
+**Answer:**
+
+```properties
+# Enable graceful shutdown
+server.shutdown=graceful
+spring.lifecycle.timeout-per-shutdown-phase=30s
+```
+
+```java
+@Component
+public class GracefulShutdownHandler {
+    
+    @PreDestroy
+    public void onShutdown() {
+        log.info("Application is shutting down gracefully...");
+        // Cleanup resources
+        // Close connections
+        // Finish processing current requests
+    }
+}
+
+@Configuration
+public class GracefulShutdownConfig {
+    
+    @Bean
+    public GracefulShutdownTomcat gracefulShutdownTomcat() {
+        return new GracefulShutdownTomcat();
+    }
+    
+    @Bean
+    public ServletWebServerFactory servletContainer() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory();
+        tomcat.addConnectorCustomizers(gracefulShutdownTomcat());
+        return tomcat;
+    }
+}
+```
+
+---
+
+## Quick Fire Questions
+
+### 41. What is the default embedded server in Spring Boot?
+**Answer:** Apache Tomcat
+
+### 42. How to change the default port?
+**Answer:** `server.port=8081` in application.properties
+
+### 43. What is the default packaging for Spring Boot?
+**Answer:** JAR (executable JAR with embedded server)
+
+### 44. How to exclude a dependency from starter?
+**Answer:**
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <exclusions>
+        <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+```
+
+### 45. What is @ComponentScan?
+**Answer:** Scans for Spring components (@Component, @Service, @Repository, @Controller) in specified packages
+
+### 46. What is @EnableAutoConfiguration?
+**Answer:** Enables Spring Boot's auto-configuration mechanism based on classpath dependencies
+
+### 47. How to run Spring Boot application?
+**Answer:**
+- `java -jar app.jar`
+- `mvn spring-boot:run`
+- `gradle bootRun`
+- IDE run configuration
+
+### 48. What is application.yml vs application.properties?
+**Answer:** Both are configuration files. YAML is more readable and supports hierarchical data, properties is simpler key-value format.
+
+### 49. How to enable debug logging?
+**Answer:**
+```properties
+logging.level.com.example=DEBUG
+# or
+debug=true
+```
+
+### 50. What is @ConditionalOnProperty?
+**Answer:** Creates bean only if specified property has expected value:
+```java
+@ConditionalOnProperty(name = "feature.enabled", havingValue = "true")
+```
+
+---
+
+## Summary
+
+This comprehensive guide covers the most important Spring Boot interview questions across all difficulty levels. Key areas to focus on:
+
+### **Must Know:**
+- Spring Boot basics and auto-configuration
+- Core annotations (@SpringBootApplication, @RestController, @Autowired)
+- Configuration and profiles
+- Data access with JPA
+- Testing strategies
+
+### **Advanced Topics:**
+- Security implementation
+- Caching and async processing
+- Custom starters and auto-configuration
+- Monitoring with Actuator
+- Event handling and messaging
+
+### **Pro Tips:**
+1. **Practice coding**: Don't just memorize, implement examples
+2. **Understand internals**: Know how auto-configuration works
+3. **Real-world scenarios**: Think about production challenges
+4. **Stay updated**: Spring Boot evolves rapidly
+5. **Hands-on experience**: Build projects using different features
+
+Remember to explain not just "what" but "why" and "when" to use specific features. Good luck with your interviews! 🚀

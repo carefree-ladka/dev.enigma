@@ -1,0 +1,1376 @@
+---
+title: "Top SQL Interview Questions & Answers"
+description: "Most asked SQL interview questions with practical examples and solutions for 2025"
+sidebar_position: 20
+tags: [sql, database, interview, mysql, postgresql, queries]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Top SQL Interview Questions & Answers
+
+A comprehensive collection of the most frequently asked SQL interview questions with practical examples and optimized solutions.
+
+---
+
+## 📋 Table of Contents
+
+1. [SQL Basics](#sql-basics)
+2. [SELECT Queries](#select-queries)
+3. [Joins](#joins)
+4. [Aggregate Functions](#aggregate-functions)
+5. [Subqueries](#subqueries)
+6. [Window Functions](#window-functions)
+7. [Indexes & Performance](#indexes--performance)
+8. [Database Design](#database-design)
+9. [Advanced Topics](#advanced-topics)
+10. [Practical Scenarios](#practical-scenarios)
+
+---
+
+## SQL Basics
+
+### 1. What is SQL and its types?
+
+**Answer:** SQL (Structured Query Language) is used to manage relational databases.
+
+**Types:**
+- **DDL** (Data Definition Language): CREATE, ALTER, DROP
+- **DML** (Data Manipulation Language): INSERT, UPDATE, DELETE
+- **DQL** (Data Query Language): SELECT
+- **DCL** (Data Control Language): GRANT, REVOKE
+- **TCL** (Transaction Control Language): COMMIT, ROLLBACK
+
+```sql
+-- DDL
+CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(50));
+
+-- DML
+INSERT INTO users VALUES (1, 'John');
+UPDATE users SET name = 'Jane' WHERE id = 1;
+
+-- DQL
+SELECT * FROM users;
+
+-- TCL
+BEGIN TRANSACTION;
+COMMIT;
+```
+
+### 2. Primary Key vs Foreign Key vs Unique Key
+
+**Answer:**
+
+| Key Type | Description | Null Values | Multiple |
+|----------|-------------|-------------|----------|
+| **Primary Key** | Uniquely identifies each row | No | One per table |
+| **Foreign Key** | References primary key of another table | Yes | Multiple allowed |
+| **Unique Key** | Ensures uniqueness | Yes (one null) | Multiple allowed |
+
+```sql
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE,
+    dept_id INT,
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+);
+```
+
+### 3. INNER JOIN vs LEFT JOIN vs RIGHT JOIN vs FULL JOIN
+
+**Answer:**
+
+<Tabs>
+<TabItem value="inner" label="INNER JOIN">
+
+```sql
+-- Returns only matching records from both tables
+SELECT e.name, d.dept_name
+FROM employees e
+INNER JOIN departments d ON e.dept_id = d.dept_id;
+```
+
+</TabItem>
+<TabItem value="left" label="LEFT JOIN">
+
+```sql
+-- Returns all records from left table + matching from right
+SELECT e.name, d.dept_name
+FROM employees e
+LEFT JOIN departments d ON e.dept_id = d.dept_id;
+```
+
+</TabItem>
+<TabItem value="right" label="RIGHT JOIN">
+
+```sql
+-- Returns all records from right table + matching from left
+SELECT e.name, d.dept_name
+FROM employees e
+RIGHT JOIN departments d ON e.dept_id = d.dept_id;
+```
+
+</TabItem>
+<TabItem value="full" label="FULL OUTER JOIN">
+
+```sql
+-- Returns all records from both tables
+SELECT e.name, d.dept_name
+FROM employees e
+FULL OUTER JOIN departments d ON e.dept_id = d.dept_id;
+```
+
+</TabItem>
+</Tabs>
+
+### 4. What is Normalization?
+
+**Answer:** Process of organizing data to reduce redundancy and improve data integrity.
+
+**Normal Forms:**
+- **1NF**: Atomic values, no repeating groups
+- **2NF**: 1NF + no partial dependencies
+- **3NF**: 2NF + no transitive dependencies
+- **BCNF**: 3NF + every determinant is a candidate key
+
+```sql
+-- Unnormalized
+CREATE TABLE orders_bad (
+    order_id INT,
+    customer_name VARCHAR(50),
+    customer_email VARCHAR(100),
+    product1 VARCHAR(50),
+    product2 VARCHAR(50)
+);
+
+-- Normalized (3NF)
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    email VARCHAR(100)
+);
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    PRIMARY KEY (order_id, product_id)
+);
+```
+
+---
+
+## SELECT Queries
+
+### 5. Find duplicate records in a table
+
+**Answer:**
+
+```sql
+-- Sample data
+CREATE TABLE employees (
+    id INT,
+    name VARCHAR(50),
+    email VARCHAR(100)
+);
+
+-- Find duplicates by email
+SELECT email, COUNT(*) as count
+FROM employees
+GROUP BY email
+HAVING COUNT(*) > 1;
+
+-- Find all duplicate records with details
+SELECT e1.*
+FROM employees e1
+INNER JOIN (
+    SELECT email
+    FROM employees
+    GROUP BY email
+    HAVING COUNT(*) > 1
+) e2 ON e1.email = e2.email;
+```
+
+### 6. Find Nth highest salary
+
+**Answer:**
+
+<Tabs>
+<TabItem value="limit" label="Using LIMIT (MySQL)">
+
+```sql
+-- 2nd highest salary
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 1;
+
+-- Nth highest (N=3)
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 2;
+```
+
+</TabItem>
+<TabItem value="window" label="Using Window Functions">
+
+```sql
+-- 2nd highest salary
+SELECT salary
+FROM (
+    SELECT salary, 
+           DENSE_RANK() OVER (ORDER BY salary DESC) as rank_num
+    FROM employees
+) ranked
+WHERE rank_num = 2;
+```
+
+</TabItem>
+<TabItem value="subquery" label="Using Subquery">
+
+```sql
+-- 2nd highest salary
+SELECT MAX(salary) as second_highest
+FROM employees
+WHERE salary < (SELECT MAX(salary) FROM employees);
+```
+
+</TabItem>
+</Tabs>
+
+### 7. Delete duplicate records keeping one
+
+**Answer:**
+
+```sql
+-- Using ROW_NUMBER()
+DELETE FROM employees
+WHERE id NOT IN (
+    SELECT min_id FROM (
+        SELECT MIN(id) as min_id
+        FROM employees
+        GROUP BY email
+    ) as keep_records
+);
+
+-- Alternative using window function
+DELETE e1 FROM employees e1
+INNER JOIN employees e2
+WHERE e1.id > e2.id AND e1.email = e2.email;
+```
+
+### 8. Find records not in another table
+
+**Answer:**
+
+```sql
+-- Employees not assigned to any project
+SELECT e.*
+FROM employees e
+LEFT JOIN project_assignments pa ON e.emp_id = pa.emp_id
+WHERE pa.emp_id IS NULL;
+
+-- Using NOT EXISTS
+SELECT e.*
+FROM employees e
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM project_assignments pa 
+    WHERE pa.emp_id = e.emp_id
+);
+
+-- Using NOT IN (be careful with NULLs)
+SELECT e.*
+FROM employees e
+WHERE e.emp_id NOT IN (
+    SELECT pa.emp_id 
+    FROM project_assignments pa 
+    WHERE pa.emp_id IS NOT NULL
+);
+```
+
+---
+
+## Joins
+
+### 9. Self Join example
+
+**Answer:**
+
+```sql
+-- Find employees and their managers
+SELECT 
+    e.name as employee_name,
+    m.name as manager_name
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.emp_id;
+
+-- Find employees earning more than their manager
+SELECT 
+    e.name as employee_name,
+    e.salary as emp_salary,
+    m.name as manager_name,
+    m.salary as mgr_salary
+FROM employees e
+INNER JOIN employees m ON e.manager_id = m.emp_id
+WHERE e.salary > m.salary;
+```
+
+### 10. Cross Join vs Natural Join
+
+**Answer:**
+
+<Tabs>
+<TabItem value="cross" label="CROSS JOIN">
+
+```sql
+-- Cartesian product of all rows
+SELECT *
+FROM table1
+CROSS JOIN table2;
+
+-- Same as:
+SELECT *
+FROM table1, table2;
+```
+
+</TabItem>
+<TabItem value="natural" label="NATURAL JOIN">
+
+```sql
+-- Joins on columns with same names
+SELECT *
+FROM employees
+NATURAL JOIN departments;
+
+-- Equivalent to:
+SELECT *
+FROM employees e
+INNER JOIN departments d ON e.dept_id = d.dept_id;
+```
+
+</TabItem>
+</Tabs>
+
+### 11. Multiple table joins
+
+**Answer:**
+
+```sql
+-- Join employees, departments, and projects
+SELECT 
+    e.name as employee_name,
+    d.dept_name,
+    p.project_name,
+    pa.role
+FROM employees e
+INNER JOIN departments d ON e.dept_id = d.dept_id
+INNER JOIN project_assignments pa ON e.emp_id = pa.emp_id
+INNER JOIN projects p ON pa.project_id = p.project_id
+WHERE d.dept_name = 'Engineering'
+ORDER BY e.name;
+```
+
+---
+
+## Aggregate Functions
+
+### 12. GROUP BY with HAVING vs WHERE
+
+**Answer:**
+
+```sql
+-- WHERE filters rows before grouping
+-- HAVING filters groups after grouping
+
+SELECT 
+    dept_id,
+    COUNT(*) as employee_count,
+    AVG(salary) as avg_salary
+FROM employees
+WHERE salary > 50000  -- Filter individual rows
+GROUP BY dept_id
+HAVING COUNT(*) > 5   -- Filter groups
+ORDER BY avg_salary DESC;
+```
+
+### 13. Common aggregate functions
+
+**Answer:**
+
+```sql
+SELECT 
+    dept_id,
+    COUNT(*) as total_employees,
+    COUNT(DISTINCT job_title) as unique_roles,
+    SUM(salary) as total_salary,
+    AVG(salary) as avg_salary,
+    MIN(salary) as min_salary,
+    MAX(salary) as max_salary,
+    STDDEV(salary) as salary_stddev
+FROM employees
+GROUP BY dept_id;
+```
+
+### 14. Find department with highest average salary
+
+**Answer:**
+
+```sql
+SELECT 
+    d.dept_name,
+    AVG(e.salary) as avg_salary
+FROM employees e
+INNER JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY d.dept_id, d.dept_name
+ORDER BY avg_salary DESC
+LIMIT 1;
+
+-- Using window function
+SELECT dept_name, avg_salary
+FROM (
+    SELECT 
+        d.dept_name,
+        AVG(e.salary) as avg_salary,
+        RANK() OVER (ORDER BY AVG(e.salary) DESC) as rank_num
+    FROM employees e
+    INNER JOIN departments d ON e.dept_id = d.dept_id
+    GROUP BY d.dept_id, d.dept_name
+) ranked
+WHERE rank_num = 1;
+```
+
+---
+
+## Subqueries
+
+### 15. Correlated vs Non-correlated subqueries
+
+**Answer:**
+
+<Tabs>
+<TabItem value="noncorrelated" label="Non-correlated">
+
+```sql
+-- Executes once, independent of outer query
+SELECT name, salary
+FROM employees
+WHERE salary > (
+    SELECT AVG(salary) 
+    FROM employees
+);
+```
+
+</TabItem>
+<TabItem value="correlated" label="Correlated">
+
+```sql
+-- Executes for each row of outer query
+SELECT name, salary, dept_id
+FROM employees e1
+WHERE salary > (
+    SELECT AVG(salary)
+    FROM employees e2
+    WHERE e2.dept_id = e1.dept_id  -- References outer query
+);
+```
+
+</TabItem>
+</Tabs>
+
+### 16. EXISTS vs IN
+
+**Answer:**
+
+```sql
+-- EXISTS - stops at first match (better performance)
+SELECT *
+FROM customers c
+WHERE EXISTS (
+    SELECT 1 
+    FROM orders o 
+    WHERE o.customer_id = c.customer_id
+);
+
+-- IN - evaluates all values
+SELECT *
+FROM customers c
+WHERE c.customer_id IN (
+    SELECT DISTINCT customer_id 
+    FROM orders
+);
+
+-- NOT EXISTS vs NOT IN (different behavior with NULLs)
+SELECT *
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM orders o 
+    WHERE o.customer_id = c.customer_id
+);
+```
+
+### 17. Subquery in SELECT clause
+
+**Answer:**
+
+```sql
+SELECT 
+    e.name,
+    e.salary,
+    (SELECT AVG(salary) FROM employees) as company_avg,
+    (SELECT AVG(salary) 
+     FROM employees e2 
+     WHERE e2.dept_id = e.dept_id) as dept_avg,
+    (SELECT COUNT(*) 
+     FROM project_assignments pa 
+     WHERE pa.emp_id = e.emp_id) as project_count
+FROM employees e;
+```
+
+---
+
+## Window Functions
+
+### 18. ROW_NUMBER() vs RANK() vs DENSE_RANK()
+
+**Answer:**
+
+```sql
+SELECT 
+    name,
+    salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) as row_num,
+    RANK() OVER (ORDER BY salary DESC) as rank_num,
+    DENSE_RANK() OVER (ORDER BY salary DESC) as dense_rank_num
+FROM employees;
+
+-- Results example:
+-- name    salary  row_num  rank_num  dense_rank_num
+-- Alice   100000     1        1           1
+-- Bob     90000      2        2           2  
+-- Carol   90000      3        2           2
+-- Dave    80000      4        4           3
+```
+
+### 19. PARTITION BY clause
+
+**Answer:**
+
+```sql
+-- Rank employees within each department
+SELECT 
+    name,
+    dept_id,
+    salary,
+    RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) as dept_rank,
+    AVG(salary) OVER (PARTITION BY dept_id) as dept_avg_salary
+FROM employees;
+
+-- Running total by department
+SELECT 
+    name,
+    dept_id,
+    salary,
+    SUM(salary) OVER (
+        PARTITION BY dept_id 
+        ORDER BY hire_date 
+        ROWS UNBOUNDED PRECEDING
+    ) as running_total
+FROM employees;
+```
+
+### 20. LAG and LEAD functions
+
+**Answer:**
+
+```sql
+-- Compare current salary with previous and next
+SELECT 
+    name,
+    salary,
+    LAG(salary, 1) OVER (ORDER BY hire_date) as prev_salary,
+    LEAD(salary, 1) OVER (ORDER BY hire_date) as next_salary,
+    salary - LAG(salary, 1) OVER (ORDER BY hire_date) as salary_diff
+FROM employees;
+
+-- Find salary changes
+SELECT 
+    name,
+    hire_date,
+    salary,
+    LAG(salary) OVER (PARTITION BY emp_id ORDER BY hire_date) as prev_salary,
+    CASE 
+        WHEN salary > LAG(salary) OVER (PARTITION BY emp_id ORDER BY hire_date) 
+        THEN 'Increase'
+        WHEN salary < LAG(salary) OVER (PARTITION BY emp_id ORDER BY hire_date) 
+        THEN 'Decrease'
+        ELSE 'No Change'
+    END as salary_change
+FROM salary_history;
+```
+
+---
+
+## Indexes & Performance
+
+### 21. What are indexes and their types?
+
+**Answer:**
+
+```sql
+-- Clustered index (primary key)
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,  -- Clustered index
+    name VARCHAR(50),
+    email VARCHAR(100)
+);
+
+-- Non-clustered indexes
+CREATE INDEX idx_employee_name ON employees(name);
+CREATE INDEX idx_employee_email ON employees(email);
+
+-- Composite index
+CREATE INDEX idx_name_dept ON employees(name, dept_id);
+
+-- Unique index
+CREATE UNIQUE INDEX idx_employee_email_unique ON employees(email);
+
+-- Partial index (PostgreSQL)
+CREATE INDEX idx_active_employees ON employees(name) WHERE status = 'active';
+```
+
+### 22. Query optimization techniques
+
+**Answer:**
+
+```sql
+-- ❌ Avoid SELECT *
+SELECT * FROM employees;
+
+-- ✅ Select only needed columns
+SELECT name, salary FROM employees;
+
+-- ❌ Avoid functions in WHERE clause
+SELECT * FROM employees WHERE UPPER(name) = 'JOHN';
+
+-- ✅ Use proper indexing
+SELECT * FROM employees WHERE name = 'John';
+
+-- ❌ Avoid OR in WHERE clause
+SELECT * FROM employees WHERE dept_id = 1 OR dept_id = 2;
+
+-- ✅ Use IN instead
+SELECT * FROM employees WHERE dept_id IN (1, 2);
+
+-- Use LIMIT for large result sets
+SELECT * FROM employees ORDER BY salary DESC LIMIT 10;
+```
+
+### 23. EXPLAIN query plan
+
+**Answer:**
+
+```sql
+-- Analyze query execution plan
+EXPLAIN SELECT e.name, d.dept_name
+FROM employees e
+INNER JOIN departments d ON e.dept_id = d.dept_id
+WHERE e.salary > 50000;
+
+-- With execution statistics (PostgreSQL)
+EXPLAIN ANALYZE SELECT * FROM employees WHERE name = 'John';
+
+-- MySQL
+EXPLAIN FORMAT=JSON SELECT * FROM employees WHERE name = 'John';
+```
+
+---
+
+## Database Design
+
+### 24. One-to-One vs One-to-Many vs Many-to-Many
+
+**Answer:**
+
+<Tabs>
+<TabItem value="onetoone" label="One-to-One">
+
+```sql
+-- User and Profile (1:1)
+CREATE TABLE users (
+    user_id INT PRIMARY KEY,
+    username VARCHAR(50)
+);
+
+CREATE TABLE user_profiles (
+    profile_id INT PRIMARY KEY,
+    user_id INT UNIQUE,  -- Ensures 1:1
+    bio TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+```
+
+</TabItem>
+<TabItem value="onetomany" label="One-to-Many">
+
+```sql
+-- Department and Employees (1:N)
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50)
+);
+
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    dept_id INT,  -- Foreign key
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+);
+```
+
+</TabItem>
+<TabItem value="manytomany" label="Many-to-Many">
+
+```sql
+-- Students and Courses (M:N)
+CREATE TABLE students (
+    student_id INT PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE courses (
+    course_id INT PRIMARY KEY,
+    course_name VARCHAR(50)
+);
+
+-- Junction table
+CREATE TABLE student_courses (
+    student_id INT,
+    course_id INT,
+    grade CHAR(2),
+    PRIMARY KEY (student_id, course_id),
+    FOREIGN KEY (student_id) REFERENCES students(student_id),
+    FOREIGN KEY (course_id) REFERENCES courses(course_id)
+);
+```
+
+</TabItem>
+</Tabs>
+
+### 25. ACID properties
+
+**Answer:**
+
+- **Atomicity**: All operations in transaction succeed or all fail
+- **Consistency**: Database remains in valid state
+- **Isolation**: Concurrent transactions don't interfere
+- **Durability**: Committed changes persist
+
+```sql
+-- Transaction example
+BEGIN TRANSACTION;
+
+UPDATE accounts SET balance = balance - 100 WHERE account_id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE account_id = 2;
+
+-- If both succeed
+COMMIT;
+
+-- If any fails
+ROLLBACK;
+```
+
+### 26. Database constraints
+
+**Answer:**
+
+```sql
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    age INT CHECK (age >= 18 AND age <= 65),
+    salary DECIMAL(10,2) DEFAULT 50000,
+    dept_id INT,
+    hire_date DATE DEFAULT CURRENT_DATE,
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+);
+
+-- Add constraint after table creation
+ALTER TABLE employees 
+ADD CONSTRAINT chk_salary CHECK (salary > 0);
+```
+
+---
+
+## Advanced Topics
+
+### 27. Common Table Expressions (CTE)
+
+**Answer:**
+
+```sql
+-- Simple CTE
+WITH high_earners AS (
+    SELECT name, salary, dept_id
+    FROM employees
+    WHERE salary > 80000
+)
+SELECT he.name, d.dept_name, he.salary
+FROM high_earners he
+JOIN departments d ON he.dept_id = d.dept_id;
+
+-- Recursive CTE (organizational hierarchy)
+WITH RECURSIVE employee_hierarchy AS (
+    -- Base case: top-level managers
+    SELECT emp_id, name, manager_id, 1 as level
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive case
+    SELECT e.emp_id, e.name, e.manager_id, eh.level + 1
+    FROM employees e
+    INNER JOIN employee_hierarchy eh ON e.manager_id = eh.emp_id
+)
+SELECT * FROM employee_hierarchy ORDER BY level, name;
+```
+
+### 28. CASE statements
+
+**Answer:**
+
+```sql
+-- Simple CASE
+SELECT 
+    name,
+    salary,
+    CASE 
+        WHEN salary >= 100000 THEN 'High'
+        WHEN salary >= 70000 THEN 'Medium'
+        ELSE 'Low'
+    END as salary_grade
+FROM employees;
+
+-- CASE in aggregation
+SELECT 
+    dept_id,
+    COUNT(*) as total_employees,
+    SUM(CASE WHEN salary >= 80000 THEN 1 ELSE 0 END) as high_earners,
+    SUM(CASE WHEN gender = 'M' THEN 1 ELSE 0 END) as male_count,
+    SUM(CASE WHEN gender = 'F' THEN 1 ELSE 0 END) as female_count
+FROM employees
+GROUP BY dept_id;
+```
+
+### 29. Pivot and Unpivot
+
+**Answer:**
+
+<Tabs>
+<TabItem value="pivot" label="PIVOT">
+
+```sql
+-- Convert rows to columns
+SELECT *
+FROM (
+    SELECT dept_name, job_title, salary
+    FROM employees e
+    JOIN departments d ON e.dept_id = d.dept_id
+) src
+PIVOT (
+    AVG(salary)
+    FOR job_title IN ('Manager', 'Developer', 'Analyst')
+) pvt;
+
+-- Manual pivot using CASE
+SELECT 
+    dept_name,
+    AVG(CASE WHEN job_title = 'Manager' THEN salary END) as Manager_avg,
+    AVG(CASE WHEN job_title = 'Developer' THEN salary END) as Developer_avg,
+    AVG(CASE WHEN job_title = 'Analyst' THEN salary END) as Analyst_avg
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY dept_name;
+```
+
+</TabItem>
+<TabItem value="unpivot" label="UNPIVOT">
+
+```sql
+-- Convert columns to rows
+SELECT dept_name, job_title, avg_salary
+FROM dept_salary_summary
+UNPIVOT (
+    avg_salary FOR job_title IN (
+        Manager_avg AS 'Manager',
+        Developer_avg AS 'Developer', 
+        Analyst_avg AS 'Analyst'
+    )
+) unpvt;
+```
+
+</TabItem>
+</Tabs>
+
+### 30. Stored procedures and functions
+
+**Answer:**
+
+```sql
+-- Stored procedure
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDept(IN dept_id INT)
+BEGIN
+    SELECT name, salary, hire_date
+    FROM employees
+    WHERE dept_id = dept_id
+    ORDER BY salary DESC;
+END //
+DELIMITER ;
+
+-- Call procedure
+CALL GetEmployeesByDept(1);
+
+-- Function
+DELIMITER //
+CREATE FUNCTION CalculateBonus(salary DECIMAL(10,2)) 
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+DETERMINISTIC
+BEGIN
+    DECLARE bonus DECIMAL(10,2);
+    IF salary >= 100000 THEN
+        SET bonus = salary * 0.15;
+    ELSEIF salary >= 70000 THEN
+        SET bonus = salary * 0.10;
+    ELSE
+        SET bonus = salary * 0.05;
+    END IF;
+    RETURN bonus;
+END //
+DELIMITER ;
+
+-- Use function
+SELECT name, salary, CalculateBonus(salary) as bonus
+FROM employees;
+```
+
+---
+
+## Practical Scenarios
+
+### 31. Find customers who haven't placed orders
+
+**Answer:**
+
+```sql
+-- Using LEFT JOIN
+SELECT c.customer_id, c.name
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.customer_id IS NULL;
+
+-- Using NOT EXISTS
+SELECT c.customer_id, c.name
+FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id
+);
+```
+
+### 32. Calculate running totals
+
+**Answer:**
+
+```sql
+-- Using window function
+SELECT 
+    order_date,
+    amount,
+    SUM(amount) OVER (ORDER BY order_date) as running_total
+FROM orders
+ORDER BY order_date;
+
+-- Using self-join (less efficient)
+SELECT 
+    o1.order_date,
+    o1.amount,
+    SUM(o2.amount) as running_total
+FROM orders o1
+INNER JOIN orders o2 ON o2.order_date <= o1.order_date
+GROUP BY o1.order_id, o1.order_date, o1.amount
+ORDER BY o1.order_date;
+```
+
+### 33. Find top N records per group
+
+**Answer:**
+
+```sql
+-- Top 2 highest paid employees per department
+SELECT name, dept_id, salary
+FROM (
+    SELECT 
+        name, 
+        dept_id, 
+        salary,
+        ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY salary DESC) as rn
+    FROM employees
+) ranked
+WHERE rn <= 2;
+
+-- Alternative using correlated subquery
+SELECT e1.name, e1.dept_id, e1.salary
+FROM employees e1
+WHERE (
+    SELECT COUNT(*)
+    FROM employees e2
+    WHERE e2.dept_id = e1.dept_id AND e2.salary > e1.salary
+) < 2;
+```
+
+### 34. Calculate percentage of total
+
+**Answer:**
+
+```sql
+SELECT 
+    dept_id,
+    COUNT(*) as employee_count,
+    ROUND(
+        COUNT(*) * 100.0 / (SELECT COUNT(*) FROM employees), 
+        2
+    ) as percentage_of_total
+FROM employees
+GROUP BY dept_id;
+
+-- Using window function
+SELECT 
+    dept_id,
+    COUNT(*) as employee_count,
+    ROUND(
+        COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 
+        2
+    ) as percentage_of_total
+FROM employees
+GROUP BY dept_id;
+```
+
+### 35. Find gaps in sequential data
+
+**Answer:**
+
+```sql
+-- Find missing order IDs
+SELECT 
+    prev_id + 1 as gap_start,
+    current_id - 1 as gap_end
+FROM (
+    SELECT 
+        order_id as current_id,
+        LAG(order_id) OVER (ORDER BY order_id) as prev_id
+    FROM orders
+) gaps
+WHERE current_id - prev_id > 1;
+
+-- Alternative using generate_series (PostgreSQL)
+SELECT missing_id
+FROM generate_series(
+    (SELECT MIN(order_id) FROM orders),
+    (SELECT MAX(order_id) FROM orders)
+) as missing_id
+WHERE missing_id NOT IN (SELECT order_id FROM orders);
+```
+
+### 36. Calculate median salary
+
+**Answer:**
+
+```sql
+-- Using window functions
+SELECT DISTINCT
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY salary) as median_salary
+FROM employees;
+
+-- Manual calculation
+SELECT AVG(salary) as median_salary
+FROM (
+    SELECT salary,
+           ROW_NUMBER() OVER (ORDER BY salary) as row_num,
+           COUNT(*) OVER () as total_count
+    FROM employees
+) ranked
+WHERE row_num IN (
+    FLOOR((total_count + 1) / 2.0),
+    CEIL((total_count + 1) / 2.0)
+);
+```
+
+### 37. Date and time queries
+
+**Answer:**
+
+```sql
+-- Records from last 30 days
+SELECT * FROM orders 
+WHERE order_date >= CURRENT_DATE - INTERVAL 30 DAY;
+
+-- Group by month
+SELECT 
+    YEAR(order_date) as year,
+    MONTH(order_date) as month,
+    COUNT(*) as order_count,
+    SUM(amount) as total_amount
+FROM orders
+GROUP BY YEAR(order_date), MONTH(order_date)
+ORDER BY year, month;
+
+-- Find business days between dates
+SELECT 
+    order_id,
+    order_date,
+    ship_date,
+    DATEDIFF(ship_date, order_date) as total_days,
+    CASE 
+        WHEN WEEKDAY(order_date) <= WEEKDAY(ship_date) THEN
+            WEEKDAY(ship_date) - WEEKDAY(order_date) + 1 -
+            2 * ((DATEDIFF(ship_date, order_date) + WEEKDAY(order_date)) DIV 7)
+        ELSE
+            DATEDIFF(ship_date, order_date) + 1 -
+            2 * ((DATEDIFF(ship_date, order_date) + WEEKDAY(order_date)) DIV 7) - 1
+    END as business_days
+FROM orders;
+```
+
+### 38. String manipulation
+
+**Answer:**
+
+```sql
+-- Clean and format names
+SELECT 
+    CONCAT(
+        UPPER(LEFT(first_name, 1)),
+        LOWER(SUBSTRING(first_name, 2)),
+        ' ',
+        UPPER(LEFT(last_name, 1)),
+        LOWER(SUBSTRING(last_name, 2))
+    ) as formatted_name,
+    REPLACE(phone, '-', '') as clean_phone,
+    TRIM(LOWER(email)) as clean_email
+FROM customers;
+
+-- Extract domain from email
+SELECT 
+    email,
+    SUBSTRING(email, POSITION('@' IN email) + 1) as domain
+FROM customers;
+
+-- Find records with pattern
+SELECT * FROM products 
+WHERE product_code REGEXP '^[A-Z]{2}[0-9]{4}$';
+```
+
+### 39. Handle NULL values
+
+**Answer:**
+
+```sql
+-- COALESCE - return first non-null value
+SELECT 
+    name,
+    COALESCE(phone, mobile, 'No contact') as contact_number,
+    COALESCE(salary, 0) as salary
+FROM employees;
+
+-- NULLIF - return NULL if values are equal
+SELECT 
+    name,
+    NULLIF(salary, 0) as salary  -- Returns NULL if salary is 0
+FROM employees;
+
+-- ISNULL/IFNULL (MySQL) or COALESCE
+SELECT 
+    name,
+    IFNULL(commission, 0) as commission
+FROM sales_reps;
+```
+
+### 40. Complex aggregations
+
+**Answer:**
+
+```sql
+-- Multiple aggregation levels
+SELECT 
+    COALESCE(dept_name, 'ALL DEPARTMENTS') as department,
+    COALESCE(job_title, 'ALL POSITIONS') as position,
+    COUNT(*) as employee_count,
+    AVG(salary) as avg_salary,
+    SUM(salary) as total_salary
+FROM employees e
+LEFT JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY ROLLUP(dept_name, job_title)
+ORDER BY dept_name, job_title;
+
+-- Conditional aggregation
+SELECT 
+    dept_id,
+    COUNT(*) as total_employees,
+    COUNT(CASE WHEN salary >= 80000 THEN 1 END) as high_earners,
+    AVG(CASE WHEN gender = 'M' THEN salary END) as avg_male_salary,
+    AVG(CASE WHEN gender = 'F' THEN salary END) as avg_female_salary,
+    MAX(CASE WHEN job_title = 'Manager' THEN salary END) as max_manager_salary
+FROM employees
+GROUP BY dept_id;
+```
+
+---
+
+## Quick Fire Questions
+
+### 41. What is the difference between DELETE, DROP, and TRUNCATE?
+
+**Answer:**
+- **DELETE**: Removes rows, can use WHERE, can be rolled back, slower
+- **TRUNCATE**: Removes all rows, faster, can't be rolled back, resets identity
+- **DROP**: Removes entire table structure and data
+
+```sql
+DELETE FROM employees WHERE dept_id = 1;  -- Remove specific rows
+TRUNCATE TABLE temp_data;                 -- Remove all rows quickly  
+DROP TABLE old_table;                     -- Remove table completely
+```
+
+### 42. What is a View?
+
+**Answer:** Virtual table based on SQL query result.
+
+```sql
+CREATE VIEW active_employees AS
+SELECT emp_id, name, salary, dept_id
+FROM employees 
+WHERE status = 'active';
+
+-- Use like a table
+SELECT * FROM active_employees WHERE salary > 70000;
+```
+
+### 43. What is a Trigger?
+
+**Answer:** Special procedure that automatically executes in response to database events.
+
+```sql
+CREATE TRIGGER update_modified_date
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    SET NEW.modified_date = NOW();
+END;
+```
+
+### 44. What is the difference between UNION and UNION ALL?
+
+**Answer:**
+- **UNION**: Removes duplicates, slower
+- **UNION ALL**: Keeps duplicates, faster
+
+```sql
+SELECT name FROM employees
+UNION                    -- Removes duplicates
+SELECT name FROM contractors;
+
+SELECT name FROM employees  
+UNION ALL               -- Keeps duplicates
+SELECT name FROM contractors;
+```
+
+### 45. What is a Cursor?
+
+**Answer:** Database object to retrieve and process rows one by one.
+
+```sql
+DECLARE emp_cursor CURSOR FOR
+    SELECT emp_id, name, salary FROM employees;
+
+OPEN emp_cursor;
+FETCH emp_cursor INTO @emp_id, @name, @salary;
+CLOSE emp_cursor;
+```
+
+---
+
+## Performance Tips
+
+### Best Practices:
+
+1. **Use indexes wisely** - On frequently queried columns
+2. **Avoid SELECT *** - Select only needed columns  
+3. **Use LIMIT** - For large result sets
+4. **Optimize JOINs** - Use appropriate join types
+5. **Use EXISTS instead of IN** - For better performance
+6. **Avoid functions in WHERE** - Prevents index usage
+7. **Use EXPLAIN** - Analyze query execution plans
+8. **Normalize appropriately** - Balance between normalization and performance
+9. **Use connection pooling** - Reduce connection overhead
+10. **Regular maintenance** - Update statistics, rebuild indexes
+
+### Common Mistakes to Avoid:
+
+- Using OR instead of UNION
+- Not using proper indexes
+- Selecting unnecessary columns
+- Using functions on indexed columns in WHERE clause
+- Not handling NULL values properly
+- Using correlated subqueries when joins would be better
+
+---
+
+## Summary
+
+This comprehensive SQL interview guide covers:
+
+### **Fundamental Concepts:**
+- SQL basics, joins, normalization
+- Primary/foreign keys, constraints
+- ACID properties
+
+### **Query Techniques:**
+- Complex SELECT statements
+- Subqueries and CTEs
+- Window functions
+- Aggregate functions
+
+### **Performance & Optimization:**
+- Index strategies
+- Query optimization
+- Execution plans
+
+### **Advanced Topics:**
+- Stored procedures/functions
+- Triggers and views
+- Pivot/unpivot operations
+
+### **Real-world Scenarios:**
+- Finding duplicates
+- Calculating running totals
+- Handling missing data
+- Date/time operations
+
+Practice these concepts with real databases and always explain your reasoning during interviews. Understanding the "why" behind each solution is as important as knowing the "how"! 🚀
