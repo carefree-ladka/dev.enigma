@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkdev_enigma=globalThis.webpackChunkdev_enigma||[]).push([[67472],{55513:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Understanding React Server Components: A Deep Dive","permalink":"/blog/2024/10/09/react-ssr-blog-post","unlisted":false,"date":"2024-10-09T00:00:00.000Z"}]}')}}]);
