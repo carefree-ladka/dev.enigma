@@ -1,0 +1,548 @@
+# React Router DOM Cheatsheet for Interviews
+
+## Table of Contents
+
+1. [Installation & Setup](#installation--setup)
+2. [Core Components](#core-components)
+3. [Routing Patterns](#routing-patterns)
+4. [Navigation](#navigation)
+5. [Hooks](#hooks)
+6. [Data Loading (v6.4+)](#data-loading-v64)
+7. [Error Handling](#error-handling)
+8. [Protected Routes](#protected-routes)
+9. [Common Interview Questions](#common-interview-questions)
+
+---
+
+## Installation & Setup
+
+```bash
+npm install react-router-dom
+```
+
+### Basic Setup (v6.4+)
+
+```jsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Root />,
+    errorElement: <ErrorPage />,
+    children: [
+      { path: 'about', element: <About /> },
+      { path: 'contact', element: <Contact /> },
+    ],
+  },
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+```
+
+### Legacy Setup (Still Valid)
+
+```jsx
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+---
+
+## Core Components
+
+### BrowserRouter
+
+Creates a router using the HTML5 history API.
+
+```jsx
+import { BrowserRouter } from 'react-router-dom';
+
+<BrowserRouter>
+  <App />
+</BrowserRouter>
+```
+
+### Routes & Route
+
+Container for all routes and individual route definitions.
+
+```jsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/users/:id" element={<User />} />
+  <Route path="*" element={<NotFound />} />
+</Routes>
+```
+
+### Outlet
+
+Renders child routes in nested routing.
+
+```jsx
+function Layout() {
+  return (
+    <div>
+      <nav>Navigation</nav>
+      <Outlet /> {/* Child routes render here */}
+    </div>
+  );
+}
+
+<Route path="/" element={<Layout />}>
+  <Route path="dashboard" element={<Dashboard />} />
+  <Route path="settings" element={<Settings />} />
+</Route>
+```
+
+### Link & NavLink
+
+Navigation components that prevent full page reload.
+
+```jsx
+import { Link, NavLink } from 'react-router-dom';
+
+// Basic Link
+<Link to="/about">About</Link>
+
+// NavLink with active styling
+<NavLink
+  to="/about"
+  className={({ isActive }) => isActive ? 'active' : ''}
+  style={({ isActive }) => ({ color: isActive ? 'red' : 'black' })}
+>
+  About
+</NavLink>
+```
+
+---
+
+## Routing Patterns
+
+### Dynamic Routes
+
+```jsx
+// Route definition
+<Route path="/users/:userId" element={<UserProfile />} />
+
+// Access params in component
+import { useParams } from 'react-router-dom';
+
+function UserProfile() {
+  const { userId } = useParams();
+  return <div>User ID: {userId}</div>;
+}
+```
+
+### Nested Routes
+
+```jsx
+<Route path="/" element={<Layout />}>
+  <Route index element={<Home />} /> {/* Default child route */}
+  <Route path="products" element={<Products />}>
+    <Route path=":id" element={<ProductDetail />} />
+    <Route path="new" element={<NewProduct />} />
+  </Route>
+</Route>
+```
+
+### Index Routes
+
+Default child route that renders when parent path is matched.
+
+```jsx
+<Route path="/" element={<Layout />}>
+  <Route index element={<Home />} />
+  <Route path="about" element={<About />} />
+</Route>
+```
+
+### Wildcard Routes (404)
+
+```jsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="*" element={<NotFound />} />
+</Routes>
+```
+
+---
+
+## Navigation
+
+### Programmatic Navigation
+
+```jsx
+import { useNavigate } from 'react-router-dom';
+
+function LoginForm() {
+  const navigate = useNavigate();
+
+  const handleLogin = () => {
+    // After successful login
+    navigate('/dashboard');
+
+    // Navigate back
+    navigate(-1);
+
+    // Replace current entry
+    navigate('/home', { replace: true });
+
+    // Navigate with state
+    navigate('/profile', { state: { from: 'login' } });
+  };
+
+  return <button onClick={handleLogin}>Login</button>;
+}
+```
+
+### Navigate Component
+
+Declarative navigation (redirects).
+
+```jsx
+import { Navigate } from 'react-router-dom';
+
+function ProtectedRoute({ isAuthenticated, children }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+```
+
+---
+
+## Hooks
+
+### useNavigate
+
+Programmatic navigation hook.
+
+```jsx
+const navigate = useNavigate();
+navigate('/path', { replace: true, state: { key: 'value' } });
+```
+
+### useParams
+
+Access URL parameters.
+
+```jsx
+const { id, slug } = useParams();
+```
+
+### useSearchParams
+
+Access and modify query parameters.
+
+```jsx
+import { useSearchParams } from 'react-router-dom';
+
+function SearchPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const query = searchParams.get('q');
+  const page = searchParams.get('page') || '1';
+
+  const updateSearch = (newQuery) => {
+    setSearchParams({ q: newQuery, page: '1' });
+  };
+
+  return <div>Search: {query}</div>;
+}
+```
+
+### useLocation
+
+Access current location object.
+
+```jsx
+import { useLocation } from 'react-router-dom';
+
+function Component() {
+  const location = useLocation();
+
+  console.log(location.pathname); // "/path"
+  console.log(location.search);   // "?query=value"
+  console.log(location.hash);     // "#section"
+  console.log(location.state);    // passed state
+
+  return <div>Current path: {location.pathname}</div>;
+}
+```
+
+### useMatch
+
+Check if current URL matches a pattern.
+
+```jsx
+import { useMatch } from 'react-router-dom';
+
+function Component() {
+  const match = useMatch('/users/:id');
+
+  if (match) {
+    console.log(match.params.id);
+  }
+
+  return <div>{match ? 'Matched!' : 'Not matched'}</div>;
+}
+```
+
+---
+
+## Data Loading (v6.4+)
+
+### Loader Function
+
+Fetch data before rendering component.
+
+```jsx
+import { createBrowserRouter, useLoaderData } from 'react-router-dom';
+
+const router = createBrowserRouter([
+  {
+    path: '/users/:id',
+    element: <UserProfile />,
+    loader: async ({ params }) => {
+      const response = await fetch(`/api/users/${params.id}`);
+      return response.json();
+    },
+  },
+]);
+
+function UserProfile() {
+  const user = useLoaderData();
+  return <div>{user.name}</div>;
+}
+```
+
+### Action Function
+
+Handle form submissions and mutations.
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/users/new',
+    element: <CreateUser />,
+    action: async ({ request }) => {
+      const formData = await request.formData();
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        body: formData,
+      });
+      return redirect('/users');
+    },
+  },
+]);
+
+function CreateUser() {
+  return (
+    <Form method="post">
+      <input name="username" />
+      <button type="submit">Create</button>
+    </Form>
+  );
+}
+```
+
+### useLoaderData & useActionData
+
+```jsx
+import { useLoaderData, useActionData } from 'react-router-dom';
+
+function Component() {
+  const data = useLoaderData();       // Data from loader
+  const actionData = useActionData(); // Data from action
+
+  return <div>{data.name}</div>;
+}
+```
+
+---
+
+## Error Handling
+
+### ErrorBoundary
+
+```jsx
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Root />,
+    errorElement: <ErrorPage />,
+    loader: async () => {
+      throw new Response('Not Found', { status: 404 });
+    },
+  },
+]);
+
+function ErrorPage() {
+  const error = useRouteError();
+
+  return (
+    <div>
+      <h1>Oops!</h1>
+      <p>{error.statusText || error.message}</p>
+    </div>
+  );
+}
+```
+
+### useRouteError
+
+```jsx
+import { useRouteError, isRouteErrorResponse } from 'react-router-dom';
+
+function ErrorPage() {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    return <div>{error.status} {error.statusText}</div>;
+  }
+
+  return <div>Unknown error occurred</div>;
+}
+```
+
+---
+
+## Protected Routes
+
+### Basic Protected Route Pattern
+
+```jsx
+import { Navigate, Outlet } from 'react-router-dom';
+
+function ProtectedRoute({ isAuthenticated }) {
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+}
+
+// Usage
+<Route element={<ProtectedRoute isAuthenticated={isAuth} />}>
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/profile" element={<Profile />} />
+</Route>
+```
+
+### With Redirect Path
+
+```jsx
+function ProtectedRoute({ isAuthenticated }) {
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <Outlet />;
+}
+
+// In login component, redirect back
+function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/';
+
+  const handleLogin = () => {
+    // Authenticate user
+    navigate(from, { replace: true });
+  };
+}
+```
+
+---
+
+## Common Interview Questions
+
+### 1. What's the difference between BrowserRouter and HashRouter?
+
+**BrowserRouter** uses the HTML5 history API (clean URLs: `/about`). Requires server configuration for deep linking.
+
+**HashRouter** uses URL hash (`/#/about`). Works without server configuration but URLs are less clean.
+
+### 2. How do you handle 404 pages?
+
+```jsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="*" element={<NotFound />} />
+</Routes>
+```
+
+### 3. What's the difference between Link and anchor tag?
+
+**Link** prevents full page reload and uses client-side routing. **Anchor tag** causes full page refresh and loses application state.
+
+### 4. How do you pass data between routes?
+
+```jsx
+// Using state
+navigate('/profile', { state: { userId: 123 } });
+const location = useLocation();
+const userId = location.state?.userId;
+
+// Using URL params
+navigate('/users/123');
+const { id } = useParams();
+
+// Using query params
+navigate('/search?q=react');
+const [searchParams] = useSearchParams();
+const query = searchParams.get('q');
+```
+
+### 5. What's the purpose of Outlet?
+
+Outlet renders the child route's element in nested routing, allowing parent routes to control layout while children control content.
+
+### 6. Difference between useNavigate and Navigate component?
+
+**useNavigate** is a hook for programmatic navigation (after events). **Navigate** is a component for declarative redirects (render-based).
+
+### 7. How do you implement lazy loading?
+
+```jsx
+import { lazy, Suspense } from 'react';
+
+const About = lazy(() => import('./About'));
+
+<Route
+  path="/about"
+  element={
+    <Suspense fallback={<Loading />}>
+      <About />
+    </Suspense>
+  }
+/>
+```
+
+### 8. What are loaders and actions in React Router v6.4+?
+
+**Loaders** fetch data before rendering. **Actions** handle form submissions and mutations. Both enable declarative data management without useEffect.
+
+### 9. How do you handle authentication?
+
+Use protected route patterns with context/state management, redirecting unauthenticated users to login while preserving intended destination.
+
+### 10. What's replace in navigate?
+
+```jsx
+navigate('/home', { replace: true });
+```
+
+Replaces current history entry instead of adding new one, preventing back button from returning to previous page.
