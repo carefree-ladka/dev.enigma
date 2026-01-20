@@ -1,0 +1,3141 @@
+# 🌳 Complete DOM Manipulation Guide
+
+A comprehensive reference for working with the Document Object Model in JavaScript.
+
+---
+
+## Table of Contents
+
+1. [Selecting Elements](#1️⃣-selecting-elements)
+2. [Creating & Inserting Elements](#2️⃣-creating--inserting-elements)
+3. [Removing & Replacing Elements](#3️⃣-removing--replacing-elements)
+4. [Modifying Element Content](#4️⃣-modifying-element-content)
+5. [Working with Attributes](#5️⃣-working-with-attributes)
+6. [Manipulating Classes](#6️⃣-manipulating-classes)
+7. [Inline Styles](#7️⃣-inline-styles)
+8. [Traversing the DOM](#8️⃣-traversing-the-dom)
+9. [Event Handling](#9️⃣-event-handling)
+10. [Event Object Properties](#🔟-event-object-properties)
+11. [Common Event Types](#1️⃣1️⃣-common-event-types)
+12. [Form Events & Handling](#1️⃣2️⃣-form-events--handling)
+13. [Document & Window Events](#1️⃣3️⃣-document--window-events)
+14. [Mouse & Pointer Events](#1️⃣4️⃣-mouse--pointer-events)
+15. [Keyboard Events](#1️⃣5️⃣-keyboard-events)
+16. [Touch Events](#1️⃣6️⃣-touch-events)
+17. [Drag & Drop API](#1️⃣7️⃣-drag--drop-api)
+18. [Intersection Observer API](#1️⃣8️⃣-intersection-observer-api)
+19. [Mutation Observer API](#1️⃣9️⃣-mutation-observer-api)
+20. [Resize Observer API](#2️⃣0️⃣-resize-observer-api)
+21. [Web Storage API](#2️⃣1️⃣-web-storage-api)
+22. [Clipboard API](#2️⃣2️⃣-clipboard-api)
+23. [Geolocation API](#2️⃣3️⃣-geolocation-api)
+24. [Fetch API](#2️⃣4️⃣-fetch-api)
+25. [DOM Manipulation Performance Tips](#2️⃣5️⃣-dom-manipulation-performance-tips)
+
+---
+
+## 1️⃣ Selecting Elements
+
+### getElementById()
+Selects a single element by its ID attribute.
+
+```javascript
+const element = document.getElementById('myId');
+console.log(element);
+
+// Returns: <div id="myId">...</div> or null
+```
+
+**Notes:**
+- Fastest selection method
+- Returns single element or null
+- ID must be unique in document
+
+---
+
+### getElementsByClassName()
+Selects all elements with a specific class name.
+
+```javascript
+const elements = document.getElementsByClassName('myClass');
+console.log(elements); // HTMLCollection
+
+// Convert to array
+const array = Array.from(elements);
+
+// Iterate
+for (let el of elements) {
+  console.log(el);
+}
+```
+
+**Notes:**
+- Returns live HTMLCollection
+- Updates automatically when DOM changes
+- Case-sensitive
+
+---
+
+### getElementsByTagName()
+Selects all elements with a specific tag name.
+
+```javascript
+const divs = document.getElementsByTagName('div');
+const allElements = document.getElementsByTagName('*'); // All elements
+
+// Select within specific element
+const container = document.getElementById('container');
+const spans = container.getElementsByTagName('span');
+```
+
+**Notes:**
+- Returns live HTMLCollection
+- Use '*' for all elements
+- Can be called on any element, not just document
+
+---
+
+### querySelector()
+Selects the first element matching a CSS selector.
+
+```javascript
+// By ID
+const el1 = document.querySelector('#myId');
+
+// By class
+const el2 = document.querySelector('.myClass');
+
+// By tag
+const el3 = document.querySelector('div');
+
+// Complex selectors
+const el4 = document.querySelector('div.container > p:first-child');
+const el5 = document.querySelector('[data-id="123"]');
+const el6 = document.querySelector('input[type="email"]');
+```
+
+**Notes:**
+- Most flexible selection method
+- Returns first match or null
+- Supports all CSS selectors
+
+---
+
+### querySelectorAll()
+Selects all elements matching a CSS selector.
+
+```javascript
+const elements = document.querySelectorAll('.myClass');
+
+// Returns static NodeList
+console.log(elements.length);
+
+// Iterate
+elements.forEach(el => {
+  console.log(el);
+});
+
+// Convert to array
+const array = [...elements];
+
+// Complex selectors
+const links = document.querySelectorAll('nav a[href^="http"]');
+const checked = document.querySelectorAll('input:checked');
+```
+
+**Notes:**
+- Returns static NodeList (not live)
+- Supports all CSS selectors
+- Use forEach() to iterate
+
+---
+
+### Comparison: querySelector vs getElementById
+
+```javascript
+// Performance test
+console.time('getElementById');
+for (let i = 0; i < 10000; i++) {
+  document.getElementById('test');
+}
+console.timeEnd('getElementById'); // ~3ms
+
+console.time('querySelector');
+for (let i = 0; i < 10000; i++) {
+  document.querySelector('#test');
+}
+console.timeEnd('querySelector'); // ~15ms
+```
+
+**Recommendation:** Use `getElementById()` when possible for best performance.
+
+---
+
+## 2️⃣ Creating & Inserting Elements
+
+### createElement()
+Creates a new element node.
+
+```javascript
+const div = document.createElement('div');
+div.textContent = 'Hello World';
+div.className = 'container';
+div.id = 'main';
+
+console.log(div); // <div class="container" id="main">Hello World</div>
+```
+
+---
+
+### createTextNode()
+Creates a text node.
+
+```javascript
+const text = document.createTextNode('Hello World');
+const div = document.createElement('div');
+div.appendChild(text);
+```
+
+---
+
+### createDocumentFragment()
+Creates a lightweight document fragment for batch operations.
+
+```javascript
+const fragment = document.createDocumentFragment();
+
+for (let i = 0; i < 1000; i++) {
+  const li = document.createElement('li');
+  li.textContent = `Item ${i}`;
+  fragment.appendChild(li);
+}
+
+// Single DOM update
+document.getElementById('list').appendChild(fragment);
+```
+
+**Benefits:**
+- Improves performance
+- Only one reflow/repaint
+- Not part of the main DOM tree
+
+---
+
+### appendChild()
+Adds a node as the last child.
+
+```javascript
+const parent = document.getElementById('parent');
+const child = document.createElement('div');
+child.textContent = 'New child';
+
+parent.appendChild(child);
+```
+
+---
+
+### append()
+Adds multiple nodes and strings at the end.
+
+```javascript
+const parent = document.getElementById('parent');
+
+// Can append multiple items
+parent.append('Text', document.createElement('div'), 'More text');
+
+// Can append text directly
+parent.append('Hello World');
+```
+
+**Differences from appendChild():**
+- Can append multiple nodes
+- Can append text directly (no createTextNode needed)
+- No return value
+
+---
+
+### prepend()
+Adds nodes at the beginning.
+
+```javascript
+const parent = document.getElementById('parent');
+const newFirst = document.createElement('div');
+
+parent.prepend(newFirst);
+parent.prepend('Text at start', newFirst);
+```
+
+---
+
+### insertBefore()
+Inserts a node before a reference node.
+
+```javascript
+const parent = document.getElementById('parent');
+const newNode = document.createElement('div');
+const referenceNode = document.querySelector('.reference');
+
+parent.insertBefore(newNode, referenceNode);
+```
+
+---
+
+### insertAdjacentElement()
+Inserts element at specified position.
+
+```javascript
+const target = document.getElementById('target');
+const newEl = document.createElement('div');
+
+// 4 positions:
+target.insertAdjacentElement('beforebegin', newEl); // Before target
+target.insertAdjacentElement('afterbegin', newEl);  // First child
+target.insertAdjacentElement('beforeend', newEl);   // Last child
+target.insertAdjacentElement('afterend', newEl);    // After target
+```
+
+**Visual representation:**
+```html
+<!-- beforebegin -->
+<div id="target">
+  <!-- afterbegin -->
+  content
+  <!-- beforeend -->
+</div>
+<!-- afterend -->
+```
+
+---
+
+### insertAdjacentHTML()
+Inserts HTML string at specified position.
+
+```javascript
+const target = document.getElementById('target');
+
+target.insertAdjacentHTML('beforeend', '<p>New paragraph</p>');
+target.insertAdjacentHTML('afterbegin', '<h1>Title</h1>');
+```
+
+**Warning:** Be careful with user input to avoid XSS attacks.
+
+---
+
+### insertAdjacentText()
+Inserts text at specified position (safe from XSS).
+
+```javascript
+const target = document.getElementById('target');
+const userInput = '<script>alert("XSS")</script>';
+
+// Safe - treats as text, not HTML
+target.insertAdjacentText('beforeend', userInput);
+```
+
+---
+
+## 3️⃣ Removing & Replacing Elements
+
+### remove()
+Removes the element from the DOM.
+
+```javascript
+const element = document.getElementById('myElement');
+element.remove();
+```
+
+---
+
+### removeChild()
+Removes a child element.
+
+```javascript
+const parent = document.getElementById('parent');
+const child = document.getElementById('child');
+
+parent.removeChild(child);
+
+// Remove first child
+if (parent.firstChild) {
+  parent.removeChild(parent.firstChild);
+}
+
+// Remove all children
+while (parent.firstChild) {
+  parent.removeChild(parent.firstChild);
+}
+```
+
+---
+
+### replaceChild()
+Replaces a child element with another.
+
+```javascript
+const parent = document.getElementById('parent');
+const oldChild = document.getElementById('old');
+const newChild = document.createElement('div');
+newChild.textContent = 'New content';
+
+parent.replaceChild(newChild, oldChild);
+```
+
+---
+
+### replaceWith()
+Replaces element with new nodes.
+
+```javascript
+const oldElement = document.getElementById('old');
+const newElement = document.createElement('div');
+
+// Replace with single element
+oldElement.replaceWith(newElement);
+
+// Replace with multiple nodes
+oldElement.replaceWith('Text ', newElement, ' more text');
+```
+
+---
+
+### cloneNode()
+Creates a copy of a node.
+
+```javascript
+const original = document.getElementById('original');
+
+// Shallow clone (no children)
+const shallowClone = original.cloneNode(false);
+
+// Deep clone (includes children)
+const deepClone = original.cloneNode(true);
+
+document.body.appendChild(deepClone);
+```
+
+**Notes:**
+- Event listeners are NOT copied
+- IDs should be changed to avoid duplicates
+
+---
+
+## 4️⃣ Modifying Element Content
+
+### innerHTML
+Gets or sets HTML content.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get
+console.log(div.innerHTML);
+
+// Set
+div.innerHTML = '<p>New <strong>HTML</strong> content</p>';
+
+// Append
+div.innerHTML += '<p>More content</p>';
+```
+
+**Warning:**
+- Vulnerable to XSS if using user input
+- Replaces all content (destroys event listeners)
+
+---
+
+### textContent
+Gets or sets text content (no HTML parsing).
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get all text (ignores HTML tags)
+console.log(div.textContent);
+
+// Set (HTML tags rendered as text)
+div.textContent = '<p>This is not HTML</p>';
+
+// More performant than innerHTML for text-only
+```
+
+**Safe from XSS attacks.**
+
+---
+
+### innerText
+Gets or sets visible text content.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get visible text only (respects CSS display)
+console.log(div.innerText);
+
+// Set
+div.innerText = 'New text';
+```
+
+**Differences from textContent:**
+- Respects CSS (hidden elements ignored)
+- Triggers reflow (slower)
+- Not available on all node types
+
+---
+
+### outerHTML
+Gets or sets element and its content.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get (includes the element itself)
+console.log(div.outerHTML);
+// <div id="myDiv">content</div>
+
+// Set (replaces entire element)
+div.outerHTML = '<section>New element</section>';
+```
+
+---
+
+### Comparison: Setting Content
+
+```javascript
+const container = document.getElementById('container');
+
+// Method 1: innerHTML (parses HTML, vulnerable to XSS)
+container.innerHTML = '<p>Hello</p>';
+
+// Method 2: textContent (safe, text only)
+container.textContent = 'Hello';
+
+// Method 3: createElement + appendChild (safest, most control)
+const p = document.createElement('p');
+p.textContent = 'Hello';
+container.appendChild(p);
+```
+
+---
+
+## 5️⃣ Working with Attributes
+
+### getAttribute()
+Gets an attribute value.
+
+```javascript
+const link = document.querySelector('a');
+
+const href = link.getAttribute('href');
+const target = link.getAttribute('target');
+const dataId = link.getAttribute('data-id');
+
+console.log(href); // "https://example.com"
+```
+
+---
+
+### setAttribute()
+Sets an attribute value.
+
+```javascript
+const link = document.querySelector('a');
+
+link.setAttribute('href', 'https://newurl.com');
+link.setAttribute('target', '_blank');
+link.setAttribute('data-id', '123');
+link.setAttribute('rel', 'noopener noreferrer');
+```
+
+---
+
+### removeAttribute()
+Removes an attribute.
+
+```javascript
+const link = document.querySelector('a');
+
+link.removeAttribute('target');
+link.removeAttribute('data-id');
+```
+
+---
+
+### hasAttribute()
+Checks if attribute exists.
+
+```javascript
+const link = document.querySelector('a');
+
+if (link.hasAttribute('target')) {
+  console.log('Has target attribute');
+}
+
+if (link.hasAttribute('data-custom')) {
+  console.log('Has custom data attribute');
+}
+```
+
+---
+
+### attributes
+Gets all attributes as NamedNodeMap.
+
+```javascript
+const element = document.querySelector('div');
+
+// Get all attributes
+const attrs = element.attributes;
+
+for (let attr of attrs) {
+  console.log(`${attr.name}: ${attr.value}`);
+}
+
+// Check specific attribute
+console.log(attrs['id'].value);
+console.log(attrs.getNamedItem('class').value);
+```
+
+---
+
+### Property vs Attribute
+
+```javascript
+const input = document.querySelector('input');
+
+// Attribute (HTML attribute)
+input.getAttribute('value'); // Initial value
+input.setAttribute('value', 'new');
+
+// Property (DOM property, reflects current state)
+input.value; // Current value
+input.value = 'new';
+
+// Example
+input.setAttribute('value', 'hello');
+console.log(input.getAttribute('value')); // "hello"
+console.log(input.value); // "hello"
+
+// User types "world"
+console.log(input.getAttribute('value')); // Still "hello"
+console.log(input.value); // "world"
+```
+
+**Key differences:**
+- Attributes: HTML attributes (strings only)
+- Properties: JavaScript object properties (any type)
+- Properties are usually preferred
+
+---
+
+### data-* Attributes (dataset)
+
+```javascript
+// HTML: <div id="user" data-id="123" data-name="John" data-user-role="admin">
+
+const div = document.getElementById('user');
+
+// Read
+console.log(div.dataset.id); // "123"
+console.log(div.dataset.name); // "John"
+console.log(div.dataset.userRole); // "admin" (camelCase)
+
+// Write
+div.dataset.id = '456';
+div.dataset.newAttr = 'value';
+
+// Delete
+delete div.dataset.name;
+
+// Check existence
+if ('id' in div.dataset) {
+  console.log('Has data-id');
+}
+```
+
+**Notes:**
+- Hyphenated names become camelCase
+- All values are strings
+- Changes reflect in HTML attributes
+
+---
+
+## 6️⃣ Manipulating Classes
+
+### className
+Gets or sets class attribute as string.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get
+console.log(div.className); // "class1 class2 class3"
+
+// Set (replaces all classes)
+div.className = 'newClass';
+
+// Append
+div.className += ' anotherClass';
+```
+
+---
+
+### classList
+Provides methods to manipulate classes.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Add single or multiple classes
+div.classList.add('newClass');
+div.classList.add('class1', 'class2', 'class3');
+
+// Remove
+div.classList.remove('oldClass');
+div.classList.remove('class1', 'class2');
+
+// Toggle (add if absent, remove if present)
+div.classList.toggle('active');
+div.classList.toggle('hidden', false); // Force remove
+div.classList.toggle('visible', true);  // Force add
+
+// Check if contains
+if (div.classList.contains('active')) {
+  console.log('Element is active');
+}
+
+// Replace
+div.classList.replace('oldClass', 'newClass');
+
+// Iterate
+div.classList.forEach(className => {
+  console.log(className);
+});
+
+// Get as array
+const classes = [...div.classList];
+```
+
+---
+
+### classList vs className
+
+```javascript
+const div = document.getElementById('myDiv');
+div.className = 'btn btn-primary active';
+
+// classList - Recommended
+div.classList.add('disabled'); // "btn btn-primary active disabled"
+div.classList.remove('active'); // "btn btn-primary disabled"
+
+// className - Requires string manipulation
+div.className += ' disabled';
+div.className = div.className.replace('active', '');
+```
+
+**Recommendation:** Use `classList` for better readability and safety.
+
+---
+
+## 7️⃣ Inline Styles
+
+### style Property
+Sets inline CSS styles.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Set single property
+div.style.color = 'red';
+div.style.backgroundColor = 'blue';
+div.style.fontSize = '16px';
+div.style.margin = '10px 20px';
+
+// Multi-word properties (camelCase)
+div.style.borderRadius = '5px';
+div.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+// Get computed style
+console.log(div.style.color); // Only inline styles
+
+// Remove style
+div.style.color = '';
+delete div.style.color;
+```
+
+---
+
+### cssText
+Sets multiple styles as string.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Set multiple styles
+div.style.cssText = 'color: red; background: blue; font-size: 16px;';
+
+// Append (preserve existing)
+div.style.cssText += 'margin: 10px;';
+
+// Get
+console.log(div.style.cssText);
+```
+
+---
+
+### getComputedStyle()
+Gets computed styles (including CSS rules).
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Get computed styles
+const styles = window.getComputedStyle(div);
+
+console.log(styles.color); // Computed color value
+console.log(styles.fontSize); // Actual font size
+console.log(styles.display);
+console.log(styles.marginTop);
+
+// Get pseudo-element styles
+const before = window.getComputedStyle(div, '::before');
+console.log(before.content);
+
+const after = window.getComputedStyle(div, '::after');
+console.log(after.display);
+```
+
+**Notes:**
+- Read-only
+- Returns computed values (not original CSS)
+- All values are absolute (e.g., px not em)
+
+---
+
+### setProperty() & removeProperty()
+Alternative methods for style manipulation.
+
+```javascript
+const div = document.getElementById('myDiv');
+
+// Set property
+div.style.setProperty('color', 'red');
+div.style.setProperty('font-size', '16px', 'important');
+
+// Get property
+const color = div.style.getPropertyValue('color');
+
+// Remove property
+div.style.removeProperty('color');
+
+// Check priority
+const priority = div.style.getPropertyPriority('color'); // "" or "important"
+```
+
+---
+
+## 8️⃣ Traversing the DOM
+
+### Parent Navigation
+
+```javascript
+const element = document.getElementById('child');
+
+// Direct parent
+const parent = element.parentNode;
+const parentElement = element.parentElement; // Same, but only elements
+
+// Closest ancestor matching selector
+const container = element.closest('.container');
+const form = element.closest('form');
+const article = element.closest('article');
+
+// Check if contained
+const body = document.body;
+const isInBody = body.contains(element); // true
+```
+
+---
+
+### Child Navigation
+
+```javascript
+const parent = document.getElementById('parent');
+
+// All child nodes (includes text, comments)
+const allNodes = parent.childNodes;
+
+// Only element children
+const elements = parent.children; // HTMLCollection
+
+// First and last
+const first = parent.firstChild; // Node
+const firstEl = parent.firstElementChild; // Element
+const last = parent.lastChild; // Node
+const lastEl = parent.lastElementChild; // Element
+
+// Count
+const childCount = parent.childElementCount;
+```
+
+---
+
+### Sibling Navigation
+
+```javascript
+const element = document.getElementById('middle');
+
+// Next sibling
+const next = element.nextSibling; // Node (includes text)
+const nextEl = element.nextElementSibling; // Element only
+
+// Previous sibling
+const prev = element.previousSibling; // Node
+const prevEl = element.previousElementSibling; // Element only
+
+// Get all siblings
+function getSiblings(el) {
+  return [...el.parentNode.children].filter(child => child !== el);
+}
+
+const siblings = getSiblings(element);
+```
+
+---
+
+### Document Navigation
+
+```javascript
+// Root elements
+const html = document.documentElement; // <html>
+const head = document.head; // <head>
+const body = document.body; // <body>
+
+// Document type
+console.log(document.doctype); // <!DOCTYPE html>
+
+// All elements
+const allElements = document.all; // All elements (deprecated)
+
+// Active element
+const focused = document.activeElement; // Currently focused element
+```
+
+---
+
+### Matches & Contains
+
+```javascript
+const element = document.querySelector('.item');
+
+// Check if matches selector
+if (element.matches('.item.active')) {
+  console.log('Element is active item');
+}
+
+if (element.matches('[data-id]')) {
+  console.log('Has data-id attribute');
+}
+
+// Check if contains another element
+const parent = document.getElementById('parent');
+const child = document.getElementById('child');
+
+if (parent.contains(child)) {
+  console.log('Parent contains child');
+}
+```
+
+---
+
+## 9️⃣ Event Handling
+
+### addEventListener()
+Attaches event listener to element.
+
+```javascript
+const button = document.getElementById('btn');
+
+// Basic syntax
+button.addEventListener('click', function(event) {
+  console.log('Button clicked!');
+  console.log(event);
+});
+
+// With named function
+function handleClick(e) {
+  console.log('Clicked:', e.target);
+}
+button.addEventListener('click', handleClick);
+
+// With options
+button.addEventListener('click', handler, {
+  once: true,      // Execute only once
+  passive: true,   // Never calls preventDefault()
+  capture: false   // Event phase
+});
+
+// Multiple listeners
+button.addEventListener('click', handler1);
+button.addEventListener('click', handler2);
+```
+
+---
+
+### removeEventListener()
+Removes event listener.
+
+```javascript
+const button = document.getElementById('btn');
+
+function handleClick(e) {
+  console.log('Clicked');
+}
+
+// Add listener
+button.addEventListener('click', handleClick);
+
+// Remove listener (must be same function reference)
+button.removeEventListener('click', handleClick);
+
+// Anonymous functions CANNOT be removed
+button.addEventListener('click', () => console.log('Cannot remove this'));
+```
+
+---
+
+### Event Object
+Properties and methods available in event handlers.
+
+```javascript
+element.addEventListener('click', function(event) {
+  // Target elements
+  console.log(event.target);        // Element that triggered event
+  console.log(event.currentTarget); // Element listener attached to
+
+  // Event info
+  console.log(event.type);          // Event type: "click"
+  console.log(event.timeStamp);     // Time event created
+
+  // Mouse position
+  console.log(event.clientX, event.clientY); // Viewport coordinates
+  console.log(event.pageX, event.pageY);     // Document coordinates
+  console.log(event.screenX, event.screenY); // Screen coordinates
+
+  // Keyboard
+  console.log(event.key);           // Key pressed
+  console.log(event.code);          // Physical key code
+  console.log(event.ctrlKey);       // Ctrl pressed?
+  console.log(event.shiftKey);      // Shift pressed?
+  console.log(event.altKey);        // Alt pressed?
+  console.log(event.metaKey);       // Meta/Command pressed?
+
+  // Methods
+  event.preventDefault();           // Prevent default action
+  event.stopPropagation();          // Stop bubbling
+  event.stopImmediatePropagation(); // Stop all handlers
+});
+```
+
+---
+
+### Event Bubbling & Capturing
+
+```javascript
+// HTML: <div id="outer"><div id="inner">Click</div></div>
+
+const outer = document.getElementById('outer');
+const inner = document.getElementById('inner');
+
+// Bubbling (default) - inner → outer → body → html
+inner.addEventListener('click', () => console.log('Inner (bubble)'));
+outer.addEventListener('click', () => console.log('Outer (bubble)'));
+
+// Capturing - html → body → outer → inner
+inner.addEventListener('click', () => console.log('Inner (capture)'), true);
+outer.addEventListener('click', () => console.log('Outer (capture)'), true);
+
+// Stop propagation
+inner.addEventListener('click', (e) => {
+  e.stopPropagation(); // Stops bubbling to outer
+  console.log('Inner only');
+});
+```
+
+**Event flow:**
+1. Capture phase: Root → Target
+2. Target phase: Target element
+3. Bubble phase: Target → Root
+
+---
+
+### Event Delegation
+Handle events on parent instead of many children.
+
+```javascript
+// Instead of this (inefficient):
+const buttons = document.querySelectorAll('.item button');
+buttons.forEach(button => {
+  button.addEventListener('click', handleClick);
+});
+
+// Do this (efficient):
+const list = document.getElementById('list');
+list.addEventListener('click', function(e) {
+  // Check if clicked element is a button
+  if (e.target.matches('button')) {
+    handleClick(e);
+  }
+
+  // Or use closest for nested elements
+  const button = e.target.closest('button');
+  if (button && this.contains(button)) {
+    handleClick(e);
+  }
+});
+
+// Benefits:
+// - Single event listener
+// - Works with dynamically added elements
+// - Better performance
+```
+
+---
+
+### Custom Events
+Create and dispatch custom events.
+
+```javascript
+// Create custom event
+const myEvent = new CustomEvent('myCustomEvent', {
+  detail: { message: 'Hello', timestamp: Date.now() },
+  bubbles: true,
+  cancelable: true
+});
+
+// Listen for custom event
+document.addEventListener('myCustomEvent', function(e) {
+  console.log(e.detail.message); // "Hello"
+  console.log(e.detail.timestamp);
+});
+
+// Dispatch event
+document.dispatchEvent(myEvent);
+
+// Simple event (no detail)
+const simpleEvent = new Event('simpleEvent', { bubbles: true });
+element.dispatchEvent(simpleEvent);
+```
+
+---
+
+### once, passive, and capture Options
+
+```javascript
+const element = document.getElementById('myElement');
+
+// once: Execute handler only once
+element.addEventListener('click', handler, { once: true });
+
+// passive: Promise never to call preventDefault() (better scroll performance)
+element.addEventListener('touchstart', handler, { passive: true });
+
+// capture: Listen in capture phase instead of bubble
+element.addEventListener('click', handler, { capture: true });
+
+// Combined
+element.addEventListener('scroll', handler, {
+  once: false,
+  passive: true,
+  capture: false
+});
+```
+
+---
+
+## 🔟 Event Object Properties
+
+### Common Properties
+
+```javascript
+element.addEventListener('event', function(e) {
+  // Event identification
+  e.type                    // Event type: "click", "keydown", etc.
+  e.target                  // Element that triggered event
+  e.currentTarget          // Element listener attached to
+  e.eventPhase             // 1=capture, 2=target, 3=bubble
+
+  // Timing
+  e.timeStamp              // DOMHighResTimeStamp
+
+  // State
+  e.bubbles                // Can bubble?
+  e.cancelable             // Can be canceled?
+  e.defaultPrevented       // Was preventDefault() called?
+
+  // Related elements
+  e.relatedTarget          // Secondary target (mouseenter, etc.)
+
+  // Flags
+  e.isTrusted              // User-generated (not script)
+});
+```
+
+---
+
+## 1️⃣1️⃣ Common Event Types
+
+### Mouse Events
+
+```javascript
+const element = document.getElementById('box');
+
+element.addEventListener('click', (e) => {
+  console.log('Single click');
+});
+
+element.addEventListener('dblclick', (e) => {
+  console.log('Double click');
+});
+
+element.addEventListener('mousedown', (e) => {
+  console.log('Mouse button pressed');
+  console.log('Button:', e.button); // 0=left, 1=middle, 2=right
+});
+
+element.addEventListener('mouseup', (e) => {
+  console.log('Mouse button released');
+});
+
+element.addEventListener('mouseenter', (e) => {
+  console.log('Mouse entered (doesn\'t bubble)');
+});
+
+element.addEventListener('mouseleave', (e) => {
+  console.log('Mouse left (doesn\'t bubble)');
+});
+
+element.addEventListener('mouseover', (e) => {
+  console.log('Mouse over (bubbles, fires for children)');
+});
+
+element.addEventListener('mouseout', (e) => {
+  console.log('Mouse out (bubbles)');
+});
+
+element.addEventListener('mousemove', (e) => {
+  console.log(`Position: ${e.clientX}, ${e.clientY}`);
+});
+
+element.addEventListener('contextmenu', (e) => {
+  e.preventDefault(); // Prevent right-click menu
+  console.log('Right-click');
+});
+```
+
+---
+
+### Keyboard Events
+
+```javascript
+const input = document.getElementById('input');
+
+input.addEventListener('keydown', (e) => {
+  console.log('Key pressed:', e.key);
+  console.log('Key code:', e.code);
+  console.log('Char code:', e.charCode);
+
+  // Modifier keys
+  if (e.ctrlKey) console.log('Ctrl pressed');
+  if (e.shiftKey) console.log('Shift pressed');
+  if (e.altKey) console.log('Alt pressed');
+  if (e.metaKey) console.log('Meta/Cmd pressed');
+
+  // Prevent default
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    console.log('Enter blocked');
+  }
+});
+
+input.addEventListener('keyup', (e) => {
+  console.log('Key released:', e.key);
+});
+
+input.addEventListener('keypress', (e) => {
+  // Deprecated - use keydown instead
+  console.log('Character:', e.key);
+});
+```
+
+## Form Events & Handling
+
+### Form Events
+
+```javascript
+const form = document.getElementById('myForm');
+const input = document.getElementById('email');
+
+// Submit
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  console.log('Form submitted');
+
+  const formData = new FormData(form);
+  console.log(Object.fromEntries(formData));
+});
+
+// Input events
+input.addEventListener('input', (e) => {
+  console.log('Value changed:', e.target.value);
+});
+
+input.addEventListener('change', (e) => {
+  console.log('Input changed and lost focus:', e.target.value);
+});
+
+input.addEventListener('focus', (e) => {
+  console.log('Input focused');
+  e.target.style.borderColor = 'blue';
+});
+
+input.addEventListener('blur', (e) => {
+  console.log('Input lost focus');
+  e.target.style.borderColor = '';
+});
+
+// Form reset
+form.addEventListener('reset', (e) => {
+  console.log('Form reset');
+});
+
+// Select events
+const select = document.getElementById('mySelect');
+select.addEventListener('change', (e) => {
+  console.log('Selected:', e.target.value);
+});
+
+// Checkbox/Radio
+const checkbox = document.getElementById('myCheckbox');
+checkbox.addEventListener('change', (e) => {
+  console.log('Checked:', e.target.checked);
+});
+```
+
+---
+
+### Form Validation
+
+```javascript
+const form = document.getElementById('registrationForm');
+const email = document.getElementById('email');
+const password = document.getElementById('password');
+
+email.addEventListener('input', (e) => {
+  const isValid = e.target.validity.valid;
+
+  if (!isValid) {
+    e.target.setCustomValidity('Please enter a valid email');
+    e.target.reportValidity();
+  } else {
+    e.target.setCustomValidity('');
+  }
+});
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  // Check validity
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+
+  console.log('Form is valid, submitting...');
+});
+
+// Constraint Validation API
+console.log(email.validity.valid);
+console.log(email.validity.valueMissing);
+console.log(email.validity.typeMismatch);
+console.log(email.validity.patternMismatch);
+console.log(email.validationMessage);
+```
+
+---
+
+## Document & Window Events
+
+### Document Events
+
+```javascript
+// DOM Content Loaded
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM fully loaded and parsed');
+  // Safe to manipulate DOM
+});
+
+// Readystatechange
+document.addEventListener('readystatechange', () => {
+  console.log('Ready state:', document.readyState);
+  // "loading", "interactive", "complete"
+});
+
+// Visibility change
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    console.log('Tab is hidden');
+  } else {
+    console.log('Tab is visible');
+  }
+});
+
+// Selection change
+document.addEventListener('selectionchange', () => {
+  const selection = document.getSelection();
+  console.log('Selected text:', selection.toString());
+});
+```
+
+---
+
+### Window Events
+
+```javascript
+// Load (all resources loaded)
+window.addEventListener('load', () => {
+  console.log('Page fully loaded (images, styles, scripts)');
+});
+
+// Before unload
+window.addEventListener('beforeunload', (e) => {
+  e.preventDefault();
+  e.returnValue = ''; // Show confirmation dialog
+});
+
+// Unload
+window.addEventListener('unload', () => {
+  console.log('Page is unloading');
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  console.log(`Window size: ${window.innerWidth}x${window.innerHeight}`);
+});
+
+// Scroll
+window.addEventListener('scroll', () => {
+  console.log('Scroll Y:', window.scrollY);
+  console.log('Scroll X:', window.scrollX);
+});
+
+// Hash change
+window.addEventListener('hashchange', () => {
+  console.log('Hash changed:', window.location.hash);
+});
+
+// Online/Offline
+window.addEventListener('online', () => {
+  console.log('Connection restored');
+});
+
+window.addEventListener('offline', () => {
+  console.log('Connection lost');
+});
+
+// Page show/hide (navigation)
+window.addEventListener('pageshow', (e) => {
+  console.log('Page shown');
+  console.log('From cache:', e.persisted);
+});
+
+window.addEventListener('pagehide', (e) => {
+  console.log('Page hidden');
+});
+```
+
+---
+
+## Mouse & Pointer Events
+
+### Pointer Events
+Modern unified API for mouse, touch, and pen.
+
+```javascript
+const element = document.getElementById('canvas');
+
+element.addEventListener('pointerdown', (e) => {
+  console.log('Pointer down');
+  console.log('Pointer type:', e.pointerType); // "mouse", "pen", "touch"
+  console.log('Pointer ID:', e.pointerId);
+  console.log('Pressure:', e.pressure);
+});
+
+element.addEventListener('pointermove', (e) => {
+  console.log(`Position: ${e.clientX}, ${e.clientY}`);
+  console.log('Movement:', e.movementX, e.movementY);
+});
+
+element.addEventListener('pointerup', (e) => {
+  console.log('Pointer up');
+});
+
+element.addEventListener('pointercancel', (e) => {
+  console.log('Pointer canceled');
+});
+
+element.addEventListener('pointerenter', (e) => {
+  console.log('Pointer entered');
+});
+
+element.addEventListener('pointerleave', (e) => {
+  console.log('Pointer left');
+});
+
+element.addEventListener('pointerover', (e) => {
+  console.log('Pointer over');
+});
+
+element.addEventListener('pointerout', (e) => {
+  console.log('Pointer out');
+});
+
+// Capture pointer
+element.addEventListener('pointerdown', (e) => {
+  element.setPointerCapture(e.pointerId);
+});
+
+element.addEventListener('pointerup', (e) => {
+  element.releasePointerCapture(e.pointerId);
+});
+```
+
+---
+
+### Mouse Coordinates
+
+```javascript
+element.addEventListener('click', (e) => {
+  // Relative to viewport
+  console.log('Client:', e.clientX, e.clientY);
+
+  // Relative to document
+  console.log('Page:', e.pageX, e.pageY);
+
+  // Relative to screen
+  console.log('Screen:', e.screenX, e.screenY);
+
+  // Relative to target element
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  console.log('Offset:', x, y);
+
+  // Alternative
+  console.log('Offset:', e.offsetX, e.offsetY);
+});
+```
+
+---
+
+### Wheel Events
+
+```javascript
+element.addEventListener('wheel', (e) => {
+  e.preventDefault(); // Prevent page scroll
+
+  console.log('Delta X:', e.deltaX);
+  console.log('Delta Y:', e.deltaY);
+  console.log('Delta Z:', e.deltaZ);
+  console.log('Delta mode:', e.deltaMode); // 0=pixel, 1=line, 2=page
+
+  // Zoom example
+  if (e.deltaY < 0) {
+    console.log('Zoom in');
+  } else {
+    console.log('Zoom out');
+  }
+});
+```
+
+---
+
+## Keyboard Events
+
+### Key Event Properties
+
+```javascript
+const input = document.getElementById('input');
+
+input.addEventListener('keydown', (e) => {
+  console.log('Key:', e.key);           // "a", "Enter", "ArrowUp"
+  console.log('Code:', e.code);         // "KeyA", "Enter", "ArrowUp"
+  console.log('Which:', e.which);       // Deprecated
+  console.log('Key Code:', e.keyCode);  // Deprecated
+
+  console.log('Alt:', e.altKey);
+  console.log('Ctrl:', e.ctrlKey);
+  console.log('Shift:', e.shiftKey);
+  console.log('Meta:', e.metaKey);
+
+  console.log('Repeat:', e.repeat);     // Key held down
+  console.log('Location:', e.location); // 0=standard, 1=left, 2=right, 3=numpad
+});
+```
+
+---
+
+### Keyboard Shortcuts
+
+```javascript
+document.addEventListener('keydown', (e) => {
+  // Ctrl+S to save
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    console.log('Save triggered');
+  }
+
+  // Ctrl+Shift+K
+  if (e.ctrlKey && e.shiftKey && e.key === 'K') {
+    e.preventDefault();
+    console.log('Custom shortcut');
+  }
+
+  // Escape key
+  if (e.key === 'Escape') {
+    console.log('Escape pressed');
+  }
+
+  // Arrow keys
+  switch(e.key) {
+    case 'ArrowUp':
+      console.log('Up');
+      break;
+    case 'ArrowDown':
+      console.log('Down');
+      break;
+    case 'ArrowLeft':
+      console.log('Left');
+      break;
+    case 'ArrowRight':
+      console.log('Right');
+      break;
+  }
+});
+```
+
+---
+
+## Touch Events
+
+### Basic Touch Events
+
+```javascript
+const element = document.getElementById('touchArea');
+
+element.addEventListener('touchstart', (e) => {
+  console.log('Touch started');
+  console.log('Touches:', e.touches.length);
+
+  for (let touch of e.touches) {
+    console.log(`Touch ${touch.identifier}:`, touch.clientX, touch.clientY);
+  }
+});
+
+element.addEventListener('touchmove', (e) => {
+  e.preventDefault(); // Prevent scrolling
+
+  const touch = e.touches[0];
+  console.log('Moving:', touch.clientX, touch.clientY);
+});
+
+element.addEventListener('touchend', (e) => {
+  console.log('Touch ended');
+  console.log('Changed touches:', e.changedTouches.length);
+});
+
+element.addEventListener('touchcancel', (e) => {
+  console.log('Touch canceled');
+});
+```
+
+---
+
+### Touch Properties
+
+```javascript
+element.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+
+  console.log('Identifier:', touch.identifier);
+  console.log('Target:', touch.target);
+
+  // Position
+  console.log('Client:', touch.clientX, touch.clientY);
+  console.log('Page:', touch.pageX, touch.pageY);
+  console.log('Screen:', touch.screenX, touch.screenY);
+
+  // Radius
+  console.log('Radius X:', touch.radiusX);
+  console.log('Radius Y:', touch.radiusY);
+  console.log('Rotation:', touch.rotationAngle);
+  console.log('Force:', touch.force);
+});
+```
+
+---
+
+### Gesture Detection
+
+```javascript
+let startX, startY, startDistance;
+
+element.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  } else if (e.touches.length === 2) {
+    startDistance = getDistance(e.touches[0], e.touches[1]);
+  }
+});
+
+element.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 1) {
+    const deltaX = e.touches[0].clientX - startX;
+    const deltaY = e.touches[0].clientY - startY;
+
+    if (Math.abs(deltaX) > 50) {
+      console.log(deltaX > 0 ? 'Swipe right' : 'Swipe left');
+    }
+    if (Math.abs(deltaY) > 50) {
+      console.log(deltaY > 0 ? 'Swipe down' : 'Swipe up');
+    }
+  } else if (e.touches.length === 2) {
+    const currentDistance = getDistance(e.touches[0], e.touches[1]);
+    if (currentDistance > startDistance) {
+      console.log('Pinch out (zoom in)');
+    } else {
+      console.log('Pinch in (zoom out)');
+    }
+  }
+});
+
+function getDistance(touch1, touch2) {
+  const dx = touch1.clientX - touch2.clientX;
+  const dy = touch1.clientY - touch2.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+```
+
+---
+
+## Drag & Drop API
+
+### Making Elements Draggable
+
+```javascript
+const draggable = document.getElementById('draggable');
+const dropzone = document.getElementById('dropzone');
+
+// Make element draggable
+draggable.setAttribute('draggable', 'true');
+
+// Drag events on draggable element
+draggable.addEventListener('dragstart', (e) => {
+  console.log('Drag started');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', e.target.id);
+  e.target.style.opacity = '0.5';
+});
+
+draggable.addEventListener('drag', (e) => {
+  console.log('Dragging...');
+});
+
+draggable.addEventListener('dragend', (e) => {
+  console.log('Drag ended');
+  e.target.style.opacity = '1';
+});
+
+// Drop events on drop zone
+dropzone.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  console.log('Drag entered');
+  dropzone.style.background = 'lightblue';
+});
+
+dropzone.addEventListener('dragover', (e) => {
+  e.preventDefault(); // Required to allow drop
+  e.dataTransfer.dropEffect = 'move';
+});
+
+dropzone.addEventListener('dragleave', (e) => {
+  console.log('Drag left');
+  dropzone.style.background = '';
+});
+
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  console.log('Dropped');
+
+  const id = e.dataTransfer.getData('text/plain');
+  const element = document.getElementById(id);
+  dropzone.appendChild(element);
+
+  dropzone.style.background = '';
+});
+```
+
+---
+
+### DataTransfer Object
+
+```javascript
+draggable.addEventListener('dragstart', (e) => {
+  // Set data
+  e.dataTransfer.setData('text/plain', 'Plain text');
+  e.dataTransfer.setData('text/html', '<b>HTML content</b>');
+  e.dataTransfer.setData('application/json', JSON.stringify({id: 123}));
+
+  // Set effect
+  e.dataTransfer.effectAllowed = 'move'; // "copy", "link", "copyMove", etc.
+
+  // Set drag image
+  const img = new Image();
+  img.src = 'icon.png';
+  e.dataTransfer.setDragImage(img, 10, 10);
+});
+
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+
+  // Get data
+  const text = e.dataTransfer.getData('text/plain');
+  const html = e.dataTransfer.getData('text/html');
+  const json = JSON.parse(e.dataTransfer.getData('application/json'));
+
+  // Get files
+  const files = e.dataTransfer.files;
+  for (let file of files) {
+    console.log('File:', file.name, file.size, file.type);
+  }
+});
+```
+
+---
+
+## Intersection Observer API
+
+### Basic Usage
+Observe when elements enter/exit viewport.
+
+```javascript
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      console.log('Element is visible');
+      entry.target.classList.add('visible');
+    } else {
+      console.log('Element is hidden');
+      entry.target.classList.remove('visible');
+    }
+  });
+});
+
+// Observe element
+const target = document.getElementById('target');
+observer.observe(target);
+
+// Unobserve
+observer.unobserve(target);
+
+// Disconnect all
+observer.disconnect();
+```
+
+---
+
+### Observer Options
+
+```javascript
+const options = {
+  root: null,              // null = viewport, or specific element
+  rootMargin: '0px',       // Margin around root
+  threshold: 0.5           // 0-1, or array [0, 0.25, 0.5, 0.75, 1]
+};
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    console.log('Intersection ratio:', entry.intersectionRatio);
+    console.log('Bounding rect:', entry.boundingClientRect);
+    console.log('Intersection rect:', entry.intersectionRect);
+    console.log('Root bounds:', entry.rootBounds);
+    console.log('Time:', entry.time);
+  });
+}, options);
+
+// Multiple thresholds
+const thresholdObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    console.log(`${Math.round(entry.intersectionRatio * 100)}% visible`);
+  });
+}, {
+  threshold: [0, 0.25, 0.5, 0.75, 1]
+});
+```
+
+---
+
+### Practical Examples
+
+```javascript
+// Lazy loading images
+const imageObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const img = entry.target;
+      img.src = img.dataset.src;
+      imageObserver.unobserve(img);
+    }
+  });
+});
+
+document.querySelectorAll('img[data-src]').forEach(img => {
+  imageObserver.observe(img);
+});
+
+// Infinite scroll
+const sentinel = document.getElementById('sentinel');
+const scrollObserver = new IntersectionObserver((entries) => {
+  if (entries[0].isIntersecting) {
+    loadMoreContent();
+  }
+});
+scrollObserver.observe(sentinel);
+
+// Animate on scroll
+const fadeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('fade-in');
+      fadeObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.animate-on-scroll').forEach(el => {
+  fadeObserver.observe(el);
+});
+```
+
+---
+
+## Mutation Observer API
+
+### Observing DOM Changes
+
+```javascript
+const targetNode = document.getElementById('container');
+
+const observer = new MutationObserver((mutations) => {
+  mutations.forEach(mutation => {
+    console.log('Type:', mutation.type);
+    console.log('Target:', mutation.target);
+
+    if (mutation.type === 'childList') {
+      console.log('Added nodes:', mutation.addedNodes);
+      console.log('Removed nodes:', mutation.removedNodes);
+    }
+
+    if (mutation.type === 'attributes') {
+      console.log('Attribute:', mutation.attributeName);
+      console.log('Old value:', mutation.oldValue);
+    }
+
+    if (mutation.type === 'characterData') {
+      console.log('Old value:', mutation.oldValue);
+    }
+  });
+});
+
+// Configuration
+const config = {
+  attributes: true,           // Watch attribute changes
+  attributeOldValue: true,    // Record old attribute value
+  characterData: true,        // Watch text content changes
+  characterDataOldValue: true,// Record old text value
+  childList: true,            // Watch child additions/removals
+  subtree: true               // Watch descendants too
+};
+
+// Start observing
+observer.observe(targetNode, config);
+
+// Stop observing
+observer.disconnect();
+
+// Get records before callback
+const records = observer.takeRecords();
+```
+
+---
+
+### Practical Examples
+
+```javascript
+// Watch for new elements
+const newElementObserver = new MutationObserver((mutations) => {
+  mutations.forEach(mutation => {
+    mutation.addedNodes.forEach(node => {
+      if (node.nodeType === 1 && node.matches('.item')) {
+        console.log('New item added:', node);
+        initializeItem(node);
+      }
+    });
+  });
+});
+
+newElementObserver.observe(document.body, {
+  childList: true,
+  subtree: true
+});
+
+// Watch attribute changes
+const attrObserver = new MutationObserver((mutations) => {
+  mutations.forEach(mutation => {
+    if (mutation.attributeName === 'class') {
+      console.log('Class changed on:', mutation.target);
+    }
+  });
+});
+
+attrObserver.observe(element, {
+  attributes: true,
+  attributeFilter: ['class', 'data-state']
+});
+
+// Watch text changes
+const textObserver = new MutationObserver((mutations) => {
+  mutations.forEach(mutation => {
+    console.log('Text changed from:', mutation.oldValue);
+    console.log('Text changed to:', mutation.target.textContent);
+  });
+});
+
+textObserver.observe(element, {
+  characterData: true,
+  characterDataOldValue: true,
+  subtree: true
+});
+```
+
+---
+
+## Resize Observer API
+
+### Observing Element Size Changes
+
+```javascript
+const resizeObserver = new ResizeObserver((entries) => {
+  entries.forEach(entry => {
+    console.log('Element:', entry.target);
+    console.log('Content rect:', entry.contentRect);
+    console.log('Width:', entry.contentRect.width);
+    console.log('Height:', entry.contentRect.height);
+
+    // Border box size
+    console.log('Border box:', entry.borderBoxSize);
+    console.log('Content box:', entry.contentBoxSize);
+  });
+});
+
+// Observe element
+const element = document.getElementById('resizable');
+resizeObserver.observe(element);
+
+// Unobserve
+resizeObserver.unobserve(element);
+
+// Disconnect
+resizeObserver.disconnect();
+```
+
+---
+
+### Practical Examples
+
+```javascript
+// Responsive behavior
+const responsiveObserver = new ResizeObserver((entries) => {
+  entries.forEach(entry => {
+    const width = entry.contentRect.width;
+
+    if (width < 600) {
+      entry.target.classList.add('mobile');
+      entry.target.classList.remove('desktop');
+    } else {
+      entry.target.classList.add('desktop');
+      entry.target.classList.remove('mobile');
+    }
+  });
+});
+
+responsiveObserver.observe(document.body);
+
+// Dynamic chart sizing
+const chartObserver = new ResizeObserver((entries) => {
+  entries.forEach(entry => {
+    const width = entry.contentRect.width;
+    const height = entry.contentRect.height;
+    updateChartSize(width, height);
+  });
+});
+
+const chartContainer = document.getElementById('chart');
+chartObserver.observe(chartContainer);
+
+// Textarea auto-resize
+const textareaObserver = new ResizeObserver((entries) => {
+  entries.forEach(entry => {
+    const textarea = entry.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  });
+});
+
+const textarea = document.getElementById('autoResize');
+textareaObserver.observe(textarea);
+```
+
+---
+
+## Web Storage API
+
+### localStorage
+Persistent storage (no expiration).
+
+```javascript
+// Store data
+localStorage.setItem('username', 'john_doe');
+localStorage.setItem('theme', 'dark');
+localStorage.setItem('settings', JSON.stringify({ lang: 'en', notifications: true }));
+
+// Retrieve data
+const username = localStorage.getItem('username');
+const theme = localStorage.getItem('theme');
+const settings = JSON.parse(localStorage.getItem('settings'));
+
+// Remove item
+localStorage.removeItem('username');
+
+// Clear all
+localStorage.clear();
+
+// Get number of items
+console.log(localStorage.length);
+
+// Get key by index
+const firstKey = localStorage.key(0);
+
+// Check if key exists
+if (localStorage.getItem('theme') !== null) {
+  console.log('Theme exists');
+}
+
+// Iterate all items
+for (let i = 0; i < localStorage.length; i++) {
+  const key = localStorage.key(i);
+  const value = localStorage.getItem(key);
+  console.log(`${key}: ${value}`);
+}
+
+// Object-like access (not recommended)
+localStorage.username = 'jane_doe';
+console.log(localStorage.username);
+delete localStorage.username;
+```
+
+---
+
+### sessionStorage
+Temporary storage (cleared when tab closes).
+
+```javascript
+// Same API as localStorage
+sessionStorage.setItem('tempData', 'value');
+const tempData = sessionStorage.getItem('tempData');
+sessionStorage.removeItem('tempData');
+sessionStorage.clear();
+
+// Persists only for current tab/window
+// Cleared when tab is closed
+```
+
+---
+
+### Storage Events
+Listen for storage changes in other tabs.
+
+```javascript
+window.addEventListener('storage', (e) => {
+  console.log('Storage changed');
+  console.log('Key:', e.key);
+  console.log('Old value:', e.oldValue);
+  console.log('New value:', e.newValue);
+  console.log('URL:', e.url);
+  console.log('Storage area:', e.storageArea);
+
+  // React to changes
+  if (e.key === 'theme') {
+    applyTheme(e.newValue);
+  }
+});
+
+// Note: Event only fires in other tabs, not the one that made the change
+```
+
+---
+
+### Storage Best Practices
+
+```javascript
+// Helper functions
+const storage = {
+  set(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.error('Storage failed:', e);
+      return false;
+    }
+  },
+
+  get(key, defaultValue = null) {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
+    } catch (e) {
+      console.error('Retrieval failed:', e);
+      return defaultValue;
+    }
+  },
+
+  remove(key) {
+    localStorage.removeItem(key);
+  },
+
+  clear() {
+    localStorage.clear();
+  },
+
+  // Check available space
+  checkSpace() {
+    let total = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        total += localStorage[key].length + key.length;
+      }
+    }
+    return total;
+  }
+};
+
+// Usage
+storage.set('user', { name: 'John', age: 30 });
+const user = storage.get('user');
+console.log(user.name);
+```
+
+---
+
+## Clipboard API
+
+### Reading from Clipboard
+
+```javascript
+// Read text
+async function pasteText() {
+  try {
+    const text = await navigator.clipboard.readText();
+    console.log('Pasted:', text);
+    return text;
+  } catch (err) {
+    console.error('Failed to read clipboard:', err);
+  }
+}
+
+// Read various formats
+async function pasteData() {
+  try {
+    const items = await navigator.clipboard.read();
+
+    for (const item of items) {
+      console.log('Types:', item.types);
+
+      for (const type of item.types) {
+        const blob = await item.getType(type);
+        console.log('Type:', type);
+
+        if (type.startsWith('text/')) {
+          const text = await blob.text();
+          console.log('Text:', text);
+        } else if (type.startsWith('image/')) {
+          const url = URL.createObjectURL(blob);
+          console.log('Image URL:', url);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to read clipboard:', err);
+  }
+}
+```
+
+---
+
+### Writing to Clipboard
+
+```javascript
+// Copy text
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('Text copied');
+  } catch (err) {
+    console.error('Failed to copy:', err);
+  }
+}
+
+// Copy with button
+const copyBtn = document.getElementById('copyBtn');
+copyBtn.addEventListener('click', async () => {
+  await copyText('Hello World');
+});
+
+// Copy rich content
+async function copyRichContent() {
+  const html = '<p><b>Bold</b> and <i>italic</i></p>';
+  const text = 'Bold and italic';
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const textBlob = new Blob([text], { type: 'text/plain' });
+
+  const item = new ClipboardItem({
+    'text/html': blob,
+    'text/plain': textBlob
+  });
+
+  try {
+    await navigator.clipboard.write([item]);
+    console.log('Rich content copied');
+  } catch (err) {
+    console.error('Failed to copy:', err);
+  }
+}
+
+// Copy image
+async function copyImage(imageUrl) {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+
+    await navigator.clipboard.write([
+      new ClipboardItem({ [blob.type]: blob })
+    ]);
+
+    console.log('Image copied');
+  } catch (err) {
+    console.error('Failed to copy image:', err);
+  }
+}
+```
+
+---
+
+### Legacy Clipboard Methods
+
+```javascript
+// execCommand (deprecated but widely supported)
+function copyTextLegacy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    document.execCommand('copy');
+    console.log('Text copied (legacy)');
+  } catch (err) {
+    console.error('Failed to copy:', err);
+  }
+
+  document.body.removeChild(textarea);
+}
+
+// Copy from input/textarea
+const input = document.getElementById('myInput');
+input.select();
+document.execCommand('copy');
+```
+
+---
+
+## Geolocation API
+
+### Getting Current Position
+
+```javascript
+// Check if available
+if ('geolocation' in navigator) {
+  console.log('Geolocation available');
+} else {
+  console.log('Geolocation not available');
+}
+
+// Get current position
+navigator.geolocation.getCurrentPosition(
+  // Success callback
+  (position) => {
+    console.log('Latitude:', position.coords.latitude);
+    console.log('Longitude:', position.coords.longitude);
+    console.log('Accuracy:', position.coords.accuracy, 'meters');
+    console.log('Altitude:', position.coords.altitude);
+    console.log('Altitude accuracy:', position.coords.altitudeAccuracy);
+    console.log('Heading:', position.coords.heading);
+    console.log('Speed:', position.coords.speed);
+    console.log('Timestamp:', position.timestamp);
+  },
+  // Error callback
+  (error) => {
+    switch(error.code) {
+      case error.PERMISSION_DENIED:
+        console.error('User denied geolocation');
+        break;
+      case error.POSITION_UNAVAILABLE:
+        console.error('Position unavailable');
+        break;
+      case error.TIMEOUT:
+        console.error('Request timeout');
+        break;
+    }
+  },
+  // Options
+  {
+    enableHighAccuracy: true,  // Use GPS if available
+    timeout: 5000,             // Timeout in milliseconds
+    maximumAge: 0              // Don't use cached position
+  }
+);
+```
+
+---
+
+### Watching Position
+
+```javascript
+// Watch position changes
+const watchId = navigator.geolocation.watchPosition(
+  (position) => {
+    console.log('New position:',
+      position.coords.latitude,
+      position.coords.longitude
+    );
+    updateMap(position.coords);
+  },
+  (error) => {
+    console.error('Watch error:', error);
+  },
+  {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 1000
+  }
+);
+
+// Stop watching
+navigator.geolocation.clearWatch(watchId);
+```
+
+---
+
+### Practical Example
+
+```javascript
+async function getLocationAndWeather() {
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject);
+    });
+
+    const { latitude, longitude } = position.coords;
+    console.log(`Location: ${latitude}, ${longitude}`);
+
+    // Use coordinates for API call
+    const weather = await fetch(
+      `https://api.example.com/weather?lat=${latitude}&lon=${longitude}`
+    );
+    const data = await weather.json();
+    console.log('Weather:', data);
+
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+---
+
+## Fetch API
+
+### Basic GET Request
+
+```javascript
+// Simple GET
+fetch('https://api.example.com/data')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));
+
+// Async/await
+async function fetchData() {
+  try {
+    const response = await fetch('https://api.example.com/data');
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+---
+
+### POST Request
+
+```javascript
+async function postData() {
+  try {
+    const response = await fetch('https://api.example.com/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer token123'
+      },
+      body: JSON.stringify({
+        name: 'John Doe',
+        email: 'john@example.com'
+      })
+    });
+
+    const data = await response.json();
+    console.log('Success:', data);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+---
+
+### Other HTTP Methods
+
+```javascript
+// PUT (update)
+fetch('https://api.example.com/users/123', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Jane Doe' })
+});
+
+// PATCH (partial update)
+fetch('https://api.example.com/users/123', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'newemail@example.com' })
+});
+
+// DELETE
+fetch('https://api.example.com/users/123', {
+  method: 'DELETE'
+});
+```
+
+---
+
+### Response Methods
+
+```javascript
+const response = await fetch('https://api.example.com/data');
+
+// Parse as JSON
+const json = await response.json();
+
+// Parse as text
+const text = await response.text();
+
+// Parse as blob
+const blob = await response.blob();
+
+// Parse as ArrayBuffer
+const buffer = await response.arrayBuffer();
+
+// Parse as FormData
+const formData = await response.formData();
+
+// Clone response (can only read body once)
+const clone = response.clone();
+const data1 = await response.json();
+const data2 = await clone.json();
+```
+
+---
+
+### Response Properties
+
+```javascript
+const response = await fetch('https://api.example.com/data');
+
+console.log('Status:', response.status);        // 200
+console.log('Status text:', response.statusText); // "OK"
+console.log('OK:', response.ok);                // true (status 200-299)
+console.log('URL:', response.url);
+console.log('Type:', response.type);            // "basic", "cors", etc.
+console.log('Redirected:', response.redirected);
+
+// Headers
+console.log('Content-Type:', response.headers.get('Content-Type'));
+for (const [key, value] of response.headers) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+---
+
+### Request Options
+
+```javascript
+const options = {
+  method: 'POST',
+
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer token',
+    'X-Custom-Header': 'value'
+  },
+
+  body: JSON.stringify({ data: 'value' }),
+
+  mode: 'cors',              // "cors", "no-cors", "same-origin"
+  credentials: 'include',     // "omit", "same-origin", "include"
+  cache: 'no-cache',         // "default", "no-store", "reload", etc.
+  redirect: 'follow',        // "follow", "error", "manual"
+  referrerPolicy: 'no-referrer',
+
+  signal: abortController.signal // For aborting
+};
+
+fetch('https://api.example.com/data', options);
+```
+
+---
+
+### Abort Requests
+
+```javascript
+const controller = new AbortController();
+const signal = controller.signal;
+
+// Start fetch
+fetch('https://api.example.com/slow', { signal })
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => {
+    if (error.name === 'AbortError') {
+      console.log('Fetch aborted');
+    } else {
+      console.error('Error:', error);
+    }
+  });
+
+// Abort after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+// Or abort on button click
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  controller.abort();
+});
+```
+
+---
+
+### File Upload
+
+```javascript
+// Upload single file
+async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('description', 'My file');
+
+  try {
+    const response = await fetch('https://api.example.com/upload', {
+      method: 'POST',
+      body: formData
+      // Don't set Content-Type header, browser will set it with boundary
+    });
+
+    const result = await response.json();
+    console.log('Upload success:', result);
+  } catch (error) {
+    console.error('Upload failed:', error);
+  }
+}
+
+// From file input
+const input = document.getElementById('fileInput');
+input.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  uploadFile(file);
+});
+
+// Multiple files
+async function uploadMultipleFiles(files) {
+  const formData = new FormData();
+
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
+
+  const response = await fetch('/upload', {
+    method: 'POST',
+    body: formData
+  });
+}
+```
+
+---
+
+### Download File
+
+```javascript
+async function downloadFile(url, filename) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    // Create download link
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up
+    URL.revokeObjectURL(link.href);
+  } catch (error) {
+    console.error('Download failed:', error);
+  }
+}
+
+// Usage
+downloadFile('https://example.com/file.pdf', 'document.pdf');
+```
+
+---
+
+### Progress Tracking
+
+```javascript
+async function fetchWithProgress(url) {
+  const response = await fetch(url);
+  const reader = response.body.getReader();
+  const contentLength = +response.headers.get('Content-Length');
+
+  let receivedLength = 0;
+  const chunks = [];
+
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) break;
+
+    chunks.push(value);
+    receivedLength += value.length;
+
+    const progress = (receivedLength / contentLength) * 100;
+    console.log(`Progress: ${progress.toFixed(2)}%`);
+  }
+
+  // Combine chunks
+  const chunksAll = new Uint8Array(receivedLength);
+  let position = 0;
+  for (const chunk of chunks) {
+    chunksAll.set(chunk, position);
+    position += chunk.length;
+  }
+
+  const result = new TextDecoder().decode(chunksAll);
+  return JSON.parse(result);
+}
+```
+
+---
+
+### Error Handling
+
+```javascript
+async function robustFetch(url, options = {}) {
+  const maxRetries = 3;
+  let lastError;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        error.response = response;
+        throw error;
+      }
+
+      return await response.json();
+
+    } catch (error) {
+      lastError = error;
+
+      if (error.name === 'AbortError') {
+        throw error; // Don't retry aborted requests
+      }
+
+      console.log(`Attempt ${i + 1} failed, retrying...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+
+  throw lastError;
+}
+```
+
+---
+
+## DOM Manipulation Performance Tips
+
+### 1. Minimize Reflows & Repaints
+
+```javascript
+// BAD: Multiple reflows
+element.style.width = '100px';
+element.style.height = '100px';
+element.style.margin = '10px';
+
+// GOOD: Single reflow
+element.style.cssText = 'width: 100px; height: 100px; margin: 10px;';
+
+// Or use classes
+element.className = 'styled-element';
+
+// BAD: Reading layout properties triggers reflow
+for (let i = 0; i < elements.length; i++) {
+  elements[i].style.top = elements[i].offsetTop + 10 + 'px';
+}
+
+// GOOD: Batch reads, then writes
+const positions = [];
+for (let i = 0; i < elements.length; i++) {
+  positions.push(elements[i].offsetTop);
+}
+for (let i = 0; i < elements.length; i++) {
+  elements[i].style.top = positions[i] + 10 + 'px';
+}
+```
+
+---
+
+### 2. Use Document Fragments
+
+```javascript
+// BAD: Multiple DOM insertions
+for (let i = 0; i < 1000; i++) {
+  const li = document.createElement('li');
+  li.textContent = `Item ${i}`;
+  list.appendChild(li); // Reflow on each append
+}
+
+// GOOD: Single DOM insertion
+const fragment = document.createDocumentFragment();
+for (let i = 0; i < 1000; i++) {
+  const li = document.createElement('li');
+  li.textContent = `Item ${i}`;
+  fragment.appendChild(li);
+}
+list.appendChild(fragment); // Single reflow
+```
+
+---
+
+### 3. Clone Nodes Instead of Creating
+
+```javascript
+// BAD: Create each element from scratch
+for (let i = 0; i < 1000; i++) {
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = '<span>Text</span>';
+  container.appendChild(div);
+}
+
+// GOOD: Clone template
+const template = document.createElement('div');
+template.className = 'item';
+template.innerHTML = '<span>Text</span>';
+
+for (let i = 0; i < 1000; i++) {
+  const clone = template.cloneNode(true);
+  container.appendChild(clone);
+}
+```
+
+---
+
+### 4. Use Event Delegation
+
+```javascript
+// BAD: Attach listener to each element
+const buttons = document.querySelectorAll('.btn');
+buttons.forEach(btn => {
+  btn.addEventListener('click', handleClick);
+});
+
+// GOOD: Single listener on parent
+document.getElementById('container').addEventListener('click', (e) => {
+  if (e.target.matches('.btn')) {
+    handleClick(e);
+  }
+});
+```
+
+---
+
+### 5. Debounce & Throttle
+
+```javascript
+// Debounce: Execute after delay
+function debounce(func, delay) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+window.addEventListener('resize', debounce(() => {
+  console.log('Resized');
+}, 250));
+
+// Throttle: Execute at most once per interval
+function throttle(func, limit) {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+window.addEventListener('scroll', throttle(() => {
+  console.log('Scrolled');
+}, 100));
+```
+
+---
+
+### 6. Use CSS Instead of JavaScript
+
+```javascript
+// BAD: Animate with JavaScript
+let pos = 0;
+const interval = setInterval(() => {
+  pos += 5;
+  element.style.left = pos + 'px';
+  if (pos >= 200) clearInterval(interval);
+}, 16);
+
+// GOOD: Use CSS transitions
+element.style.transition = 'left 1s';
+element.style.left = '200px';
+
+// Or CSS animations
+element.classList.add('animate');
+```
+
+---
+
+### 7. Detach Element Before Manipulation
+
+```javascript
+// BAD: Manipulate while attached
+for (let i = 0; i < 100; i++) {
+  const div = document.createElement('div');
+  container.appendChild(div);
+  div.style.color = 'red';
+}
+
+// GOOD: Detach, manipulate, reattach
+const parent = container.parentNode;
+parent.removeChild(container);
+
+for (let i = 0; i < 100; i++) {
+  const div = document.createElement('div');
+  div.style.color = 'red';
+  container.appendChild(div);
+}
+
+parent.appendChild(container);
+```
+
+---
+
+### 8. Use requestAnimationFrame
+
+```javascript
+// BAD: Direct manipulation
+function animate() {
+  element.style.left = parseInt(element.style.left) + 1 + 'px';
+  setTimeout(animate, 16);
+}
+
+// GOOD: Use requestAnimationFrame
+function animate() {
+  element.style.left = parseInt(element.style.left) + 1 + 'px';
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// Cancel animation
+const animationId = requestAnimationFrame(animate);
+cancelAnimationFrame(animationId);
+```
+
+---
+
+### 9. Cache DOM Queries
+
+```javascript
+// BAD: Query multiple times
+for (let i = 0; i < 100; i++) {
+  document.getElementById('container').appendChild(element);
+}
+
+// GOOD: Cache the query
+const container = document.getElementById('container');
+for (let i = 0; i < 100; i++) {
+  container.appendChild(element);
+}
+```
+
+---
+
+### 10. Use innerHTML for Large Updates
+
+```javascript
+// BAD: Individual DOM operations
+for (let i = 0; i < 1000; i++) {
+  const div = document.createElement('div');
+  div.textContent = `Item ${i}`;
+  container.appendChild(div);
+}
+
+// GOOD: Build HTML string (if no event listeners needed)
+let html = '';
+for (let i = 0; i < 1000; i++) {
+  html += `<div>Item ${i}</div>`;
+}
+container.innerHTML = html;
+
+// BETTER: Use template literals
+container.innerHTML = Array.from({ length: 1000 }, (_, i) =>
+  `<div>Item ${i}</div>`
+).join('');
+```
+
+---
+
+### Performance Measurement
+
+```javascript
+// Measure performance
+console.time('operation');
+// ... your code ...
+console.timeEnd('operation');
+
+// More detailed
+performance.mark('start');
+// ... your code ...
+performance.mark('end');
+performance.measure('operation', 'start', 'end');
+console.log(performance.getEntriesByName('operation'));
+
+// Monitor long tasks
+const observer = new PerformanceObserver((list) => {
+  for (const entry of list.getEntries()) {
+    console.log('Long task detected:', entry.duration);
+  }
+});
+observer.observe({ entryTypes: ['longtask'] });
+```
+
+---
+
+## 🎯 Quick Reference Summary
+
+**Selecting:**
+- `getElementById()`, `querySelector()`, `querySelectorAll()`
+
+**Creating:**
+- `createElement()`, `appendChild()`, `append()`, `insertAdjacentHTML()`
+
+**Removing:**
+- `remove()`, `removeChild()`
+
+**Content:**
+- `innerHTML`, `textContent`, `innerText`
+
+**Attributes:**
+- `getAttribute()`, `setAttribute()`, `dataset`
+
+**Classes:**
+- `classList.add()`, `.remove()`, `.toggle()`, `.contains()`
+
+**Styles:**
+- `element.style.property`, `getComputedStyle()`
+
+**Events:**
+- `addEventListener()`, `removeEventListener()`
+
+**Observers:**
+- `IntersectionObserver`, `MutationObserver`, `ResizeObserver`
+
+**APIs:**
+- `fetch()`, `localStorage`, `navigator.clipboard`, `navigator.geolocation`
+
+---
+
+## 📚 Additional Resources
+
+- [MDN Web Docs - DOM](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model)
+- [JavaScript.info - DOM](https://javascript.info/document)
+- [Web APIs Reference](https://developer.mozilla.org/en-US/docs/Web/API)
+
+---
+
+**End of Guide** | Complete DOM Manipulation Reference ✨

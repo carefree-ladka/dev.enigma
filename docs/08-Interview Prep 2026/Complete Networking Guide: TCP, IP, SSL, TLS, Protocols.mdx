@@ -1,0 +1,1920 @@
+
+# Complete Networking Guide: TCP/IP, SSL/TLS, Protocols & More
+
+## Table of Contents
+
+1. [OSI Model (7 Layers)](#osi-model)
+2. [TCP/IP Model](#tcpip-model)
+3. [Transport Layer Protocols](#transport-layer)
+   - TCP (Transmission Control Protocol)
+   - UDP (User Datagram Protocol)
+4. [Network Layer & IP Addressing](#network-layer)
+   - IPv4 vs IPv6
+   - Subnetting & CIDR
+   - NAT (Network Address Translation)
+5. [HTTP Protocol](#http-protocol)
+   - HTTP Methods
+   - Status Codes
+   - Headers
+   - Cookies & Sessions
+6. [HTTP Versions](#http-versions)
+   - HTTP/1.0
+   - HTTP/1.1
+   - HTTP/2
+   - HTTP/3 & QUIC
+7. [SSL/TLS (Security Layer)](#ssl-tls)
+   - What is SSL/TLS
+   - SSL vs TLS
+   - TLS Handshake Process
+   - Certificates & Certificate Authorities
+   - Public Key Infrastructure (PKI)
+   - Cipher Suites
+   - Perfect Forward Secrecy
+8. [HTTPS (HTTP Secure)](#https)
+   - How HTTPS Works
+   - Mixed Content Issues
+   - HSTS (HTTP Strict Transport Security)
+9. [DNS (Domain Name System)](#dns)
+   - DNS Resolution Process
+   - DNS Record Types
+   - DNS Caching
+   - DNS Security (DNSSEC)
+10. [API Architectures](#api-architectures)
+    - REST APIs
+    - GraphQL
+    - gRPC
+    - SOAP
+11. [Real-Time Communication](#realtime-communication)
+    - Polling
+    - Long Polling
+    - Server-Sent Events (SSE)
+    - WebSockets
+    - WebRTC
+12. [Load Balancing & Proxies](#load-balancing)
+    - Forward vs Reverse Proxy
+    - Load Balancing Algorithms
+    - Sticky Sessions
+13. [CDN (Content Delivery Network)](#cdn)
+14. [Caching Strategies](#caching)
+    - Browser Cache
+    - HTTP Cache Headers
+    - Cache-Control Directives
+    - ETags
+15. [Network Security](#network-security)
+    - Firewalls
+    - VPN (Virtual Private Network)
+    - CORS (Cross-Origin Resource Sharing)
+    - CSP (Content Security Policy)
+    - DDoS Protection
+16. [Performance Concepts](#performance)
+    - Latency vs Throughput
+    - Bandwidth
+    - Head-of-Line Blocking
+    - Keep-Alive Connections
+    - Connection Pooling
+17. [Common Ports](#common-ports)
+18. [Network Troubleshooting Tools](#tools)
+
+---
+
+## 1. OSI Model (7 Layers) {#osi-model}
+
+The OSI model defines how network protocols interact across different layers of abstraction.
+
+| Layer | Name | Responsibility | Protocols/Examples | Data Unit |
+|-------|------|----------------|-------------------|-----------|
+| 7 | Application | User-facing protocols | HTTP, HTTPS, FTP, SMTP, DNS, GraphQL | Data |
+| 6 | Presentation | Data format, encryption, compression | TLS/SSL, JSON, XML, JPEG, gzip | Data |
+| 5 | Session | Session management, authentication | NetBIOS, RPC, Sessions, Cookies | Data |
+| 4 | Transport | End-to-end communication, reliability | TCP, UDP, QUIC | Segment (TCP) / Datagram (UDP) |
+| 3 | Network | Routing, logical addressing | IP, ICMP, ARP, Routers | Packet |
+| 2 | Data Link | Physical addressing, error detection | Ethernet, Wi-Fi, MAC, Switches | Frame |
+| 1 | Physical | Transmission of raw bits | Cables, Fiber optics, Radio waves | Bit |
+
+**Key Points:**
+- Frontend developers primarily work with Layers 5-7
+- Each layer communicates only with adjacent layers
+- Data is encapsulated as it moves down the layers
+- Headers are added at each layer (except Physical)
+
+---
+
+## 2. TCP/IP Model {#tcpip-model}
+
+A simplified 4-layer model that's actually used in practice:
+
+| Layer | OSI Equivalent | Protocols |
+|-------|----------------|-----------|
+| Application | 5, 6, 7 | HTTP, DNS, FTP, SMTP |
+| Transport | 4 | TCP, UDP |
+| Internet | 3 | IP, ICMP, ARP |
+| Network Access | 1, 2 | Ethernet, Wi-Fi |
+
+---
+
+## 3. Transport Layer Protocols {#transport-layer}
+
+### TCP (Transmission Control Protocol)
+
+**Characteristics:**
+- Connection-oriented (requires handshake)
+- Reliable delivery (acknowledges packets)
+- Ordered delivery (packets arrive in sequence)
+- Flow control (prevents overwhelming receiver)
+- Congestion control (adapts to network conditions)
+- Error checking (checksums)
+
+**3-Way Handshake:**
+```
+Client → Server: SYN (Synchronize)
+Server → Client: SYN-ACK (Synchronize-Acknowledge)
+Client → Server: ACK (Acknowledge)
+[Connection established]
+```
+
+**4-Way Termination:**
+```
+Client → Server: FIN
+Server → Client: ACK
+Server → Client: FIN
+Client → Server: ACK
+[Connection closed]
+```
+
+**Use Cases:**
+- HTTP/HTTPS
+- Email (SMTP, IMAP)
+- File transfers (FTP)
+- SSH
+- WebSockets
+
+**Analogy:** Registered mail with tracking and confirmation
+
+---
+
+### UDP (User Datagram Protocol)
+
+**Characteristics:**
+- Connectionless (no handshake)
+- Unreliable (no delivery guarantee)
+- Unordered (packets may arrive out of order)
+- No flow/congestion control
+- Low overhead, fast
+- Supports broadcast and multicast
+
+**Use Cases:**
+- DNS lookups
+- Video streaming (YouTube, Netflix)
+- Online gaming
+- VoIP (Voice over IP)
+- Live broadcasts
+- IoT sensors
+
+**Analogy:** Postcards - fast delivery, some may get lost
+
+---
+
+## 4. Network Layer & IP Addressing {#network-layer}
+
+### IPv4 vs IPv6
+
+**IPv4:**
+- 32-bit addresses (4 billion addresses)
+- Format: 192.168.1.1 (dotted decimal)
+- Address exhaustion problem
+- Uses NAT to extend address space
+
+**IPv6:**
+- 128-bit addresses (340 undecillion addresses)
+- Format: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+- Built-in IPSec support
+- No need for NAT
+- Simplified header structure
+
+### Private IP Ranges (IPv4)
+- 10.0.0.0 to 10.255.255.255 (Class A)
+- 172.16.0.0 to 172.31.255.255 (Class B)
+- 192.168.0.0 to 192.168.255.255 (Class C)
+
+### Special Addresses
+- 127.0.0.1 - Localhost (loopback)
+- 0.0.0.0 - All interfaces
+- 255.255.255.255 - Broadcast
+
+### CIDR (Classless Inter-Domain Routing)
+- Notation: 192.168.1.0/24
+- /24 means first 24 bits are network, last 8 are host
+- Allows flexible subnet sizes
+
+### NAT (Network Address Translation)
+- Allows multiple devices to share one public IP
+- Translates private IPs to public IP
+- Provides basic security (hides internal network)
+
+---
+
+## 5. HTTP Protocol {#http-protocol}
+
+HTTP is a stateless, text-based, request-response protocol.
+
+### HTTP Request Structure
+```
+GET /api/users HTTP/1.1
+Host: api.example.com
+User-Agent: Mozilla/5.0
+Accept: application/json
+Authorization: Bearer token123
+Cookie: sessionId=abc123
+
+[Request Body - optional]
+```
+
+### HTTP Response Structure
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 1234
+Set-Cookie: sessionId=xyz789
+Cache-Control: max-age=3600
+
+{
+  "users": [...]
+}
+```
+
+### HTTP Methods
+
+| Method | Purpose | Idempotent | Safe | Has Body |
+|--------|---------|------------|------|----------|
+| GET | Retrieve resource | Yes | Yes | No |
+| POST | Create resource | No | No | Yes |
+| PUT | Replace resource | Yes | No | Yes |
+| PATCH | Update resource | No | No | Yes |
+| DELETE | Remove resource | Yes | No | Optional |
+| HEAD | Get headers only | Yes | Yes | No |
+| OPTIONS | Get allowed methods | Yes | Yes | No |
+| TRACE | Echo request | Yes | Yes | No |
+| CONNECT | Tunnel (for HTTPS) | No | No | No |
+
+**Idempotent:** Multiple identical requests have same effect as single request
+
+**Safe:** Does not modify server state
+
+### Common Status Codes
+
+**1xx - Informational**
+- 100 Continue
+- 101 Switching Protocols
+
+**2xx - Success**
+- 200 OK
+- 201 Created
+- 202 Accepted
+- 204 No Content
+
+**3xx - Redirection**
+- 301 Moved Permanently
+- 302 Found (Temporary Redirect)
+- 304 Not Modified
+- 307 Temporary Redirect
+- 308 Permanent Redirect
+
+**4xx - Client Errors**
+- 400 Bad Request
+- 401 Unauthorized (not authenticated)
+- 403 Forbidden (authenticated but no permission)
+- 404 Not Found
+- 405 Method Not Allowed
+- 408 Request Timeout
+- 409 Conflict
+- 429 Too Many Requests
+
+**5xx - Server Errors**
+- 500 Internal Server Error
+- 502 Bad Gateway
+- 503 Service Unavailable
+- 504 Gateway Timeout
+
+### Important Headers
+
+**Request Headers:**
+- Accept: Content types client accepts
+- Authorization: Authentication credentials
+- Content-Type: Body format
+- Cookie: Client cookies
+- Host: Domain name
+- User-Agent: Client software
+- Referer: Previous page URL
+- Origin: Request origin (for CORS)
+
+**Response Headers:**
+- Content-Type: Response format
+- Content-Length: Body size
+- Set-Cookie: Set client cookie
+- Location: Redirect URL
+- Cache-Control: Caching directives
+- ETag: Resource version identifier
+- Access-Control-Allow-Origin: CORS header
+
+---
+
+## 6. HTTP Versions {#http-versions}
+
+### HTTP/1.0 (1996)
+- One request per TCP connection
+- No persistent connections
+- No pipelining
+
+### HTTP/1.1 (1997)
+- Persistent connections (Keep-Alive)
+- Pipelining (multiple requests without waiting)
+- Chunked transfer encoding
+- Host header (virtual hosting)
+- Better caching
+
+**Problems:**
+- Head-of-line blocking (one slow request blocks others)
+- Text-based protocol (larger overhead)
+- No request prioritization
+
+### HTTP/2 (2015)
+- Binary protocol (more efficient)
+- Multiplexing (multiple requests on one connection)
+- Stream prioritization
+- Server push (proactive resource sending)
+- Header compression (HPACK)
+- Still uses TCP
+
+**Benefits:**
+- Eliminates head-of-line blocking at application layer
+- Reduces latency
+- Better resource utilization
+
+### HTTP/3 (2022)
+- Uses QUIC instead of TCP
+- Built on UDP
+- 0-RTT connection establishment
+- Better packet loss handling
+- Connection migration (maintains connection when switching networks)
+- Eliminates head-of-line blocking at transport layer
+
+**Why UDP?**
+- TCP improvements require OS changes
+- UDP allows protocol evolution in userspace
+- Faster innovation
+
+---
+
+## 7. SSL/TLS (Security Layer) {#ssl-tls}
+
+### What is SSL/TLS?
+
+**SSL (Secure Sockets Layer):** Deprecated protocol (1995-1999)
+
+**TLS (Transport Layer Security):** Modern successor to SSL
+
+**Versions:**
+- SSL 1.0 - Never released
+- SSL 2.0 - Deprecated (1995)
+- SSL 3.0 - Deprecated (1996)
+- TLS 1.0 - Deprecated (1999)
+- TLS 1.1 - Deprecated (2006)
+- **TLS 1.2** - Current standard (2008)
+- **TLS 1.3** - Latest (2018)
+
+### SSL vs TLS
+
+| Feature | SSL 3.0 | TLS 1.2 | TLS 1.3 |
+|---------|---------|---------|---------|
+| Security | Weak | Strong | Strongest |
+| Handshake | Slower | Moderate | Faster |
+| Cipher Suites | Many weak | Mixed | Only strong |
+| 0-RTT | No | No | Yes |
+
+**Key Point:** "SSL" is still commonly used but refers to TLS
+
+### TLS Goals
+1. **Confidentiality** - Data encrypted
+2. **Integrity** - Data not tampered
+3. **Authentication** - Server identity verified
+
+### TLS Handshake (TLS 1.2)
+
+```
+1. Client Hello
+   → Supported TLS versions
+   → Supported cipher suites
+   → Random number (Client Random)
+
+2. Server Hello
+   ← Chosen TLS version
+   ← Chosen cipher suite
+   ← Random number (Server Random)
+   ← Server Certificate
+
+3. Server Certificate
+   ← Contains server's public key
+   ← Signed by Certificate Authority
+
+4. Client verifies certificate
+   → Checks CA signature
+   → Checks domain name
+   → Checks expiration
+
+5. Key Exchange
+   → Client generates Pre-Master Secret
+   → Encrypts with server's public key
+   → Sends to server
+
+6. Both sides generate Master Secret
+   → Using Client Random + Server Random + Pre-Master Secret
+
+7. Finished Messages
+   → Client: "I'm ready" (encrypted)
+   ← Server: "I'm ready" (encrypted)
+
+8. Secure Communication Begins
+   ↔ All data encrypted with session keys
+```
+
+### TLS 1.3 Improvements
+- Faster handshake (1-RTT instead of 2-RTT)
+- 0-RTT resumption for returning clients
+- Removed weak cipher suites
+- Always uses Perfect Forward Secrecy
+
+### Certificates & Certificate Authorities
+
+**Certificate Contents:**
+- Domain name
+- Organization details
+- Public key
+- Expiration date
+- Issuer (CA) information
+- Digital signature
+
+**Certificate Chain:**
+```
+Root CA (trusted)
+ └── Intermediate CA
+      └── Server Certificate (example.com)
+```
+
+**Types of Certificates:**
+
+1. **Domain Validation (DV)**
+   - Validates domain ownership only
+   - Issued quickly (minutes)
+   - Cheapest
+
+2. **Organization Validation (OV)**
+   - Validates organization identity
+   - Takes days
+   - Moderate cost
+
+3. **Extended Validation (EV)**
+   - Highest validation level
+   - Shows organization name in browser
+   - Most expensive
+
+4. **Wildcard Certificates**
+   - Covers *.example.com
+   - Does not cover sub-subdomains
+
+5. **Multi-Domain (SAN)**
+   - Covers multiple domains
+   - Uses Subject Alternative Name
+
+**Certificate Authorities (CAs):**
+- DigiCert
+- Let's Encrypt (free, automated)
+- Comodo
+- GlobalSign
+- GeoTrust
+
+### Cipher Suites
+
+Format: `TLS_[Key Exchange]_WITH_[Encryption]_[Hash]`
+
+Example: `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384`
+
+- Key Exchange: ECDHE (Elliptic Curve Diffie-Hellman Ephemeral)
+- Authentication: RSA
+- Encryption: AES-256-GCM
+- Hash: SHA-384
+
+**Components:**
+
+1. **Key Exchange Algorithms:**
+   - RSA (deprecated for key exchange)
+   - DH (Diffie-Hellman)
+   - ECDH (Elliptic Curve DH)
+   - ECDHE (Ephemeral - provides PFS)
+
+2. **Encryption Algorithms:**
+   - AES (Advanced Encryption Standard)
+   - ChaCha20
+   - 3DES (deprecated)
+
+3. **Hash Functions:**
+   - SHA-256
+   - SHA-384
+   - SHA-512
+   - MD5 (deprecated)
+
+### Perfect Forward Secrecy (PFS)
+
+- Each session uses unique encryption keys
+- Compromised long-term keys don't expose past sessions
+- Achieved using ephemeral key exchange (ECDHE, DHE)
+- TLS 1.3 mandates PFS
+
+---
+
+## 8. HTTPS (HTTP Secure) {#https}
+
+HTTPS = HTTP + TLS
+
+### How HTTPS Works
+
+```
+1. Browser requests https://example.com
+2. TCP handshake (3-way)
+3. TLS handshake (certificate exchange, key agreement)
+4. HTTP request (encrypted)
+5. Server processes request
+6. HTTP response (encrypted)
+7. Browser decrypts and displays
+```
+
+### What HTTPS Protects
+
+✅ **Protects:**
+- Data in transit (encryption)
+- Server identity (authentication)
+- Data integrity (tampering detection)
+
+❌ **Does NOT Protect:**
+- Server-side vulnerabilities
+- Client-side attacks
+- Malicious code on server
+- User behavior tracking (cookies still visible to server)
+
+### Mixed Content
+
+**Active Mixed Content:** Blocked by browsers
+- Scripts (http:// in `<script>`)
+- Stylesheets
+- iframes
+- XHR/Fetch requests
+
+**Passive Mixed Content:** Warning only
+- Images
+- Audio/Video
+- Favicon
+
+### HSTS (HTTP Strict Transport Security)
+
+Header: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+
+**Purpose:**
+- Forces HTTPS for specified duration
+- Prevents protocol downgrade attacks
+- Prevents SSL stripping
+- Can be preloaded into browsers
+
+---
+
+## 9. DNS (Domain Name System) {#dns}
+
+DNS translates domain names to IP addresses.
+
+### DNS Resolution Process
+
+```
+1. Browser cache
+   ↓ (miss)
+2. OS cache
+   ↓ (miss)
+3. Router cache
+   ↓ (miss)
+4. ISP DNS resolver
+   ↓ (miss)
+5. Root nameserver (.)
+   → "Ask .com nameserver"
+6. TLD nameserver (.com)
+   → "Ask example.com nameserver"
+7. Authoritative nameserver (example.com)
+   → "IP is 93.184.216.34"
+8. Response cached at all levels
+9. Browser connects to IP
+```
+
+### DNS Record Types
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| A | IPv4 address | example.com → 93.184.216.34 |
+| AAAA | IPv6 address | example.com → 2606:2800:220:1:... |
+| CNAME | Alias to another domain | www → example.com |
+| MX | Mail server | mail.example.com (priority 10) |
+| TXT | Text data | SPF, DKIM, verification |
+| NS | Nameserver | ns1.example.com |
+| SOA | Zone authority info | Primary nameserver, admin email |
+| PTR | Reverse DNS | IP → domain |
+| SRV | Service location | _service._proto.name |
+
+### DNS Caching
+
+**TTL (Time To Live):**
+- Specifies cache duration
+- Short TTL (300s) for frequently changing records
+- Long TTL (86400s) for stable records
+
+**Cache Levels:**
+- Browser: 60 seconds (typically)
+- OS: Minutes to hours
+- Router: Hours
+- ISP: Hours to days
+
+### DNSSEC (DNS Security Extensions)
+
+- Cryptographically signs DNS records
+- Prevents DNS spoofing/cache poisoning
+- Validates response authenticity
+- Chain of trust from root to domain
+
+---
+
+## 10. API Architectures {#api-architectures}
+
+### REST (Representational State Transfer)
+
+**Principles:**
+- Resource-based (nouns, not verbs)
+- Stateless
+- Client-server separation
+- Cacheable
+- Uniform interface
+- Layered system
+
+**Example:**
+```
+GET    /api/users          # List users
+GET    /api/users/123      # Get user
+POST   /api/users          # Create user
+PUT    /api/users/123      # Replace user
+PATCH  /api/users/123      # Update user
+DELETE /api/users/123      # Delete user
+```
+
+**Pros:**
+- Simple, intuitive
+- Cacheable
+- Stateless (easy to scale)
+- Well-established
+
+**Cons:**
+- Over-fetching (getting unnecessary data)
+- Under-fetching (need multiple requests)
+- Versioning complexity
+- Rigid structure
+
+---
+
+### GraphQL
+
+Client specifies exact data needed.
+
+**Query Example:**
+```graphql
+query {
+  user(id: 123) {
+    name
+    email
+    posts(limit: 5) {
+      title
+      createdAt
+    }
+  }
+}
+```
+
+**Mutations (write operations):**
+```graphql
+mutation {
+  createUser(input: {name: "Alice", email: "alice@example.com"}) {
+    id
+    name
+  }
+}
+```
+
+**Subscriptions (real-time):**
+```graphql
+subscription {
+  messageAdded(channelId: "123") {
+    id
+    content
+    author
+  }
+}
+```
+
+**Pros:**
+- No over/under-fetching
+- Single endpoint
+- Strong typing (schema)
+- Self-documenting
+- Flexible queries
+
+**Cons:**
+- Complex caching
+- N+1 query problem
+- Learning curve
+- Harder to secure (rate limiting, etc.)
+- Overkill for simple CRUD
+
+---
+
+### gRPC
+
+Google's RPC framework using Protocol Buffers.
+
+**Characteristics:**
+- Binary protocol (efficient)
+- HTTP/2 based
+- Bi-directional streaming
+- Strong typing
+- Code generation
+
+**Use Cases:**
+- Microservices communication
+- Mobile clients
+- Real-time communication
+
+---
+
+### SOAP (Simple Object Access Protocol)
+
+XML-based protocol.
+
+**Characteristics:**
+- Strict contract (WSDL)
+- Built-in error handling
+- ACID compliance support
+- Heavy overhead
+
+**Use Cases:**
+- Enterprise systems
+- Financial services
+- Legacy systems
+
+---
+
+## 11. Real-Time Communication {#realtime-communication}
+
+### Polling
+
+Client repeatedly requests updates.
+
+```javascript
+setInterval(() => {
+  fetch('/api/updates')
+    .then(res => res.json())
+    .then(data => updateUI(data));
+}, 5000); // Every 5 seconds
+```
+
+**Pros:** Simple, works everywhere
+**Cons:** Wasteful, high latency, server load
+
+---
+
+### Long Polling
+
+Client requests, server holds until data available.
+
+```javascript
+function longPoll() {
+  fetch('/api/updates')
+    .then(res => res.json())
+    .then(data => {
+      updateUI(data);
+      longPoll(); // Immediately request again
+    });
+}
+longPoll();
+```
+
+**Pros:** Lower latency than polling
+**Cons:** Still inefficient, complex to implement
+
+---
+
+### Server-Sent Events (SSE)
+
+One-way: Server → Client
+
+```javascript
+const eventSource = new EventSource('/api/events');
+
+eventSource.onmessage = (event) => {
+  console.log(event.data);
+};
+
+eventSource.onerror = (error) => {
+  console.error('SSE error:', error);
+};
+```
+
+**Server (Node.js):**
+```javascript
+res.writeHead(200, {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive'
+});
+
+res.write(`data: ${JSON.stringify(data)}\n\n`);
+```
+
+**Pros:**
+- Built on HTTP
+- Auto-reconnect
+- Simple
+- Event IDs for recovery
+
+**Cons:**
+- One-way only (server → client)
+- Limited browser connections (6 per domain)
+- Text-based only
+
+**Use Cases:**
+- Live feeds
+- Notifications
+- Stock tickers
+- Server monitoring dashboards
+
+---
+
+### WebSockets
+
+Full-duplex, bi-directional communication.
+
+```javascript
+const ws = new WebSocket('wss://chat.example.com');
+
+ws.onopen = () => {
+  console.log('Connected');
+  ws.send('Hello Server');
+};
+
+ws.onmessage = (event) => {
+  console.log('Received:', event.data);
+};
+
+ws.onclose = () => {
+  console.log('Disconnected');
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+```
+
+**Handshake (Upgrade from HTTP):**
+```
+GET /chat HTTP/1.1
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==
+Sec-WebSocket-Version: 13
+
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+```
+
+**Pros:**
+- Real-time, low latency
+- Bi-directional
+- Binary and text support
+- Efficient (low overhead after connection)
+
+**Cons:**
+- Stateful (harder to scale)
+- Requires special server support
+- Firewall/proxy issues
+- No auto-reconnect (need to implement)
+
+**Use Cases:**
+- Chat applications
+- Multiplayer games
+- Collaborative editing
+- Live dashboards
+- Trading platforms
+
+---
+
+### WebRTC
+
+Peer-to-peer real-time communication.
+
+**Use Cases:**
+- Video calls
+- Audio calls
+- File sharing
+- Screen sharing
+
+**Characteristics:**
+- Peer-to-peer (after signaling)
+- Very low latency
+- Built-in encryption
+- NAT traversal (STUN/TURN)
+
+---
+
+### Comparison Table
+
+| Method | Direction | Latency | Overhead | Complexity | Use Case |
+|--------|-----------|---------|----------|------------|----------|
+| Polling | Client → Server | High | High | Low | Legacy systems |
+| Long Polling | Client → Server | Medium | Medium | Medium | Transitional |
+| SSE | Server → Client | Low | Low | Low | Notifications, feeds |
+| WebSockets | Bi-directional | Very Low | Very Low | Medium | Chat, gaming |
+| WebRTC | Peer-to-peer | Ultra Low | Low | High | Video/audio calls |
+
+---
+
+## 12. Load Balancing & Proxies {#load-balancing}
+
+### Forward Proxy
+
+Client → Forward Proxy → Server
+
+**Use Cases:**
+- Hide client IP
+- Bypass geo-restrictions
+- Content filtering
+- Caching
+
+**Examples:** VPN, corporate proxy
+
+---
+
+### Reverse Proxy
+
+Client → Reverse Proxy → Backend Servers
+
+**Benefits:**
+- Load balancing
+- SSL termination
+- Caching
+- Security (hides backend)
+- Compression
+
+**Examples:** Nginx, HAProxy, AWS ALB
+
+---
+
+### Load Balancing Algorithms
+
+1. **Round Robin**
+   - Distribute requests sequentially
+   - Simple, fair
+
+2. **Least Connections**
+   - Route to server with fewest connections
+   - Good for long-lived connections
+
+3. **IP Hash**
+   - Hash client IP to determine server
+   - Session persistence
+
+4. **Weighted Round Robin**
+   - Assign weights to servers
+   - Send more to powerful servers
+
+5. **Least Response Time**
+   - Route to fastest responding server
+   - Performance-optimized
+
+---
+
+### Sticky Sessions
+
+**Problem:** Stateful applications need same server
+
+**Solutions:**
+- Cookie-based
+- IP-based
+- Session replication
+- External session store (Redis)
+
+---
+
+## 13. CDN (Content Delivery Network) {#cdn}
+
+Distributed network of servers that cache content near users.
+
+### How CDN Works
+
+```
+1. User requests example.com/image.jpg
+2. DNS resolves to nearest CDN edge server
+3. Edge server checks cache
+4. If cached: Return immediately
+5. If not cached:
+   - Fetch from origin server
+   - Cache locally
+   - Return to user
+6. Subsequent requests served from cache
+```
+
+### CDN Benefits
+
+- Reduced latency (geographic proximity)
+- Lower bandwidth costs
+- DDoS mitigation
+- Offloads origin server
+- Better availability
+
+### What to Cache on CDN
+
+- Static assets (JS, CSS, images)
+- Videos
+- Fonts
+- HTML (with careful cache control)
+
+### Popular CDNs
+
+- Cloudflare
+- AWS CloudFront
+- Akamai
+- Fastly
+- Google Cloud CDN
+
+---
+
+## 14. Caching Strategies {#caching}
+
+### Cache Levels
+
+1. Browser cache
+2. Service Worker cache
+3. CDN cache
+4. Reverse proxy cache
+5. Application cache
+6. Database cache
+
+### HTTP Cache Headers
+
+**Cache-Control:**
+```
+Cache-Control: public, max-age=3600
+```
+
+**Directives:**
+- `public` - Any cache can store
+- `private` - Only browser can cache
+- `no-cache` - Revalidate before use
+- `no-store` - Don't cache at all
+- `max-age=<seconds>` - Cache lifetime
+- `s-maxage=<seconds>` - CDN cache lifetime
+- `must-revalidate` - Check freshness on use
+- `immutable` - Never revalidate
+
+**Expires:**
+```
+Expires: Wed, 21 Oct 2025 07:28:00 GMT
+```
+Absolute expiration time (older, use Cache-Control instead)
+
+**ETag (Entity Tag):**
+```
+ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
+```
+
+Client revalidation:
+```
+If-None-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4"
+```
+
+Server response:
+- 200 OK (content changed)
+- 304 Not Modified (content same, use cache)
+
+**Last-Modified:**
+```
+Last-Modified: Wed, 21 Oct 2020 07:28:00 GMT
+```
+
+Client revalidation:
+```
+If-Modified-Since: Wed, 21 Oct 2020 07:28:00 GMT
+```
+
+### Caching Strategies
+
+**1. Cache-First**
+- Check cache first
+- Fetch if miss
+- Fast but may serve stale
+
+**2. Network-First**
+- Try network first
+- Fallback to cache
+- Fresh data but slower
+
+**3. Stale-While-Revalidate**
+- Serve from cache
+- Update in background
+- Best of both worlds
+
+**4. Cache-Only**
+- Only serve from cache
+- For offline apps
+
+**5. Network-Only**
+- Never use cache
+- For sensitive data
+
+---
+
+## 15. Network Security {#network-security}
+
+### Firewalls
+
+**Types:**
+- Packet filtering (Layer 3/4)
+- Stateful inspection
+- Application-level (Layer 7)
+- Next-gen (deep packet inspection)
+
+**Rules:**
+- Allow/deny based on IP, port, protocol
+- Inbound vs outbound rules
+- Default deny (whitelist approach)
+
+---
+
+### VPN (Virtual Private Network)
+
+**Purpose:**
+- Encrypted tunnel
+- Hide IP address
+- Access private networks
+- Bypass geo-restrictions
+
+**Types:**
+- Site-to-Site (office networks)
+- Remote Access (individual users)
+
+**Protocols:**
+- OpenVPN
+- WireGuard
+- IPSec
+- L2TP
+
+---
+
+### CORS (Cross-Origin Resource Sharing)
+
+Browser security feature that blocks cross-origin requests.
+
+**Same Origin:**
+- Same protocol (http/https)
+- Same domain
+- Same port
+
+**CORS Headers:**
+
+**Server Response:**
+```
+Access-Control-Allow-Origin: https://example.com
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Allow-Credentials: true
+Access-Control-Max-Age: 86400
+```
+
+**Preflight Request (OPTIONS):**
+```
+OPTIONS /api/users HTTP/1.1
+Origin: https://example.com
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
+```
+
+**Common Issues:**
+- Wildcard (*) with credentials not allowed
+- Must explicitly list origins
+- Preflight caching reduces overhead
+
+---
+
+### CSP (Content Security Policy)
+
+HTTP header that prevents XSS and injection attacks.
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' https://cdn.example.com;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
+  font-src 'self' https://fonts.gstatic.com;
+  connect-src 'self' https://api.example.com;
+  frame-ancestors 'none';
+```
+
+**Directives:**
+- `default-src` - Fallback for all resources
+- `script-src` - JavaScript sources
+- `style-src` - CSS sources
+- `img-src` - Image sources
+- `connect-src` - XHR, WebSocket, EventSource
+- `font-src` - Font sources
+- `frame-ancestors` - Who can embed this page
+- `report-uri` - Where to send violation reports
+
+**Special Values:**
+- `'self'` - Same origin
+- `'none'` - Block all
+- `'unsafe-inline'` - Allow inline scripts/styles (avoid!)
+- `'unsafe-eval'` - Allow eval() (avoid!)
+- `'nonce-<random>'` - Allow specific inline with nonce
+
+---
+
+### DDoS Protection
+
+**Types of DDoS:**
+1. **Volumetric** - Flood with traffic (UDP flood, DNS amplification)
+2. **Protocol** - Exploit protocol weaknesses (SYN flood, Ping of Death)
+3. **Application Layer** - Target application resources (HTTP flood)
+
+**Mitigation:**
+- Rate limiting
+- IP blocking
+- Traffic filtering
+- CDN (absorb traffic)
+- Anycast network (distribute load)
+- CAPTCHA challenges
+- Web Application Firewall (WAF)
+
+**Services:**
+- Cloudflare DDoS Protection
+- AWS Shield
+- Akamai Kona Site Defender
+
+---
+
+### Other Security Concepts
+
+**SQL Injection Prevention:**
+- Parameterized queries
+- Input validation
+- ORMs with escaping
+
+**XSS (Cross-Site Scripting) Prevention:**
+- Output encoding
+- CSP headers
+- HTTPOnly cookies
+- Sanitize user input
+
+**CSRF (Cross-Site Request Forgery) Prevention:**
+- CSRF tokens
+- SameSite cookies
+- Verify Origin/Referer headers
+
+**Man-in-the-Middle (MITM) Prevention:**
+- HTTPS everywhere
+- Certificate pinning
+- HSTS
+- Avoid public Wi-Fi without VPN
+
+---
+
+## 16. Performance Concepts {#performance}
+
+### Latency vs Throughput vs Bandwidth
+
+**Latency:**
+- Time for data to travel from source to destination
+- Measured in milliseconds (ms)
+- Types:
+  - Network latency (transmission)
+  - Processing latency (computation)
+  - Queueing latency (waiting)
+- Example: 50ms ping time
+
+**Throughput:**
+- Amount of data successfully delivered per unit time
+- Measured in bits/second (bps)
+- Actual achieved data rate
+- Example: 80 Mbps actual download
+
+**Bandwidth:**
+- Maximum data transfer capacity
+- Theoretical limit
+- Measured in bits/second (bps)
+- Example: 100 Mbps connection
+
+**Analogy:**
+- Bandwidth = Width of highway
+- Latency = Speed limit
+- Throughput = Actual traffic flow
+
+---
+
+### Head-of-Line Blocking
+
+**HTTP/1.1:**
+```
+Request 1 (slow) ────────────────────→ [blocks]
+Request 2           waiting...
+Request 3           waiting...
+```
+
+One slow request blocks all subsequent requests on that connection.
+
+**Solutions:**
+- HTTP/2 multiplexing
+- Multiple TCP connections
+- Domain sharding (outdated)
+
+**TCP Head-of-Line Blocking:**
+Even HTTP/2 suffers from this at TCP layer.
+- One lost packet blocks entire connection
+- HTTP/3 solves this with QUIC/UDP
+
+---
+
+### Keep-Alive Connections
+
+**Without Keep-Alive:**
+```
+Request 1: TCP handshake → HTTP request → Response → Close
+Request 2: TCP handshake → HTTP request → Response → Close
+```
+
+**With Keep-Alive:**
+```
+TCP handshake →
+  Request 1 → Response
+  Request 2 → Response
+  Request 3 → Response
+→ Close (after timeout)
+```
+
+**Benefits:**
+- Reduces latency (no repeated handshakes)
+- Reduces CPU usage
+- Reduces network congestion
+
+**Headers:**
+```
+Connection: keep-alive
+Keep-Alive: timeout=5, max=100
+```
+
+---
+
+### Connection Pooling
+
+Maintaining a pool of reusable connections.
+
+**Benefits:**
+- Reuse established connections
+- Reduce handshake overhead
+- Better resource utilization
+- Parallel requests
+
+**Common in:**
+- Database connections
+- HTTP clients
+- Microservices
+
+---
+
+### Time to First Byte (TTFB)
+
+Time from request to first byte of response.
+
+**Components:**
+1. DNS lookup
+2. TCP handshake
+3. TLS handshake (HTTPS)
+4. HTTP request
+5. Server processing
+6. Response starts
+
+**Optimization:**
+- CDN (reduce geographic distance)
+- HTTP/2 or HTTP/3
+- Server-side caching
+- Database optimization
+- Reduce server processing time
+
+---
+
+### Round-Trip Time (RTT)
+
+Time for signal to travel to destination and back.
+
+**Impact:**
+- TCP handshake: 1 RTT
+- TLS 1.2 handshake: 2 RTT
+- TLS 1.3 handshake: 1 RTT
+- HTTP/3 with 0-RTT: 0 RTT (for returning clients)
+
+**Typical RTTs:**
+- Same city: 1-10ms
+- Same country: 20-50ms
+- Cross-continent: 100-300ms
+- Satellite: 500-700ms
+
+---
+
+### TCP Congestion Control
+
+Algorithms to prevent network congestion:
+
+**Slow Start:**
+- Start with small congestion window
+- Double window size each RTT
+- Until packet loss or threshold
+
+**Congestion Avoidance:**
+- Increase window linearly
+- After slow start threshold
+
+**Fast Retransmit:**
+- Retransmit lost packet immediately
+- Don't wait for timeout
+
+**Fast Recovery:**
+- Reduce window, avoid slow start
+
+---
+
+### Network Optimization Techniques
+
+**1. DNS Prefetching**
+```html
+<link rel="dns-prefetch" href="//api.example.com">
+```
+
+**2. Preconnect**
+```html
+<link rel="preconnect" href="https://api.example.com">
+```
+Establishes early connection (DNS + TCP + TLS)
+
+**3. Prefetch**
+```html
+<link rel="prefetch" href="/next-page.html">
+```
+Low-priority resource loading
+
+**4. Preload**
+```html
+<link rel="preload" href="/critical.css" as="style">
+```
+High-priority resource loading
+
+**5. HTTP/2 Server Push**
+Server proactively sends resources
+
+**6. Resource Hints**
+```html
+<link rel="modulepreload" href="/app.js">
+```
+
+**7. Compression**
+- Gzip (older, widely supported)
+- Brotli (better compression)
+- Compression ratio: ~70-80%
+
+**8. Minification**
+- Remove whitespace, comments
+- Shorten variable names
+- Reduce file size
+
+**9. Code Splitting**
+- Load only needed code
+- Dynamic imports
+- Route-based splitting
+
+**10. Image Optimization**
+- WebP format (30% smaller)
+- AVIF format (50% smaller)
+- Lazy loading
+- Responsive images (srcset)
+- CDN with image optimization
+
+---
+
+## 17. Common Ports {#common-ports}
+
+### Well-Known Ports (0-1023)
+
+| Port | Protocol | Service | Description |
+|------|----------|---------|-------------|
+| 20 | TCP | FTP Data | File transfer data |
+| 21 | TCP | FTP Control | File transfer control |
+| 22 | TCP | SSH | Secure shell |
+| 23 | TCP | Telnet | Unencrypted remote login |
+| 25 | TCP | SMTP | Email sending |
+| 53 | TCP/UDP | DNS | Domain name resolution |
+| 67/68 | UDP | DHCP | Dynamic IP assignment |
+| 69 | UDP | TFTP | Trivial file transfer |
+| 80 | TCP | HTTP | Web traffic |
+| 110 | TCP | POP3 | Email retrieval |
+| 123 | UDP | NTP | Time synchronization |
+| 143 | TCP | IMAP | Email access |
+| 161/162 | UDP | SNMP | Network management |
+| 443 | TCP | HTTPS | Secure web traffic |
+| 465 | TCP | SMTPS | Secure email sending |
+| 514 | UDP | Syslog | System logging |
+| 587 | TCP | SMTP | Email submission |
+| 993 | TCP | IMAPS | Secure IMAP |
+| 995 | TCP | POP3S | Secure POP3 |
+
+### Registered Ports (1024-49151)
+
+| Port | Protocol | Service |
+|------|----------|---------|
+| 1433 | TCP | Microsoft SQL Server |
+| 1521 | TCP | Oracle Database |
+| 3000 | TCP | Node.js (dev) |
+| 3306 | TCP | MySQL |
+| 3389 | TCP | RDP (Remote Desktop) |
+| 5000 | TCP | Flask (dev) |
+| 5432 | TCP | PostgreSQL |
+| 5672 | TCP | RabbitMQ |
+| 6379 | TCP | Redis |
+| 8000 | TCP | Django (dev) |
+| 8080 | TCP | HTTP Alternative |
+| 8443 | TCP | HTTPS Alternative |
+| 9000 | TCP | PHP-FPM |
+| 9200 | TCP | Elasticsearch |
+| 27017 | TCP | MongoDB |
+
+### Dynamic/Private Ports (49152-65535)
+
+Used for ephemeral (temporary) client connections.
+
+---
+
+## 18. Network Troubleshooting Tools {#tools}
+
+### Command Line Tools
+
+**1. ping**
+```bash
+ping google.com
+```
+- Tests connectivity
+- Measures RTT
+- Uses ICMP protocol
+- Common flags:
+  - `-c 5` - Send 5 packets
+  - `-i 2` - 2 second interval
+  - `-s 1000` - Packet size 1000 bytes
+
+**2. traceroute / tracert**
+```bash
+traceroute google.com  # Linux/Mac
+tracert google.com     # Windows
+```
+- Shows path to destination
+- Lists each hop
+- Identifies where delays occur
+- Uses ICMP or UDP
+
+**3. nslookup**
+```bash
+nslookup google.com
+nslookup google.com 8.8.8.8  # Use specific DNS
+```
+- Query DNS records
+- Test DNS resolution
+- Find authoritative nameservers
+
+**4. dig** (DNS Information Groper)
+```bash
+dig google.com
+dig google.com A          # A record
+dig google.com MX         # Mail servers
+dig google.com +trace    # Full resolution path
+dig -x 8.8.8.8           # Reverse lookup
+```
+More detailed than nslookup
+
+**5. host**
+```bash
+host google.com
+host -t MX google.com    # Mail servers
+```
+Simpler DNS lookup
+
+**6. netstat**
+```bash
+netstat -an              # All connections
+netstat -tulpn          # Listening ports (Linux)
+netstat -ano            # Windows with PIDs
+```
+- Shows network connections
+- Listening ports
+- Routing tables
+
+**7. ss** (Socket Statistics)
+```bash
+ss -tulpn               # Listening TCP/UDP
+ss -tan                 # All TCP connections
+```
+Modern replacement for netstat (faster)
+
+**8. curl**
+```bash
+curl https://api.example.com
+curl -I https://example.com     # Headers only
+curl -v https://example.com     # Verbose
+curl -X POST -d '{}' https://api.example.com
+curl -w "%{time_total}\n" https://example.com
+```
+- Test HTTP requests
+- Debug APIs
+- Measure timing
+
+**9. wget**
+```bash
+wget https://example.com/file.zip
+wget -O output.html https://example.com
+```
+Download files from web
+
+**10. telnet**
+```bash
+telnet example.com 80
+GET / HTTP/1.1
+Host: example.com
+```
+- Test TCP connections
+- Manual HTTP requests
+- Check if port is open
+
+**11. nc** (netcat)
+```bash
+nc -zv example.com 80           # Port scan
+nc -l 8080                      # Listen on port
+echo "test" | nc example.com 80 # Send data
+```
+"Swiss Army knife" for TCP/UDP
+
+**12. nmap**
+```bash
+nmap example.com                # Scan common ports
+nmap -p 1-65535 example.com    # All ports
+nmap -sV example.com           # Service versions
+```
+Network scanner and security auditing
+
+**13. tcpdump**
+```bash
+tcpdump -i eth0                # Capture on interface
+tcpdump port 80                # Filter by port
+tcpdump -w capture.pcap        # Save to file
+```
+Packet capture and analysis
+
+**14. wireshark**
+GUI packet analyzer (uses tcpdump underneath)
+
+**15. mtr** (My Traceroute)
+```bash
+mtr google.com
+```
+Combines ping and traceroute with continuous monitoring
+
+**16. iperf**
+```bash
+# Server
+iperf -s
+
+# Client
+iperf -c server_ip
+```
+Measure network bandwidth
+
+**17. ifconfig / ip**
+```bash
+ifconfig                  # Old (Linux/Mac)
+ip addr show             # New (Linux)
+ipconfig                 # Windows
+```
+Network interface configuration
+
+**18. route / ip route**
+```bash
+route -n                 # Show routing table (old)
+ip route show           # Show routing table (new)
+```
+
+**19. arp**
+```bash
+arp -a                   # Show ARP cache
+```
+View/modify ARP table (IP to MAC mapping)
+
+**20. whois**
+```bash
+whois example.com
+```
+Domain registration information
+
+---
+
+### Browser Developer Tools
+
+**Network Tab:**
+- View all requests
+- Timing information (DNS, Connect, TLS, TTFB, Download)
+- Request/response headers
+- Preview/response body
+- Filter by type (XHR, JS, CSS, Img)
+- Throttling simulation
+- Disable cache
+
+**Security Tab:**
+- Certificate details
+- TLS version
+- Cipher suite
+- Certificate chain
+
+**Performance Tab:**
+- Timeline view
+- FPS meter
+- Network waterfall
+- CPU profiling
+
+**Application Tab:**
+- Cookies
+- Local Storage
+- Session Storage
+- Cache Storage
+- Service Workers
+
+---
+
+### Online Tools
+
+**1. DNS Lookup Tools**
+- DNS Checker (dnschecker.org)
+- MX Toolbox (mxtoolbox.com)
+- What's My DNS (whatsmydns.net)
+
+**2. SSL/TLS Testing**
+- SSL Labs (ssllabs.com/ssltest)
+- Qualys SSL Test
+- SecurityHeaders.com
+
+**3. HTTP Testing**
+- HTTPBin (httpbin.org) - Test HTTP requests
+- Postman - API testing
+- Insomnia - API client
+
+**4. Speed Testing**
+- WebPageTest (webpagetest.org)
+- GTmetrix
+- Google PageSpeed Insights
+- Lighthouse (built into Chrome)
+
+**5. Network Tools**
+- Pingdom
+- UptimeRobot (monitoring)
+- DownDetector
+
+**6. IP Information**
+- WhatIsMyIP
+- IPInfo.io
+- IP Geolocation
+
+---
+
+## Quick Reference Cheatsheet
+
+### Protocol Stack
+```
+Application  → HTTP, DNS, SSH, FTP
+Transport    → TCP, UDP
+Network      → IP, ICMP
+Data Link    → Ethernet, Wi-Fi
+Physical     → Cables, Signals
+```
+
+### Connection Establishment
+```
+TCP: SYN → SYN-ACK → ACK (3-way)
+TLS: ClientHello → ServerHello → KeyExchange → Finished (1-2 RTT)
+HTTP: Request → Response
+```
+
+### When to Use What
+
+**TCP:** Reliability needed (web, email, file transfer)
+**UDP:** Speed matters (gaming, video, VoIP)
+
+**HTTP/1.1:** Legacy support
+**HTTP/2:** Modern websites
+**HTTP/3:** Mobile, high packet loss networks
+
+**REST:** Simple CRUD APIs
+**GraphQL:** Complex data fetching, mobile apps
+**gRPC:** Microservices, low latency
+**WebSockets:** Real-time bi-directional
+
+**SSE:** Server → Client notifications
+**WebSockets:** Chat, gaming, real-time dashboards
+
+---
+
+## Security Checklist
+
+✅ **Always use HTTPS** (TLS 1.2+)
+✅ **Implement HSTS** headers
+✅ **Use strong cipher suites** (no SSL, no weak ciphers)
+✅ **Set secure cookies** (HttpOnly, Secure, SameSite)
+✅ **Implement CSP** headers
+✅ **Enable CORS** properly (no wildcards with credentials)
+✅ **Validate all inputs** (prevent SQL injection, XSS)
+✅ **Use CSRF tokens** for state-changing operations
+✅ **Rate limit APIs** (prevent abuse)
+✅ **Keep dependencies updated** (security patches)
+✅ **Use CDN with DDoS protection**
+✅ **Implement proper authentication** (OAuth2, JWT)
+✅ **Log and monitor** security events
+✅ **Regular security audits**
+
+---
+
+## Performance Checklist
+
+✅ **Use HTTP/2 or HTTP/3**
+✅ **Enable compression** (Brotli/Gzip)
+✅ **Implement caching** (browser, CDN, server)
+✅ **Use CDN** for static assets
+✅ **Optimize images** (WebP, lazy loading)
+✅ **Minify and bundle** assets
+✅ **Code splitting** (load what's needed)
+✅ **DNS prefetching** for third-party domains
+✅ **Preconnect** to critical origins
+✅ **Use resource hints** (preload, prefetch)
+✅ **Reduce DNS lookups**
+✅ **Keep-alive connections**
+✅ **Optimize critical rendering path**
+✅ **Measure with Lighthouse/WebPageTest**
+
+---
+
+## Common Interview Questions
+
+**Q: Explain the difference between TCP and UDP**
+A: TCP is connection-oriented, reliable, ordered; UDP is connectionless, faster, unreliable
+
+**Q: What happens when you type a URL in the browser?**
+A: DNS lookup → TCP handshake → TLS handshake → HTTP request → Server processing → Response → Rendering
+
+**Q: What is the 3-way handshake?**
+A: SYN → SYN-ACK → ACK to establish TCP connection
+
+**Q: Difference between HTTP/1.1 and HTTP/2?**
+A: HTTP/2 has multiplexing, binary protocol, header compression, server push
+
+**Q: What is HTTPS and how does it work?**
+A: HTTP + TLS providing encryption, authentication, and integrity through certificate-based secure channel
+
+**Q: Explain CORS**
+A: Browser security feature preventing cross-origin requests unless server explicitly allows via CORS headers
+
+**Q: What is a CDN and why use it?**
+A: Distributed servers caching content near users for lower latency, reduced bandwidth costs, better availability
+
+**Q: REST vs GraphQL?**
+A: REST is resource-based with multiple endpoints; GraphQL is client-driven with single endpoint and no over-fetching
+
+**Q: When to use WebSockets vs SSE?**
+A: WebSockets for bi-directional real-time (chat, gaming); SSE for server→client streams (notifications, feeds)
+
+**Q: What is TLS handshake?**
+A: Process to establish encrypted connection: negotiate cipher, exchange keys, verify certificates
+
+---
+
+**End of Guide**
+
+This comprehensive guide covers networking fundamentals through advanced topics relevant for web development, from OSI layers to modern protocols, security, and performance optimization.

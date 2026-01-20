@@ -1,0 +1,1775 @@
+# React Performance Optimization
+
+A comprehensive guide to optimizing React applications for maximum performance and best user experience
+
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Understanding React Performance](#understanding-react-performance)
+3. [Measuring Performance](#measuring-performance)
+4. [Component Rendering Optimization](#component-rendering-optimization)
+5. [Code Splitting and Lazy Loading](#code-splitting-and-lazy-loading)
+6. [State Management Optimization](#state-management-optimization)
+7. [List Virtualization](#list-virtualization)
+8. [Memoization Techniques](#memoization-techniques)
+9. [Bundle Optimization](#bundle-optimization)
+10. [Image and Asset Optimization](#image-and-asset-optimization)
+11. [Network Performance](#network-performance)
+12. [React 18+ Features](#react-18-features)
+13. [Advanced Patterns](#advanced-patterns)
+14. [Performance Checklist](#performance-checklist)
+
+## Introduction
+
+React is inherently performant, but as applications grow in complexity, performance issues can emerge. This guide covers proven techniques to keep your React applications fast and responsive.
+
+### Why Performance Matters
+
+**User Experience:**
+* Users expect instant feedback (< 100ms)
+* 53% of mobile users abandon sites taking > 3 seconds to load
+* Every 100ms of delay can decrease conversion by 1%
+
+**Business Impact:**
+* Better SEO rankings (Core Web Vitals)
+* Higher conversion rates
+* Increased user retention
+* Lower infrastructure costs
+
+**Core Web Vitals:**
+* LCP (Largest Contentful Paint): ≤ 2.5s
+* INP (Interaction to Next Paint): ≤ 200ms
+* CLS (Cumulative Layout Shift): ≤ 0.1
+
+## Understanding React Performance
+
+### How React Works
+
+React uses a Virtual DOM to optimize updates:
+1. State changes trigger re-render
+2. React creates new Virtual DOM tree
+3. Compares with previous Virtual DOM (diffing)
+4. Calculates minimal changes needed
+5. Updates only changed elements in real DOM
+
+### Common Performance Bottlenecks
+
+**1. Unnecessary Re-renders**
+
+```javascript
+// ❌ Parent re-renders cause child to re-render unnecessarily
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>{count}</button>
+      <ExpensiveChild /> {/* Re-renders every time! */}
+    </div>
+  );
+}
+```
+
+**2. Large Bundle Sizes**
+* Importing entire libraries when only using small parts
+* No code splitting
+* Unoptimized images and assets
+
+**3. Inefficient List Rendering**
+* Rendering thousands of DOM nodes
+* Missing or incorrect keys
+* No virtualization
+
+**4. Prop Drilling and Global State**
+* Unnecessary component updates
+* Poor state management
+
+## Measuring Performance
+
+### React DevTools Profiler
+
+The Profiler helps identify slow components:
+
+```javascript
+import { Profiler } from 'react';
+
+function onRenderCallback(
+  id, // component id
+  phase, // "mount" or "update"
+  actualDuration, // time spent rendering
+  baseDuration, // estimated time without memoization
+  startTime, // when render started
+  commitTime, // when render committed
+  interactions // Set of interactions
+) {
+  console.log(`${id} took ${actualDuration}ms to render`);
+}
+
+function App() {
+  return (
+    <Profiler id="App" onRender={onRenderCallback}>
+      <YourComponents />
+    </Profiler>
+  );
+}
+```
+
+**How to use:**
+1. Open React DevTools
+2. Go to Profiler tab
+3. Click record
+4. Interact with your app
+5. Stop recording
+6. Analyze flame graph
+
+### Chrome DevTools Performance
+
+1. Open DevTools (F12)
+2. Go to Performance tab
+3. Click Record
+4. Interact with your app
+5. Stop recording
+6. Analyze:
+   - Scripting (yellow) - JS execution
+   - Rendering (purple) - Layout/paint
+   - Painting (green) - Compositing
+
+### Lighthouse
+
+```bash
+# Command line
+npm install -g lighthouse
+lighthouse https://your-app.com --view
+
+# Or use Chrome DevTools Lighthouse tab
+```
+
+### why-did-you-render
+
+Detect unnecessary re-renders in development:
+
+```bash
+npm install @welldone-software/why-did-you-render
+```
+
+```javascript
+// wdyr.js
+import React from 'react';
+
+if (process.env.NODE_ENV === 'development') {
+  const whyDidYouRender = require('@welldone-software/why-did-you-render');
+  whyDidYouRender(React, {
+    trackAllPureComponents: true,
+    trackHooks: true,
+    logOnDifferentValues: true,
+  });
+}
+
+// Component
+const MyComponent = (props) => {
+  return <div>{props.value}</div>;
+};
+
+// Enable tracking for this component
+MyComponent.whyDidYouRender = true;
+```
+
+## Component Rendering Optimization
+
+### React.memo()
+
+Prevents re-renders when props haven't changed:
+
+```javascript
+// ❌ Without memo - re-renders every time parent renders
+function ExpensiveComponent({ data }) {
+  console.log('Rendering ExpensiveComponent');
+  return <div>{/* expensive rendering logic */}</div>;
+}
+
+// ✅ With memo - only re-renders when data changes
+const ExpensiveComponent = React.memo(({ data }) => {
+  console.log('Rendering ExpensiveComponent');
+  return <div>{/* expensive rendering logic */}</div>;
+});
+
+// ✅ With custom comparison
+const ExpensiveComponent = React.memo(
+  ({ data }) => {
+    return <div>{data.value}</div>;
+  },
+  (prevProps, nextProps) => {
+    // Return true if props are equal (skip render)
+    return prevProps.data.id === nextProps.data.id;
+  }
+);
+```
+
+**When to use:**
+* Pure functional components
+* Components that render often
+* Components with complex rendering logic
+* Components receiving same props frequently
+
+**When NOT to use:**
+* Props change frequently
+* Cheap rendering components
+* Component always re-renders anyway
+
+### useMemo()
+
+Memoize expensive calculations:
+
+```javascript
+import { useMemo } from 'react';
+
+function ProductList({ products, filterTerm }) {
+  // ❌ Filters on every render
+  const filteredProducts = products.filter(p =>
+    p.name.includes(filterTerm)
+  );
+
+  // ✅ Only filters when dependencies change
+  const filteredProducts = useMemo(() => {
+    console.log('Filtering products...');
+    return products.filter(p => p.name.includes(filterTerm));
+  }, [products, filterTerm]);
+
+  return (
+    <ul>
+      {filteredProducts.map(p => (
+        <li key={p.id}>{p.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**Real-world examples:**
+
+```javascript
+// Expensive calculations
+const expensiveValue = useMemo(() => {
+  return products.reduce((acc, p) => acc + p.price, 0);
+}, [products]);
+
+// Sorting large arrays
+const sortedData = useMemo(() => {
+  return [...data].sort((a, b) => a.value - b.value);
+}, [data]);
+
+// Filtering large lists
+const visibleItems = useMemo(() => {
+  return items.filter(item => item.category === selectedCategory);
+}, [items, selectedCategory]);
+
+// Creating objects/arrays (for stable references)
+const config = useMemo(() => ({
+  apiKey: process.env.API_KEY,
+  endpoint: '/api/data'
+}), []);
+```
+
+### useCallback()
+
+Memoize function references:
+
+```javascript
+import { useCallback } from 'react';
+
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  // ❌ New function on every render
+  const handleClick = () => {
+    console.log('Clicked');
+  };
+
+  // ✅ Same function reference
+  const handleClick = useCallback(() => {
+    console.log('Clicked');
+  }, []); // Empty deps = never recreated
+
+  // ✅ Recreated only when count changes
+  const handleIncrement = useCallback(() => {
+    setCount(count + 1);
+  }, [count]);
+
+  // ✅ Better: Use functional update (no dependency)
+  const handleIncrement = useCallback(() => {
+    setCount(prev => prev + 1);
+  }, []);
+
+  return <MemoizedChild onClick={handleClick} />;
+}
+
+const MemoizedChild = React.memo(({ onClick }) => {
+  console.log('Child rendered');
+  return <button onClick={onClick}>Click</button>;
+});
+```
+
+**When to use:**
+* Passing callbacks to memoized child components
+* Callbacks used as dependencies in other hooks
+* Callbacks passed to custom hooks
+
+### Keep Component State Local
+
+Avoid lifting state unnecessarily:
+
+```javascript
+// ❌ Bad: Global state causes all children to re-render
+function Parent() {
+  const [inputValue, setInputValue] = useState('');
+
+  return (
+    <div>
+      <input
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+      />
+      <ExpensiveChild1 /> {/* Re-renders on every keystroke! */}
+      <ExpensiveChild2 /> {/* Re-renders on every keystroke! */}
+    </div>
+  );
+}
+
+// ✅ Good: State localized to component that needs it
+function Parent() {
+  return (
+    <div>
+      <InputComponent />
+      <ExpensiveChild1 /> {/* Doesn't re-render */}
+      <ExpensiveChild2 /> {/* Doesn't re-render */}
+    </div>
+  );
+}
+
+function InputComponent() {
+  const [inputValue, setInputValue] = useState('');
+
+  return (
+    <input
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+    />
+  );
+}
+```
+
+### Composition Over Props
+
+Use children prop to prevent unnecessary re-renders:
+
+```javascript
+// ❌ Bad: SlowComponent re-renders when count changes
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>{count}</button>
+      <SlowComponent />
+    </div>
+  );
+}
+
+// ✅ Good: SlowComponent wrapped as children, doesn't re-render
+function Parent() {
+  return (
+    <CounterWrapper>
+      <SlowComponent />
+    </CounterWrapper>
+  );
+}
+
+function CounterWrapper({ children }) {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>{count}</button>
+      {children} {/* Doesn't re-render when count changes */}
+    </div>
+  );
+}
+```
+
+## Code Splitting and Lazy Loading
+
+### React.lazy() and Suspense
+
+Load components on demand:
+
+```javascript
+import { lazy, Suspense } from 'react';
+
+// ❌ Eager loading - increases initial bundle
+import HeavyComponent from './HeavyComponent';
+
+// ✅ Lazy loading - loads when needed
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HeavyComponent />
+    </Suspense>
+  );
+}
+```
+
+### Route-Based Code Splitting
+
+```javascript
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Lazy load routes
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Settings = lazy(() => import('./pages/Settings'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="page-loader">
+      <div className="spinner" />
+      <p>Loading...</p>
+    </div>
+  );
+}
+```
+
+### Component-Based Code Splitting
+
+```javascript
+// Heavy modal loaded only when opened
+const HeavyModal = lazy(() => import('./HeavyModal'));
+
+function App() {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <div>
+      <button onClick={() => setShowModal(true)}>
+        Open Modal
+      </button>
+
+      {showModal && (
+        <Suspense fallback={<ModalLoader />}>
+          <HeavyModal onClose={() => setShowModal(false)} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+### Named Exports with Lazy Loading
+
+```javascript
+// ❌ Won't work - lazy only accepts default exports
+const { HeavyComponent } = lazy(() => import('./components'));
+
+// ✅ Solution 1: Re-export as default
+const HeavyComponent = lazy(() =>
+  import('./components').then(module => ({ default: module.HeavyComponent }))
+);
+
+// ✅ Solution 2: Create wrapper file
+// HeavyComponent.lazy.js
+export { HeavyComponent as default } from './HeavyComponent';
+
+// Usage
+const HeavyComponent = lazy(() => import('./HeavyComponent.lazy'));
+```
+
+### Preloading Components
+
+```javascript
+// Preload on hover for better UX
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+// Store the promise
+const preloadHeavyComponent = () => import('./HeavyComponent');
+
+function App() {
+  return (
+    <button
+      onMouseEnter={preloadHeavyComponent}
+      onClick={() => setShow(true)}>
+      Show Heavy Component
+    </button>
+  );
+}
+```
+
+### Error Boundaries for Lazy Loading
+
+```javascript
+import { Component } from 'react';
+
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Lazy loading failed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div>
+          <h2>Failed to load component</h2>
+          <button onClick={() => window.location.reload()}>
+            Reload
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Usage
+function App() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<Loading />}>
+        <LazyComponent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+## State Management Optimization
+
+### Context API Optimization
+
+Avoid unnecessary re-renders with Context:
+
+```javascript
+// ❌ Bad: Single context causes all consumers to re-render
+const AppContext = createContext();
+
+function AppProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState('light');
+  const [settings, setSettings] = useState({});
+
+  return (
+    <AppContext.Provider value={{ user, theme, settings, setUser, setTheme, setSettings }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// ✅ Good: Separate contexts for different concerns
+const UserContext = createContext();
+const ThemeContext = createContext();
+const SettingsContext = createContext();
+
+function AppProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState('light');
+  const [settings, setSettings] = useState({});
+
+  return (
+    <UserContext.Provider value={{ user, setUser }}>
+      <ThemeContext.Provider value={{ theme, setTheme }}>
+        <SettingsContext.Provider value={{ settings, setSettings }}>
+          {children}
+        </SettingsContext.Provider>
+      </ThemeContext.Provider>
+    </UserContext.Provider>
+  );
+}
+```
+
+### Split Context Value
+
+```javascript
+// ❌ Bad: New object on every render
+function AppProvider({ children }) {
+  const [state, setState] = useState({});
+
+  return (
+    <AppContext.Provider value={{ state, setState }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+// ✅ Good: Memoized value
+function AppProvider({ children }) {
+  const [state, setState] = useState({});
+
+  const value = useMemo(() => ({ state, setState }), [state]);
+
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+```
+
+### Context Selectors
+
+```javascript
+// Custom hook with selector pattern
+function createContextSelector(Context) {
+  return function useContextSelector(selector) {
+    const context = useContext(Context);
+    const [, forceUpdate] = useReducer(x => x + 1, 0);
+
+    const selectedValue = useMemo(
+      () => selector(context),
+      [context, selector]
+    );
+
+    const prevSelectedValue = useRef(selectedValue);
+
+    useEffect(() => {
+      if (prevSelectedValue.current !== selectedValue) {
+        forceUpdate();
+        prevSelectedValue.current = selectedValue;
+      }
+    }, [selectedValue]);
+
+    return selectedValue;
+  };
+}
+
+// Usage
+const useUser = createContextSelector(AppContext);
+
+function UserProfile() {
+  // Only re-renders when user changes, not entire context
+  const user = useUser(context => context.user);
+
+  return <div>{user.name}</div>;
+}
+```
+
+### Redux Performance
+
+```javascript
+// ❌ Bad: Selecting entire state slice
+function TodoList() {
+  const todos = useSelector(state => state.todos);
+  // Re-renders when ANY todo changes
+}
+
+// ✅ Good: Select only what you need
+function TodoList() {
+  const todoIds = useSelector(state => state.todos.allIds);
+  // Only re-renders when todo IDs change
+
+  return todoIds.map(id => <TodoItem key={id} id={id} />);
+}
+
+function TodoItem({ id }) {
+  const todo = useSelector(state => state.todos.byId[id]);
+  // Only THIS item re-renders when it changes
+
+  return <div>{todo.text}</div>;
+}
+```
+
+### Reselect for Memoized Selectors
+
+```javascript
+import { createSelector } from 'reselect';
+
+// Input selectors
+const getTodos = state => state.todos;
+const getFilter = state => state.filter;
+
+// Memoized selector - only recalculates when inputs change
+const getVisibleTodos = createSelector(
+  [getTodos, getFilter],
+  (todos, filter) => {
+    console.log('Calculating visible todos...');
+    switch (filter) {
+      case 'COMPLETED':
+        return todos.filter(t => t.completed);
+      case 'ACTIVE':
+        return todos.filter(t => !t.completed);
+      default:
+        return todos;
+    }
+  }
+);
+
+// Component
+function TodoList() {
+  const visibleTodos = useSelector(getVisibleTodos);
+  // Only recalculates when todos or filter change
+
+  return visibleTodos.map(todo => (
+    <TodoItem key={todo.id} todo={todo} />
+  ));
+}
+```
+
+## List Virtualization
+
+### Why Virtualization?
+
+Rendering 10,000 items creates 10,000 DOM nodes, causing:
+* Slow initial render
+* High memory usage
+* Sluggish scrolling
+
+Virtualization renders only visible items (~20-50 DOM nodes).
+
+### react-window
+
+```bash
+npm install react-window
+```
+
+**Fixed Size List:**
+
+```javascript
+import { FixedSizeList } from 'react-window';
+
+function VirtualizedList({ items }) {
+  const Row = ({ index, style }) => (
+    <div style={style}>
+      Item {index}: {items[index].name}
+    </div>
+  );
+
+  return (
+    <FixedSizeList
+      height={600}
+      itemCount={items.length}
+      itemSize={50}
+      width="100%">
+      {Row}
+    </FixedSizeList>
+  );
+}
+```
+
+**Variable Size List:**
+
+```javascript
+import { VariableSizeList } from 'react-window';
+
+function VirtualizedList({ items }) {
+  const getItemSize = (index) => {
+    // Return height based on content
+    return items[index].isExpanded ? 100 : 50;
+  };
+
+  const Row = ({ index, style }) => (
+    <div style={style}>
+      {items[index].content}
+    </div>
+  );
+
+  return (
+    <VariableSizeList
+      height={600}
+      itemCount={items.length}
+      itemSize={getItemSize}
+      width="100%">
+      {Row}
+    </VariableSizeList>
+  );
+}
+```
+
+**Grid:**
+
+```javascript
+import { FixedSizeGrid } from 'react-window';
+
+function VirtualizedGrid({ items }) {
+  const Cell = ({ columnIndex, rowIndex, style }) => (
+    <div style={style}>
+      Row {rowIndex}, Col {columnIndex}
+    </div>
+  );
+
+  return (
+    <FixedSizeGrid
+      columnCount={5}
+      columnWidth={150}
+      height={600}
+      rowCount={Math.ceil(items.length / 5)}
+      rowHeight={100}
+      width={800}>
+      {Cell}
+    </FixedSizeGrid>
+  );
+}
+```
+
+### react-virtuoso
+
+More feature-rich alternative:
+
+```bash
+npm install react-virtuoso
+```
+
+```javascript
+import { Virtuoso } from 'react-virtuoso';
+
+function VirtualizedList({ items }) {
+  return (
+    <Virtuoso
+      style={{ height: 600 }}
+      data={items}
+      itemContent={(index, item) => (
+        <div>
+          <h3>{item.title}</h3>
+          <p>{item.description}</p>
+        </div>
+      )}
+    />
+  );
+}
+```
+
+**With Header and Footer:**
+
+```javascript
+<Virtuoso
+  data={items}
+  components={{
+    Header: () => <div>List Header</div>,
+    Footer: () => <div>List Footer</div>,
+  }}
+  itemContent={(index, item) => <ItemComponent item={item} />}
+/>
+```
+
+## Memoization Techniques
+
+### When to Memoize
+
+```javascript
+// ❌ Don't memoize simple calculations
+const doubleCount = useMemo(() => count * 2, [count]); // Overkill
+
+// ✅ Memoize expensive operations
+const sortedList = useMemo(() => {
+  return [...items].sort((a, b) => a.value - b.value);
+}, [items]);
+
+// ✅ Memoize to maintain reference equality
+const config = useMemo(() => ({
+  apiKey: 'key',
+  endpoint: '/api'
+}), []);
+```
+
+### Memoization Best Practices
+
+```javascript
+function ProductList({ products, category, searchTerm }) {
+  // ✅ Chain memoizations for better performance
+
+  // Step 1: Filter by category
+  const categoryProducts = useMemo(() => {
+    return products.filter(p => p.category === category);
+  }, [products, category]);
+
+  // Step 2: Filter by search
+  const searchResults = useMemo(() => {
+    return categoryProducts.filter(p =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [categoryProducts, searchTerm]);
+
+  // Step 3: Sort results
+  const sortedProducts = useMemo(() => {
+    return [...searchResults].sort((a, b) => a.price - b.price);
+  }, [searchResults]);
+
+  return sortedProducts.map(p => <ProductCard key={p.id} product={p} />);
+}
+```
+
+### Custom Memoization Hook
+
+```javascript
+function useDeepCompareMemo(factory, deps) {
+  const ref = useRef();
+  const signalRef = useRef(0);
+
+  if (!ref.current || !deepEqual(deps, ref.current.deps)) {
+    ref.current = {
+      deps,
+      value: factory()
+    };
+    signalRef.current += 1;
+  }
+
+  return ref.current.value;
+}
+
+// Usage - only recalculates when object content changes
+const config = useDeepCompareMemo(() => ({
+  settings: userSettings,
+  preferences: userPreferences
+}), [userSettings, userPreferences]);
+```
+
+## Bundle Optimization
+
+### Analyze Bundle Size
+
+```bash
+# Install analyzer
+npm install --save-dev webpack-bundle-analyzer
+
+# Or for Create React App
+npm install --save-dev cra-bundle-analyzer
+```
+
+**webpack.config.js:**
+
+```javascript
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+module.exports = {
+  plugins: [
+    new BundleAnalyzerPlugin()
+  ]
+};
+```
+
+**For Create React App:**
+
+```bash
+npx cra-bundle-analyzer
+```
+
+### Tree Shaking
+
+```javascript
+// ❌ Bad: Imports entire library
+import _ from 'lodash';
+const result = _.debounce(fn, 300);
+
+// ✅ Good: Import only what you need
+import debounce from 'lodash/debounce';
+const result = debounce(fn, 300);
+
+// ❌ Bad: Imports all icons
+import { FaBeer, FaCoffee } from 'react-icons/fa';
+
+// ✅ Good: Import from specific path
+import { FaBeer } from 'react-icons/fa/FaBeer';
+import { FaCoffee } from 'react-icons/fa/FaCoffee';
+```
+
+### Dynamic Imports for Heavy Libraries
+
+```javascript
+// Load moment.js only when needed
+async function formatDate(date) {
+  const moment = (await import('moment')).default;
+  return moment(date).format('MMMM Do YYYY');
+}
+
+// Load chart library only on chart page
+function ChartPage() {
+  const [Chart, setChart] = useState(null);
+
+  useEffect(() => {
+    import('chart.js').then(module => {
+      setChart(() => module.Chart);
+    });
+  }, []);
+
+  if (!Chart) return <Loading />;
+
+  return <ChartComponent Chart={Chart} />;
+}
+```
+
+### Remove Unused Dependencies
+
+```bash
+# Find unused dependencies
+npm install -g depcheck
+depcheck
+
+# Analyze package size impact
+npm install -g cost-of-modules
+cost-of-modules
+```
+
+### Use Lighter Alternatives
+
+```
+Heavy libraries → Lighter alternatives
+moment.js (289KB) → date-fns (78KB) or day.js (7KB)
+lodash (71KB) → lodash-es (24KB) or native methods
+axios (13KB) → fetch API (native)
+```
+
+## Image and Asset Optimization
+
+### Image Lazy Loading
+
+```javascript
+// Native lazy loading
+function ImageGallery({ images }) {
+  return images.map(img => (
+    <img
+      key={img.id}
+      src={img.url}
+      alt={img.alt}
+      loading="lazy"
+      width={img.width}
+      height={img.height}
+    />
+  ));
+}
+```
+
+### Progressive Image Loading
+
+```javascript
+import { useState, useEffect } from 'react';
+
+function ProgressiveImage({ lowQualitySrc, highQualitySrc, alt }) {
+  const [imageSrc, setImageSrc] = useState(lowQualitySrc);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = highQualitySrc;
+    img.onload = () => {
+      setImageSrc(highQualitySrc);
+      setIsLoading(false);
+    };
+  }, [highQualitySrc]);
+
+  return (
+    <img
+      src={imageSrc}
+      alt={alt}
+      className={isLoading ? 'blur' : ''}
+    />
+  );
+}
+```
+
+### Responsive Images
+
+```javascript
+function ResponsiveImage({ src, alt }) {
+  return (
+    <picture>
+      <source
+        media="(max-width: 640px)"
+        srcSet={`${src}-small.webp`}
+        type="image/webp"
+      />
+      <source
+        media="(max-width: 1024px)"
+        srcSet={`${src}-medium.webp`}
+        type="image/webp"
+      />
+      <source
+        srcSet={`${src}-large.webp`}
+        type="image/webp"
+      />
+      <img src={`${src}.jpg`} alt={alt} loading="lazy" />
+    </picture>
+  );
+}
+```
+
+### Image CDN
+
+```javascript
+// Use image CDN for automatic optimization
+function OptimizedImage({ src, width, height, alt }) {
+  const cdnUrl = `https://cdn.example.com/${src}?w=${width}&h=${height}&f=auto&q=85`;
+
+  return <img src={cdnUrl} alt={alt} width={width} height={height} loading="lazy" />;
+}
+```
+
+## Network Performance
+
+### API Request Optimization
+
+**Debounce Search Requests:**
+
+```javascript
+import { useState, useEffect } from 'react';
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+function SearchComponent() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  useEffect(() => {
+    if (debouncedSearchTerm) {
+      // API call only after user stops typing for 500ms
+      fetchResults(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm]);
+
+  return (
+    <input
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+## Request Caching with React Query
+
+```javascript
+import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <YourApp />
+    </QueryClientProvider>
+  );
+}
+
+// Component automatically caches and deduplicates requests
+function UserProfile({ userId }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => fetchUser(userId),
+  });
+
+  if (isLoading) return <Loading />;
+  if (error) return <Error />;
+
+  return <div>{data.name}</div>;
+}
+```
+
+**Prefetching Data:**
+
+```javascript
+function UserList() {
+  const queryClient = useQueryClient();
+
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+  });
+
+  return users.map(user => (
+    <div
+      key={user.id}
+      onMouseEnter={() => {
+        // Prefetch user details on hover
+        queryClient.prefetchQuery({
+          queryKey: ['user', user.id],
+          queryFn: () => fetchUser(user.id),
+        });
+      }}>
+      {user.name}
+    </div>
+  ));
+}
+```
+
+### Request Deduplication
+
+```javascript
+// Multiple components requesting same data simultaneously
+// Only ONE network request is made
+function Dashboard() {
+  return (
+    <div>
+      <UserProfile userId={1} /> {/* Request made */}
+      <UserStats userId={1} />   {/* Uses cached data */}
+      <UserActivity userId={1} /> {/* Uses cached data */}
+    </div>
+  );
+}
+```
+
+### Abort Requests on Unmount
+
+```javascript
+function SearchResults({ query }) {
+  const [results, setResults] = useState([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch(`/api/search?q=${query}`, {
+      signal: controller.signal
+    })
+      .then(res => res.json())
+      .then(data => setResults(data))
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          console.error(err);
+        }
+      });
+
+    // Cleanup: abort request if component unmounts
+    return () => controller.abort();
+  }, [query]);
+
+  return <ResultsList results={results} />;
+}
+```
+
+### Parallel vs Sequential Requests
+
+```javascript
+// ❌ Bad: Sequential requests (slow)
+async function loadData() {
+  const user = await fetchUser();
+  const posts = await fetchPosts();
+  const comments = await fetchComments();
+  return { user, posts, comments };
+}
+
+// ✅ Good: Parallel requests (fast)
+async function loadData() {
+  const [user, posts, comments] = await Promise.all([
+    fetchUser(),
+    fetchPosts(),
+    fetchComments(),
+  ]);
+  return { user, posts, comments };
+}
+
+// React Query approach
+function Dashboard() {
+  const { data: user } = useQuery(['user'], fetchUser);
+  const { data: posts } = useQuery(['posts'], fetchPosts);
+  const { data: comments } = useQuery(['comments'], fetchComments);
+  // All three requests fire in parallel automatically
+}
+```
+
+## React 18+ Features
+
+### Automatic Batching
+
+React 18 automatically batches state updates for better performance:
+
+```javascript
+// React 17: Two renders
+function handleClick() {
+  setCount(c => c + 1);
+  setFlag(f => !f);
+  // Render 1, Render 2
+}
+
+// React 18: One render (automatic batching)
+function handleClick() {
+  setCount(c => c + 1);
+  setFlag(f => !f);
+  // Single render!
+}
+
+// Even in async code!
+async function handleClick() {
+  const data = await fetchData();
+  setCount(c => c + 1);
+  setFlag(f => !f);
+  // Still batched in React 18!
+}
+
+// Opt-out if needed
+import { flushSync } from 'react-dom';
+
+function handleClick() {
+  flushSync(() => {
+    setCount(c => c + 1);
+  }); // Render 1
+
+  flushSync(() => {
+    setFlag(f => !f);
+  }); // Render 2
+}
+```
+
+### useTransition
+
+Mark updates as non-urgent to keep UI responsive:
+
+```javascript
+import { useState, useTransition } from 'react';
+
+function SearchPage() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(e) {
+    // Urgent: Update input immediately
+    setQuery(e.target.value);
+
+    // Non-urgent: Search can wait
+    startTransition(() => {
+      const filtered = searchItems(e.target.value);
+      setResults(filtered);
+    });
+  }
+
+  return (
+    <div>
+      <input value={query} onChange={handleChange} />
+      {isPending && <Spinner />}
+      <ResultsList results={results} />
+    </div>
+  );
+}
+```
+
+**Use Cases:**
+- Filtering large lists
+- Complex calculations
+- Heavy re-renders
+- Navigation
+
+### useDeferredValue
+
+Defer updating a value to keep UI responsive:
+
+```javascript
+import { useState, useDeferredValue } from 'react';
+
+function SearchResults() {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+
+  // Input updates immediately
+  // Results update when browser is idle
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <ExpensiveResultsList query={deferredQuery} />
+    </div>
+  );
+}
+```
+
+**Difference from useTransition:**
+- `useTransition`: You control what updates are deferred
+- `useDeferredValue`: React controls when to update the value
+
+### Concurrent Rendering
+
+```javascript
+// React 18 enables concurrent features
+import { createRoot } from 'react-dom/client';
+
+const root = createRoot(document.getElementById('root'));
+root.render(<App />);
+```
+
+Benefits:
+- UI stays responsive during heavy renders
+- React can interrupt rendering for urgent updates
+- Smoother animations and interactions
+
+## Advanced Patterns
+
+### Component Composition Patterns
+
+**Render Props:**
+
+```javascript
+function MouseTracker({ render }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMove);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, []);
+
+  return render(position);
+}
+
+// Usage
+<MouseTracker render={({ x, y }) => (
+  <div>Mouse at ({x}, {y})</div>
+)} />
+```
+
+**Higher-Order Components (HOC):**
+
+```javascript
+function withLoading(Component) {
+  return function WithLoadingComponent({ isLoading, ...props }) {
+    if (isLoading) return <Spinner />;
+    return <Component {...props} />;
+  };
+}
+
+const UserListWithLoading = withLoading(UserList);
+
+// Usage
+<UserListWithLoading isLoading={loading} users={users} />
+```
+
+**Custom Hooks:**
+
+```javascript
+function useWindowSize() {
+  const [size, setSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    // Debounce resize events
+    let timeoutId;
+    const debouncedResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleResize, 150);
+    };
+
+    window.addEventListener('resize', debouncedResize);
+    return () => {
+      window.removeEventListener('resize', debouncedResize);
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  return size;
+}
+
+// Usage
+function ResponsiveComponent() {
+  const { width } = useWindowSize();
+  return <div>Width: {width}px</div>;
+}
+```
+
+### Web Workers for Heavy Computations
+
+```javascript
+// worker.js
+self.addEventListener('message', (e) => {
+  const { data } = e;
+  // Heavy computation
+  const result = performExpensiveCalculation(data);
+  self.postMessage(result);
+});
+
+// Component
+function DataProcessor() {
+  const [result, setResult] = useState(null);
+  const workerRef = useRef(null);
+
+  useEffect(() => {
+    workerRef.current = new Worker('/worker.js');
+
+    workerRef.current.onmessage = (e) => {
+      setResult(e.data);
+    };
+
+    return () => workerRef.current?.terminate();
+  }, []);
+
+  const processData = (data) => {
+    workerRef.current.postMessage(data);
+  };
+
+  return (
+    <div>
+      <button onClick={() => processData(largeDataset)}>
+        Process Data
+      </button>
+      {result && <Results data={result} />}
+    </div>
+  );
+}
+```
+
+### Intersection Observer for Lazy Loading
+
+```javascript
+function useLazyLoad(ref) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return isVisible;
+}
+
+// Usage
+function LazyImage({ src, alt }) {
+  const imgRef = useRef();
+  const isVisible = useLazyLoad(imgRef);
+
+  return (
+    <div ref={imgRef}>
+      {isVisible ? (
+        <img src={src} alt={alt} />
+      ) : (
+        <div className="placeholder" />
+      )}
+    </div>
+  );
+}
+```
+
+### Portal for Performance
+
+```javascript
+import { createPortal } from 'react-dom';
+
+// Render heavy modals outside main tree
+function Modal({ children, isOpen }) {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="modal-overlay">
+      <div className="modal-content">
+        {children}
+      </div>
+    </div>,
+    document.getElementById('modal-root')
+  );
+}
+```
+
+### Event Delegation
+
+```javascript
+// ❌ Bad: Individual handlers for each item
+function List({ items }) {
+  return items.map(item => (
+    <div key={item.id} onClick={() => handleClick(item.id)}>
+      {item.name}
+    </div>
+  ));
+}
+
+// ✅ Good: Single delegated handler
+function List({ items }) {
+  const handleClick = (e) => {
+    const id = e.target.dataset.id;
+    if (id) {
+      handleItemClick(id);
+    }
+  };
+
+  return (
+    <div onClick={handleClick}>
+      {items.map(item => (
+        <div key={item.id} data-id={item.id}>
+          {item.name}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Performance Checklist
+
+### Development Phase
+
+**Component Optimization:**
+- [ ] Use React.memo() for pure components
+- [ ] Use useMemo() for expensive calculations
+- [ ] Use useCallback() for callbacks passed to memoized children
+- [ ] Keep component state as local as possible
+- [ ] Use composition (children prop) to prevent re-renders
+- [ ] Implement proper key props for lists
+
+**Code Organization:**
+- [ ] Implement code splitting for routes
+- [ ] Lazy load heavy components
+- [ ] Use dynamic imports for large libraries
+- [ ] Separate context providers by concern
+- [ ] Memoize context values
+
+**Data Management:**
+- [ ] Use selectors in Redux/state management
+- [ ] Implement request caching
+- [ ] Debounce search and input handlers
+- [ ] Prefetch data on hover/interaction
+- [ ] Abort requests on component unmount
+
+**Lists and Large Datasets:**
+- [ ] Virtualize long lists (>100 items)
+- [ ] Use proper key props (stable, unique IDs)
+- [ ] Paginate or implement infinite scroll
+- [ ] Avoid inline object/array creation in render
+
+### Build Phase
+
+**Bundle Optimization:**
+- [ ] Analyze bundle size with webpack-bundle-analyzer
+- [ ] Tree-shake unused code
+- [ ] Use lighter library alternatives
+- [ ] Remove unused dependencies
+- [ ] Configure proper webpack/vite optimizations
+- [ ] Enable gzip/brotli compression
+- [ ] Implement proper cache headers
+
+**Asset Optimization:**
+- [ ] Compress and optimize images
+- [ ] Use WebP format with fallbacks
+- [ ] Implement lazy loading for images
+- [ ] Use responsive images (srcset)
+- [ ] Leverage CDN for assets
+- [ ] Minimize CSS and remove unused styles
+
+**React 18 Features:**
+- [ ] Enable concurrent rendering
+- [ ] Use useTransition for non-urgent updates
+- [ ] Use useDeferredValue for expensive displays
+- [ ] Leverage automatic batching
+
+### Deployment Phase
+
+**Performance Monitoring:**
+- [ ] Set up Lighthouse CI
+- [ ] Monitor Core Web Vitals
+- [ ] Use React DevTools Profiler in production
+- [ ] Implement error boundaries
+- [ ] Set up performance monitoring (Sentry, etc.)
+
+**Network Optimization:**
+- [ ] Enable HTTP/2 or HTTP/3
+- [ ] Implement service workers for caching
+- [ ] Use CDN for static assets
+- [ ] Optimize API response sizes
+- [ ] Implement request batching where appropriate
+
+**SEO and UX:**
+- [ ] Implement Server-Side Rendering (SSR) if needed
+- [ ] Use proper meta tags and Open Graph
+- [ ] Ensure proper loading states
+- [ ] Implement error handling
+- [ ] Test on slow networks (3G throttling)
+
+### Testing
+
+**Performance Tests:**
+- [ ] Test with React DevTools Profiler
+- [ ] Run Lighthouse audits
+- [ ] Test on low-end devices
+- [ ] Monitor bundle size on each PR
+- [ ] Test with CPU/network throttling
+
+**Metrics to Track:**
+- [ ] First Contentful Paint (FCP) < 1.8s
+- [ ] Largest Contentful Paint (LCP) < 2.5s
+- [ ] Interaction to Next Paint (INP) < 200ms
+- [ ] Cumulative Layout Shift (CLS) < 0.1
+- [ ] Time to Interactive (TTI) < 3.8s
+- [ ] Total Blocking Time (TBT) < 200ms
+
+## Conclusion
+
+React performance optimization is an ongoing process. Start with measuring, identify bottlenecks, apply appropriate optimizations, and measure again. Focus on:
+
+1. **User-perceived performance**: What matters is how fast the app _feels_, not just technical metrics
+2. **Progressive enhancement**: Optimize the critical path first
+3. **Measure before optimizing**: Don't guess, use profiling tools
+4. **Balance**: Don't over-optimize simple components
+5. **Monitor continuously**: Performance can degrade over time
+
+Remember: **Premature optimization is the root of all evil**. Optimize when you have data showing there's a problem, not based on assumptions.
+
+### Additional Resources
+
+- [React Documentation - Performance](https://react.dev/learn/render-and-commit)
+- [Web.dev - React Performance](https://web.dev/react)
+- [Patterns.dev - React Patterns](https://patterns.dev)
+- [React DevTools](https://react.dev/learn/react-developer-tools)
+- [Lighthouse](https://developers.google.com/web/tools/lighthouse)
+- [Bundle Analyzer](https://github.com/webpack-contrib/webpack-bundle-analyzer)
+
+---

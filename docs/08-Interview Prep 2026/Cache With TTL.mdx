@@ -1,0 +1,286 @@
+# TTL Cache Implementation Guide
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Core Concepts](#core-concepts)
+- [Basic TTL Cache (Lazy Eviction)](#basic-ttl-cache-lazy-eviction)
+- [TTL Cache with Auto Cleanup (Hybrid)](#ttl-cache-with-auto-cleanup-hybrid)
+- [Sliding TTL Cache](#sliding-ttl-cache)
+- [TTL + LRU Cache](#ttl--lru-cache)
+- [Real-World Usage Patterns](#real-world-usage-patterns)
+- [Common Interview Follow-ups](#common-interview-follow-ups)
+- [Time & Space Complexity](#time--space-complexity)
+- [Summary](#summary)
+
+## Introduction
+
+A TTL-based cache (Time To Live cache) stores data with an expiry time.
+Once the TTL expires, the entry is considered invalid and should not be returned.
+
+This is very common in:
+
+- Browser caching
+- API response caching
+- Session storage
+- Distributed caches (Redis, Memcached)
+- Frontend memoization with staleness control
+
+## Core Concepts
+
+### TTL
+
+Duration an entry is valid (expiresAt = now + ttl)
+
+Can be:
+- **Absolute TTL** → expires at a fixed time
+- **Sliding TTL** → refreshes on access
+
+### Expiration Strategies
+
+- **Lazy eviction** → remove on get
+- **Eager eviction** → background cleanup
+- **Hybrid** → lazy + periodic cleanup (most common)
+
+## Basic TTL Cache (Lazy Eviction)
+
+### Requirements
+
+- `set(key, value, ttl)`
+- `get(key)`
+- Expired entries should not be returned
+- O(1) operations
+
+### Simple Implementation (Lazy Eviction)
+
+```javascript
+class TTLCache {
+  constructor() {
+    this.store = new Map();
+  }
+
+  set(key, value, ttl) {
+    const expiresAt = Date.now() + ttl;
+    this.store.set(key, { value, expiresAt });
+  }
+
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return null;
+    }
+
+    return entry.value;
+  }
+
+  has(key) {
+    return this.get(key) !== null;
+  }
+
+  delete(key) {
+    this.store.delete(key);
+  }
+}
+```
+
+**Pros:**
+- Simple
+- No timers
+- O(1)
+
+**Cons:**
+- Expired entries remain until accessed
+
+## TTL Cache with Auto Cleanup (Hybrid)
+
+Adds periodic eviction to prevent memory leaks.
+
+```javascript
+class TTLCache {
+  constructor(cleanupInterval = 1000) {
+    this.store = new Map();
+    this.timer = setInterval(() => this.cleanup(), cleanupInterval);
+  }
+
+  set(key, value, ttl) {
+    this.store.set(key, {
+      value,
+      expiresAt: Date.now() + ttl,
+    });
+  }
+
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, entry] of this.store) {
+      if (now > entry.expiresAt) {
+        this.store.delete(key);
+      }
+    }
+  }
+
+  destroy() {
+    clearInterval(this.timer);
+  }
+}
+```
+
+## Sliding TTL Cache
+
+Used for sessions, auth tokens, hot data.
+
+```javascript
+class SlidingTTLCache {
+  constructor(ttl) {
+    this.ttl = ttl;
+    this.store = new Map();
+  }
+
+  set(key, value) {
+    this.store.set(key, {
+      value,
+      expiresAt: Date.now() + this.ttl,
+    });
+  }
+
+  get(key) {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return null;
+    }
+
+    // refresh TTL
+    entry.expiresAt = Date.now() + this.ttl;
+    return entry.value;
+  }
+}
+```
+
+## TTL + LRU Cache
+
+👉 **"Design an LRU cache with TTL"** - Very Common Interview Question
+
+### Key Idea
+
+- **TTL** → validity
+- **LRU** → eviction when capacity exceeded
+
+### Data Structures
+
+- **Map** → O(1) lookup
+- **Doubly Linked List** → O(1) recency updates
+- TTL is checked on get before returning
+
+### Simplified LRU + TTL (Map-only version)
+
+```javascript
+class LRUCacheWithTTL {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.map = new Map();
+  }
+
+  set(key, value, ttl) {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    }
+
+    this.map.set(key, {
+      value,
+      expiresAt: Date.now() + ttl,
+    });
+
+    if (this.map.size > this.capacity) {
+      const lruKey = this.map.keys().next().value;
+      this.map.delete(lruKey);
+    }
+  }
+
+  get(key) {
+    const entry = this.map.get(key);
+    if (!entry) return null;
+
+    if (Date.now() > entry.expiresAt) {
+      this.map.delete(key);
+      return null;
+    }
+
+    // mark as recently used
+    this.map.delete(key);
+    this.map.set(key, entry);
+
+    return entry.value;
+  }
+}
+```
+
+## Real-World Usage Patterns
+
+### Frontend
+
+- Cache API responses
+- Avoid refetch for X seconds
+- Stale-while-revalidate pattern
+
+```javascript
+if (cache.get(url)) return cache.get(url);
+
+const data = await fetch(url).then(r => r.json());
+cache.set(url, data, 5000);
+```
+
+### Backend / Distributed Cache
+
+- Redis `SET key value EX 60`
+- Memcached TTL
+- CDN edge caching
+
+## Common Interview Follow-ups
+
+**❓ Why TTL instead of manual invalidation?**
+- Avoid stale data
+- Works well when updates are unpredictable
+
+**❓ Lazy vs Eager eviction?**
+
+| Strategy | When |
+|----------|------|
+| Lazy | Low traffic |
+| Eager | Memory-sensitive |
+| Hybrid | Production systems |
+
+**❓ Clock skew issue?**
+- Use server time
+- Distributed systems often use relative TTL
+
+## Time & Space Complexity
+
+| Operation | Complexity |
+|-----------|------------|
+| get | O(1) |
+| set | O(1) |
+| cleanup | O(n) (periodic) |
+
+## Summary
+
+- **TTL cache** = cache with expiry
+- **Lazy eviction** is simplest
+- **Sliding TTL** is common for sessions
+- **TTL + LRU** is interview gold
+- **Map + timestamps** = 90% of real implementations

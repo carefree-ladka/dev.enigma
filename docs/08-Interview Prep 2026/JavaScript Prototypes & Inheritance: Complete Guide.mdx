@@ -1,0 +1,1958 @@
+# JavaScript Prototypes & Inheritance: Complete Guide
+
+## Table of Contents
+
+1. [What is a Prototype?](#what-is-a-prototype)
+   - [Core Concept](#core-concept)
+   - [Why Prototypes Exist](#why-prototypes-exist)
+2. [Understanding [[Prototype]]](#understanding-prototype)
+3. [The Three Ways to Access Prototype](#the-three-ways-to-access-prototype)
+   - [[[Prototype]] (Internal)](#prototype-internal)
+   - [__proto__ (Legacy Accessor)](#__proto__-legacy-accessor)
+   - [.prototype (Function Property)](#prototype-function-property)
+4. [The new Keyword](#the-new-keyword)
+   - [What new Does Internally](#what-new-does-internally)
+   - [Constructor Functions](#constructor-functions)
+5. [Prototype Chain](#prototype-chain)
+   - [How Lookup Works](#how-lookup-works)
+   - [Chain Termination](#chain-termination)
+6. [Object.create()](#objectcreate)
+   - [Pure Prototypal Inheritance](#pure-prototypal-inheritance)
+   - [Object.create(null)](#objectcreatenull)
+7. [Property Descriptors](#property-descriptors)
+   - [Object.defineProperty](#objectdefineproperty)
+   - [Object.defineProperties](#objectdefineproperties)
+   - [Object.getOwnPropertyDescriptor](#objectgetownpropertydescriptor)
+8. [Constructor Function Inheritance (Pre-ES6)](#constructor-function-inheritance-pre-es6)
+9. [ES6 Classes](#es6-classes)
+   - [Class Syntax](#class-syntax)
+   - [Inheritance with extends](#inheritance-with-extends)
+   - [super Keyword](#super-keyword)
+10. [Prototype Methods](#prototype-methods)
+    - [Object.getPrototypeOf()](#objectgetprototypeof)
+    - [Object.setPrototypeOf()](#objectsetprototypeof)
+    - [instanceof Operator](#instanceof-operator)
+    - [isPrototypeOf()](#isprototypeof)
+    - [hasOwnProperty()](#hasownproperty)
+11. [Shadowing & Property Overriding](#shadowing--property-overriding)
+12. [Built-in Prototypes](#built-in-prototypes)
+13. [Prototype Patterns](#prototype-patterns)
+14. [Performance Considerations](#performance-considerations)
+15. [Common Pitfalls & Interview Traps](#common-pitfalls--interview-traps)
+16. [Best Practices](#best-practices)
+17. [Real-World Examples](#real-world-examples)
+
+---
+
+## What is a Prototype?
+
+### Core Concept
+
+In JavaScript, **objects inherit from other objects** through a mechanism called prototypal inheritance. Unlike classical inheritance (found in Java, C++), JavaScript uses a prototype-based model.
+
+**Key Points:**
+- Every JavaScript object has an internal link to another object called its prototype
+- This link is represented by the internal property `[[Prototype]]`
+- When you try to access a property on an object, JavaScript will look up the prototype chain
+- This forms the foundation of inheritance in JavaScript
+
+```javascript
+const user = { name: 'Pawan' };
+
+// Internally, user has a hidden [[Prototype]] link
+// user.[[Prototype]] → Object.prototype
+
+// When you call:
+user.toString(); // Inherited from Object.prototype
+
+// JavaScript looks:
+// 1. user object itself? No toString method
+// 2. user.[[Prototype]] (Object.prototype)? Yes! Found ✅
+```
+
+### Why Prototypes Exist
+
+**Memory Efficiency:**
+Instead of copying methods to every instance, they're shared via the prototype.
+
+```javascript
+// ❌ Without prototypes (inefficient)
+function createUser(name) {
+  return {
+    name: name,
+    sayHi: function() { // New function for EACH user
+      return `Hi ${this.name}`;
+    }
+  };
+}
+
+const user1 = createUser('Alice');
+const user2 = createUser('Bob');
+// sayHi is duplicated in memory
+
+// ✅ With prototypes (efficient)
+function User(name) {
+  this.name = name;
+}
+
+User.prototype.sayHi = function() {
+  return `Hi ${this.name}`;
+};
+
+const user1 = new User('Alice');
+const user2 = new User('Bob');
+// sayHi is shared via prototype, stored once
+```
+
+---
+
+## Understanding [[Prototype]]
+
+`[[Prototype]]` is an **internal property** of every JavaScript object that points to another object (or null).
+
+**Characteristics:**
+- Internal and hidden (double brackets notation)
+- Not directly accessible in code
+- Forms the prototype chain
+- Automatic inheritance mechanism
+
+```javascript
+const obj = {};
+
+// obj has [[Prototype]] pointing to Object.prototype
+// But you can't access it directly like:
+// obj.[[Prototype]] // ❌ Syntax error
+```
+
+**Visual Representation:**
+
+```
+obj (instance)
+  ↓ [[Prototype]]
+Object.prototype (prototype object)
+  ↓ [[Prototype]]
+null (end of chain)
+```
+
+---
+
+## The Three Ways to Access Prototype
+
+### [[Prototype]] (Internal)
+
+This is the actual mechanism, but not directly accessible.
+
+```javascript
+// You cannot do this:
+const obj = {};
+obj.[[Prototype]]; // ❌ Syntax Error
+```
+
+### __proto__ (Legacy Accessor)
+
+`__proto__` is a getter/setter that provides access to `[[Prototype]]`.
+
+**Characteristics:**
+- Legacy feature (non-standard but widely supported)
+- Getter/setter for `[[Prototype]]`
+- Available on all objects
+- **Not recommended** for production code
+
+```javascript
+const user = { name: 'Pawan' };
+
+console.log(user.__proto__ === Object.prototype); // true
+
+// You can set it (but shouldn't)
+const animal = { type: 'mammal' };
+const dog = { breed: 'Labrador' };
+dog.__proto__ = animal;
+
+console.log(dog.type); // 'mammal' (inherited)
+
+// Better alternatives exist (Object.create, Object.setPrototypeOf)
+```
+
+**Why Not Use __proto__:**
+- Performance implications
+- Not part of ECMAScript standard (though widely supported)
+- Better alternatives available
+
+### .prototype (Function Property)
+
+`.prototype` is a **property of constructor functions** that defines what the prototype will be for instances created with `new`.
+
+**Critical Understanding:**
+- `.prototype` exists **only on functions**
+- It's **not** the prototype of the function itself
+- It's the object that **instances** will inherit from
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+// Person.prototype is an object
+console.log(typeof Person.prototype); // 'object'
+
+// Add method to prototype
+Person.prototype.sayHi = function() {
+  return `Hi, I'm ${this.name}`;
+};
+
+const pawan = new Person('Pawan');
+
+// Prototype chain:
+// pawan → Person.prototype → Object.prototype → null
+
+console.log(pawan.__proto__ === Person.prototype); // true
+console.log(Person.prototype.__proto__ === Object.prototype); // true
+```
+
+**Important Distinction:**
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+// Person.prototype is NOT the prototype of Person function
+console.log(Person.__proto__ === Function.prototype); // true
+console.log(Person.prototype === Function.prototype); // false
+
+// Person.prototype is what instances inherit from
+const p = new Person('Test');
+console.log(p.__proto__ === Person.prototype); // true
+```
+
+---
+
+## The new Keyword
+
+Understanding what `new` does internally is **crucial** for interviews.
+
+### What new Does Internally
+
+When you call `new Person('Pawan')`, JavaScript does this:
+
+```javascript
+const p = new Person('Pawan');
+
+// Internally transformed to:
+// 1. Create empty object
+const obj = {};
+
+// 2. Set prototype
+obj.__proto__ = Person.prototype;
+// or: Object.setPrototypeOf(obj, Person.prototype);
+
+// 3. Call constructor with 'this' bound to obj
+Person.call(obj, 'Pawan');
+
+// 4. Return obj (unless constructor returns an object)
+return obj;
+```
+
+**Step-by-Step Example:**
+
+```javascript
+function User(name, age) {
+  this.name = name;
+  this.age = age;
+}
+
+User.prototype.greet = function() {
+  return `Hello, I'm ${this.name}`;
+};
+
+const user = new User('Alice', 25);
+
+// What happened:
+// 1. {} created
+// 2. {).__proto__ set to User.prototype
+// 3. User called with this = {}
+//    this.name = 'Alice' → {}.name = 'Alice'
+//    this.age = 25 → {}.age = 25
+// 4. { name: 'Alice', age: 25 } returned
+```
+
+### Constructor Functions
+
+Constructor functions are regular functions used with `new` to create objects.
+
+**Convention:**
+- Start with capital letter (PascalCase)
+- Used with `new` keyword
+
+```javascript
+function Animal(name, type) {
+  // Properties unique to each instance
+  this.name = name;
+  this.type = type;
+}
+
+// Methods shared across all instances
+Animal.prototype.speak = function() {
+  return `${this.name} makes a sound`;
+};
+
+Animal.prototype.getInfo = function() {
+  return `${this.name} is a ${this.type}`;
+};
+
+const cat = new Animal('Whiskers', 'cat');
+const dog = new Animal('Buddy', 'dog');
+
+console.log(cat.speak()); // 'Whiskers makes a sound'
+console.log(dog.getInfo()); // 'Buddy is a dog'
+
+// Both share the same methods
+console.log(cat.speak === dog.speak); // true (same function reference)
+```
+
+**Constructor Returns:**
+
+```javascript
+// Normal case - returns the created object
+function Person(name) {
+  this.name = name;
+}
+const p1 = new Person('Alice'); // Returns the created object
+
+// If constructor explicitly returns object
+function Person2(name) {
+  this.name = name;
+  return { custom: 'object' }; // This is returned instead
+}
+const p2 = new Person2('Bob');
+console.log(p2.name); // undefined
+console.log(p2.custom); // 'object'
+
+// If constructor returns primitive, it's ignored
+function Person3(name) {
+  this.name = name;
+  return 'ignored'; // Primitives are ignored
+}
+const p3 = new Person3('Charlie');
+console.log(p3.name); // 'Charlie'
+```
+
+---
+
+## Prototype Chain
+
+The prototype chain is the series of links between objects and their prototypes.
+
+### How Lookup Works
+
+When you access a property, JavaScript follows this algorithm:
+
+1. Check the object itself
+2. If not found, check `[[Prototype]]`
+3. If not found, check `[[Prototype]]` of prototype
+4. Continue until found or reach `null`
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+Person.prototype.sayHi = function() {
+  return `Hi ${this.name}`;
+};
+
+const pawan = new Person('Pawan');
+
+// Accessing pawan.sayHi()
+// Step 1: pawan object has sayHi? → No
+// Step 2: pawan.__proto__ (Person.prototype) has sayHi? → Yes ✅
+// Found and executed
+
+// Accessing pawan.toString()
+// Step 1: pawan has toString? → No
+// Step 2: Person.prototype has toString? → No
+// Step 3: Object.prototype has toString? → Yes ✅
+// Found and executed
+
+// Accessing pawan.nonExistent
+// Step 1: pawan has nonExistent? → No
+// Step 2: Person.prototype has nonExistent? → No
+// Step 3: Object.prototype has nonExistent? → No
+// Step 4: null reached → undefined
+```
+
+**Visual Chain:**
+
+```
+pawan
+  ↓ [[Prototype]]
+Person.prototype
+  ↓ [[Prototype]]
+Object.prototype
+  ↓ [[Prototype]]
+null
+```
+
+### Chain Termination
+
+The prototype chain always ends with `null`.
+
+```javascript
+const obj = {};
+console.log(obj.__proto__); // Object.prototype
+console.log(obj.__proto__.__proto__); // null
+
+// All chains eventually reach null
+function Func() {}
+const instance = new Func();
+
+console.log(
+  instance.__proto__.__proto__.__proto__
+); // null
+```
+
+**Setting Properties:**
+
+Important: Setting properties **never** uses the prototype chain.
+
+```javascript
+const parent = { x: 10 };
+const child = Object.create(parent);
+
+console.log(child.x); // 10 (from prototype)
+
+child.x = 20; // Creates own property
+
+console.log(child.x); // 20 (own property)
+console.log(parent.x); // 10 (unchanged)
+console.log(child.hasOwnProperty('x')); // true
+```
+
+---
+
+## Object.create()
+
+`Object.create()` creates a new object with a specified prototype, enabling pure prototypal inheritance.
+
+### Pure Prototypal Inheritance
+
+```javascript
+const animal = {
+  type: 'animal',
+  speak() {
+    return 'Some sound';
+  },
+  getInfo() {
+    return `This is a ${this.type}`;
+  }
+};
+
+// Create dog with animal as prototype
+const dog = Object.create(animal);
+dog.type = 'dog';
+dog.bark = function() {
+  return 'Woof!';
+};
+
+console.log(dog.speak()); // 'Some sound' (inherited)
+console.log(dog.bark()); // 'Woof!' (own method)
+console.log(dog.getInfo()); // 'This is a dog'
+
+// Prototype chain: dog → animal → Object.prototype → null
+```
+
+**Advantages:**
+- No constructor function needed
+- Clean, simple inheritance
+- Direct prototype specification
+- More flexible than constructor pattern
+
+**With Property Descriptors:**
+
+```javascript
+const parent = {
+  greet() {
+    return 'Hello';
+  }
+};
+
+const child = Object.create(parent, {
+  name: {
+    value: 'Child',
+    writable: true,
+    enumerable: true,
+    configurable: true
+  },
+  age: {
+    value: 10,
+    writable: false
+  }
+});
+
+console.log(child.name); // 'Child'
+console.log(child.greet()); // 'Hello' (inherited)
+```
+
+### Object.create(null)
+
+Creates an object with **no prototype** at all.
+
+```javascript
+const dict = Object.create(null);
+
+dict.key = 'value';
+dict.another = 'data';
+
+console.log(dict.toString); // undefined (no prototype!)
+console.log(dict.hasOwnProperty); // undefined
+console.log(dict.constructor); // undefined
+
+// Pure data storage, no inherited properties
+console.log(dict); // { key: 'value', another: 'data' }
+```
+
+**Use Cases:**
+- Dictionaries/hash maps
+- Avoiding property name collisions
+- Pure data storage objects
+- When you don't want Object.prototype pollution
+
+```javascript
+// Problem with regular objects
+const normalObj = {};
+console.log(normalObj.toString); // [Function] - might conflict
+
+// Solution with Object.create(null)
+const safeObj = Object.create(null);
+safeObj.toString = 'my data'; // No conflict
+console.log(safeObj.toString); // 'my data'
+```
+
+---
+
+## Property Descriptors
+
+Property descriptors define the behavior and attributes of object properties.
+
+### Object.defineProperty
+
+Defines a single property with precise control.
+
+```javascript
+const user = {};
+
+Object.defineProperty(user, 'name', {
+  value: 'Pawan',
+  writable: false,      // Cannot be changed
+  enumerable: true,     // Shows in for...in
+  configurable: false   // Cannot be deleted/reconfigured
+});
+
+console.log(user.name); // 'Pawan'
+user.name = 'Changed'; // Fails silently (strict mode: TypeError)
+console.log(user.name); // 'Pawan' (unchanged)
+
+delete user.name; // Fails silently
+console.log(user.name); // 'Pawan' (still there)
+```
+
+**Property Descriptor Attributes:**
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `value` | `undefined` | The value of the property |
+| `writable` | `false` | Can the value be changed? |
+| `enumerable` | `false` | Shows in `for...in` and `Object.keys()`? |
+| `configurable` | `false` | Can be deleted or modified? |
+| `get` | `undefined` | Getter function |
+| `set` | `undefined` | Setter function |
+
+**Getter/Setter:**
+
+```javascript
+const person = {
+  firstName: 'John',
+  lastName: 'Doe'
+};
+
+Object.defineProperty(person, 'fullName', {
+  get() {
+    return `${this.firstName} ${this.lastName}`;
+  },
+  set(value) {
+    const parts = value.split(' ');
+    this.firstName = parts[0];
+    this.lastName = parts[1];
+  },
+  enumerable: true,
+  configurable: true
+});
+
+console.log(person.fullName); // 'John Doe'
+person.fullName = 'Jane Smith';
+console.log(person.firstName); // 'Jane'
+console.log(person.lastName); // 'Smith'
+```
+
+**Private Properties Pattern:**
+
+```javascript
+function User(name) {
+  let _age = 0; // Private variable
+
+  this.name = name;
+
+  Object.defineProperty(this, 'age', {
+    get() {
+      return _age;
+    },
+    set(value) {
+      if (value < 0 || value > 150) {
+        throw new Error('Invalid age');
+      }
+      _age = value;
+    },
+    enumerable: true
+  });
+}
+
+const user = new User('Alice');
+user.age = 25;
+console.log(user.age); // 25
+user.age = -5; // Error: Invalid age
+```
+
+### Object.defineProperties
+
+Define multiple properties at once.
+
+```javascript
+const product = {};
+
+Object.defineProperties(product, {
+  name: {
+    value: 'Laptop',
+    writable: true,
+    enumerable: true
+  },
+  price: {
+    value: 999,
+    writable: false,
+    enumerable: true
+  },
+  id: {
+    value: 'LAP-001',
+    writable: false,
+    enumerable: false // Hidden from iteration
+  }
+});
+
+console.log(Object.keys(product)); // ['name', 'price']
+// id is not enumerable
+```
+
+### Object.getOwnPropertyDescriptor
+
+Get the descriptor of a property.
+
+```javascript
+const obj = { x: 10 };
+
+const descriptor = Object.getOwnPropertyDescriptor(obj, 'x');
+console.log(descriptor);
+/*
+{
+  value: 10,
+  writable: true,
+  enumerable: true,
+  configurable: true
+}
+*/
+
+// Get all descriptors
+const allDescriptors = Object.getOwnPropertyDescriptors(obj);
+```
+
+---
+
+## Constructor Function Inheritance (Pre-ES6)
+
+Before ES6 classes, inheritance was achieved through constructor functions and manual prototype manipulation.
+
+```javascript
+// Parent constructor
+function Animal(name) {
+  this.name = name;
+  this.energy = 100;
+}
+
+Animal.prototype.eat = function() {
+  this.energy += 10;
+  return `${this.name} is eating`;
+};
+
+Animal.prototype.sleep = function() {
+  this.energy += 20;
+  return `${this.name} is sleeping`;
+};
+
+// Child constructor
+function Dog(name, breed) {
+  // Call parent constructor
+  Animal.call(this, name); // Inherit properties
+  this.breed = breed;
+}
+
+// Inherit methods - Set up prototype chain
+Dog.prototype = Object.create(Animal.prototype);
+
+// Fix constructor reference
+Dog.prototype.constructor = Dog;
+
+// Add Dog-specific methods
+Dog.prototype.bark = function() {
+  return `${this.name} says Woof!`;
+};
+
+// Override parent method
+Dog.prototype.eat = function() {
+  this.energy += 15; // Dogs gain more energy
+  return `${this.name} (dog) is eating`;
+};
+
+const buddy = new Dog('Buddy', 'Golden Retriever');
+
+console.log(buddy.bark()); // 'Buddy says Woof!'
+console.log(buddy.eat()); // 'Buddy (dog) is eating'
+console.log(buddy.sleep()); // 'Buddy is sleeping'
+console.log(buddy.energy); // 120
+
+// Prototype chain
+console.log(buddy instanceof Dog); // true
+console.log(buddy instanceof Animal); // true
+console.log(buddy instanceof Object); // true
+```
+
+**Why Each Step Matters:**
+
+```javascript
+// Step 1: Call parent constructor
+Animal.call(this, name);
+// Copies properties (name, energy) to the child instance
+
+// Step 2: Set up prototype chain
+Dog.prototype = Object.create(Animal.prototype);
+// Makes Dog instances inherit Animal methods
+
+// Step 3: Fix constructor
+Dog.prototype.constructor = Dog;
+// Ensures constructor property points to Dog
+// Without this: buddy.constructor === Animal (wrong!)
+```
+
+**Multiple Levels of Inheritance:**
+
+```javascript
+function Animal(name) {
+  this.name = name;
+}
+Animal.prototype.eat = function() {
+  return 'eating';
+};
+
+function Mammal(name, warmBlooded) {
+  Animal.call(this, name);
+  this.warmBlooded = warmBlooded;
+}
+Mammal.prototype = Object.create(Animal.prototype);
+Mammal.prototype.constructor = Mammal;
+Mammal.prototype.nurse = function() {
+  return 'nursing';
+};
+
+function Dog(name, breed) {
+  Mammal.call(this, name, true);
+  this.breed = breed;
+}
+Dog.prototype = Object.create(Mammal.prototype);
+Dog.prototype.constructor = Dog;
+Dog.prototype.bark = function() {
+  return 'barking';
+};
+
+const dog = new Dog('Max', 'Beagle');
+console.log(dog.eat()); // 'eating' (from Animal)
+console.log(dog.nurse()); // 'nursing' (from Mammal)
+console.log(dog.bark()); // 'barking' (from Dog)
+```
+
+---
+
+## ES6 Classes
+
+ES6 classes provide syntactic sugar over prototypal inheritance.
+
+### Class Syntax
+
+```javascript
+class Person {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+
+  // Methods are added to Person.prototype
+  greet() {
+    return `Hi, I'm ${this.name}`;
+  }
+
+  getInfo() {
+    return `${this.name} is ${this.age} years old`;
+  }
+
+  // Static methods (on the class itself)
+  static species() {
+    return 'Homo sapiens';
+  }
+}
+
+const person = new Person('Alice', 30);
+console.log(person.greet()); // 'Hi, I'm Alice'
+console.log(Person.species()); // 'Homo sapiens'
+// console.log(person.species()); // TypeError
+```
+
+**Behind the Scenes:**
+
+```javascript
+// class Person {...} is equivalent to:
+
+function Person(name, age) {
+  this.name = name;
+  this.age = age;
+}
+
+Person.prototype.greet = function() {
+  return `Hi, I'm ${this.name}`;
+};
+
+Person.species = function() {
+  return 'Homo sapiens';
+};
+```
+
+**Key Differences from Functions:**
+- Classes cannot be called without `new`
+- Class methods are non-enumerable
+- Classes are in strict mode by default
+- No hoisting (temporal dead zone)
+
+```javascript
+// ❌ Classes are not hoisted
+const p = new Person('Test'); // ReferenceError
+class Person {
+  constructor(name) {
+    this.name = name;
+  }
+}
+
+// ❌ Cannot call without new
+Person('Test'); // TypeError
+```
+
+### Inheritance with extends
+
+```javascript
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+
+  speak() {
+    return `${this.name} makes a sound`;
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name); // Call parent constructor
+    this.breed = breed;
+  }
+
+  speak() {
+    return `${this.name} barks`;
+  }
+
+  getBreed() {
+    return this.breed;
+  }
+}
+
+const dog = new Dog('Buddy', 'Labrador');
+console.log(dog.speak()); // 'Buddy barks'
+console.log(dog.getBreed()); // 'Labrador'
+
+// Prototype chain
+console.log(dog instanceof Dog); // true
+console.log(dog instanceof Animal); // true
+```
+
+### super Keyword
+
+`super` is used to call parent class methods.
+
+```javascript
+class Rectangle {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+
+  area() {
+    return this.width * this.height;
+  }
+
+  describe() {
+    return `Rectangle: ${this.width}x${this.height}`;
+  }
+}
+
+class Square extends Rectangle {
+  constructor(side) {
+    super(side, side); // Call parent constructor
+  }
+
+  describe() {
+    // Call parent method and extend
+    return super.describe() + ' (Square)';
+  }
+
+  perimeter() {
+    return 4 * this.width;
+  }
+}
+
+const square = new Square(5);
+console.log(square.area()); // 25
+console.log(square.describe()); // 'Rectangle: 5x5 (Square)'
+console.log(square.perimeter()); // 20
+```
+
+**Rules for super:**
+- Must call `super()` before using `this` in constructor
+- Can only use `super()` in derived class constructors
+- Use `super.method()` to call parent methods
+
+```javascript
+class Child extends Parent {
+  constructor() {
+    // ❌ Error: Must call super first
+    this.x = 10;
+    super();
+  }
+
+  constructor() {
+    // ✅ Correct
+    super();
+    this.x = 10;
+  }
+}
+```
+
+**Getters and Setters:**
+
+```javascript
+class User {
+  constructor(firstName, lastName) {
+    this._firstName = firstName;
+    this._lastName = lastName;
+  }
+
+  get fullName() {
+    return `${this._firstName} ${this._lastName}`;
+  }
+
+  set fullName(value) {
+    [this._firstName, this._lastName] = value.split(' ');
+  }
+
+  get firstName() {
+    return this._firstName;
+  }
+}
+
+const user = new User('John', 'Doe');
+console.log(user.fullName); // 'John Doe'
+user.fullName = 'Jane Smith';
+console.log(user.firstName); // 'Jane'
+```
+
+---
+
+## Prototype Methods
+
+### Object.getPrototypeOf()
+
+Returns the prototype of an object (recommended over `__proto__`).
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+const person = new Person('Alice');
+
+console.log(Object.getPrototypeOf(person) === Person.prototype); // true
+console.log(Object.getPrototypeOf(Person.prototype) === Object.prototype); // true
+```
+
+### Object.setPrototypeOf()
+
+Sets the prototype of an object (use with caution - performance impact).
+
+```javascript
+const animal = {
+  speak() {
+    return 'sound';
+  }
+};
+
+const dog = {
+  bark() {
+    return 'woof';
+  }
+};
+
+Object.setPrototypeOf(dog, animal);
+console.log(dog.speak()); // 'sound'
+
+// ⚠️ Performance warning: Changing prototypes is slow
+// Better to use Object.create() from the start
+```
+
+### instanceof Operator
+
+Checks if an object is an instance of a constructor.
+
+```javascript
+function Person() {}
+const person = new Person();
+
+console.log(person instanceof Person); // true
+console.log(person instanceof Object); // true
+console.log(person instanceof Array); // false
+
+// How it works:
+// Checks if Person.prototype exists anywhere in person's prototype chain
+```
+
+**How instanceof Works:**
+
+```javascript
+// person instanceof Person checks:
+Person.prototype === person.__proto__ // true? Yes → return true
+
+// If not found, check up the chain:
+Person.prototype === person.__proto__.__proto__ // Continue...
+```
+
+**Gotcha with instanceof:**
+
+```javascript
+function A() {}
+function B() {}
+
+const obj = new A();
+console.log(obj instanceof A); // true
+
+// Change prototype
+Object.setPrototypeOf(obj, B.prototype);
+console.log(obj instanceof A); // false
+console.log(obj instanceof B); // true
+```
+
+### isPrototypeOf()
+
+More explicit check - asks "is this object in the prototype chain?"
+
+```javascript
+function Person() {}
+const person = new Person();
+
+console.log(Person.prototype.isPrototypeOf(person)); // true
+console.log(Object.prototype.isPrototypeOf(person)); // true
+
+// More semantic than instanceof
+const animal = { type: 'animal' };
+const dog = Object.create(animal);
+
+console.log(animal.isPrototypeOf(dog)); // true
+```
+
+### hasOwnProperty()
+
+Checks if property exists on the object itself (not inherited).
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+Person.prototype.greet = function() {
+  return 'Hi';
+};
+
+const person = new Person('Alice');
+
+console.log(person.hasOwnProperty('name')); // true (own property)
+console.log(person.hasOwnProperty('greet')); // false (inherited)
+console.log('greet' in person); // true (includes inherited)
+```
+
+**Safe Usage:**
+
+```javascript
+// Safer way (in case hasOwnProperty is overridden)
+Object.prototype.hasOwnProperty.call(obj, 'property');
+
+// Or ES2022+
+Object.hasOwn(obj, 'property');
+```
+
+---
+
+## Shadowing & Property Overriding
+
+When you define a property with the same name as one in the prototype chain, it "shadows" the prototype property.
+
+```javascript
+const parent = {
+  x: 10,
+  greet() {
+    return 'Hello from parent';
+  }
+};
+
+const child = Object.create(parent);
+child.greet = function() {
+  return 'Hello from child';
+};
+
+console.log(child.greet()); // 'Hello from child' (shadowed)
+console.log(parent.greet()); // 'Hello from parent' (unchanged)
+
+// Accessing shadowed property
+console.log(Object.getPrototypeOf(child).greet()); // 'Hello from parent'
+```
+
+**With Built-in Objects:**
+
+```javascript
+const obj = {
+  toString() {
+    return 'Custom toString';
+  }
+};
+
+console.log(obj.toString()); // 'Custom toString'
+console.log(Object.prototype.toString.call(obj)); // '[object Object]'
+```
+
+**Shadowing Gotchas:**
+
+```javascript
+const proto = {
+  value: [1, 2, 3]
+};
+
+const obj1 = Object.create(proto);
+const obj2 = Object.create(proto);
+
+// Modifying array (doesn't shadow, modifies shared reference)
+obj1.value.push(4);
+console.log(obj2.value); // [1, 2, 3, 4] - shared!
+```
+
+# JavaScript Prototypes & Inheritance
+
+## Shadowing & Property Overriding
+
+```javascript
+const proto = {
+  value: [1, 2, 3]
+};
+
+const obj1 = Object.create(proto);
+const obj2 = Object.create(proto);
+
+// Modifying array (doesn't shadow, modifies shared reference)
+obj1.value.push(4);
+console.log(obj2.value); // [1, 2, 3, 4] - shared!
+
+// To shadow, reassign
+obj1.value = [5, 6, 7];
+console.log(obj1.value); // [5, 6, 7]
+console.log(obj2.value); // [1, 2, 3, 4]
+```
+
+---
+
+## Built-in Prototypes
+
+All JavaScript built-in objects have prototypes with useful methods.
+
+### Array.prototype
+
+```javascript
+const arr = [1, 2, 3];
+
+// arr inherits from Array.prototype
+console.log(arr.__proto__ === Array.prototype); // true
+
+// All array methods live here
+console.log(typeof Array.prototype.map); // 'function'
+console.log(typeof Array.prototype.filter); // 'function'
+
+// You can add custom methods (not recommended in production)
+Array.prototype.last = function() {
+  return this[this.length - 1];
+};
+
+console.log([1, 2, 3].last()); // 3
+```
+
+### String.prototype
+
+```javascript
+const str = 'hello';
+
+console.log(str.__proto__ === String.prototype); // true
+console.log(String.prototype.__proto__ === Object.prototype); // true
+
+// String methods
+console.log(str.toUpperCase()); // 'HELLO'
+console.log(str.charAt(0)); // 'h'
+```
+
+### Function.prototype
+
+```javascript
+function myFunc() {}
+
+console.log(myFunc.__proto__ === Function.prototype); // true
+console.log(Function.prototype.__proto__ === Object.prototype); // true
+
+// All functions inherit call, apply, bind
+console.log(typeof myFunc.call); // 'function'
+console.log(typeof myFunc.apply); // 'function'
+console.log(typeof myFunc.bind); // 'function'
+```
+
+### Object.prototype
+
+The root of most prototype chains.
+
+```javascript
+console.log(Object.prototype.__proto__); // null (end of chain)
+
+// Common methods
+console.log(typeof Object.prototype.toString); // 'function'
+console.log(typeof Object.prototype.hasOwnProperty); // 'function'
+console.log(typeof Object.prototype.valueOf); // 'function'
+```
+
+**Prototype Pollution Warning:**
+
+```javascript
+// ❌ Never modify built-in prototypes in production
+Object.prototype.myMethod = function() {
+  return 'dangerous';
+};
+
+// Now ALL objects have this method
+const obj = {};
+console.log(obj.myMethod()); // 'dangerous'
+
+// Can break code that iterates over properties
+for (let key in obj) {
+  console.log(key); // 'myMethod' appears!
+}
+```
+
+---
+
+## Prototype Patterns
+
+### Factory Pattern
+
+```javascript
+function createUser(name, role) {
+  return {
+    name,
+    role,
+    sayHi() {
+      return `Hi, I'm ${this.name}, a ${this.role}`;
+    },
+    hasPermission(permission) {
+      return this.role === 'admin';
+    }
+  };
+}
+
+const user1 = createUser('Alice', 'admin');
+const user2 = createUser('Bob', 'user');
+
+console.log(user1.sayHi()); // 'Hi, I'm Alice, a admin'
+
+// ⚠️ Methods are duplicated for each instance
+console.log(user1.sayHi === user2.sayHi); // false
+```
+
+### Constructor Pattern
+
+```javascript
+function User(name, role) {
+  this.name = name;
+  this.role = role;
+}
+
+User.prototype.sayHi = function() {
+  return `Hi, I'm ${this.name}, a ${this.role}`;
+};
+
+User.prototype.hasPermission = function(permission) {
+  return this.role === 'admin';
+};
+
+const user1 = new User('Alice', 'admin');
+const user2 = new User('Bob', 'user');
+
+// ✅ Methods are shared
+console.log(user1.sayHi === user2.sayHi); // true
+```
+
+### Prototypal Pattern
+
+```javascript
+const userMethods = {
+  sayHi() {
+    return `Hi, I'm ${this.name}`;
+  },
+  hasPermission(permission) {
+    return this.role === 'admin';
+  }
+};
+
+function createUser(name, role) {
+  const user = Object.create(userMethods);
+  user.name = name;
+  user.role = role;
+  return user;
+}
+
+const user = createUser('Alice', 'admin');
+console.log(user.sayHi()); // 'Hi, I'm Alice'
+```
+
+### OLOO (Objects Linking to Other Objects)
+
+```javascript
+const User = {
+  init(name, role) {
+    this.name = name;
+    this.role = role;
+    return this;
+  },
+  sayHi() {
+    return `Hi, I'm ${this.name}`;
+  }
+};
+
+const Admin = Object.create(User);
+Admin.initAdmin = function(name) {
+  this.init(name, 'admin');
+  return this;
+};
+Admin.manageUsers = function() {
+  return 'Managing users';
+};
+
+const admin = Object.create(Admin).initAdmin('Alice');
+console.log(admin.sayHi()); // 'Hi, I'm Alice'
+console.log(admin.manageUsers()); // 'Managing users'
+```
+
+---
+
+## Performance Considerations
+
+### Prototype Lookup Cost
+
+```javascript
+// Deep prototype chains are slower
+function Level1() {}
+function Level2() {}
+Level2.prototype = Object.create(Level1.prototype);
+function Level3() {}
+Level3.prototype = Object.create(Level2.prototype);
+
+const obj = new Level3();
+
+// Accessing a property requires walking up the chain
+// obj → Level3.prototype → Level2.prototype → Level1.prototype → Object.prototype
+```
+
+**Best Practices:**
+- Keep prototype chains shallow (3-4 levels max)
+- Cache frequently accessed inherited properties
+- Use own properties for performance-critical data
+
+```javascript
+// ❌ Slow - repeated prototype lookup
+for (let i = 0; i < 1000000; i++) {
+  obj.inheritedMethod();
+}
+
+// ✅ Fast - cache the method
+const method = obj.inheritedMethod;
+for (let i = 0; i < 1000000; i++) {
+  method.call(obj);
+}
+```
+
+### Object.create vs new
+
+```javascript
+// Object.create is slightly slower
+const proto = { x: 10 };
+console.time('Object.create');
+for (let i = 0; i < 100000; i++) {
+  const obj = Object.create(proto);
+}
+console.timeEnd('Object.create');
+
+// Constructor with new is faster
+function Obj() {}
+Obj.prototype.x = 10;
+console.time('new');
+for (let i = 0; i < 100000; i++) {
+  const obj = new Obj();
+}
+console.timeEnd('new');
+```
+
+### Changing Prototypes
+
+```javascript
+const obj = { x: 1 };
+
+// ❌ Very slow - deoptimizes V8
+Object.setPrototypeOf(obj, { y: 2 });
+
+// ✅ Fast - set prototype at creation
+const obj2 = Object.create({ y: 2 });
+obj2.x = 1;
+```
+
+---
+
+## Common Pitfalls & Interview Traps
+
+### Trap 1: Forgetting new
+
+```javascript
+function User(name) {
+  this.name = name;
+}
+
+// ❌ Without new
+const user1 = User('Alice');
+console.log(user1); // undefined
+console.log(window.name); // 'Alice' (in browser, pollutes global!)
+
+// ✅ With new
+const user2 = new User('Bob');
+console.log(user2.name); // 'Bob'
+```
+
+**Solution:**
+
+```javascript
+function User(name) {
+  // Check if called with new
+  if (!(this instanceof User)) {
+    return new User(name);
+  }
+  this.name = name;
+}
+
+// Works both ways
+const user1 = User('Alice');
+const user2 = new User('Bob');
+```
+
+### Trap 2: Prototype Property Confusion
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+const person = new Person('Alice');
+
+// ❌ Common mistake
+console.log(person.prototype); // undefined
+// person doesn't have .prototype property!
+
+// ✅ Correct
+console.log(person.__proto__ === Person.prototype); // true
+console.log(Object.getPrototypeOf(person) === Person.prototype); // true
+```
+
+### Trap 3: Shared Prototype Properties
+
+```javascript
+function User(name) {
+  this.name = name;
+}
+
+// ❌ Array on prototype - shared by all instances!
+User.prototype.friends = [];
+
+const user1 = new User('Alice');
+const user2 = new User('Bob');
+
+user1.friends.push('Charlie');
+console.log(user2.friends); // ['Charlie'] - unexpected!
+
+// ✅ Solution - initialize in constructor
+function User(name) {
+  this.name = name;
+  this.friends = []; // Each instance gets own array
+}
+```
+
+### Trap 4: Constructor Reference
+
+```javascript
+function Animal() {}
+function Dog() {}
+
+Dog.prototype = Object.create(Animal.prototype);
+// ❌ Forgot to fix constructor
+
+const dog = new Dog();
+console.log(dog.constructor); // Animal (wrong!)
+console.log(dog.constructor === Dog); // false
+
+// ✅ Fix constructor
+Dog.prototype.constructor = Dog;
+console.log(dog.constructor === Dog); // true
+```
+
+### Trap 5: hasOwnProperty with for...in
+
+```javascript
+const parent = { inherited: true };
+const child = Object.create(parent);
+child.own = true;
+
+// ❌ Iterates over inherited properties
+for (let key in child) {
+  console.log(key); // 'own', 'inherited'
+}
+
+// ✅ Filter to own properties only
+for (let key in child) {
+  if (child.hasOwnProperty(key)) {
+    console.log(key); // 'own'
+  }
+}
+
+// ✅ Or use Object.keys (own properties only)
+Object.keys(child).forEach(key => {
+  console.log(key); // 'own'
+});
+```
+
+### Trap 6: Arrow Functions as Methods
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+// ❌ Arrow function doesn't have own 'this'
+Person.prototype.sayHi = () => {
+  return `Hi, I'm ${this.name}`; // 'this' is wrong!
+};
+
+const person = new Person('Alice');
+console.log(person.sayHi()); // "Hi, I'm undefined"
+
+// ✅ Use regular function
+Person.prototype.sayHi = function() {
+  return `Hi, I'm ${this.name}`;
+};
+```
+
+---
+
+## Best Practices
+
+### 1. Use Classes for Clarity
+
+```javascript
+// ✅ Modern, readable
+class User {
+  constructor(name) {
+    this.name = name;
+  }
+
+  greet() {
+    return `Hi, I'm ${this.name}`;
+  }
+}
+
+// vs older pattern
+function User(name) {
+  this.name = name;
+}
+User.prototype.greet = function() {
+  return `Hi, I'm ${this.name}`;
+};
+```
+
+### 2. Prefer Object.getPrototypeOf over __proto__
+
+```javascript
+const obj = {};
+
+// ❌ Legacy, non-standard
+console.log(obj.__proto__);
+
+// ✅ Standard method
+console.log(Object.getPrototypeOf(obj));
+```
+
+### 3. Never Modify Built-in Prototypes
+
+```javascript
+// ❌ Never do this
+Array.prototype.myMethod = function() { /* ... */ };
+
+// ✅ Create utility functions instead
+function myArrayMethod(arr) { /* ... */ }
+```
+
+### 4. Use Object.create for Pure Prototypal Inheritance
+
+```javascript
+// ✅ Clear inheritance
+const animal = {
+  speak() { return 'sound'; }
+};
+
+const dog = Object.create(animal);
+dog.bark = function() { return 'woof'; };
+```
+
+### 5. Initialize Arrays/Objects in Constructor
+
+```javascript
+class User {
+  constructor(name) {
+    this.name = name;
+    this.friends = []; // ✅ Each instance gets own array
+    this.settings = {}; // ✅ Each instance gets own object
+  }
+}
+
+// ❌ Don't do this
+User.prototype.friends = []; // Shared by all!
+```
+
+### 6. Use Static Methods for Utility Functions
+
+```javascript
+class MathUtils {
+  static add(a, b) {
+    return a + b;
+  }
+
+  static multiply(a, b) {
+    return a * b;
+  }
+}
+
+console.log(MathUtils.add(5, 3)); // 8
+// No need to instantiate
+```
+
+---
+
+## Real-World Examples
+
+### Example 1: Event Emitter
+
+```javascript
+class EventEmitter {
+  constructor() {
+    this.events = {};
+  }
+
+  on(event, listener) {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(listener);
+    return this;
+  }
+
+  emit(event, ...args) {
+    if (this.events[event]) {
+      this.events[event].forEach(listener => {
+        listener(...args);
+      });
+    }
+    return this;
+  }
+
+  off(event, listenerToRemove) {
+    if (this.events[event]) {
+      this.events[event] = this.events[event].filter(
+        listener => listener !== listenerToRemove
+      );
+    }
+    return this;
+  }
+}
+
+// Usage
+const emitter = new EventEmitter();
+
+const logData = data => console.log('Data:', data);
+emitter.on('data', logData);
+emitter.on('data', data => console.log('Logged:', data));
+
+emitter.emit('data', { x: 10 }); // Both listeners fire
+emitter.off('data', logData);
+emitter.emit('data', { y: 20 }); // Only second listener fires
+```
+
+### Example 2: Shape Hierarchy
+
+```javascript
+class Shape {
+  constructor(color) {
+    this.color = color;
+  }
+
+  getInfo() {
+    return `A ${this.color} shape`;
+  }
+}
+
+class Rectangle extends Shape {
+  constructor(width, height, color) {
+    super(color);
+    this.width = width;
+    this.height = height;
+  }
+
+  area() {
+    return this.width * this.height;
+  }
+
+  getInfo() {
+    return `${super.getInfo()} - Rectangle ${this.width}x${this.height}`;
+  }
+}
+
+class Square extends Rectangle {
+  constructor(side, color) {
+    super(side, side, color);
+  }
+
+  getInfo() {
+    return `${super.getInfo()} (Square)`;
+  }
+}
+
+const square = new Square(5, 'red');
+console.log(square.area()); // 25
+console.log(square.getInfo()); // 'A red shape - Rectangle 5x5 (Square)'
+```
+
+### Example 3: Mixin Pattern
+
+```javascript
+// Mixins for sharing behavior
+const canEat = {
+  eat(food) {
+    return `${this.name} is eating ${food}`;
+  }
+};
+
+const canWalk = {
+  walk() {
+    return `${this.name} is walking`;
+  }
+};
+
+const canSwim = {
+  swim() {
+    return `${this.name} is swimming`;
+  }
+};
+
+// Compose mixins
+function mixin(target, ...mixins) {
+  Object.assign(target, ...mixins);
+}
+
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+}
+
+class Dog extends Animal {}
+mixin(Dog.prototype, canEat, canWalk);
+
+class Fish extends Animal {}
+mixin(Fish.prototype, canEat, canSwim);
+
+const dog = new Dog('Buddy');
+console.log(dog.eat('bone')); // 'Buddy is eating bone'
+console.log(dog.walk()); // 'Buddy is walking'
+
+const fish = new Fish('Nemo');
+console.log(fish.swim()); // 'Nemo is swimming'
+```
+
+### Example 4: Plugin System
+
+```javascript
+class Plugin {
+  constructor(name) {
+    this.name = name;
+  }
+
+  install() {
+    throw new Error('Plugin must implement install()');
+  }
+}
+
+class LoggerPlugin extends Plugin {
+  install(app) {
+    app.log = (message) => {
+      console.log(`[${this.name}] ${message}`);
+    };
+  }
+}
+
+class CachePlugin extends Plugin {
+  install(app) {
+    const cache = new Map();
+    app.cache = {
+      get: (key) => cache.get(key),
+      set: (key, value) => cache.set(key, value),
+      clear: () => cache.clear()
+    };
+  }
+}
+
+class App {
+  constructor() {
+    this.plugins = [];
+  }
+
+  use(plugin) {
+    plugin.install(this);
+    this.plugins.push(plugin);
+    return this;
+  }
+}
+
+const app = new App();
+app
+  .use(new LoggerPlugin('MyLogger'))
+  .use(new CachePlugin('MyCache'));
+
+app.log('Hello!'); // '[MyLogger] Hello!'
+app.cache.set('key', 'value');
+console.log(app.cache.get('key')); // 'value'
+```
+
+---
+
+## Summary Cheat Sheet
+
+### Key Concepts
+
+```javascript
+// 1. Every object has [[Prototype]]
+const obj = {};
+Object.getPrototypeOf(obj) === Object.prototype; // true
+
+// 2. Functions have .prototype property
+function Func() {}
+typeof Func.prototype; // 'object'
+
+// 3. new creates prototype link
+const instance = new Func();
+Object.getPrototypeOf(instance) === Func.prototype; // true
+
+// 4. Prototype chain
+instance → Func.prototype → Object.prototype → null
+
+// 5. Classes are syntactic sugar
+class MyClass {}
+// Equivalent to function + prototype manipulation
+```
+
+### Common Methods
+
+```javascript
+// Check prototype
+Object.getPrototypeOf(obj)
+obj.__proto__ // legacy
+
+// Set prototype
+Object.create(proto)
+Object.setPrototypeOf(obj, proto) // slow!
+
+// Check relationship
+obj instanceof Constructor
+proto.isPrototypeOf(obj)
+obj.hasOwnProperty('prop')
+
+// Property descriptors
+Object.defineProperty(obj, 'prop', descriptor)
+Object.getOwnPropertyDescriptor(obj, 'prop')
+```
+
+### Interview Quick Answers
+
+**Q: What is a prototype?**
+A: An object that other objects inherit properties and methods from. Every object has an internal `[[Prototype]]` link.
+
+**Q: Difference between `__proto__` and `.prototype`?**
+A: `__proto__` is the actual prototype link on instances. `.prototype` is a property on constructor functions that defines what instances will inherit.
+
+**Q: What does `new` do?**
+A: Creates empty object → sets `[[Prototype]]` → calls constructor with new object as `this` → returns object.
+
+**Q: How does prototype chain work?**
+A: When accessing a property, JavaScript looks at the object, then its prototype, then prototype's prototype, until found or reaching `null`.
+
+**Q: Why use prototypes?**
+A: Memory efficiency - methods are shared across instances rather than duplicated.
+
+---
+
+This completes the comprehensive guide to JavaScript prototypes and inheritance!
+
+// To shadow, reassign
+obj1.value = [5, 6, 7];
+console.log

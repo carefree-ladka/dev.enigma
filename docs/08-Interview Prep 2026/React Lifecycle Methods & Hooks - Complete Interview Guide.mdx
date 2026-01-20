@@ -1,0 +1,797 @@
+# React Lifecycle Methods & Hooks - Complete Interview Guide
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Class Component Lifecycle Methods](#class-component-lifecycle-methods)
+   - [Mounting Phase](#mounting-phase)
+   - [Updating Phase](#updating-phase)
+   - [Unmounting Phase](#unmounting-phase)
+   - [Error Handling Phase](#error-handling-phase)
+3. [Functional Component Hooks](#functional-component-hooks)
+   - [useState](#usestate)
+   - [useEffect](#useeffect)
+   - [useContext](#usecontext)
+   - [useReducer](#usereducer)
+   - [useCallback](#usecallback)
+   - [useMemo](#usememo)
+   - [useRef](#useref)
+   - [useLayoutEffect](#uselayouteffect)
+   - [useImperativeHandle](#useimperativehandle)
+4. [Lifecycle to Hooks Migration](#lifecycle-to-hooks-migration)
+5. [Common Interview Questions](#common-interview-questions)
+6. [Best Practices](#best-practices)
+
+---
+
+## Introduction
+
+React components go through different phases in their lifetime. Understanding these phases and how to hook into them is crucial for building efficient React applications. Class components use lifecycle methods, while functional components use Hooks to achieve similar functionality.
+
+---
+
+## Class Component Lifecycle Methods
+
+### Mounting Phase
+
+These methods are called when an instance of a component is being created and inserted into the DOM.
+
+#### constructor()
+
+```javascript
+constructor(props) {
+  super(props);
+  this.state = { count: 0 };
+  this.handleClick = this.handleClick.bind(this);
+}
+```
+
+**Purpose:** Initialize state and bind event handlers.
+
+**Key Points:**
+- Called before the component is mounted
+- Must call `super(props)` first
+- Don't call `setState()` here, use `this.state` directly
+- Good place for binding methods
+
+#### static getDerivedStateFromProps()
+
+```javascript
+static getDerivedStateFromProps(props, state) {
+  if (props.value !== state.value) {
+    return { value: props.value };
+  }
+  return null;
+}
+```
+
+**Purpose:** Synchronize state with props before rendering.
+
+**Key Points:**
+- Static method, no access to `this`
+- Called right before rendering on both mount and update
+- Return an object to update state, or null for no update
+- Rarely needed, consider alternatives first
+
+#### render()
+
+```javascript
+render() {
+  return <div>{this.state.count}</div>;
+}
+```
+
+**Purpose:** Return the JSX to be rendered.
+
+**Key Points:**
+- Only required method in class components
+- Must be pure (no side effects)
+- Should not modify component state
+- Can return JSX, arrays, fragments, portals, strings, numbers, booleans, or null
+
+#### componentDidMount()
+
+```javascript
+componentDidMount() {
+  // API calls
+  fetch('/api/data')
+    .then(response => response.json())
+    .then(data => this.setState({ data }));
+
+  // Event listeners
+  window.addEventListener('resize', this.handleResize);
+
+  // Timers
+  this.timer = setInterval(() => this.tick(), 1000);
+}
+```
+
+**Purpose:** Perform side effects after component is mounted.
+
+**Key Points:**
+- Called once after the first render
+- Perfect for API calls, subscriptions, and DOM manipulation
+- Can call `setState()` here (triggers re-render)
+- Component and DOM nodes are available
+
+### Updating Phase
+
+These methods are called when props or state change, causing a re-render.
+
+#### static getDerivedStateFromProps()
+
+Same as in mounting phase, also called before every update.
+
+#### shouldComponentUpdate()
+
+```javascript
+shouldComponentUpdate(nextProps, nextState) {
+  // Only update if count changed
+  return nextState.count !== this.state.count;
+}
+```
+
+**Purpose:** Optimize performance by preventing unnecessary re-renders.
+
+**Key Points:**
+- Return `true` to proceed with update, `false` to skip
+- Default behavior is to re-render on every state/prop change
+- Don't do deep equality checks (use PureComponent instead)
+- Not called for initial render or when `forceUpdate()` is used
+
+#### render()
+
+Same render method, called again with new props/state.
+
+#### getSnapshotBeforeUpdate()
+
+```javascript
+getSnapshotBeforeUpdate(prevProps, prevState) {
+  // Capture scroll position before update
+  if (prevProps.list.length < this.props.list.length) {
+    const list = this.listRef.current;
+    return list.scrollHeight - list.scrollTop;
+  }
+  return null;
+}
+```
+
+**Purpose:** Capture information from DOM before it changes.
+
+**Key Points:**
+- Called right before DOM updates
+- Return value is passed to `componentDidUpdate()`
+- Rarely used, useful for scroll position handling
+- Must be used with `componentDidUpdate()`
+
+#### componentDidUpdate()
+
+```javascript
+componentDidUpdate(prevProps, prevState, snapshot) {
+  // Compare props to make API call
+  if (this.props.userId !== prevProps.userId) {
+    this.fetchUserData(this.props.userId);
+  }
+
+  // Use snapshot from getSnapshotBeforeUpdate
+  if (snapshot !== null) {
+    const list = this.listRef.current;
+    list.scrollTop = list.scrollHeight - snapshot;
+  }
+}
+```
+
+**Purpose:** Perform side effects after update.
+
+**Key Points:**
+- Called after every update (not on initial mount)
+- Can call `setState()` but must be conditional to avoid infinite loop
+- Good place to compare current and previous props
+- Receives snapshot value from `getSnapshotBeforeUpdate()`
+
+### Unmounting Phase
+
+#### componentWillUnmount()
+
+```javascript
+componentWillUnmount() {
+  // Clean up event listeners
+  window.removeEventListener('resize', this.handleResize);
+
+  // Clear timers
+  clearInterval(this.timer);
+
+  // Cancel network requests
+  this.abortController.abort();
+
+  // Unsubscribe from stores
+  this.unsubscribe();
+}
+```
+
+**Purpose:** Clean up before component is removed.
+
+**Key Points:**
+- Called immediately before component is destroyed
+- Perform cleanup like removing listeners, canceling requests, clearing timers
+- Don't call `setState()` here (component will never re-render)
+- Critical for preventing memory leaks
+
+### Error Handling Phase
+
+#### static getDerivedStateFromError()
+
+```javascript
+static getDerivedStateFromError(error) {
+  return { hasError: true };
+}
+```
+
+**Purpose:** Update state when descendant component throws error.
+
+**Key Points:**
+- Called during render phase
+- Must be static method
+- Used to render fallback UI
+- Don't perform side effects here
+
+#### componentDidCatch()
+
+```javascript
+componentDidCatch(error, errorInfo) {
+  // Log error to service
+  logErrorToService(error, errorInfo);
+
+  console.log('Error:', error);
+  console.log('Error Info:', errorInfo.componentStack);
+}
+```
+
+**Purpose:** Log error information.
+
+**Key Points:**
+- Called during commit phase
+- Can perform side effects like logging
+- Receives error and info about which component threw error
+- Used with `getDerivedStateFromError()` for error boundaries
+
+---
+
+## Functional Component Hooks
+
+### useState
+
+```javascript
+import { useState } from 'react';
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  const [user, setUser] = useState({ name: '', age: 0 });
+
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+      <button onClick={() => setCount(prev => prev + 1)}>Increment (callback)</button>
+    </div>
+  );
+}
+```
+
+**Purpose:** Add state to functional components.
+
+**Key Points:**
+- Returns array with current state and setter function
+- Initial state can be value or function
+- Setter can take new value or updater function
+- Multiple `useState` calls are allowed
+- State updates are batched for performance
+
+### useEffect
+
+```javascript
+import { useEffect } from 'react';
+
+function DataFetcher({ userId }) {
+  const [data, setData] = useState(null);
+
+  // Runs after every render
+  useEffect(() => {
+    console.log('Component rendered');
+  });
+
+  // Runs once on mount (like componentDidMount)
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  // Runs when userId changes (like componentDidUpdate)
+  useEffect(() => {
+    fetchUserData(userId);
+  }, [userId]);
+
+  // With cleanup (like componentWillUnmount)
+  useEffect(() => {
+    const subscription = subscribeToData();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return <div>{data}</div>;
+}
+```
+
+**Purpose:** Perform side effects in functional components.
+
+**Key Points:**
+- Combines `componentDidMount`, `componentDidUpdate`, and `componentWillUnmount`
+- Runs after render by default
+- Second argument is dependency array
+- Empty array means run once on mount
+- Return cleanup function for unmounting
+- Can have multiple `useEffect` hooks
+
+### useContext
+
+```javascript
+import { useContext, createContext } from 'react';
+
+const ThemeContext = createContext('light');
+
+function ThemedButton() {
+  const theme = useContext(ThemeContext);
+
+  return (
+    <button className={theme}>
+      I'm styled by context!
+    </button>
+  );
+}
+
+function App() {
+  return (
+    <ThemeContext.Provider value="dark">
+      <ThemedButton />
+    </ThemeContext.Provider>
+  );
+}
+```
+
+**Purpose:** Access context values without nesting.
+
+**Key Points:**
+- Accepts context object from `createContext()`
+- Returns current context value
+- Triggers re-render when context value changes
+- Cleaner than Context.Consumer
+- Can use multiple contexts
+
+### useReducer
+
+```javascript
+import { useReducer } from 'react';
+
+const initialState = { count: 0 };
+
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increment':
+      return { count: state.count + 1 };
+    case 'decrement':
+      return { count: state.count - 1 };
+    case 'reset':
+      return initialState;
+    default:
+      throw new Error();
+  }
+}
+
+function Counter() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  return (
+    <>
+      Count: {state.count}
+      <button onClick={() => dispatch({ type: 'increment' })}>+</button>
+      <button onClick={() => dispatch({ type: 'decrement' })}>-</button>
+      <button onClick={() => dispatch({ type: 'reset' })}>Reset</button>
+    </>
+  );
+}
+```
+
+**Purpose:** Manage complex state logic.
+
+**Key Points:**
+- Alternative to `useState` for complex state
+- Takes reducer function and initial state
+- Returns current state and dispatch function
+- Good for state with multiple sub-values
+- Similar to Redux pattern
+
+### useCallback
+
+```javascript
+import { useCallback, useState } from 'react';
+
+function ParentComponent() {
+  const [count, setCount] = useState(0);
+
+  // Without useCallback - new function every render
+  const handleClick = () => {
+    console.log('Clicked');
+  };
+
+  // With useCallback - same function reference
+  const memoizedCallback = useCallback(() => {
+    console.log('Count:', count);
+  }, [count]);
+
+  return <ChildComponent onClick={memoizedCallback} />;
+}
+```
+
+**Purpose:** Memoize callback functions.
+
+**Key Points:**
+- Returns memoized version of callback
+- Only changes if dependencies change
+- Useful for passing callbacks to optimized child components
+- Prevents unnecessary re-renders of children
+- Dependency array required
+
+### useMemo
+
+```javascript
+import { useMemo, useState } from 'react';
+
+function ExpensiveComponent({ items }) {
+  const [filter, setFilter] = useState('');
+
+  // Expensive calculation
+  const filteredItems = useMemo(() => {
+    console.log('Filtering items...');
+    return items.filter(item =>
+      item.name.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [items, filter]);
+
+  return (
+    <div>
+      <input value={filter} onChange={e => setFilter(e.target.value)} />
+      {filteredItems.map(item => <div key={item.id}>{item.name}</div>)}
+    </div>
+  );
+}
+```
+
+**Purpose:** Memoize expensive calculations.
+
+**Key Points:**
+- Returns memoized value
+- Only recalculates when dependencies change
+- Optimization technique for expensive operations
+- Don't overuse, adds overhead
+- Dependency array required
+
+### useRef
+
+```javascript
+import { useRef, useEffect } from 'react';
+
+function TextInput() {
+  const inputRef = useRef(null);
+  const countRef = useRef(0);
+
+  useEffect(() => {
+    // Focus input on mount
+    inputRef.current.focus();
+  }, []);
+
+  const handleClick = () => {
+    // Access DOM node
+    console.log(inputRef.current.value);
+
+    // Store mutable value (doesn't cause re-render)
+    countRef.current++;
+    console.log('Clicked', countRef.current, 'times');
+  };
+
+  return (
+    <>
+      <input ref={inputRef} />
+      <button onClick={handleClick}>Click</button>
+    </>
+  );
+}
+```
+
+**Purpose:** Create mutable reference that persists across renders.
+
+**Key Points:**
+- Returns mutable ref object with `.current` property
+- Persists across component re-renders
+- Doesn't trigger re-render when changed
+- Common for accessing DOM elements
+- Can store any mutable value
+
+### useLayoutEffect
+
+```javascript
+import { useLayoutEffect, useRef, useState } from 'react';
+
+function TooltipComponent() {
+  const tooltipRef = useRef(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useLayoutEffect(() => {
+    // Measure DOM before browser paints
+    const { height } = tooltipRef.current.getBoundingClientRect();
+    setPosition({ x: 10, y: -height });
+  }, []);
+
+  return (
+    <div ref={tooltipRef} style={{
+      position: 'absolute',
+      top: position.y,
+      left: position.x
+    }}>
+      Tooltip
+    </div>
+  );
+}
+```
+
+**Purpose:** Synchronous effects before browser paint.
+
+**Key Points:**
+- Identical signature to `useEffect`
+- Fires synchronously after DOM mutations
+- Before browser paints screen
+- Use for DOM measurements and preventing visual flicker
+- Prefer `useEffect` when possible (better performance)
+
+### useImperativeHandle
+
+```javascript
+import { forwardRef, useRef, useImperativeHandle } from 'react';
+
+const FancyInput = forwardRef((props, ref) => {
+  const inputRef = useRef();
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRef.current.focus();
+    },
+    scrollIntoView: () => {
+      inputRef.current.scrollIntoView();
+    }
+  }));
+
+  return <input ref={inputRef} />;
+});
+
+function Parent() {
+  const inputRef = useRef();
+
+  return (
+    <>
+      <FancyInput ref={inputRef} />
+      <button onClick={() => inputRef.current.focus()}>
+        Focus Input
+      </button>
+    </>
+  );
+}
+```
+
+**Purpose:** Customize ref value exposed to parent.
+
+**Key Points:**
+- Used with `forwardRef`
+- Customizes instance value when using refs
+- Exposes imperative methods to parent
+- Rarely needed in typical React patterns
+- Good for library components
+
+---
+
+## Lifecycle to Hooks Migration
+
+### componentDidMount → useEffect
+
+```javascript
+// Class
+componentDidMount() {
+  fetchData();
+}
+
+// Hooks
+useEffect(() => {
+  fetchData();
+}, []);
+```
+
+### componentDidUpdate → useEffect
+
+```javascript
+// Class
+componentDidUpdate(prevProps) {
+  if (prevProps.userId !== this.props.userId) {
+    fetchUser(this.props.userId);
+  }
+}
+
+// Hooks
+useEffect(() => {
+  fetchUser(userId);
+}, [userId]);
+```
+
+### componentWillUnmount → useEffect cleanup
+
+```javascript
+// Class
+componentWillUnmount() {
+  subscription.unsubscribe();
+}
+
+// Hooks
+useEffect(() => {
+  const subscription = subscribe();
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+```
+
+### shouldComponentUpdate → React.memo
+
+```javascript
+// Class
+shouldComponentUpdate(nextProps) {
+  return nextProps.value !== this.props.value;
+}
+
+// Hooks
+const MemoizedComponent = React.memo(Component, (prevProps, nextProps) => {
+  return prevProps.value === nextProps.value;
+});
+```
+
+---
+
+## Common Interview Questions
+
+### Q1: What is the component lifecycle in React?
+
+The component lifecycle is the series of phases a React component goes through from creation to removal. It consists of mounting (creation), updating (changes), and unmounting (removal) phases. Class components use lifecycle methods, while functional components use Hooks to manage these phases.
+
+### Q2: What's the difference between useEffect and useLayoutEffect?
+
+`useEffect` runs asynchronously after the render is painted to the screen, while `useLayoutEffect` runs synchronously after DOM mutations but before the browser paints. Use `useLayoutEffect` for DOM measurements or when you need to prevent visual flickering. Prefer `useEffect` for better performance in most cases.
+
+### Q3: Why is the dependency array important in useEffect?
+
+The dependency array tells React when to re-run the effect. An empty array means run once on mount, specific values mean run when those values change, and no array means run after every render. Missing dependencies can cause bugs with stale values, while including unnecessary ones can cause performance issues.
+
+### Q4: How do you prevent memory leaks with useEffect?
+
+Return a cleanup function from `useEffect` that cancels subscriptions, clears timers, removes event listeners, and aborts network requests. This cleanup runs before the effect runs again and when the component unmounts.
+
+```javascript
+useEffect(() => {
+  const timer = setInterval(() => tick(), 1000);
+  return () => clearInterval(timer);
+}, []);
+```
+
+### Q5: When should you use useReducer instead of useState?
+
+Use `useReducer` when you have complex state logic involving multiple sub-values, when the next state depends on the previous one, or when you want to optimize performance by passing dispatch down instead of callbacks. It's particularly useful for state machines and Redux-like patterns.
+
+### Q6: What's the purpose of useCallback and useMemo?
+
+Both are optimization hooks. `useCallback` memoizes function references to prevent child re-renders when passing callbacks as props. `useMemo` memoizes computed values to avoid expensive recalculations. Don't overuse them as they add overhead.
+
+### Q7: Can you call hooks conditionally?
+
+No. Hooks must be called at the top level of your component, not inside conditions, loops, or nested functions. This ensures hooks are called in the same order every render, which is how React tracks hook state.
+
+---
+
+## Best Practices
+
+### 1. Keep effects focused and single-purpose
+
+```javascript
+// Bad - multiple concerns in one effect
+useEffect(() => {
+  fetchData();
+  subscribeToUpdates();
+  logAnalytics();
+}, []);
+
+// Good - separate effects for separate concerns
+useEffect(() => {
+  fetchData();
+}, []);
+
+useEffect(() => {
+  subscribeToUpdates();
+  return () => unsubscribe();
+}, []);
+
+useEffect(() => {
+  logAnalytics();
+}, []);
+```
+
+### 2. Always include dependencies
+
+```javascript
+// Bad - missing dependencies
+useEffect(() => {
+  console.log(userId);
+}, []);
+
+// Good - all dependencies included
+useEffect(() => {
+  console.log(userId);
+}, [userId]);
+```
+
+### 3. Clean up side effects
+
+```javascript
+useEffect(() => {
+  const controller = new AbortController();
+
+  fetch('/api/data', { signal: controller.signal })
+    .then(response => response.json())
+    .then(data => setData(data));
+
+  return () => controller.abort();
+}, []);
+```
+
+### 4. Use custom hooks for reusable logic
+
+```javascript
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return size;
+}
+```
+
+### 5. Avoid premature optimization
+
+Don't wrap everything in `useCallback` or `useMemo` without profiling first. These hooks add overhead and should only be used when you've identified a performance problem.
+
+### 6. Use functional updates for state
+
+```javascript
+// Safer when new state depends on old state
+setCount(prev => prev + 1);
+
+// Instead of
+setCount(count + 1);
+```
+
+---
+
+This guide covers the essential lifecycle methods and hooks you need to know for React interviews and real-world development. Understanding when and how to use each is key to building performant React applications.

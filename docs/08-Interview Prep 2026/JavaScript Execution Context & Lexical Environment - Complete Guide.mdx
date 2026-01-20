@@ -1,0 +1,497 @@
+# JavaScript Execution Context & Lexical Environment - Complete Guide
+
+**Interview-Ready Reference | FAANG-Level Depth**
+
+---
+
+## Table of Contents
+
+1. [Execution Context](#execution-context)
+   - [Core Concept](#ec-core)
+   - [Types of Execution Contexts](#ec-types)
+   - [Global Execution Context (GEC)](#gec)
+   - [Function Execution Context (FEC)](#fec)
+   - [Call Stack](#call-stack)
+2. [Lexical Environment](#lexical-environment)
+   - [Core Concept](#le-core)
+   - [Structure](#le-structure)
+   - [Lexical Scope](#lexical-scope)
+   - [Block Scope](#block-scope)
+   - [Scope Chain](#scope-chain)
+3. [The Big Picture: How They Work Together](#big-picture)
+4. [Closures Explained](#closures)
+5. [Interview Traps & Edge Cases](#traps)
+6. [Quick Reference Tables](#tables)
+7. [One-Liners to Memorize](#memorize)
+
+---
+
+## <a name="execution-context"></a>1. Execution Context
+
+### <a name="ec-core"></a>Core Concept
+
+**Execution Context** = the environment in which JavaScript code is evaluated and executed
+
+Think of it as a **runtime box** that stores:
+- Variables
+- Functions
+- Scope chain
+- `this` value
+
+**Key Rule:** JavaScript always runs inside an execution context. No context → no execution.
+
+---
+
+### <a name="ec-types"></a>Types of Execution Contexts
+
+JavaScript has **3 main types**:
+
+1. **Global Execution Context (GEC)**
+2. **Function Execution Context (FEC)**
+3. **Eval Execution Context** (rare, ignore in interviews)
+
+We'll focus on **GEC + FEC**.
+
+---
+
+### <a name="gec"></a>Global Execution Context (GEC)
+
+**When is it created?**
+- Immediately when JS file starts executing
+- Only **one GEC** per program
+
+**What does GEC contain?**
+
+1. **Global Object**
+   - Browser → `window`
+   - Node.js → `global`
+   - Global variables & functions attach here
+
+2. **`this`**
+   - In browser → `this === window`
+   - In strict mode → `undefined`
+
+3. **Memory & Code Phases**
+
+#### 🔁 GEC is created in two phases
+
+**Phase 1: Memory Creation (Hoisting Phase)**
+
+```javascript
+var a = 10;
+let b = 20;
+function foo() {
+  console.log("hello");
+}
+```
+
+**Memory Phase:**
+- `a` → `undefined`
+- `b` → `<uninitialized>` (Temporal Dead Zone)
+- `foo` → `function reference`
+
+**Phase 2: Code Execution Phase**
+- Values assigned
+- Code executed line by line
+- `a` → `10`
+- `b` → `20`
+
+---
+
+### <a name="fec"></a>Function Execution Context (FEC)
+
+**When is it created?**
+- Every time a function is **invoked**
+- Each call gets a **new execution context**
+
+**What does a Function Execution Context contain?**
+
+1. Arguments object
+2. Local variables
+3. Inner function declarations
+4. `this` value
+5. Scope chain (lexical environment)
+
+#### Example
+
+```javascript
+function add(x, y) {
+  let sum = x + y;
+  return sum;
+}
+add(2, 3);
+```
+
+**FEC Creation Phases**
+
+**Phase 1: Memory Creation**
+- `x` → `2`
+- `y` → `3`
+- `sum` → `<uninitialized>`
+
+**Phase 2: Execution**
+- `sum = 5`
+- `return 5`
+
+Once `return` executes → **FEC is destroyed**.
+
+---
+
+### <a name="call-stack"></a>Call Stack (Execution Context Stack)
+
+JavaScript manages contexts using a **Call Stack** (LIFO - Last In First Out).
+
+#### Example
+
+```javascript
+function first() {
+  second();
+}
+function second() {
+  console.log("Hello");
+}
+first();
+```
+
+**Stack Flow:**
+
+```
+| second() |
+| first()  |
+| Global   |
+```
+
+- `second()` finishes → popped
+- `first()` finishes → popped
+- Global remains
+
+#### Visual Mental Model (Interview Gold)
+
+```
+Call Stack:
+┌────────────────┐
+│ FEC: second()  │
+├────────────────┤
+│ FEC: first()   │
+├────────────────┤
+│ GEC            │
+└────────────────┘
+```
+
+**Each function call:**
+1. Push context
+2. Execute
+3. Pop context
+
+---
+
+### Global vs Function Execution Context (Comparison)
+
+| Feature    | Global EC           | Function EC          |
+|------------|---------------------|----------------------|
+| Created    | On program start    | On function call     |
+| Count      | Only one            | Multiple             |
+| Variables  | Global variables    | Local variables      |
+| `this`     | `window` (browser)  | Depends on call      |
+| Lifetime   | Till program ends   | Till function returns|
+
+---
+
+## <a name="lexical-environment"></a>2. Lexical Environment
+
+### <a name="le-core"></a>Core Concept
+
+**Lexical Environment** = where variables are **physically written** in the code
+
+Not when code runs — but **where it is defined**.
+
+It decides:
+- Scope
+- Variable lookup
+- Closure behavior
+
+**"Lexical"** = based on code structure, not runtime flow.
+
+---
+
+### <a name="le-structure"></a>Formal Definition (Interview-safe)
+
+A Lexical Environment is a data structure that contains:
+
+1. **Environment Record** – stores variables & functions
+2. **Outer Reference** – link to the parent lexical environment
+
+```
+Lexical Environment
+├── Environment Record
+└── Outer (reference to parent)
+```
+
+---
+
+### <a name="lexical-scope"></a>Lexical Scope (Core Rule)
+
+**👉 JavaScript uses Lexical (Static) Scoping**
+
+This means:
+- Scope is determined at **write time**
+- Not at **call time**
+
+#### Example
+
+```javascript
+const a = 10;
+
+function outer() {
+  const b = 20;
+
+  function inner() {
+    console.log(a, b);
+  }
+
+  inner();
+}
+outer();
+```
+
+**Scope Chain:**
+- `inner` → `outer` → `global`
+- `a` found in global
+- `b` found in outer
+
+✔️ This chain is decided **before execution starts**
+
+---
+
+### <a name="block-scope"></a>Block Scope (let / const)
+
+Each `{}` creates a **block lexical environment**.
+
+```javascript
+if (true) {
+  let x = 10;
+  const y = 20;
+}
+console.log(x); // ❌ ReferenceError
+```
+
+**Block Lexical Env:**
+```
+├── x
+├── y
+└── outer → global
+```
+
+❌ **`var` ignores block scope.**
+
+---
+
+### <a name="scope-chain"></a>Scope Chain (Variable Resolution)
+
+When JS looks up a variable:
+
+1. Current lexical environment
+2. Parent lexical environment
+3. Continue until global
+4. If not found → `ReferenceError`
+
+#### Example
+
+```javascript
+let a = 1;
+
+function foo() {
+  let b = 2;
+
+  function bar() {
+    let c = 3;
+    console.log(a, b, c);
+  }
+  bar();
+}
+```
+
+**Lookup order in `bar()`:**
+- `c` → bar
+- `b` → foo
+- `a` → global
+
+---
+
+## <a name="big-picture"></a>3. The Big Picture: How They Work Together
+
+### Execution Context vs Lexical Environment
+
+| Execution Context | Lexical Environment |
+|-------------------|---------------------|
+| Created at **runtime** | Defined by **code structure** |
+| Manages **execution** | Manages **scope** |
+| Pushed to **call stack** | Linked via **outer references** |
+| Destroyed after execution | May **survive** (closures) |
+
+**👉 Execution context contains a reference to its lexical environment**
+
+---
+
+### Complete Mental Model
+
+```
+┌─────────────────────────────────────┐
+│     Execution Context               │
+│  ┌───────────────────────────────┐  │
+│  │  Lexical Environment          │  │
+│  │  ├── Environment Record       │  │
+│  │  └── Outer Reference          │  │
+│  └───────────────────────────────┘  │
+│  ├── this binding                   │
+│  └── Variable Environment           │
+└─────────────────────────────────────┘
+```
+
+---
+
+## <a name="closures"></a>4. Closures Explained
+
+**Definition:**
+Closure = function + its lexical environment
+
+```javascript
+function counter() {
+  let count = 0;
+  return () => {
+    count++;
+    return count;
+  };
+}
+
+const inc = counter();
+inc(); // 1
+inc(); // 2
+```
+
+**Why does `count` survive?**
+
+Because:
+- Execution context of `counter()` is destroyed
+- **Lexical environment is retained**
+- `inc` holds reference to it
+
+---
+
+## <a name="traps"></a>5. Interview Traps & Edge Cases
+
+### ⚠️ Trap 1: Lexical ≠ Dynamic
+
+```javascript
+function foo() {
+  console.log(x);
+}
+
+function bar() {
+  let x = 10;
+  foo();
+}
+
+let x = 5;
+bar(); // 5 ❌ Not 10
+```
+
+✔️ **Lexical scope, not call-site scope**
+
+---
+
+### ⚠️ Trap 2: var vs let in loops
+
+```javascript
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0);
+}
+// 👉 Single lexical environment → 3 3 3
+```
+
+```javascript
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0);
+}
+// 👉 New lexical environment per iteration → 0 1 2
+```
+
+---
+
+### ⚠️ Trap 3: Are let and const hoisted?
+
+✔️ **Yes**
+❌ But not initialized → **Temporal Dead Zone**
+
+```javascript
+console.log(a); // ❌ ReferenceError: Cannot access 'a' before initialization
+let a = 10;
+```
+
+---
+
+### ⚠️ Trap 4: Does arrow function have its own execution context?
+
+✔️ Execution context exists
+❌ No `arguments` object
+❌ No own `this`
+
+---
+
+## <a name="tables"></a>6. Quick Reference Tables
+
+### Hoisting Behavior
+
+| Type | Hoisted? | Initialized? | TDZ? |
+|------|----------|--------------|------|
+| `var` | ✔️ Yes | ✔️ `undefined` | ❌ No |
+| `let` | ✔️ Yes | ❌ No | ✔️ Yes |
+| `const` | ✔️ Yes | ❌ No | ✔️ Yes |
+| `function` | ✔️ Yes | ✔️ Full definition | ❌ No |
+
+---
+
+### Scope Types
+
+| Scope Type | Created By | Variables |
+|------------|-----------|-----------|
+| Global | Program start | `var`, `let`, `const`, `function` |
+| Function | Function call | Local variables, parameters |
+| Block | `{}` | `let`, `const` only |
+
+---
+
+## <a name="memorize"></a>7. One-Liners to Memorize
+
+### Execution Context
+> **Execution Context** is the runtime environment where JavaScript code runs. The global execution context is created first, and every function invocation creates its own execution context, all managed via the call stack.
+
+### Lexical Environment
+> **Lexical Environment** defines where variables live based on code structure, and JavaScript resolves variables using a scope chain formed via outer lexical references. Closures work because functions retain access to their defining lexical environment.
+
+### The Connection
+> Every execution context has a reference to a lexical environment. Execution contexts manage runtime flow; lexical environments manage scope and variable access.
+
+---
+
+## Common Microsoft/Google Follow-up Questions
+
+1. **Difference between Scope chain vs Call stack?**
+   - Call stack = execution order (runtime)
+   - Scope chain = variable lookup (code structure)
+
+2. **How closures cause memory leaks?**
+   - Retained lexical environments aren't garbage collected
+   - If large objects are in outer scope, they persist
+
+3. **Lexical environment vs Context object?**
+   - Lexical env = scope structure
+   - Context object = `this` value
+
+4. **How `this` differs from lexical scope?**
+   - `this` is dynamic (call-site dependent)
+   - Lexical scope is static (write-time dependent)
+
+---
+
+**End of Guide** | Bookmark this for interviews 🚀

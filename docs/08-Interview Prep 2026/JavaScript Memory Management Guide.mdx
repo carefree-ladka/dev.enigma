@@ -1,0 +1,459 @@
+# JavaScript Memory Management Guide
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Memory Life Cycle](#memory-life-cycle)
+  - [Allocate Memory](#allocate-memory)
+  - [Use Allocated Memory](#use-allocated-memory)
+  - [Release Allocated Memory](#release-allocated-memory)
+- [Allocation in JavaScript](#allocation-in-javascript)
+  - [Value Initialization](#value-initialization)
+  - [Allocation via Function Calls](#allocation-via-function-calls)
+- [Using Values](#using-values)
+- [Memory Release](#memory-release)
+- [Garbage Collection](#garbage-collection)
+  - [References](#references)
+  - [Reference-Counting Garbage Collection](#reference-counting-garbage-collection)
+  - [Mark-and-Sweep Algorithm](#mark-and-sweep-algorithm)
+- [Configuring an Engine's Memory Model](#configuring-an-engines-memory-model)
+- [Data Structures for Memory Management](#data-structures-for-memory-management)
+  - [WeakMaps and WeakSets](#weakmaps-and-weaksets)
+  - [WeakRefs and FinalizationRegistry](#weakrefs-and-finalizationregistry)
+- [Best Practices](#best-practices)
+
+---
+
+## Introduction
+
+Low-level languages like C have manual memory management primitives such as `malloc()` and `free()`. In contrast, JavaScript automatically allocates memory when objects are created and frees it when they are not used anymore through **garbage collection**.
+
+This automaticity can give developers the false impression that they don't need to worry about memory management. However, understanding how JavaScript manages memory is crucial for building efficient, performant applications and avoiding memory leaks.
+
+---
+
+## Memory Life Cycle
+
+Regardless of the programming language, the memory life cycle follows the same pattern:
+
+1. **Allocate** the memory you need
+2. **Use** the allocated memory (read, write)
+3. **Release** the allocated memory when it is not needed anymore
+
+The second part is explicit in all languages. The first and last parts are explicit in low-level languages but are mostly implicit in high-level languages like JavaScript.
+
+### Allocate Memory
+
+In JavaScript, memory allocation happens automatically when you declare values, create objects, or call functions.
+
+### Use Allocated Memory
+
+Using allocated memory involves reading and writing values, accessing object properties, or passing arguments to functions.
+
+### Release Allocated Memory
+
+JavaScript automatically releases memory through garbage collection when it determines that memory is no longer needed.
+
+---
+
+## Allocation in JavaScript
+
+### Value Initialization
+
+JavaScript automatically allocates memory when values are initially declared.
+
+```javascript
+// Allocates memory for a number
+const n = 123;
+
+// Allocates memory for a string
+const s = "string";
+
+// Allocates memory for an object and its contained values
+const o = {
+  a: 1,
+  b: null,
+};
+
+// Allocates memory for an array and its contained values
+const a = [1, null, "str2"];
+
+// Allocates a function (which is a callable object)
+function f(a) {
+  return a + 2;
+}
+
+// Function expressions also allocate an object
+someElement.addEventListener("click", () => {
+  someElement.style.backgroundColor = "blue";
+});
+```
+
+### Allocation via Function Calls
+
+Some function calls result in object allocation:
+
+```javascript
+// Allocates a Date object
+const d = new Date();
+
+// Allocates a DOM element
+const e = document.createElement("div");
+```
+
+Some methods allocate new values or objects:
+
+```javascript
+const s = "string";
+// s2 is a new string
+const s2 = s.substring(0, 3);
+// Since strings are immutable values,
+// JavaScript may decide to not allocate memory,
+// but just store the [0, 3] range.
+
+const a = ["yeah yeah", "no no"];
+const a2 = ["generation", "no no"];
+// New array with 4 elements being the concatenation
+const a3 = a.concat(a2);
+```
+
+---
+
+## Using Values
+
+Using values means reading and writing in allocated memory. This can be done by:
+
+- Reading or writing the value of a variable
+- Accessing object properties
+- Passing arguments to a function
+
+```javascript
+const obj = { name: "John" };
+console.log(obj.name); // Reading
+obj.name = "Jane";     // Writing
+```
+
+---
+
+## Memory Release
+
+The majority of memory management issues occur during the release phase. The most difficult aspect is determining when allocated memory is no longer needed.
+
+**Low-level languages** require developers to manually determine when memory is no longer needed and release it explicitly.
+
+**High-level languages** like JavaScript use automatic memory management known as **garbage collection (GC)**. The garbage collector monitors memory allocation and determines when memory is no longer needed, then reclaims it automatically.
+
+This automatic process is an approximation because the general problem of determining whether specific memory is still needed is undecidable.
+
+---
+
+## Garbage Collection
+
+### References
+
+Garbage collection algorithms rely on the concept of **reference**. An object is said to reference another object if the former has access to the latter (either implicitly or explicitly).
+
+For example:
+- A JavaScript object has a reference to its **prototype** (implicit reference)
+- A JavaScript object has references to its **property values** (explicit reference)
+
+In this context, "object" extends beyond regular JavaScript objects to include function scopes and the global lexical scope.
+
+### Reference-Counting Garbage Collection
+
+> **Note:** No modern JavaScript engine uses reference-counting for garbage collection anymore.
+
+This is the most naïve garbage collection algorithm. It reduces the problem to determining if an object has any other objects referencing it. An object is considered "garbage" if there are zero references pointing to it.
+
+**Example:**
+
+```javascript
+let x = {
+  a: {
+    b: 2,
+  },
+};
+// 2 objects are created. One is referenced by the other as a property.
+// The other is referenced by being assigned to the 'x' variable.
+// Neither can be garbage-collected.
+
+let y = x;
+// The 'y' variable is the second reference to the object.
+
+x = 1;
+// Now, the object originally in 'x' has a unique reference via 'y'.
+
+let z = y.a;
+// Reference to 'a' property of the object.
+// This object now has 2 references: one as a property,
+// the other as the 'z' variable.
+
+y = "mozilla";
+// The object originally in 'x' now has zero references.
+// It can be garbage-collected.
+// However, its 'a' property is still referenced by 'z',
+// so it cannot be freed.
+
+z = null;
+// The 'a' property now has zero references.
+// It can be garbage collected.
+```
+
+**Limitation: Circular References**
+
+Reference-counting cannot handle circular references properly:
+
+```javascript
+function f() {
+  const x = {};
+  const y = {};
+  x.a = y; // x references y
+  y.a = x; // y references x
+
+  return "azerty";
+}
+
+f();
+// After the function call, both objects go out of scope
+// but each has a reference from the other,
+// so they won't be garbage-collected (memory leak).
+```
+
+### Mark-and-Sweep Algorithm
+
+This algorithm reduces the definition of "an object is no longer needed" to "**an object is unreachable**".
+
+**How it works:**
+
+1. The algorithm assumes knowledge of a set of objects called **roots** (in JavaScript, the root is the global object)
+2. Periodically, the garbage collector starts from these roots
+3. It finds all objects referenced from the roots
+4. Then finds all objects referenced from those objects, and so on
+5. All reachable objects are marked as active
+6. All non-reachable objects are collected
+
+**Advantages:**
+
+- An object with zero references is effectively unreachable
+- **Circular references are no longer a problem** — if two objects reference each other but are unreachable from the root, they will be garbage-collected
+- All modern JavaScript engines use variations of this algorithm
+
+**Example with circular references:**
+
+```javascript
+function f() {
+  const x = {};
+  const y = {};
+  x.a = y;
+  y.a = x;
+  return "azerty";
+}
+
+f();
+// After the function returns, both objects are unreachable
+// from the global object, so they will be garbage-collected
+// despite the circular reference.
+```
+
+**Limitations:**
+
+- **No manual control** — you cannot manually trigger garbage collection or decide when memory is released
+- To release an object's memory, you must make it explicitly unreachable
+- No programmatic way to trigger garbage collection in core JavaScript
+
+---
+
+## Configuring an Engine's Memory Model
+
+JavaScript engines typically offer flags that expose the memory model. For example, Node.js offers additional options for configuring and debugging memory issues. This configuration may not be available in browsers.
+
+**Increase max heap memory:**
+
+```bash
+node --max-old-space-size=6000 index.js
+```
+
+**Expose garbage collector for debugging:**
+
+```bash
+node --expose-gc --inspect index.js
+```
+
+---
+
+## Data Structures for Memory Management
+
+Although JavaScript doesn't directly expose the garbage collector API, it offers several data structures that indirectly observe garbage collection and can be used to manage memory usage.
+
+### WeakMaps and WeakSets
+
+`WeakMap` and `WeakSet` are data structures whose APIs mirror their non-weak counterparts: `Map` and `Set`.
+
+- **WeakMap:** Maintains a collection of key-value pairs
+- **WeakSet:** Maintains a collection of unique values
+
+**Key Characteristics:**
+
+1. **Weakly held values:** If `x` is weakly held by `y`, the mark-and-sweep algorithm won't consider `x` reachable if nothing else strongly holds to it
+2. **Keys can only be objects or symbols** (not primitives)
+3. **Not iterable** — prevents observing object liveliness
+
+**Example:**
+
+```javascript
+const wm = new WeakMap();
+const key = {};
+wm.set(key, { data: "value" });
+
+// When 'key' is no longer referenced elsewhere,
+// both the key and value become eligible for garbage collection
+```
+
+**Circular reference handling:**
+
+```javascript
+const wm = new WeakMap();
+const key = {};
+wm.set(key, { key });
+// The value references the key, but this doesn't prevent
+// garbage collection thanks to ephemerons mechanism
+```
+
+**Mental model (conceptual, not actual implementation):**
+
+```javascript
+class MyWeakMap {
+  #marker = Symbol("MyWeakMapData");
+
+  get(key) {
+    return key[this.#marker];
+  }
+
+  set(key, value) {
+    key[this.#marker] = value;
+  }
+
+  has(key) {
+    return this.#marker in key;
+  }
+
+  delete(key) {
+    delete key[this.#marker];
+  }
+}
+```
+
+### WeakRefs and FinalizationRegistry
+
+> **Note:** `WeakRef` and `FinalizationRegistry` offer direct introspection into garbage collection machinery. Avoid using them where possible as runtime semantics are almost completely unguaranteed.
+
+**WeakRef:**
+
+A `WeakRef` is a weak reference to an object that allows the object to be garbage collected while still retaining the ability to read the object's content during its lifetime.
+
+**Use case: Cache system**
+
+```javascript
+function cached(getter) {
+  // A Map from string URLs to WeakRefs of results
+  const cache = new Map();
+
+  return async (key) => {
+    if (cache.has(key)) {
+      const dereferencedValue = cache.get(key).deref();
+      if (dereferencedValue !== undefined) {
+        return dereferencedValue;
+      }
+    }
+    const value = await getter(key);
+    cache.set(key, new WeakRef(value));
+    return value;
+  };
+}
+
+const getImage = cached((url) => fetch(url).then((res) => res.blob()));
+```
+
+**FinalizationRegistry:**
+
+Allows you to register objects and be notified when they are garbage collected.
+
+**Example with cleanup:**
+
+```javascript
+function cached(getter) {
+  const cache = new Map();
+
+  // Callback is called with the key after value is garbage collected
+  const registry = new FinalizationRegistry((key) => {
+    // Important: test that the WeakRef is indeed empty
+    if (!cache.get(key)?.deref()) {
+      cache.delete(key);
+    }
+  });
+
+  return async (key) => {
+    if (cache.has(key)) {
+      return cache.get(key).deref();
+    }
+    const value = await getter(key);
+    cache.set(key, new WeakRef(value));
+    registry.register(value, key);
+    return value;
+  };
+}
+
+const getImage = cached((url) => fetch(url).then((res) => res.blob()));
+```
+
+**Important considerations:**
+
+- Due to performance and security concerns, there's **no guarantee when the callback will be called**, or if it will be called at all
+- Should only be used for cleanup — and non-critical cleanup
+- For more deterministic resource management, use `try...finally`
+- `WeakRef` and `FinalizationRegistry` exist solely for optimization of memory usage in long-running programs
+
+---
+
+## Best Practices
+
+1. **Avoid circular references** when possible, though modern engines handle them
+2. **Nullify references** to large objects when no longer needed to make them explicitly unreachable
+3. **Use WeakMap/WeakSet** for caches and metadata that shouldn't prevent garbage collection
+4. **Avoid global variables** as they're always reachable and never garbage collected
+5. **Be cautious with closures** as they can inadvertently keep references to outer scope variables
+6. **Use event listener cleanup** — remove event listeners when elements are removed from DOM
+7. **Monitor memory usage** in long-running applications using browser DevTools
+8. **Avoid WeakRef/FinalizationRegistry** unless absolutely necessary for optimization
+
+**Example of proper cleanup:**
+
+```javascript
+// Bad: memory leak
+element.addEventListener('click', handler);
+element.remove(); // handler still referenced
+
+// Good: proper cleanup
+element.addEventListener('click', handler);
+element.removeEventListener('click', handler);
+element.remove();
+
+// Better: use AbortController for automatic cleanup
+const controller = new AbortController();
+element.addEventListener('click', handler, { signal: controller.signal });
+controller.abort(); // automatically removes listener
+```
+
+---
+
+## Additional Resources
+
+- [MDN Web Docs - Memory Management](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Memory_management)
+- [V8 Garbage Collection Documentation](https://v8.dev/blog/trash-talk)
+- [Node.js Memory Management](https://nodejs.org/en/docs/guides/diagnostics/memory/)
+
+---
+
+## License
+
+This content is derived from MDN Web Docs and is available under a Creative Commons license.

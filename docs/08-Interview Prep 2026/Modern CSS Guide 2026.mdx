@@ -1,0 +1,2036 @@
+# Modern CSS Guide 2026
+## Production-Ready Reference for Senior Engineers
+
+---
+
+## Table of Contents
+
+1. [Layout Fundamentals](#layout-fundamentals)
+   - [Flexbox](#flexbox)
+   - [Grid](#grid)
+2. [Responsive Design](#responsive-design)
+   - [Fluid Typography with clamp()](#fluid-typography-with-clamp)
+   - [Modern Viewport Units](#modern-viewport-units)
+   - [Aspect Ratio](#aspect-ratio)
+3. [Visual Effects](#visual-effects)
+   - [Backdrop Filter](#backdrop-filter)
+   - [Filter](#filter)
+4. [Interaction & UX](#interaction--ux)
+   - [Scroll Behavior](#scroll-behavior)
+   - [Scroll Snap](#scroll-snap)
+   - [Overscroll Behavior](#overscroll-behavior)
+5. [Performance Optimization](#performance-optimization)
+   - [will-change](#will-change)
+   - [content-visibility](#content-visibility)
+   - [contain](#contain)
+6. [Modern Selectors](#modern-selectors)
+   - [:has()](#has)
+   - [:where() and :is()](#where-and-is)
+7. [Animations](#animations)
+   - [Transform-based Animations](#transform-based-animations)
+   - [prefers-reduced-motion](#prefers-reduced-motion)
+8. [Container Queries](#container-queries)
+   - [When to Use](#when-to-use-container-queries)
+   - [When NOT to Use](#when-not-to-use-container-queries)
+9. [Production Starter Template](#production-starter-template)
+10. [Interview Tips](#interview-tips)
+
+---
+
+## Layout Fundamentals
+
+### Flexbox
+
+**Why it matters:** Still the most practical solution for one-dimensional layouts. Non-negotiable for any modern frontend role.
+
+```css
+.container {
+  display: flex;
+  gap: 16px; /* Modern: replaces margin hacks */
+  align-items: center;
+  justify-content: space-between;
+}
+
+.item {
+  flex: 1 1 auto; /* Shorthand: grow shrink basis */
+  align-self: flex-start; /* Override parent alignment */
+}
+```
+
+**Key modern additions:**
+- `gap` property (now works in flexbox, not just grid)
+- `align-self` for individual item control
+
+**Real-world use cases:**
+- Navigation bars
+- Toolbars
+- Button groups
+- Single-row/column layouts
+
+---
+
+### Grid
+
+**Why it matters:** Mandatory for senior roles. The most powerful layout system for two-dimensional designs.
+
+```css
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+}
+```
+
+**Critical patterns interviewers expect:**
+
+#### auto-fit vs auto-fill
+```css
+/* auto-fit: collapses empty tracks */
+grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+/* auto-fill: preserves empty tracks */
+grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+```
+
+**When to use:**
+- `auto-fit` → Stretch items to fill space
+- `auto-fill` → Maintain grid structure even with few items
+
+#### minmax()
+```css
+/* Item is at least 240px, can grow to fill available space */
+grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+```
+
+#### fr units
+```css
+/* Fractional units: distributes available space */
+grid-template-columns: 1fr 2fr 1fr; /* middle column is 2x wider */
+```
+
+#### Named grid areas
+```css
+.layout {
+  display: grid;
+  grid-template-areas:
+    "header header header"
+    "sidebar content content"
+    "footer footer footer";
+  grid-template-columns: 200px 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
+}
+
+.header { grid-area: header; }
+.sidebar { grid-area: sidebar; }
+.content { grid-area: content; }
+.footer { grid-area: footer; }
+```
+
+**Real-world use cases:**
+- Dashboard layouts
+- Card grids
+- Magazine-style layouts
+- Complex page structures
+
+---
+
+## Responsive Design
+
+### Fluid Typography with clamp()
+
+**Why it matters:** Eliminates media query juggling for font sizes. Essential for modern responsive design.
+
+```css
+h1 {
+  font-size: clamp(1.5rem, 2.5vw, 3rem);
+  /* min: 1.5rem, preferred: 2.5vw, max: 3rem */
+}
+
+.container {
+  padding: clamp(1rem, 5vw, 3rem);
+  /* Works for any numeric value */
+}
+```
+
+**How it works:**
+1. Browser calculates `2.5vw` based on viewport
+2. If result < `1.5rem`, uses `1.5rem`
+3. If result > `3rem`, uses `3rem`
+4. Otherwise, uses the calculated value
+
+**Replaces this old pattern:**
+```css
+/* ❌ Old way */
+h1 { font-size: 1.5rem; }
+
+@media (min-width: 768px) {
+  h1 { font-size: 2rem; }
+}
+
+@media (min-width: 1200px) {
+  h1 { font-size: 3rem; }
+}
+```
+
+---
+
+### Modern Viewport Units
+
+**Why it matters:** `100vh` breaks on mobile browsers due to address bars. Modern units fix this.
+
+```css
+/* ❌ Old way - breaks on mobile */
+.hero {
+  height: 100vh;
+}
+
+/* ✅ Modern way */
+.hero {
+  height: 100dvh; /* Dynamic viewport height */
+}
+```
+
+**The three modern units:**
+
+| Unit | Name | Behavior |
+|------|------|----------|
+| `svh` | Small Viewport Height | Smallest possible viewport (with address bar visible) |
+| `lvh` | Large Viewport Height | Largest possible viewport (address bar hidden) |
+| `dvh` | Dynamic Viewport Height | Adjusts as address bar shows/hides ⭐ |
+
+**Which to use:**
+- **Most cases:** Use `dvh` (smoothly adapts to mobile browsers)
+- **Fixed content:** Use `svh` (ensures content always visible)
+- **Fullscreen effects:** Use `lvh` (maximizes space when possible)
+
+---
+
+### Aspect Ratio
+
+**Why it matters:** No more padding-bottom hacks for maintaining aspect ratios.
+
+```css
+/* ❌ Old way */
+.video-wrapper {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 ratio hack */
+}
+
+/* ✅ Modern way */
+.video {
+  aspect-ratio: 16 / 9;
+}
+
+.square {
+  aspect-ratio: 1;
+}
+
+.portrait {
+  aspect-ratio: 3 / 4;
+}
+```
+
+**Real-world use cases:**
+- Video embeds
+- Image containers
+- Card thumbnails
+- Placeholder elements
+
+---
+
+## Visual Effects
+
+### Backdrop Filter
+
+**Why it matters:** Creates glassmorphism effects without complex layering. Used in modern UIs everywhere.
+
+```css
+.glass-modal {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.glass-navbar {
+  backdrop-filter: blur(8px) saturate(180%);
+  background: rgba(255, 255, 255, 0.7);
+}
+```
+
+**Available filters:**
+- `blur()` → Background blur
+- `brightness()` → Lighten/darken
+- `contrast()` → Adjust contrast
+- `saturate()` → Color intensity
+- `hue-rotate()` → Color shift
+
+**Real-world use cases:**
+- Modals and overlays
+- Navigation bars
+- Floating panels
+- macOS/iOS-style interfaces
+
+**Performance note:** Use sparingly on large areas; can be GPU-intensive.
+
+---
+
+### Filter
+
+**Why it matters:** Apply visual effects without Photoshop or image manipulation.
+
+```css
+img {
+  filter: grayscale(100%);
+}
+
+img:hover {
+  filter: grayscale(0%);
+  transition: filter 0.3s ease;
+}
+
+.sepia {
+  filter: sepia(80%);
+}
+
+.dark-mode img {
+  filter: brightness(0.8) contrast(1.2);
+}
+```
+
+**Common filters:**
+- `grayscale(0-100%)`
+- `blur(px)`
+- `brightness(0-200%)`
+- `contrast(0-200%)`
+- `drop-shadow()`
+- `hue-rotate(deg)`
+- `invert(0-100%)`
+- `opacity(0-100%)`
+- `saturate(0-200%)`
+- `sepia(0-100%)`
+
+---
+
+## Interaction & UX
+
+### Scroll Behavior
+
+**Why it matters:** Smooth scrolling without JavaScript.
+
+```css
+html {
+  scroll-behavior: smooth;
+}
+```
+
+**Works with:**
+- Anchor links (`<a href="#section">`)
+- `scrollIntoView()` JavaScript calls
+- Browser back/forward navigation
+
+**Note:** Respects `prefers-reduced-motion` automatically in modern browsers.
+
+---
+
+### Scroll Snap
+
+**Why it matters:** Create carousel-like experiences with pure CSS.
+
+```css
+.carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: 16px;
+}
+
+.slide {
+  scroll-snap-align: center;
+  flex-shrink: 0;
+  width: 80vw;
+}
+```
+
+**Scroll snap types:**
+- `x mandatory` → Always snaps horizontally
+- `y mandatory` → Always snaps vertically
+- `x proximity` → Snaps if close enough
+- `both mandatory` → Snaps in both directions
+
+**Alignment options:**
+- `start` → Snap to start of container
+- `center` → Snap to center
+- `end` → Snap to end
+
+**Real-world use cases:**
+- Image carousels
+- Onboarding flows
+- Card sliders
+- Fullscreen sections
+
+---
+
+### Overscroll Behavior
+
+**Why it matters:** Prevents scroll chaining on mobile. Essential for modals and nested scroll areas.
+
+```css
+body {
+  overscroll-behavior: contain;
+  /* Prevents pull-to-refresh and navigation gestures */
+}
+
+.modal {
+  overscroll-behavior: contain;
+  /* Stops scroll from propagating to page behind */
+}
+```
+
+**Values:**
+- `auto` → Default browser behavior
+- `contain` → Prevents scroll chaining
+- `none` → Prevents scroll chaining AND effects (pull-to-refresh)
+
+---
+
+## Performance Optimization
+
+### will-change
+
+**Why it matters:** Hints to browser what will animate, optimizing rendering.
+
+```css
+.card {
+  will-change: transform;
+}
+
+.animated-box {
+  will-change: transform, opacity;
+}
+```
+
+**⚠️ CRITICAL WARNINGS:**
+- Don't use everywhere (counterproductive)
+- Apply only before animation starts
+- Remove after animation completes (if possible)
+- Browser already optimizes common properties
+
+**Interview trap question:** "Should you add `will-change` to every animated element?"
+
+**Correct answer:** "No. Overuse consumes memory and degrades performance. Use sparingly and only for complex animations with performance issues."
+
+**When to actually use:**
+- Complex animations
+- Frequent transform/opacity changes
+- 60fps requirements
+- After profiling shows rendering bottleneck
+
+---
+
+### content-visibility
+
+**Why it matters:** Massive performance boost for long pages. Can improve initial render by 50%+.
+
+```css
+.section {
+  content-visibility: auto;
+  contain-intrinsic-size: 600px; /* Estimated height for layout */
+}
+```
+
+**How it works:**
+- Browser skips rendering offscreen content
+- Maintains layout space with `contain-intrinsic-size`
+- Automatically renders when scrolled into view
+
+**Real-world impact:**
+- Long blog posts: ~40% faster render
+- Infinite scroll: Significantly reduced memory
+- Dashboard cards: Improved time-to-interactive
+
+**Best practices:**
+- Use on repeating sections
+- Provide accurate `contain-intrinsic-size`
+- Test with actual content
+
+---
+
+### contain
+
+**Why it matters:** Isolates component rendering, preventing layout thrashing.
+
+```css
+.component {
+  contain: layout paint;
+}
+
+.strict-isolation {
+  contain: strict; /* layout + paint + size */
+}
+```
+
+**Containment types:**
+- `layout` → Isolates layout calculations
+- `paint` → Content won't paint outside bounds
+- `size` → Size independent of children
+- `style` → Scoped counter/quote styles
+
+**Real-world use cases:**
+- Widget components
+- Third-party embeds
+- Dynamic content sections
+- Repeated list items
+
+---
+
+## Modern Selectors
+
+### :has()
+
+**Why it matters:** Parent selectors without JavaScript. Game-changing for conditional styling.
+
+```css
+/* Card with image gets different styling */
+.card:has(img) {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+
+/* Form with error */
+.form:has(.error) {
+  border-color: red;
+}
+
+/* Article without images */
+.article:not(:has(img)) {
+  max-width: 65ch;
+}
+```
+
+**Advanced patterns:**
+
+```css
+/* Parent based on sibling state */
+.nav:has(+ .hero) {
+  position: absolute;
+}
+
+/* Adjacent elements */
+h2:has(+ p) {
+  margin-bottom: 0.5rem;
+}
+
+/* Multiple conditions */
+.card:has(.featured):has(.new) {
+  border: 2px solid gold;
+}
+```
+
+**Replaces JavaScript patterns:**
+- Parent class toggling
+- Conditional rendering
+- State-based styling
+
+---
+
+### :where() and :is()
+
+**Why it matters:** Simplified selector grouping with controllable specificity.
+
+```css
+/* :is() - normal specificity */
+:is(h1, h2, h3) {
+  margin-top: 0;
+  line-height: 1.2;
+}
+
+/* :where() - zero specificity */
+:where(h1, h2, h3) {
+  margin: 0;
+}
+```
+
+**Key difference:**
+
+```css
+/* :is() takes highest specificity */
+:is(.class, #id) { } /* specificity: 1-0-0 (id) */
+
+/* :where() always has zero specificity */
+:where(.class, #id) { } /* specificity: 0-0-0 */
+```
+
+**When to use :where():**
+- Utility/reset styles (easy to override)
+- Default styles
+- Framework base styles
+
+**When to use :is():**
+- Normal component styles
+- When specificity matters
+- Replacing complex selector lists
+
+---
+
+## Animations
+
+### Transform-based Animations
+
+**Why it matters:** Only `transform` and `opacity` trigger GPU acceleration for smooth 60fps animations.
+
+```css
+/* ✅ Performant */
+.card {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-8px) scale(1.02);
+}
+
+/* ❌ Causes layout thrashing */
+.card:hover {
+  top: -8px; /* Triggers layout */
+  width: 102%; /* Triggers layout */
+}
+```
+
+**Recommended properties to animate:**
+- `transform` (translate, scale, rotate)
+- `opacity`
+
+**Properties to avoid animating:**
+- `width`, `height` → Use `scale()` instead
+- `top`, `left` → Use `translate()` instead
+- `margin`, `padding` → Use `translate()` or layout shifts
+
+**Common animation pattern:**
+
+```css
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.element {
+  animation: slideIn 0.3s ease-out;
+}
+```
+
+---
+
+### prefers-reduced-motion
+
+**Why it matters:** Accessibility requirement. Some users experience motion sickness from animations.
+
+```css
+/* Default: smooth animations */
+.card {
+  transition: transform 0.3s ease;
+}
+
+/* Respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+**What to disable:**
+- Automatic animations
+- Parallax effects
+- Infinite animations
+- Smooth scrolling
+- Complex transitions
+
+**What to keep:**
+- Hover state changes (instant)
+- User-triggered interactions
+- Loading states (simplified)
+
+---
+
+## Container Queries
+
+### Core Concept
+
+**The mental model:** Media queries are for page layout. Container queries are for component layout.
+
+```css
+/* Component defines itself as a container */
+.card {
+  container-type: inline-size;
+  /* or: container-name: card; */
+}
+
+/* Component adapts based on ITS OWN width, not viewport */
+@container (min-width: 400px) {
+  .card {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+  }
+}
+```
+
+**Key difference from media queries:**
+
+```css
+/* ❌ Media query: breaks in sidebar/modal */
+@media (min-width: 768px) {
+  .card { flex-direction: row; }
+}
+
+/* ✅ Container query: works anywhere */
+@container (min-width: 400px) {
+  .card { flex-direction: row; }
+}
+```
+
+---
+
+### When to Use Container Queries
+
+#### 1. Reusable Components (MOST IMPORTANT)
+
+```css
+.product-card {
+  container-type: inline-size;
+}
+
+@container (min-width: 500px) {
+  .product-card {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+```
+
+**Why:** Card works in full-width page, sidebar, modal, or grid without changes.
+
+#### 2. Design Systems / Component Libraries
+
+**Scenario:** You're building a component that others will use in unknown layouts.
+
+```css
+.widget {
+  container-type: inline-size;
+}
+
+/* Widget adapts to wherever it's placed */
+@container (min-width: 300px) {
+  .widget__content { display: flex; }
+}
+```
+
+#### 3. Nested Responsive Layouts
+
+**Scenario:** Component inside variable-width parent.
+
+```html
+<div class="dashboard"> <!-- 1400px wide -->
+  <aside class="sidebar"> <!-- 300px wide -->
+    <div class="card"> <!-- Needs to be narrow layout -->
+    </div>
+  </aside>
+  <main> <!-- 1100px wide -->
+    <div class="card"> <!-- Needs to be wide layout -->
+    </div>
+  </main>
+</div>
+```
+
+**Solution:** Container queries let cards adapt independently.
+
+#### 4. Micro-frontends / Embeddable Widgets
+
+**Why:** You don't know the host page viewport, but you know your container width.
+
+```css
+.embedded-widget {
+  container-type: inline-size;
+}
+
+/* Reliable regardless of iframe or host page */
+@container (min-width: 600px) {
+  .embedded-widget { /* wide layout */ }
+}
+```
+
+#### 5. Grid-based Dashboards
+
+```css
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.dashboard-card {
+  container-type: inline-size;
+}
+
+/* Cards adapt as grid columns resize */
+@container (min-width: 450px) {
+  .dashboard-card__content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+```
+
+---
+
+### When NOT to Use Container Queries
+
+#### ❌ 1. Page-level Layout
+
+```css
+/* DON'T: Use media queries for this */
+@media (min-width: 768px) {
+  .sidebar { display: block; }
+  .main { grid-column: 2; }
+}
+```
+
+#### ❌ 2. Device-specific Behavior
+
+```css
+/* DON'T: Use appropriate media queries */
+@media (pointer: coarse) { /* Touch devices */
+  button { min-height: 44px; }
+}
+
+@media (hover: hover) { /* Devices with hover */
+  .card:hover { transform: scale(1.05); }
+}
+```
+
+#### ❌ 3. Single-use Components
+
+**If component:**
+- Exists only once in app
+- Tightly coupled to specific layout
+- Never reused
+
+**Then:** Media queries are simpler.
+
+---
+
+### Container Query Production Pattern
+
+```css
+/* 1. Define container */
+.card {
+  container-type: inline-size;
+  container-name: card; /* Optional: for specific targeting */
+}
+
+/* 2. Default (small) layout */
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 3. Adapted layouts */
+@container card (min-width: 400px) {
+  .card {
+    flex-direction: row;
+  }
+}
+
+@container card (min-width: 600px) {
+  .card {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+  }
+}
+```
+
+---
+
+### Decision Checklist
+
+| Question | If YES → Use |
+|----------|--------------|
+| Is this a reusable component? | Container queries |
+| Will it appear in unknown layouts? | Container queries |
+| Is this page-level structure? | Media queries |
+| Is this device-specific behavior? | Media queries |
+| Does component need self-awareness? | Container queries |
+
+---
+
+## Production Starter Template
+
+### Complete CSS Reset + Defaults
+
+```css
+/* ================================
+   Modern CSS Reset
+================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  color-scheme: light dark;
+  hanging-punctuation: first last;
+}
+
+body {
+  min-height: 100dvh;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+```
+
+---
+
+### Design Tokens (CSS Variables)
+
+```css
+/* ================================
+   Design Tokens
+================================ */
+
+:root {
+  /* Colors */
+  --color-bg: #ffffff;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+  --color-primary: #2563eb;
+  --color-danger: #dc2626;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-8: 48px;
+  --space-10: 64px;
+
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Ubuntu, Cantarell, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #020617;
+    --color-text: #e5e7eb;
+    --color-muted: #94a3b8;
+  }
+}
+```
+
+---
+
+### Fluid Typography
+
+```css
+/* ================================
+   Typography
+================================ */
+
+body {
+  font-family: var(--font-sans);
+  font-size: clamp(14px, 1vw + 0.5rem, 16px);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+p {
+  color: var(--color-muted);
+  max-width: 70ch;
+  line-height: 1.7;
+}
+```
+
+---
+
+### Layout Utilities
+
+```css
+/* ================================
+   Layout Utilities
+================================ */
+
+.container {
+  width: min(1200px, 100% - 2rem);
+  margin-inline: auto;
+}
+
+.flex {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.center {
+  display: grid;
+  place-items: center;
+}
+
+/* Stack: vertical spacing between elements */
+.stack > * + * {
+  margin-top: var(--space-4);
+}
+```
+
+---
+
+### Component Styles
+
+```css
+/* ================================
+   Components
+================================ */
+
+/* Card */
+.card {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: white;
+  font-weight: 500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Input */
+.input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+```
+
+---
+
+### Accessibility
+
+```css
+/* ================================
+   Accessibility
+================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+```
+
+---
+
+### Performance
+
+```css
+/* ================================
+   Performance Optimization
+================================ */
+
+/* Lazy-load sections */
+.lazy-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 600px;
+}
+
+/* Isolate components */
+.isolated {
+  contain: layout paint;
+}
+```
+
+---
+
+### Interaction Polish
+
+```css
+/* ================================
+   Interaction & Scroll
+================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.scroll-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.scroll-x > * {
+  scroll-snap-align: center;
+  flex-shrink: 0;
+}
+
+body {
+  overscroll-behavior: contain;
+}
+```
+
+---
+
+### File Structure
+
+```
+styles/
+├── reset.css              # CSS reset + defaults
+├── tokens.css             # Design system variables
+├── typography.css         # Font styles + scale
+├── layout.css             # Layout utilities
+├── components/
+│   ├── button.css
+│   ├── card.css
+│   ├── input.css
+│   └── modal.css
+├── utilities.css          # Helper classes
+└── main.css               # Imports all above
+```
+
+**For large applications, use `@layer`:**
+
+```css
+@layer reset, tokens, layout, components, utilities;
+
+@import "reset.css" layer(reset);
+@import "tokens.css" layer(tokens);
+/* ... */
+```
+
+---
+
+## Interview Tips
+
+### What Senior Interviewers Want to Hear
+
+**Layout:**
+> "I use Grid for two-dimensional layouts and Flexbox for one-dimensional. I rely on `gap` instead of margins, and use `minmax()` with `auto-fit` for responsive grids."
+
+**Responsive Design:**
+> "I use `clamp()` for fluid typography to eliminate media query breakpoints, `dvh` instead of `vh` for mobile-safe viewport heights, and container queries for component-level responsiveness."
+
+**Performance:**
+> "I use `content-visibility: auto` for long pages, `contain` for component isolation, and avoid animating layout-triggering properties—only `transform` and `opacity`."
+
+**Modern Selectors:**
+> "`:has()` lets me style parents based on children without JavaScript. I use `:where()` for zero-specificity utilities and `:is()` for grouped selectors."
+
+**Container Queries:**
+> "Media queries handle page layout; container queries handle component layout. I use container queries for reusable components that appear in multiple contexts."
+
+---
+
+### Common Interview Traps
+
+**Q: "Should you use `will-change` on all animated elements?"**
+✅ **Correct:** "No. Overuse degrades performance. Only use after profiling identifies rendering bottlenecks."
+
+**Q: "Can container queries replace media queries?"**
+✅ **Correct:** "No, they complement each other. Media queries for viewport-level concerns, container queries for component-level."
+
+**Q: "Why not animate `width` and `height`?"**
+✅ **Correct:** "They trigger layout recalculation on every frame. Use `transform: scale()` instead for GPU-accelerated animations."
+
+**Q: "What's the difference between `auto-fit` and `auto-fill`?"**
+✅ **Correct:** "`auto-fit` collapses empty tracks and stretches items to fill space. `auto-fill` preserves empty tracks even with few items."
+
+**Q: "When should you use `dvh` vs `vh`?"**
+✅ **Correct:** "Always use `dvh` on mobile to account for dynamic browser UI. `vh` breaks when address bars appear/disappear."
+
+---
+
+### Red Flags (Things NOT to Say)
+
+❌ "I use `!important` to fix specificity issues"
+✅ "I structure CSS with proper specificity hierarchy and use `:where()` for utilities"
+
+❌ "I animate `left` and `top` for movement"
+✅ "I use `transform: translate()` for performant animations"
+
+❌ "Container queries replace media queries"
+✅ "They complement each other—media queries for viewport, container queries for components"
+
+❌ "I add `will-change` to everything that moves"
+✅ "I use `will-change` sparingly after profiling identifies bottlenecks"
+
+---
+
+## Advanced CSS Features (Bonus)
+
+### @layer (CSS Cascade Layers)
+
+**Why it matters:** Explicit control over CSS cascade without specificity wars.
+
+```css
+/* Define layer order upfront */
+@layer reset, base, components, utilities;
+
+/* Add styles to specific layers */
+@layer reset {
+  * { margin: 0; padding: 0; }
+}
+
+@layer utilities {
+  .mt-4 { margin-top: 1rem; }
+}
+```
+
+**How cascade works with layers:**
+1. Unlayered styles (highest priority)
+2. Layers in declared order
+3. Specificity only matters within same layer
+
+**Real-world benefit:**
+```css
+/* Utility always wins, even with low specificity */
+@layer components {
+  .button.primary.large { padding: 20px; }
+}
+
+@layer utilities {
+  .p-0 { padding: 0; } /* ✅ This wins */
+}
+```
+
+---
+
+### Subgrid
+
+**Why it matters:** Grid items can inherit parent grid tracks.
+
+```css
+.parent {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+}
+
+.child {
+  display: grid;
+  grid-template-columns: subgrid; /* Inherits parent columns */
+  grid-column: span 3;
+}
+```
+
+**Without subgrid (problems):**
+```css
+/* ❌ Child grid doesn't align with parent */
+.child {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr; /* Must manually match */
+}
+```
+
+**Real-world use cases:**
+- Card grids with aligned content
+- Form layouts
+- Magazine-style layouts
+- Dashboard widgets
+
+**Example: Card alignment**
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.card {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+}
+
+/* All card titles, images, and buttons align across columns */
+.card__image { grid-row: 1; }
+.card__title { grid-row: 2; }
+.card__button { grid-row: 3; }
+```
+
+---
+
+### accent-color
+
+**Why it matters:** One-line form styling that respects system colors.
+
+```css
+:root {
+  accent-color: #2563eb;
+}
+
+/* Now all native form controls use this color */
+input[type="checkbox"] { /* automatically styled */ }
+input[type="radio"] { /* automatically styled */ }
+input[type="range"] { /* automatically styled */ }
+progress { /* automatically styled */ }
+```
+
+**Before accent-color:**
+```css
+/* ❌ Required custom HTML + CSS for each control */
+input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ccc;
+  /* ...50 more lines */
+}
+```
+
+**After accent-color:**
+```css
+/* ✅ One line */
+accent-color: #2563eb;
+```
+
+---
+
+### color-mix()
+
+**Why it matters:** Mix colors in CSS without preprocessors.
+
+```css
+:root {
+  --color-primary: #2563eb;
+}
+
+.button {
+  background: var(--color-primary);
+}
+
+.button:hover {
+  /* Mix primary with white for lighter shade */
+  background: color-mix(in srgb, var(--color-primary) 80%, white);
+}
+
+.button:active {
+  /* Mix with black for darker shade */
+  background: color-mix(in srgb, var(--color-primary) 80%, black);
+}
+```
+
+**Advanced patterns:**
+```css
+/* Semi-transparent overlays */
+.overlay {
+  background: color-mix(in srgb, black 50%, transparent);
+}
+
+/* Theme variations */
+.success {
+  --base: #10b981;
+  color: color-mix(in srgb, var(--base) 90%, black);
+  background: color-mix(in srgb, var(--base) 10%, white);
+}
+```
+
+**Color spaces:**
+- `srgb` → Standard RGB
+- `hsl` → Hue, Saturation, Lightness
+- `oklch` → Perceptually uniform (recommended for design systems)
+
+---
+
+### :focus-visible
+
+**Why it matters:** Show focus only for keyboard navigation, not mouse clicks.
+
+```css
+/* ❌ Old way: focus ring on mouse click too */
+button:focus {
+  outline: 2px solid blue;
+}
+
+/* ✅ Modern way: focus ring only for keyboard */
+button:focus-visible {
+  outline: 2px solid blue;
+}
+```
+
+**Real-world pattern:**
+```css
+/* Remove default focus (only for mouse) */
+button:focus {
+  outline: none;
+}
+
+/* Add custom focus (only for keyboard) */
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+```
+
+---
+
+### text-wrap
+
+**Why it matters:** Better text wrapping control.
+
+```css
+/* Prevent orphans (single words on last line) */
+h1 {
+  text-wrap: balance;
+}
+
+/* Prevent awkward line breaks */
+p {
+  text-wrap: pretty;
+}
+```
+
+**Comparison:**
+```css
+/* Default wrapping */
+text-wrap: wrap;
+
+/* Balance: more even line lengths */
+text-wrap: balance; /* Best for headlines */
+
+/* Pretty: avoids orphans */
+text-wrap: pretty; /* Best for paragraphs */
+
+/* Stable: doesn't reflow on edits */
+text-wrap: stable; /* Best for editable text */
+```
+
+---
+
+### scrollbar-gutter
+
+**Why it matters:** Prevents layout shift when scrollbar appears.
+
+```css
+html {
+  scrollbar-gutter: stable;
+}
+```
+
+**Problem it solves:**
+```
+Page with no scrollbar → 100% width
+User adds content → scrollbar appears → width decreases → layout shifts
+```
+
+**Solution:**
+```css
+/* Always reserve space for scrollbar */
+scrollbar-gutter: stable;
+/* Content width stays consistent */
+```
+
+---
+
+### overscroll-behavior-block / inline
+
+**Why it matters:** Fine-grained control over scroll chaining in specific directions.
+
+```css
+/* Prevent vertical scroll chaining */
+.modal {
+  overscroll-behavior-block: contain;
+  /* User can still horizontal scroll to parent */
+}
+
+/* Prevent horizontal scroll chaining */
+.carousel {
+  overscroll-behavior-inline: contain;
+}
+```
+
+---
+
+### inset
+
+**Why it matters:** Shorthand for `top`, `right`, `bottom`, `left`.
+
+```css
+/* ❌ Old way */
+.overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* ✅ Modern way */
+.overlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* With different values */
+.element {
+  inset: 10px 20px 30px 40px; /* top right bottom left */
+  inset: 10px 20px; /* vertical horizontal */
+}
+
+/* Logical properties */
+.element {
+  inset-block: 0; /* top + bottom */
+  inset-inline: 20px; /* left + right */
+}
+```
+
+---
+
+### object-fit & object-position
+
+**Why it matters:** Control how images fill containers without distortion.
+
+```css
+.avatar {
+  width: 100px;
+  height: 100px;
+  object-fit: cover; /* Crop to fill */
+  object-position: center top; /* Focus on top */
+}
+
+.logo {
+  width: 200px;
+  height: 100px;
+  object-fit: contain; /* Scale to fit, preserve ratio */
+}
+```
+
+**object-fit values:**
+- `fill` → Stretch to fill (default, distorts)
+- `contain` → Scale to fit, preserve ratio
+- `cover` → Scale to fill, crop excess
+- `none` → Don't resize
+- `scale-down` → Use `none` or `contain`, whichever is smaller
+
+---
+
+### scroll-margin & scroll-padding
+
+**Why it matters:** Offset scroll position for fixed headers or padding.
+
+```css
+/* Fixed header is 80px tall */
+header {
+  position: fixed;
+  height: 80px;
+}
+
+/* Anchor links should scroll 80px before target */
+section {
+  scroll-margin-top: 80px;
+}
+
+/* OR add padding to scroll container */
+main {
+  scroll-padding-top: 80px;
+}
+```
+
+**Use cases:**
+- Fixed navigation headers
+- Sticky table headers
+- Scroll snap with spacing
+- Anchor link offsets
+
+---
+
+### Custom Properties (Advanced Patterns)
+
+**Why it matters:** Dynamic, context-aware styling without JavaScript.
+
+**Pattern 1: Scoped Variables**
+```css
+.card {
+  --card-bg: white;
+  --card-padding: 1rem;
+  background: var(--card-bg);
+  padding: var(--card-padding);
+}
+
+.card.large {
+  --card-padding: 2rem; /* Override in context */
+}
+```
+
+**Pattern 2: Computed Values**
+```css
+:root {
+  --spacing-unit: 8px;
+  --spacing-2: calc(var(--spacing-unit) * 2); /* 16px */
+  --spacing-3: calc(var(--spacing-unit) * 3); /* 24px */
+}
+```
+
+**Pattern 3: Property Fallbacks**
+```css
+.element {
+  color: var(--theme-color, #2563eb); /* Fallback if not defined */
+}
+```
+
+**Pattern 4: Type-safe Custom Properties with @property**
+```css
+@property --rotation {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.spinner {
+  --rotation: 45deg;
+  transform: rotate(var(--rotation));
+}
+```
+
+---
+
+## Modern Defaults Checklist
+
+Every project should start with these:
+
+```css
+/* ================================
+   Modern Defaults Checklist
+================================ */
+
+/* ✅ Box model fix */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ✅ Remove default margins */
+* {
+  margin: 0;
+}
+
+/* ✅ Mobile-safe viewport height */
+body {
+  min-height: 100dvh;
+}
+
+/* ✅ Responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ✅ Inherit fonts for form controls */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* ✅ Better line height */
+body {
+  line-height: 1.6;
+}
+
+/* ✅ Smooth scrolling (respects user preference) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ✅ Focus visible only for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ✅ Prevent scroll chaining */
+body {
+  overscroll-behavior: contain;
+}
+
+/* ✅ Accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ✅ Text rendering */
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+```
+
+---
+
+## CSS Architecture Patterns
+
+### BEM (Block Element Modifier)
+
+```css
+/* Block */
+.card { }
+
+/* Element */
+.card__title { }
+.card__image { }
+
+/* Modifier */
+.card--featured { }
+.card__title--large { }
+```
+
+---
+
+### Utility-First (Tailwind-style)
+
+```css
+/* Spacing utilities */
+.mt-4 { margin-top: 1rem; }
+.p-6 { padding: 1.5rem; }
+
+/* Layout utilities */
+.flex { display: flex; }
+.grid { display: grid; }
+
+/* Responsive utilities */
+@media (min-width: 768px) {
+  .md\:flex-row { flex-direction: row; }
+}
+```
+
+---
+
+### CSS Modules Pattern
+
+```css
+/* Component styles are scoped */
+.container {
+  /* Only affects this component */
+}
+
+/* Global styles */
+:global(.utility) {
+  /* Available everywhere */
+}
+```
+
+---
+
+## Performance Checklist
+
+### ✅ DO
+
+- Animate only `transform` and `opacity`
+- Use `content-visibility: auto` for long lists
+- Use `contain` for independent components
+- Minimize layout thrashing (batch DOM reads/writes)
+- Use `will-change` sparingly (remove after animation)
+- Load critical CSS inline, defer non-critical
+- Use CSS Grid/Flexbox instead of floats
+- Compress/minify CSS in production
+
+### ❌ DON'T
+
+- Animate `width`, `height`, `top`, `left`, `margin`
+- Overuse `will-change` (memory leak)
+- Use `*` selector with complex rules
+- Use deeply nested selectors (`.a .b .c .d .e`)
+- Import large unused CSS libraries
+- Use `@import` in production (blocks rendering)
+- Trigger layout thrashing with alternating read/write
+
+---
+
+## Browser Support Notes
+
+### Universally Supported (2026)
+
+✅ Flexbox
+✅ Grid
+✅ CSS Variables
+✅ `clamp()`
+✅ `gap`
+✅ `aspect-ratio`
+✅ `:is()`, `:where()`
+✅ `dvh`, `svh`, `lvh`
+
+### Very Strong Support (>95%)
+
+✅ `:has()` (Safari 15.4+, Chrome 105+, Firefox 121+)
+✅ Container queries (All modern browsers 2023+)
+✅ `accent-color`
+✅ `color-mix()`
+✅ `text-wrap: balance`
+
+### Progressive Enhancement
+
+⚠️ `@property` (Chromium only, fallback needed)
+⚠️ `subgrid` (Firefox full support, Safari/Chrome improving)
+⚠️ Some color spaces in `color-mix()`
+
+**Fallback strategy:**
+```css
+/* Fallback */
+background: #2563eb;
+
+/* Enhanced */
+background: color-mix(in oklch, var(--primary) 80%, white);
+```
+
+---
+
+## Quick Reference Tables
+
+### Layout Decision Matrix
+
+| Scenario | Use |
+|----------|-----|
+| One-dimensional (row or column) | Flexbox |
+| Two-dimensional (rows AND columns) | Grid |
+| Items wrap at viewport breakpoints | Grid + `auto-fit` |
+| Items adapt to own width | Container queries + Flexbox |
+| Complex magazine layout | Grid + `grid-template-areas` |
+| Centered content | Grid + `place-items: center` |
+
+---
+
+### Responsive Property Choice
+
+| Goal | Use |
+|------|-----|
+| Fluid font size | `clamp()` |
+| Mobile-safe full height | `100dvh` |
+| Maintain aspect ratio | `aspect-ratio` |
+| Component-aware layout | Container queries |
+| Page-level layout | Media queries |
+| Device capability detection | `@media (hover)`, `@media (pointer)` |
+
+---
+
+### Animation Performance
+
+| Property | Performance | Alternative |
+|----------|-------------|-------------|
+| `transform` | ✅ Excellent (GPU) | - |
+| `opacity` | ✅ Excellent (GPU) | - |
+| `width`, `height` | ❌ Poor (layout) | `transform: scale()` |
+| `top`, `left` | ❌ Poor (layout) | `transform: translate()` |
+| `margin`, `padding` | ❌ Poor (layout) | `transform` |
+| `background-color` | ⚠️ OK (paint) | `opacity` if possible |
+
+---
+
+## Final Interview Script
+
+**When asked: "Tell me about your CSS approach"**
+
+> "I structure CSS with modern layout systems—Grid for two-dimensional layouts and Flexbox for one-dimensional. I use `clamp()` for fluid typography, eliminating many breakpoints, and `dvh` units for mobile-safe viewport heights.
+>
+> For reusable components, I use container queries so they adapt based on their own width, not the viewport. This is crucial for design systems.
+>
+> I prioritize performance by using `content-visibility: auto` for long pages, `contain` for component isolation, and animating only `transform` and `opacity` for 60fps animations.
+>
+> Modern selectors like `:has()` eliminate parent-state JavaScript hacks, and I use `:where()` for zero-specificity utilities in design systems.
+>
+> I always implement `prefers-reduced-motion` for accessibility, and structure larger projects with `@layer` to manage cascade complexity."
+
+---
+
+## What to Study Next
+
+**For Mid-Level → Senior:**
+- Container queries (deep understanding)
+- `@layer` cascade management
+- Performance profiling (Chrome DevTools)
+- CSS-in-JS tradeoffs
+- Design system architecture
+
+**For Senior → Staff:**
+- CSS Houdini APIs
+- Advanced Grid patterns (subgrid)
+- Color science (`oklch`, perceptual uniformity)
+- CSS build optimization
+- Framework-specific CSS patterns (React, Vue, Svelte)
+
+---
+
+## Resources
+
+**Official Documentation:**
+- MDN Web Docs: https://developer.mozilla.org
+- CSS Spec: https://www.w3.org/Style/CSS/
+
+**Learning:**
+- CSS Tricks: https://css-tricks.com
+- Smashing Magazine: https://www.smashingmagazine.com
+
+**Tools:**
+- Can I Use: https://caniuse.com
+- CSS Stats: https://cssstats.com
+
+**Communities:**
+- Frontend Masters
+- CSS-Tricks Forums
+- Stack Overflow (CSS tag)
+
+---
+
+## Summary: The 80/20 Rule
+
+**If you only remember 20% of this guide, remember:**
+
+1. **Grid** for 2D, **Flexbox** for 1D
+2. **`clamp()`** for fluid typography
+3. **`dvh`** instead of `vh`
+4. **Container queries** for components, **media queries** for pages
+5. **`:has()`** for parent selectors
+6. Animate only **`transform`** and **`opacity`**
+7. **`content-visibility: auto`** for performance
+8. Always implement **`prefers-reduced-motion`**
+
+These eight concepts will get you through 80% of modern CSS challenges and interviews.
+
+---
+
+**End of Guide**

@@ -1,0 +1,2974 @@
+# Learn Web Performance
+
+> A comprehensive guide to web performance optimization based on web.dev's Learn Performance course
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Why Speed Matters](#why-speed-matters)
+3. [General HTML Performance Considerations](#general-html-performance-considerations)
+4. [Understanding the Critical Rendering Path](#understanding-the-critical-rendering-path)
+5. [Optimize Resource Loading](#optimize-resource-loading)
+6. [Resource Hints](#resource-hints)
+7. [Image Performance](#image-performance)
+8. [Video Performance](#video-performance)
+9. [Web Font Optimization](#web-font-optimization)
+10. [Code-Split JavaScript](#code-split-javascript)
+11. [Lazy Loading](#lazy-loading)
+12. [Prefetching and Precaching](#prefetching-and-precaching)
+13. [Web Workers](#web-workers)
+14. [Performance Checklist](#performance-checklist)
+
+---
+
+## Introduction
+
+Web performance is a crucial aspect of web development that focuses on two primary areas:
+
+1. **Loading Speed** - How quickly pages appear in the browser
+2. **Responsiveness** - How quickly pages react to user input
+
+Optimizing for performance creates better user experiences, which directly translates to achieving your website's goals—whether that's increased sales, higher engagement, or improved user satisfaction.
+
+### What This Guide Covers
+
+This guide focuses on web performance fundamentals that are essential for developers at all levels. Each section explores key concepts with practical, actionable techniques you can implement immediately. Topics covered include:
+
+- Core performance concepts and metrics
+- HTML, CSS, and JavaScript optimization
+- Media optimization (images, videos, fonts)
+- Advanced loading strategies
+- Multi-threading with Web Workers
+
+---
+
+## Why Speed Matters
+
+### The User Experience Impact
+
+Performance is not just a technical metric—it's a fundamental component of user experience. Fast websites create positive experiences that keep users engaged, satisfied, and returning.
+
+**Real-World Performance Statistics:**
+
+- Amazon found that every 100ms of latency cost them 1% in sales
+- Google discovered that a 0.5-second delay in search results led to a 20% drop in traffic
+- Pinterest reduced perceived wait times by 40% and saw a 15% increase in SEO traffic and sign-ups
+
+### Core Web Vitals
+
+Google's Core Web Vitals represent the most important performance metrics that affect user experience:
+
+#### 1. Largest Contentful Paint (LCP)
+**Measures:** Loading performance
+**Good:** ≤ 2.5 seconds
+**What it tracks:** When the largest content element becomes visible
+
+```html
+<!-- Optimize LCP by preloading hero images -->
+<link rel="preload" as="image" href="hero-image.jpg">
+```
+
+#### 2. First Input Delay (FID) / Interaction to Next Paint (INP)
+**Measures:** Interactivity and responsiveness
+**Good:** ≤ 100ms (FID) / ≤ 200ms (INP)
+**What it tracks:** Time from user interaction to browser response
+
+#### 3. Cumulative Layout Shift (CLS)
+**Measures:** Visual stability
+**Good:** ≤ 0.1
+**What it tracks:** Unexpected layout shifts during page load
+
+```html
+<!-- Prevent CLS by specifying image dimensions -->
+<img src="photo.jpg" width="800" height="600" alt="Description">
+```
+
+### Additional Performance Metrics
+
+**First Contentful Paint (FCP)**
+When the first text or image appears (Good: ≤ 1.8s)
+
+**Time to Interactive (TTI)**
+When the page becomes fully interactive (Good: ≤ 3.8s)
+
+**Total Blocking Time (TBT)**
+Total time when the main thread is blocked (Good: ≤ 200ms)
+
+### Business Impact
+
+Performance improvements deliver measurable business results:
+
+- **Conversion Rates:** Faster sites convert better (Walmart saw 2% increase per 1s improvement)
+- **SEO Rankings:** Page speed is a ranking factor for Google
+- **User Retention:** 53% of mobile users abandon sites taking over 3 seconds to load
+- **Bounce Rates:** BBC lost 10% of users for every additional second of load time
+- **User Satisfaction:** Faster sites score higher in user satisfaction surveys
+
+---
+
+## General HTML Performance Considerations
+
+Every website journey begins with an HTML request. Optimizing this foundational request is critical for overall site performance.
+
+### HTML Document Structure
+
+#### Keep Your DOM Lean
+
+A bloated DOM slows parsing, rendering, and JavaScript execution.
+
+```html
+<!-- ❌ Bad: Deeply nested, excessive elements -->
+<div class="wrapper">
+  <div class="container">
+    <div class="inner">
+      <div class="content">
+        <p>Text</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ Good: Simplified structure -->
+<div class="container">
+  <p>Text</p>
+</div>
+```
+
+**Best Practices:**
+- Target < 1,500 DOM nodes
+- Keep depth < 32 levels
+- Avoid parent nodes with > 60 children
+
+#### Semantic HTML
+
+Use semantic elements for better parsing and accessibility:
+
+```html
+<!-- ✅ Semantic and performant -->
+<article>
+  <header>
+    <h1>Article Title</h1>
+  </header>
+  <section>
+    <p>Content...</p>
+  </section>
+</article>
+```
+
+### HTML Caching Strategies
+
+Proper caching reduces server requests and improves repeat visit performance.
+
+#### Cache-Control Headers
+
+```http
+# For HTML (check for updates frequently)
+Cache-Control: no-cache
+
+# Or with revalidation
+Cache-Control: max-age=3600, must-revalidate
+```
+
+#### ETags for Efficient Validation
+
+```http
+ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
+If-None-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4"
+# Server returns 304 Not Modified if unchanged
+```
+
+### Parser-Blocking Resources
+
+Synchronous scripts halt HTML parsing, delaying page rendering.
+
+```html
+<!-- ❌ Blocks parsing -->
+<script src="app.js"></script>
+
+<!-- ✅ Defers execution until after parsing -->
+<script defer src="app.js"></script>
+
+<!-- ✅ Downloads in parallel, executes when ready -->
+<script async src="analytics.js"></script>
+```
+
+**When to use async vs defer:**
+
+- **`defer`:** Scripts that need the full DOM (most application scripts)
+- **`async`:** Independent scripts (analytics, ads)
+- **Neither:** Critical inline scripts that must execute immediately
+
+### Render-Blocking CSS
+
+CSS blocks rendering until fully parsed and processed.
+
+#### Critical CSS Inlining
+
+```html
+<head>
+  <!-- Inline critical above-the-fold CSS -->
+  <style>
+    /* Critical styles for initial viewport */
+    .header { background: #333; color: white; }
+    .hero { min-height: 400px; }
+  </style>
+
+  <!-- Load remaining CSS asynchronously -->
+  <link rel="preload" href="styles.css" as="style"
+        onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="styles.css"></noscript>
+</head>
+```
+
+#### Media Queries for Conditional Loading
+
+```html
+<!-- Only loads for print -->
+<link rel="stylesheet" href="print.css" media="print">
+
+<!-- Only loads on large screens -->
+<link rel="stylesheet" href="desktop.css" media="(min-width: 1024px)">
+```
+
+### Minimize and Compress HTML
+
+```bash
+# Before minification (2.5 KB)
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Page</title>
+  </head>
+  <body>
+    <h1>Hello World</h1>
+  </body>
+</html>
+
+# After minification (1.8 KB)
+<!DOCTYPE html><html><head><title>My Page</title></head><body><h1>Hello World</h1></body></html>
+```
+
+**Tools for HTML Minification:**
+- HTMLMinifier
+- html-minifier-terser
+- Build tool plugins (Webpack, Vite, etc.)
+
+---
+
+## Understanding the Critical Rendering Path
+
+The critical rendering path is the sequence of steps the browser takes to convert HTML, CSS, and JavaScript into rendered pixels.
+
+### The Six-Step Rendering Process
+
+```
+1. Parse HTML → DOM Tree
+2. Parse CSS → CSSOM Tree
+3. Execute JavaScript (may modify DOM/CSSOM)
+4. Combine DOM + CSSOM → Render Tree
+5. Layout (calculate positions and sizes)
+6. Paint (draw pixels to screen)
+```
+
+### Step-by-Step Breakdown
+
+#### 1. DOM Construction
+
+The browser converts HTML markup into a Document Object Model:
+
+```html
+<html>
+  <body>
+    <div>
+      <p>Hello World</p>
+    </div>
+  </body>
+</html>
+```
+
+Becomes a tree structure:
+```
+html
+└── body
+    └── div
+        └── p
+            └── "Hello World"
+```
+
+#### 2. CSSOM Construction
+
+CSS is parsed into a CSS Object Model:
+
+```css
+body { font-size: 16px; }
+p { color: blue; }
+```
+
+Creates a CSSOM tree with computed styles.
+
+#### 3. JavaScript Execution
+
+JavaScript can modify both DOM and CSSOM:
+
+```javascript
+// Modifies DOM
+document.querySelector('p').textContent = 'Updated!';
+
+// Modifies CSSOM
+document.querySelector('p').style.color = 'red';
+```
+
+#### 4. Render Tree Creation
+
+The browser combines DOM and CSSOM, excluding non-visible elements:
+
+```
+render tree = DOM tree + CSSOM tree - hidden elements
+```
+
+Elements like `<head>`, `<script>`, or elements with `display: none` are excluded.
+
+#### 5. Layout (Reflow)
+
+Calculate exact position and size of each element:
+
+```css
+/* Browser calculates exact pixels */
+.container { width: 50%; }    /* If viewport is 1000px, calculates to 500px */
+.box { margin: 10px; }         /* Exact position considering other elements */
+```
+
+#### 6. Paint
+
+Draw pixels to the screen, layer by layer:
+
+- Background colors/images
+- Borders
+- Text
+- Shadows and effects
+
+### Optimizing the Critical Path
+
+#### Strategy 1: Minimize Critical Resources
+
+```html
+<!-- ❌ Multiple render-blocking CSS files -->
+<link rel="stylesheet" href="header.css">
+<link rel="stylesheet" href="navigation.css">
+<link rel="stylesheet" href="content.css">
+<link rel="stylesheet" href="footer.css">
+
+<!-- ✅ Combined critical CSS -->
+<link rel="stylesheet" href="critical.css">
+<!-- Non-critical loaded async -->
+<link rel="preload" href="non-critical.css" as="style"
+      onload="this.rel='stylesheet'">
+```
+
+#### Strategy 2: Minimize Critical Bytes
+
+```css
+/* ❌ Before minification (450 bytes) */
+.header {
+  background-color: #333333;
+  padding: 20px;
+  margin-bottom: 10px;
+}
+
+/* ✅ After minification (85 bytes) */
+.header{background-color:#333;padding:20px;margin-bottom:10px}
+```
+
+#### Strategy 3: Optimize Critical Path Length
+
+```html
+<!-- ❌ Long critical path: HTML → CSS → Font → Render -->
+<link rel="stylesheet" href="styles.css">
+<!-- styles.css contains: @import url('fonts.css'); -->
+
+<!-- ✅ Shorter path: HTML → [CSS, Font in parallel] → Render -->
+<link rel="stylesheet" href="styles.css">
+<link rel="preload" href="font.woff2" as="font" crossorigin>
+```
+
+### Measuring Critical Path Performance
+
+Use Chrome DevTools Performance panel:
+
+1. Open DevTools (F12)
+2. Go to Performance tab
+3. Record page load
+4. Analyze waterfall chart for blocking resources
+
+---
+
+## Optimize Resource Loading
+
+Modern web pages reference numerous resources—CSS files, JavaScript bundles, images, fonts, and more. Strategic resource loading is essential for performance.
+
+### Understanding Resource Priority
+
+Browsers assign priority levels to resources:
+
+| Priority | Resources |
+|----------|-----------|
+| **Highest** | Main HTML document |
+| **High** | CSS files, fonts, synchronous scripts |
+| **Medium** | Async scripts, images in viewport |
+| **Low** | Images below fold, prefetch resources |
+| **Lowest** | Speculative prefetch |
+
+### Script Loading Strategies
+
+#### Default (Synchronous)
+
+```html
+<!-- Blocks HTML parsing, executes immediately -->
+<script src="app.js"></script>
+```
+
+**Use for:** Critical scripts needed before rendering
+
+#### Async Attribute
+
+```html
+<!-- Downloads in parallel, executes as soon as ready -->
+<script async src="analytics.js"></script>
+```
+
+**Characteristics:**
+- Downloads don't block parsing
+- Executes immediately when ready (may interrupt parsing)
+- No guaranteed execution order
+- **Use for:** Independent scripts (analytics, ads, trackers)
+
+#### Defer Attribute
+
+```html
+<!-- Downloads in parallel, executes after HTML parsing -->
+<script defer src="main.js"></script>
+<script defer src="utils.js"></script>
+```
+
+**Characteristics:**
+- Downloads don't block parsing
+- Executes after DOMContentLoaded
+- Maintains script order
+- **Use for:** Application scripts that need full DOM
+
+#### Comparison Chart
+
+```
+         Download    Execute    Blocks Parsing    Order Guaranteed
+--------------------------------------------------------------
+none     Sequential  Immediate  Yes               Yes
+async    Parallel    ASAP       No                No
+defer    Parallel    After DOM  No                Yes
+```
+
+### Module Scripts
+
+Modern JavaScript modules with built-in defer behavior:
+
+```html
+<!-- Type="module" automatically defers -->
+<script type="module" src="app.js"></script>
+
+<!-- Module with async -->
+<script type="module" async src="analytics.js"></script>
+```
+
+### Preloading Critical Resources
+
+Tell the browser about critical resources early:
+
+```html
+<head>
+  <!-- Preload critical CSS -->
+  <link rel="preload" href="critical.css" as="style">
+
+  <!-- Preload critical font -->
+  <link rel="preload" href="font.woff2" as="font"
+        type="font/woff2" crossorigin>
+
+  <!-- Preload critical script -->
+  <link rel="preload" href="app.js" as="script">
+
+  <!-- Preload hero image -->
+  <link rel="preload" href="hero.jpg" as="image">
+</head>
+```
+
+**Important:** Only preload truly critical resources (typically 2-3 items).
+
+### Resource Compression
+
+#### Enable Compression
+
+Server configuration for compression:
+
+```nginx
+# Nginx configuration
+gzip on;
+gzip_types text/css application/javascript application/json;
+gzip_min_length 1000;
+
+# Or use Brotli (better compression)
+brotli on;
+brotli_types text/css application/javascript application/json;
+```
+
+#### Compression Comparison
+
+```
+Original JavaScript file:  150 KB
+Gzip compressed:          45 KB  (70% reduction)
+Brotli compressed:        38 KB  (75% reduction)
+```
+
+### Minification
+
+Remove unnecessary characters without changing functionality:
+
+```javascript
+// Before minification (250 bytes)
+function calculateTotal(items) {
+  let total = 0;
+  for (let item of items) {
+    total += item.price;
+  }
+  return total;
+}
+
+// After minification (98 bytes)
+function calculateTotal(t){let e=0;for(let l of t)e+=l.price;return e}
+```
+
+**Tools:**
+- Terser (JavaScript)
+- cssnano (CSS)
+- HTMLMinifier (HTML)
+
+### Bundle Optimization
+
+#### Code Splitting
+
+Break large bundles into smaller chunks:
+
+```javascript
+// Instead of one large bundle
+import everything from './everything.js'; // 500 KB
+
+// Split into smaller chunks
+import('./feature-a.js'); // 50 KB - loads when needed
+import('./feature-b.js'); // 75 KB - loads when needed
+import('./feature-c.js'); // 100 KB - loads when needed
+```
+
+#### Tree Shaking
+
+Remove unused code during build:
+
+```javascript
+// utils.js exports 10 functions
+export { func1, func2, func3, /* ... */ func10 };
+
+// app.js only imports one
+import { func1 } from './utils.js';
+
+// Build process removes func2-func10 from final bundle
+```
+
+**Requirements for tree shaking:**
+- Use ES6 module syntax (`import`/`export`)
+- Avoid side effects in modules
+- Configure bundler properly
+
+---
+
+## Resource Hints
+
+Resource hints are HTML directives that help browsers make intelligent decisions about resource loading priorities.
+
+### DNS Prefetch
+
+Resolve domain names before they're needed:
+
+```html
+<!-- Resolve DNS for third-party domains -->
+<link rel="dns-prefetch" href="https://api.example.com">
+<link rel="dns-prefetch" href="https://cdn.example.com">
+<link rel="dns-prefetch" href="https://analytics.example.com">
+```
+
+**When to use:**
+- Third-party API domains
+- CDN domains
+- Analytics domains
+- Any external domain used later in page
+
+**Benefits:**
+- Saves 20-120ms per domain
+- Works on all browsers
+- Minimal overhead
+
+### Preconnect
+
+Establish full connection (DNS + TCP + TLS) to critical origins:
+
+```html
+<!-- Full connection setup for critical resources -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+```
+
+**When to use:**
+- Critical third-party resources
+- Resources needed within 1-2 seconds
+- Limit to 2-3 most important origins
+
+**Benefits:**
+- Saves 100-500ms per connection
+- Includes TLS handshake
+- More thorough than dns-prefetch
+
+**Trade-off:** Higher resource cost than dns-prefetch
+
+### Prefetch
+
+Download resources for next navigation:
+
+```html
+<!-- Load resources for likely next page -->
+<link rel="prefetch" href="next-page.html">
+<link rel="prefetch" href="next-page.js">
+<link rel="prefetch" href="next-page.css">
+```
+
+**When to use:**
+- Next page in a sequence (paginated content)
+- Common user flows (product → checkout)
+- Dashboard resources after login
+
+**Characteristics:**
+- Lowest priority fetch
+- Uses idle network time
+- Cached for future use
+- Doesn't execute/parse
+
+### Preload
+
+High-priority fetch for current page resources:
+
+```html
+<!-- Critical resources for THIS page -->
+<link rel="preload" href="hero-font.woff2" as="font"
+      type="font/woff2" crossorigin>
+<link rel="preload" href="critical.css" as="style">
+<link rel="preload" href="hero-image.jpg" as="image">
+```
+
+**When to use:**
+- Critical fonts
+- Above-the-fold images
+- Critical CSS
+- Important scripts discovered late
+
+**Important:** Don't overuse! Only 2-3 truly critical resources.
+
+### Prerender (Deprecated) → Speculation Rules API
+
+The modern replacement for prerender:
+
+```html
+<script type="speculationrules">
+{
+  "prerender": [
+    {
+      "source": "list",
+      "urls": ["/next-page"]
+    }
+  ],
+  "prefetch": [
+    {
+      "source": "document",
+      "where": {
+        "href_matches": "/articles/*"
+      }
+    }
+  ]
+}
+</script>
+```
+
+### Resource Hints Decision Tree
+
+```
+Need DNS resolution only?
+└─ Yes → dns-prefetch
+└─ No → Need full connection?
+   └─ Yes → preconnect
+   └─ No → For current page?
+      └─ Yes → preload
+      └─ No → prefetch
+```
+
+### Practical Example
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- DNS resolution for analytics (not critical) -->
+  <link rel="dns-prefetch" href="https://analytics.example.com">
+
+  <!-- Full connection for critical fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Preload critical assets for THIS page -->
+  <link rel="preload" href="hero-font.woff2" as="font"
+        type="font/woff2" crossorigin>
+  <link rel="preload" href="hero-image.jpg" as="image">
+
+  <!-- Prefetch likely next navigation -->
+  <link rel="prefetch" href="about.html">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Content -->
+</body>
+</html>
+```
+
+---
+
+## Image Performance
+
+Images typically account for 50-70% of a webpage's total weight. Optimizing them is crucial for performance.
+
+### Choosing the Right Format
+
+| Format | Best For | Transparency | Animation | Compression |
+|--------|----------|--------------|-----------|-------------|
+| **JPEG** | Photographs | No | No | Lossy |
+| **PNG** | Graphics, logos | Yes | No | Lossless |
+| **WebP** | General purpose | Yes | Yes | Both |
+| **AVIF** | Modern browsers | Yes | Yes | Superior |
+| **SVG** | Icons, logos | Yes | Yes | Vector |
+| **GIF** | Simple animations | Yes | Yes | Poor |
+
+### Modern Image Formats
+
+#### WebP
+
+Google's format with 25-35% better compression than JPEG:
+
+```html
+<picture>
+  <source srcset="image.webp" type="image/webp">
+  <img src="image.jpg" alt="Fallback">
+</picture>
+```
+
+**Support:** 95%+ of browsers
+
+#### AVIF
+
+Next-generation format with 50% better compression than JPEG:
+
+```html
+<picture>
+  <source srcset="image.avif" type="image/avif">
+  <source srcset="image.webp" type="image/webp">
+  <img src="image.jpg" alt="Fallback">
+</picture>
+```
+
+**Support:** 80%+ of browsers (growing)
+
+### Responsive Images
+
+Serve appropriately sized images for different devices:
+
+#### Using srcset
+
+```html
+<img
+  src="image-800.jpg"
+  srcset="image-400.jpg 400w,
+          image-800.jpg 800w,
+          image-1200.jpg 1200w,
+          image-1600.jpg 1600w"
+  sizes="(max-width: 600px) 400px,
+         (max-width: 1000px) 800px,
+         1200px"
+  alt="Responsive image example">
+```
+
+**How it works:**
+1. Browser knows viewport width
+2. Looks at `sizes` attribute to determine image display size
+3. Picks most appropriate image from `srcset`
+
+#### Using picture Element
+
+More control with art direction:
+
+```html
+<picture>
+  <!-- Mobile: cropped/portrait -->
+  <source media="(max-width: 799px)"
+          srcset="mobile-image.jpg">
+
+  <!-- Tablet: medium crop -->
+  <source media="(max-width: 1199px)"
+          srcset="tablet-image.jpg">
+
+  <!-- Desktop: full landscape -->
+  <img src="desktop-image.jpg" alt="Art direction example">
+</picture>
+```
+
+### Image Optimization Techniques
+
+#### 1. Compression
+
+```bash
+# JPEG optimization (quality 80-85)
+Original: 2.5 MB
+Optimized: 250 KB (90% reduction)
+
+# PNG optimization
+Original: 500 KB
+Optimized: 150 KB (70% reduction)
+```
+
+**Tools:**
+- ImageOptim (GUI, macOS)
+- Squoosh (Web-based, Google)
+- Sharp (Node.js library)
+- imagemin (CLI)
+
+#### 2. Proper Dimensions
+
+```html
+<!-- ❌ Bad: Loading 3000×2000 image for 300×200 display -->
+<img src="huge-image.jpg" style="width: 300px; height: 200px">
+
+<!-- ✅ Good: Image sized appropriately -->
+<img src="small-image.jpg" width="300" height="200">
+```
+
+#### 3. Set Explicit Dimensions
+
+Prevent layout shift:
+
+```html
+<!-- ✅ Prevents CLS -->
+<img src="photo.jpg" width="800" height="600" alt="Photo">
+
+<!-- Or with CSS aspect ratio -->
+<img src="photo.jpg" style="aspect-ratio: 4/3; width: 100%;" alt="Photo">
+```
+
+#### 4. Lazy Loading
+
+Defer offscreen images:
+
+```html
+<img src="image.jpg" loading="lazy" alt="Lazy loaded image">
+```
+
+(More details in [Lazy Loading section](#lazy-loading))
+
+### Image CDNs
+
+Modern CDNs provide automatic optimization:
+
+```html
+<!-- Cloudinary example -->
+<img src="https://res.cloudinary.com/demo/image/upload/
+          w_400,f_auto,q_auto/sample.jpg">
+
+<!-- Parameters: -->
+<!-- w_400: Width 400px -->
+<!-- f_auto: Automatic format (WebP/AVIF) -->
+<!-- q_auto: Automatic quality -->
+```
+
+**Popular Image CDNs:**
+- Cloudinary
+- Imgix
+- ImageKit
+- Cloudflare Images
+
+### SVG Optimization
+
+Optimize vector graphics:
+
+```xml
+<!-- Before optimization (500 bytes) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <!-- Unnecessary metadata -->
+  <title>My Icon</title>
+  <desc>An icon description</desc>
+  <circle cx="50" cy="50" r="40" fill="#333" />
+</svg>
+
+<!-- After optimization (180 bytes) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <circle cx="50" cy="50" r="40" fill="#333"/>
+</svg>
+```
+
+**SVG Optimization Tools:**
+- SVGO
+- SVGOMG (web interface)
+
+### Image Performance Checklist
+
+- [ ] Use modern formats (WebP, AVIF)
+- [ ] Implement responsive images
+- [ ] Compress images (80-85% quality for JPEG)
+- [ ] Set explicit width and height
+- [ ] Use lazy loading for below-fold images
+- [ ] Consider image CDN
+- [ ] Optimize SVGs
+- [ ] Remove image metadata (EXIF)
+
+---
+
+## Video Performance
+
+Video content is increasingly common on web pages but can significantly impact performance if not optimized properly.
+
+### Video Format Selection
+
+| Format | Codec | Browser Support | Quality |
+|--------|-------|-----------------|---------|
+| **MP4** | H.264 | Universal | Good |
+| **WebM** | VP9 | 95% | Better |
+| **WebM** | AV1 | 70%+ | Best |
+
+#### Multi-Format Strategy
+
+```html
+<video controls>
+  <!-- Modern browsers: Best compression -->
+  <source src="video.webm" type="video/webm; codecs=av01.0.05M.08">
+
+  <!-- Fallback: Wide support -->
+  <source src="video.webm" type="video/webm; codecs=vp9">
+
+  <!-- Fallback: Universal -->
+  <source src="video.mp4" type="video/mp4">
+
+  Your browser doesn't support video.
+</video>
+```
+
+### Video Attributes for Performance
+
+#### Preload Attribute
+
+```html
+<!-- Don't load anything until user plays -->
+<video preload="none" poster="thumbnail.jpg">
+  <source src="video.mp4" type="video/mp4">
+</video>
+
+<!-- Load only metadata (duration, dimensions) -->
+<video preload="metadata">
+  <source src="video.mp4" type="video/mp4">
+</video>
+
+<!-- Load entire video (rarely recommended) -->
+<video preload="auto">
+  <source src="video.mp4" type="video/mp4">
+</video>
+```
+
+**Recommendation:** Use `preload="none"` for most cases
+
+#### Poster Image
+
+Provide a thumbnail while video loads:
+
+```html
+<video preload="none" poster="thumbnail.jpg" controls>
+  <source src="video.mp4" type="video/mp4">
+</video>
+```
+
+**Best practices:**
+- Optimize poster image (WebP format)
+- Match video aspect ratio
+- Show representative frame
+
+### Lazy Loading Videos
+
+```html
+<!-- Native lazy loading for video posters -->
+<video preload="none" poster="thumbnail.jpg" loading="lazy">
+  <source src="video.mp4" type="video/mp4">
+</video>
+```
+
+For more control, use Intersection Observer:
+
+```javascript
+const videoObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const video = entry.target;
+      video.src = video.dataset.src;
+      video.load();
+      videoObserver.unobserve(video);
+    }
+  });
+});
+
+document.querySelectorAll('video[data-src]').forEach(video => {
+  videoObserver.observe(video);
+});
+```
+
+### Embedded Videos (YouTube, Vimeo)
+
+Embedded videos can be heavy—use facade pattern:
+
+```html
+<!-- Lightweight thumbnail with play button -->
+<div class="video-facade" data-video-id="dQw4w9WgXcQ">
+  <img src="thumbnail.jpg" alt="Video thumbnail">
+  <button class="play-button">Play</button>
+</div>
+
+<script>
+document.querySelectorAll('.video-facade').forEach(facade => {
+  facade.addEventListener('click', function() {
+    const videoId = this.dataset.videoId;
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    iframe.allow = 'autoplay; fullscreen';
+    this.replaceWith(iframe);
+  });
+});
+</script>
+```
+
+**Benefits:**
+- Saves ~500KB per video
+- Faster initial page load
+- Loads iframe only when user engages
+
+### Video Compression
+
+Optimize video file size:
+
+```bash
+# Using FFmpeg
+ffmpeg -i input.mp4 \
+  -c:v libx264 \        # H.264 codec
+  -crf 23 \              # Quality (lower = better, 18-28 range)
+  -preset slow \         # Encoding speed vs compression
+  -c:a aac \             # Audio codec
+  -b:a 128k \            # Audio bitrate
+  output.mp4
+
+# For WebM/VP9
+ffmpeg -i input.mp4 \
+  -c:v libvpx-vp9 \
+  -crf 30 \
+  -b:v 0 \
+  output.webm
+```
+
+### Adaptive Streaming
+
+For longer videos, use adaptive bitrate streaming:
+
+**HLS (HTTP Live Streaming)**
+```html
+<video controls>
+  <source src="video.m3u8" type="application/x-mpegURL">
+</video>
+```
+
+**DASH (Dynamic Adaptive Streaming)**
+```html
+<video controls>
+  <source src="video.mpd" type="application/dash+xml">
+</video>
+```
+
+**Benefits:**
+- Adjusts quality based on bandwidth
+- Reduces buffering
+- Better user experience
+
+**Libraries:**
+- Video.js
+- Plyr
+- hls.js (HLS playback)
+- dash.js (DASH playback)
+
+### Replace Videos with Animated Images
+
+For short, simple animations:
+
+```html
+<!-- Instead of video (500 KB) -->
+<video autoplay loop muted playsinline>
+  <source src="animation.mp4">
+</video>
+
+<!-- Use GIF alternative (100 KB) -->
+<img src="animation.gif" alt="Animation">
+
+<!-- Or better: Animated WebP (50 KB) -->
+<img src="animation.webp" alt="Animation">
+```
+
+### Video Performance Checklist
+
+- [ ] Use `preload="none"` by default
+- [ ] Provide optimized poster images
+- [ ] Implement lazy loading for videos
+- [ ] Use facade pattern for embedded videos
+- [ ] Compress videos appropriately
+- [ ] Provide multiple formats (MP4, WebM)
+- [ ] Consider adaptive streaming for long videos
+- [ ] Replace short videos with animated images when possible
+
+---
+
+## Web Font Optimization
+
+Web fonts enhance design but can significantly impact performance if not optimized properly.
+
+### The Font Loading Problem
+
+When fonts load, browsers handle the rendering in different ways:
+
+**FOIT (Flash of Invisible Text)**
+- Text is invisible while font loads
+- Default in some browsers
+- Poor user experience
+
+**FOUT (Flash of Unstyled Text)**
+- System font shown first, then swaps to web font
+- Can cause layout shift
+- Better than FOIT
+
+### Font-Display Strategy
+
+Control font rendering behavior with `font-display`:
+
+```css
+@font-face {
+  font-family: 'CustomFont';
+  src: url('font.woff2') format('woff2');
+  font-display: swap; /* or optional, fallback, block */
+}
+```
+
+#### Font-Display Values
+
+**swap** (Recommended for most cases)
+```css
+font-display: swap;
+```
+- Shows fallback immediately
+- Swaps when custom font loads
+- No invisible text
+- May cause layout shift
+
+**optional** (Best for performance)
+```css
+font-display: optional;
+```
+- Extremely short block period (~100ms)
+- If font doesn't load quickly, uses fallback
+- No font swap on slow connections
+- Best for body text
+
+**fallback**
+```css
+font-display: fallback;
+```
+- Short block period (~100ms)
+- Short swap period (~3s)
+- After 3s, uses fallback permanently
+- Balanced approach
+
+**block**
+```css
+font-display: block;
+```
+- Text invisible up to 3 seconds
+- Not recommended
+- Only for critical brand fonts
+
+#### When to Use Each
+
+```css
+/* Body text: Use optional */
+@font-face {
+  font-family: 'BodyFont';
+  src: url('body.woff2') format('woff2');
+  font-display: optional;
+}
+
+/* Headings: Use swap */
+@font-face {
+  font-family: 'HeadingFont';
+  src: url('heading.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* Icons: Use block (must be visible) */
+@font-face {
+  font-family: 'Icons';
+  src: url('icons.woff2') format('woff2');
+  font-display: block;
+}
+```
+
+### Preload Critical Fonts
+
+Load fonts before CSS is parsed:
+
+```html
+<head>
+  <link rel="preload"
+        href="critical-font.woff2"
+        as="font"
+        type="font/woff2"
+        crossorigin>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+```
+
+**Important:**
+- Only preload 1-2 truly critical fonts
+- Must include `crossorigin` attribute
+- Specify correct `type`
+
+### Font Subsetting
+
+Include only characters you need:
+
+```bash
+# Full font: 150 KB
+# Subset (Latin only): 30 KB (80% reduction)
+
+# Using glyphhanger
+glyphhanger --subset=font.ttf --formats=woff2
+```
+
+**What to subset:**
+- Language characters (Latin, Cyrillic, etc.)
+- Specific glyphs needed
+- Remove unused ligatures and features
+
+**Tools:**
+- glyphhanger
+- fonttools (pyftsubset)
+- Online subsetting tools
+
+### Variable Fonts
+
+One file with multiple weights/styles:
+
+```css
+/* Traditional: Multiple files */
+@font-face {
+  font-family: 'Regular';
+  src: url('regular.woff2');
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'Bold';
+  src: url('bold.woff2');
+  font-weight: 700;
+}
+/* Total: 100 KB */
+
+/* Variable font: One file */
+@font-face {
+  font-family: 'Variable';
+  src: url('variable.woff2');
+  font-weight: 100 900; /* Full range */
+}
+/* Total: 60 KB (40% reduction) */
+```
+
+**Benefits:**
+- Fewer HTTP requests
+- Smaller total file size
+- Infinite weight variations
+- Smooth animations
+
+**Usage:**
+```css
+h1 { font-weight: 750; } /* Any value between 100-900 */
+h2 { font-weight: 625; }
+```
+
+### Font Format Selection
+
+Always provide WOFF2:
+
+```css
+@font-face {
+  font-family: 'MyFont';
+  src: url('font.woff2') format('woff2'); /* 95%+ browser support */
+}
+```
+
+**Format comparison:**
+```
+TTF:   100 KB (uncompressed)
+WOFF:  60 KB  (40% compression)
+WOFF2: 45 KB  (55% compression) ✅ Use this
+```
+
+### Self-Hosting vs. Google Fonts
+
+#### Self-Hosting Advantages
+```html
+<link rel="preload" href="/fonts/font.woff2" as="font" crossorigin>
+<style>
+  @font-face {
+    font-family: 'MyFont';
+    src: url('/fonts/font.woff2') format('woff2');
+    font-display: swap;
+  }
+</style>
+```
+
+**Pros:**
+- Full control over caching
+- No external requests
+- Privacy-friendly
+- Can preload fonts
+
+#### Google Fonts
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
+      rel="stylesheet">
+```
+
+**Pros:**
+- Easy implementation
+- May be cached from other sites
+- Automatic optimization
+
+**Cons:**
+- External request
+- Less control
+- Privacy concerns in some regions
+
+### Reduce Layout Shift from Font Loading
+
+Match fallback font metrics:
+
+```css
+@font-face {
+  font-family: 'CustomFont';
+  src: url('custom.woff2') format('woff2');
+  font-display: swap;
+  /* Modern: use size-adjust */
+  size-adjust: 95%;
+  ascent-override: 90%;
+  descent-override: 20%;
+}
+
+body {
+  font-family: 'CustomFont', Arial, sans-serif;
+}
+```
+
+Or use Font Face Observer:
+
+```javascript
+const font = new FontFaceObserver('CustomFont');
+
+font.load().then(() => {
+  document.documentElement.classList.add('fonts-loaded');
+});
+```
+
+```css
+/* Before fonts load */
+body {
+  font-family: Arial, sans-serif;
+}
+
+/* After fonts load */
+.fonts-loaded body {
+  font-family: 'CustomFont', Arial, sans-serif;
+}
+```
+
+### Font Loading Best Practices
+
+```css
+/* ✅ Complete optimized setup */
+@font-face {
+  font-family: 'OptimizedFont';
+  src: url('font.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 400 700; /* Variable font range */
+  unicode-range: U+0000-00FF; /* Latin subset */
+}
+```
+
+### Web Font Checklist
+
+- [ ] Use `font-display: swap` or `optional`
+- [ ] Preload critical fonts only (1-2 max)
+- [ ] Subset fonts to needed characters
+- [ ] Use WOFF2 format
+- [ ] Consider variable fonts
+- [ ] Limit number of font weights/styles
+- [ ] Match fallback font metrics
+- [ ] Self-host when possible
+
+---
+
+## Code-Split JavaScript
+
+JavaScript often represents the largest contributor to page bloat. Code splitting helps load only what's needed.
+
+### Why Code Splitting Matters
+
+```javascript
+// ❌ Problem: One massive bundle
+import everything from './everything.js'; // 800 KB
+// User downloads 800 KB even if they only use 10%
+```
+
+**Issues:**
+- Longer download time
+- More parsing/compilation
+- Delayed interactivity
+- Poor cache utilization
+
+### Dynamic Imports
+
+Load code on demand:
+
+```javascript
+// ✅ Load feature only when needed
+button.addEventListener('click', async () => {
+  const module = await import('./heavy-feature.js');
+  module.initFeature();
+});
+```
+
+**Benefits:**
+- Smaller initial bundle
+- Faster Time to Interactive
+- Better performance
+
+### Route-Based Splitting
+
+Split by application routes:
+
+```javascript
+// React Router example
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+const Home = lazy(() => import('./routes/Home'));
+const About = lazy(() => import('./routes/About'));
+const Products = lazy(() => import('./routes/Products'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/products" element={<Products />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+```
+
+### Component-Based Splitting
+
+Split large UI components:
+
+```javascript
+// Heavy chart component loaded only when tab opens
+const Chart = lazy(() => import('./Chart'));
+
+function Dashboard() {
+  const [activeTab, setActiveTab] = useState('summary');
+
+  return (
+    <div>
+      <Tabs onChange={setActiveTab} />
+      {activeTab === 'chart' && (
+        <Suspense fallback={<Spinner />}>
+          <Chart />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+### Vendor Splitting
+
+Separate third-party code:
+
+```javascript
+// webpack.config.js
+module.exports = {
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        // Vendor code
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+        },
+        // Common code used across pages
+        common: {
+          minChunks: 2,
+          chunks: 'async',
+          name: 'common',
+        },
+      },
+    },
+  },
+};
+```
+
+**Result:**
+```
+app.js (50 KB) - Your code
+vendors.js (200 KB) - Third-party libraries (cached longer)
+common.js (30 KB) - Shared code
+```
+
+### Prefetch Next Routes
+
+Load likely next pages during idle time:
+
+```javascript
+// Prefetch product page when hovering on product card
+productCard.addEventListener('mouseenter', () => {
+  const link = document.createElement('link');
+  link.rel = 'prefetch';
+  link.href = '/product-page-bundle.js';
+  document.head.appendChild(link);
+});
+```
+
+Or with webpack magic comments:
+
+```javascript
+// Prefetch this chunk
+button.addEventListener('click', async () => {
+  const module = await import(
+    /* webpackPrefetch: true */
+    './next-feature.js'
+  );
+  module.init();
+});
+```
+
+### Bundle Analysis
+
+Visualize your bundle composition:
+
+```bash
+# webpack-bundle-analyzer
+npm install --save-dev webpack-bundle-analyzer
+
+# In webpack.config.js
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+plugins: [
+  new BundleAnalyzerPlugin()
+]
+```
+
+Generates interactive visualization showing:
+- Size of each module
+- Which chunks contain what code
+- Opportunities for optimization
+
+### Code Splitting Strategies
+
+**1. Split by Critical Path**
+```javascript
+// Critical: Load immediately
+import './critical-analytics.js';
+import './essential-ui.js';
+
+// Non-critical: Load later
+setTimeout(() => {
+  import('./non-critical-features.js');
+}, 3000);
+```
+
+**2. Split by User Interaction**
+```javascript
+// Load only when user interacts
+showModal.addEventListener('click', async () => {
+  const { Modal } = await import('./modal.js');
+  new Modal().open();
+});
+```
+
+**3. Split by Viewport**
+```javascript
+// Load when component enters viewport
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(async (entry) => {
+    if (entry.isIntersecting) {
+      const { initFooter } = await import('./footer.js');
+      initFooter();
+      observer.disconnect();
+    }
+  });
+});
+
+observer.observe(document.querySelector('.footer'));
+```
+
+### Modern vs. Legacy Bundles
+
+Serve different bundles to modern vs. old browsers:
+
+```html
+<!-- Modern browsers -->
+<script type="module" src="modern.js"></script>
+
+<!-- Legacy browsers -->
+<script nomodule src="legacy.js"></script>
+```
+
+**Benefits:**
+- Modern browsers get smaller bundles
+- No transpilation overhead for ES6+
+- ~20-30% size reduction for modern browsers
+
+### Code Splitting Checklist
+
+- [ ] Implement route-based splitting
+- [ ] Split large components/features
+- [ ] Separate vendor code
+- [ ] Use dynamic imports for heavy features
+- [ ] Prefetch likely next routes
+- [ ] Analyze bundle composition
+- [ ] Consider modern/legacy split
+- [ ] Monitor bundle sizes in CI/CD
+
+---
+
+## Lazy Loading
+
+Defer loading of non-critical resources until they're needed, typically when they enter the viewport.
+
+### Native Image Lazy Loading
+
+Modern browsers support native lazy loading:
+
+```html
+<!-- Lazy load images below the fold -->
+<img src="image.jpg" loading="lazy" alt="Description">
+
+<!-- Eager load above the fold (default) -->
+<img src="hero.jpg" loading="eager" alt="Hero image">
+```
+
+**Browser support:** 95%+ (all modern browsers)
+
+### Native Iframe Lazy Loading
+
+```html
+<!-- Lazy load embedded content -->
+<iframe src="https://www.youtube.com/embed/VIDEO_ID"
+        loading="lazy"
+        title="Video title"></iframe>
+```
+
+### When to Lazy Load
+
+**✅ Do lazy load:**
+- Images below the fold
+- Images in carousels (non-active slides)
+- Background images via CSS
+- Video content
+- Iframes (maps, social embeds)
+- Comments sections
+- Ads
+
+**❌ Don't lazy load:**
+- Above-the-fold images
+- Critical hero images
+- Logo images
+- Small UI icons
+- CSS files
+- Critical JavaScript
+
+### Intersection Observer API
+
+For more control and older browser support:
+
+```javascript
+// Create observer
+const imageObserver = new IntersectionObserver((entries, observer) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const img = entry.target;
+
+      // Replace data-src with src
+      img.src = img.dataset.src;
+
+      // Optional: Add srcset
+      if (img.dataset.srcset) {
+        img.srcset = img.dataset.srcset;
+      }
+
+      // Remove data attributes
+      delete img.dataset.src;
+      delete img.dataset.srcset;
+
+      // Stop observing this image
+      observer.unobserve(img);
+    }
+  });
+}, {
+  // Load images 50px before they enter viewport
+  rootMargin: '50px 0px',
+  threshold: 0.01
+});
+
+// Observe all images with data-src
+document.querySelectorAll('img[data-src]').forEach(img => {
+  imageObserver.observe(img);
+});
+```
+
+**HTML:**
+```html
+<img data-src="image.jpg"
+     data-srcset="image-400.jpg 400w, image-800.jpg 800w"
+     alt="Lazy loaded image">
+```
+
+### Lazy Loading with Placeholders
+
+Improve perceived performance with placeholders:
+
+#### Low-Quality Image Placeholder (LQIP)
+
+```html
+<img src="tiny-placeholder.jpg"
+     data-src="full-image.jpg"
+     alt="Image with LQIP"
+     class="lazy-image">
+
+<style>
+.lazy-image {
+  filter: blur(20px);
+  transition: filter 0.3s;
+}
+
+.lazy-image.loaded {
+  filter: blur(0);
+}
+</style>
+
+<script>
+img.addEventListener('load', () => {
+  img.classList.add('loaded');
+});
+</script>
+```
+
+#### CSS Gradient Placeholder
+
+```css
+.image-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+}
+
+.image-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+```
+
+#### BlurHash or ThumbHash
+
+```javascript
+// Generate tiny placeholder hash server-side
+<img src="data:image/blurred-hash-here"
+     data-src="full-image.jpg"
+     alt="Image">
+```
+
+### Lazy Loading Background Images
+
+```html
+<div class="hero" data-bg="hero-image.jpg"></div>
+
+<script>
+const bgObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const element = entry.target;
+      element.style.backgroundImage = `url(${element.dataset.bg})`;
+      bgObserver.unobserve(element);
+    }
+  });
+});
+
+document.querySelectorAll('[data-bg]').forEach(el => {
+  bgObserver.observe(el);
+});
+</script>
+```
+
+### Lazy Loading with Loading Library
+
+For production use, consider libraries with fallbacks:
+
+```javascript
+// Using lazysizes library
+<script src="lazysizes.min.js" async></script>
+
+<img data-src="image.jpg"
+     data-srcset="image-400.jpg 400w, image-800.jpg 800w"
+     class="lazyload"
+     alt="Description">
+```
+
+**Popular libraries:**
+- lazysizes (most popular)
+- vanilla-lazyload
+- lozad.js (lightweight)
+
+### Lazy Loading Content Sections
+
+Defer entire sections of content:
+
+```javascript
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.forEach(async (entry) => {
+    if (entry.isIntersecting) {
+      const section = entry.target;
+
+      // Fetch content
+      const response = await fetch(section.dataset.contentUrl);
+      const html = await response.text();
+
+      // Insert content
+      section.innerHTML = html;
+
+      sectionObserver.unobserve(section);
+    }
+  });
+});
+
+document.querySelectorAll('.lazy-section').forEach(section => {
+  sectionObserver.observe(section);
+});
+```
+
+```html
+<div class="lazy-section"
+     data-content-url="/api/comments">
+  <p>Loading comments...</p>
+</div>
+```
+
+### Progressive Image Loading
+
+Load images in stages for perceived performance:
+
+```javascript
+class ProgressiveImage {
+  constructor(img) {
+    this.img = img;
+    this.loadLowQuality();
+  }
+
+  loadLowQuality() {
+    const lowQualitySrc = this.img.dataset.lowsrc;
+    const img = new Image();
+
+    img.onload = () => {
+      this.img.src = lowQualitySrc;
+      this.img.classList.add('low-quality-loaded');
+      this.loadHighQuality();
+    };
+
+    img.src = lowQualitySrc;
+  }
+
+  loadHighQuality() {
+    const highQualitySrc = this.img.dataset.highsrc;
+    const img = new Image();
+
+    img.onload = () => {
+      this.img.src = highQualitySrc;
+      this.img.classList.add('high-quality-loaded');
+    };
+
+    img.src = highQualitySrc;
+  }
+}
+
+document.querySelectorAll('.progressive-image').forEach(img => {
+  new ProgressiveImage(img);
+});
+```
+
+### Lazy Loading Best Practices
+
+**1. Set dimensions to prevent layout shift:**
+```html
+<img src="placeholder.jpg"
+     data-src="real-image.jpg"
+     width="800"
+     height="600"
+     loading="lazy"
+     alt="Description">
+```
+
+**2. Load slightly before entering viewport:**
+```javascript
+{
+  rootMargin: '50px 0px' // Load 50px before visible
+}
+```
+
+**3. Provide meaningful loading state:**
+```html
+<div class="image-container">
+  <img data-src="image.jpg" alt="Description">
+  <div class="loading-spinner"></div>
+</div>
+```
+
+**4. Handle errors gracefully:**
+```javascript
+img.addEventListener('error', () => {
+  img.src = 'fallback-image.jpg';
+});
+```
+
+### Lazy Loading Checklist
+
+- [ ] Use native `loading="lazy"` when possible
+- [ ] Implement Intersection Observer for advanced cases
+- [ ] Don't lazy load above-the-fold images
+- [ ] Set explicit dimensions (prevent CLS)
+- [ ] Provide loading placeholders
+- [ ] Load images slightly before viewport entry
+- [ ] Test on slow connections
+- [ ] Handle error states
+
+---
+
+## Prefetching and Precaching
+
+Load resources before they're needed to provide instant experiences.
+
+### Prefetching
+
+Download resources for future navigation during idle time:
+
+```html
+<!-- Prefetch next page -->
+<link rel="prefetch" href="next-page.html">
+
+<!-- Prefetch JavaScript for next page -->
+<link rel="prefetch" href="next-page-bundle.js">
+
+<!-- Prefetch API data -->
+<link rel="prefetch" href="/api/products" as="fetch">
+```
+
+**Characteristics:**
+- Lowest priority
+- Uses idle network time
+- Cached for future use
+- Doesn't execute/parse
+
+### When to Prefetch
+
+**✅ Good candidates:**
+- Next page in pagination
+- Common user flows (login → dashboard)
+- Search results → detail pages
+- Product listing → product detail
+
+**Implementation example:**
+```javascript
+// Prefetch on hover
+document.querySelectorAll('.product-card').forEach(card => {
+  card.addEventListener('mouseenter', () => {
+    const productUrl = card.dataset.url;
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = productUrl;
+    document.head.appendChild(link);
+  }, { once: true });
+});
+```
+
+### Speculation Rules API
+
+Modern replacement for prerender with granular control:
+
+```html
+<script type="speculationrules">
+{
+  "prefetch": [
+    {
+      "source": "list",
+      "urls": ["/page1", "/page2"]
+    }
+  ],
+  "prerender": [
+    {
+      "source": "list",
+      "urls": ["/most-likely-next-page"]
+    }
+  ]
+}
+</script>
+```
+
+**Advanced rules:**
+```html
+<script type="speculationrules">
+{
+  "prefetch": [
+    {
+      "source": "document",
+      "where": {
+        "and": [
+          { "href_matches": "/articles/*" },
+          { "not": { "href_matches": "/articles/old/*" }}
+        ]
+      },
+      "eagerness": "moderate"
+    }
+  ]
+}
+</script>
+```
+
+**Eagerness levels:**
+- `immediate`: Prefetch right away
+- `eager`: Prefetch when link is added to page
+- `moderate`: Prefetch on hover (200ms)
+- `conservative`: Prefetch on click/tap down
+
+### Service Worker Precaching
+
+Cache assets during service worker installation:
+
+```javascript
+// service-worker.js
+const CACHE_NAME = 'v1';
+const urlsToCache = [
+  '/',
+  '/styles/main.css',
+  '/scripts/main.js',
+  '/images/logo.svg',
+  '/fonts/main.woff2'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => response || fetch(event.request))
+  );
+});
+```
+
+### Caching Strategies
+
+#### 1. Cache First (Static Assets)
+
+```javascript
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(cached => cached || fetch(event.request))
+  );
+});
+```
+
+**Best for:** Images, CSS, JS, fonts
+
+#### 2. Network First (Dynamic Content)
+
+```javascript
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    fetch(event.request)
+      .catch(() => caches.match(event.request))
+  );
+});
+```
+
+**Best for:** API requests, user-generated content
+
+#### 3. Stale-While-Revalidate
+
+```javascript
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.match(event.request).then(cached => {
+        const fetchPromise = fetch(event.request).then(response => {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+        return cached || fetchPromise;
+      });
+    })
+  );
+});
+```
+
+**Best for:** Balance between freshness and speed
+
+### Workbox for Service Workers
+
+Simplify service worker implementation:
+
+```javascript
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
+
+// Precache assets
+precacheAndRoute(self.__WB_MANIFEST);
+
+// Cache images
+registerRoute(
+  ({request}) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 60,
+        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+      }),
+    ],
+  })
+);
+
+// Cache API requests
+registerRoute(
+  ({url}) => url.pathname.startsWith('/api/'),
+  new NetworkFirst({
+    cacheName: 'api',
+  })
+);
+```
+
+### Predictive Prefetching
+
+Use analytics to predict user navigation:
+
+```javascript
+// Track user behavior
+const navigationPatterns = {
+  '/': ['/products', '/about'],
+  '/products': ['/products/item-1', '/products/item-2'],
+};
+
+function predictivelyPrefetch(currentPage) {
+  const likelyNextPages = navigationPatterns[currentPage] || [];
+
+  likelyNextPages.forEach(url => {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  });
+}
+
+// Call on page load
+predictivelyPrefetch(window.location.pathname);
+```
+
+### Prefetching Best Practices
+
+**1. Prioritize correctly:**
+```html
+<!-- High priority: Preload for current page -->
+<link rel="preload" href="critical.js" as="script">
+
+<!-- Low priority: Prefetch for next page -->
+<link rel="prefetch" href="next-page.js">
+```
+
+**2. Limit prefetch resources:**
+```javascript
+// Only prefetch 2-3 most likely next pages
+const topPredictions = predictions.slice(0, 3);
+```
+
+**3. Respect user preferences:**
+```javascript
+if ('connection' in navigator) {
+  const connection = navigator.connection;
+
+  // Don't prefetch on slow/expensive connections
+  if (connection.effectiveType === '4g' &&
+      !connection.saveData) {
+    prefetchResources();
+  }
+}
+```
+
+**4. Monitor cache size:**
+```javascript
+// Clear old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      );
+    })
+  );
+});
+```
+
+### Prefetching and Precaching Checklist
+
+- [ ] Implement prefetch for likely next pages
+- [ ] Use Speculation Rules API when supported
+- [ ] Set up service worker precaching
+- [ ] Choose appropriate caching strategies
+- [ ] Respect user data preferences
+- [ ] Monitor and limit cache size
+- [ ] Test offline functionality
+- [ ] Clear old caches on updates
+
+---
+
+## Web Workers
+
+Offload computationally expensive tasks from the main thread to prevent UI freezing.
+
+### Understanding the Main Thread Problem
+
+Everything in the browser typically runs on one thread:
+
+```
+Main Thread:
+├── Parse HTML
+├── Parse CSS
+├── Execute JavaScript
+├── Layout calculations
+├── Paint operations
+└── Handle user interactions
+```
+
+**Problem:** Heavy JavaScript blocks everything else.
+
+```javascript
+// ❌ Blocks main thread for 3 seconds
+function heavyCalculation() {
+  let result = 0;
+  for (let i = 0; i < 10000000000; i++) {
+    result += Math.sqrt(i);
+  }
+  return result;
+}
+
+button.addEventListener('click', () => {
+  const result = heavyCalculation(); // UI freezes!
+  displayResult(result);
+});
+```
+
+### What Are Web Workers?
+
+Separate threads for JavaScript execution:
+
+```
+Main Thread               Worker Thread
+├── UI interactions  ←→  ├── Heavy calculations
+├── DOM manipulation      ├── Data processing
+└── User events           └── Complex algorithms
+```
+
+### Creating a Web Worker
+
+**main.js:**
+```javascript
+// Create worker
+const worker = new Worker('worker.js');
+
+// Send data to worker
+worker.postMessage({ numbers: [1, 2, 3, 4, 5] });
+
+// Receive data from worker
+worker.onmessage = (event) => {
+  console.log('Result from worker:', event.data);
+  displayResult(event.data);
+};
+
+// Handle errors
+worker.onerror = (error) => {
+  console.error('Worker error:', error.message);
+};
+
+// Terminate worker when done
+// worker.terminate();
+```
+
+**worker.js:**
+```javascript
+// Listen for messages from main thread
+self.onmessage = (event) => {
+  const { numbers } = event.data;
+
+  // Perform heavy calculation
+  const result = complexCalculation(numbers);
+
+  // Send result back to main thread
+  self.postMessage(result);
+};
+
+function complexCalculation(numbers) {
+  // Heavy processing here
+  return numbers.reduce((sum, num) => sum + Math.sqrt(num), 0);
+}
+```
+
+### Real-World Use Cases
+
+#### 1. Image Processing
+
+```javascript
+// main.js
+const imageWorker = new Worker('image-worker.js');
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    imageWorker.postMessage({
+      imageData: event.target.result,
+      filter: 'grayscale'
+    });
+  };
+
+  reader.readAsDataURL(file);
+});
+
+imageWorker.onmessage = (event) => {
+  displayProcessedImage(event.data);
+};
+```
+
+```javascript
+// image-worker.js
+self.onmessage = (event) => {
+  const { imageData, filter } = event.data;
+
+  // Create image from data
+  const img = new Image();
+  img.onload = () => {
+    const canvas = new OffscreenCanvas(img.width, img.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+    // Apply filter
+    applyFilter(imageData, filter);
+
+    ctx.putImageData(imageData, 0, 0);
+
+    canvas.convertToBlob().then(blob => {
+      self.postMessage(blob);
+    });
+  };
+  img.src = imageData;
+};
+
+function applyFilter(imageData, filter) {
+  const data = imageData.data;
+
+  if (filter === 'grayscale') {
+    for (let i = 0; i < data.length; i += 4) {
+      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      data[i] = data[i + 1] = data[i + 2] = avg;
+    }
+  }
+}
+```
+
+#### 2. Data Processing
+
+```javascript
+// main.js
+const dataWorker = new Worker('data-worker.js');
+
+// Process large CSV dataset
+fetch('large-dataset.csv')
+  .then(response => response.text())
+  .then(csvData => {
+    dataWorker.postMessage({
+      data: csvData,
+      operation: 'analyze'
+    });
+  });
+
+dataWorker.onmessage = (event) => {
+  const { stats, sortedData } = event.data;
+  displayStatistics(stats);
+  renderChart(sortedData);
+};
+```
+
+```javascript
+// data-worker.js
+self.onmessage = (event) => {
+  const { data, operation } = event.data;
+
+  if (operation === 'analyze') {
+    const rows = parseCSV(data);
+    const stats = calculateStatistics(rows);
+    const sortedData = sortData(rows);
+
+    self.postMessage({ stats, sortedData });
+  }
+};
+
+function parseCSV(csv) {
+  // Parse CSV data
+  return csv.split('\n').map(row => row.split(','));
+}
+
+function calculateStatistics(rows) {
+  // Complex calculations
+  return {
+    total: rows.length,
+    average: rows.reduce((sum, row) => sum + parseFloat(row[1]), 0) / rows.length,
+    // More stats...
+  };
+}
+```
+
+#### 3. Real-Time Calculations
+
+```javascript
+// main.js - Game physics calculations
+const physicsWorker = new Worker('physics-worker.js');
+
+// Send game state to worker
+function gameLoop() {
+  physicsWorker.postMessage({
+    entities: gameEntities,
+    deltaTime: dt
+  });
+}
+
+physicsWorker.onmessage = (event) => {
+  // Update entities with calculated positions
+  gameEntities = event.data.entities;
+  render();
+};
+```
+
+```javascript
+// physics-worker.js
+self.onmessage = (event) => {
+  const { entities, deltaTime } = event.data;
+
+  // Calculate physics for all entities
+  entities.forEach(entity => {
+    entity.velocity.y += gravity * deltaTime;
+    entity.position.x += entity.velocity.x * deltaTime;
+    entity.position.y += entity.velocity.y * deltaTime;
+
+    // Collision detection
+    checkCollisions(entity, entities);
+  });
+
+  self.postMessage({ entities });
+};
+```
+
+### Shared Workers
+
+Share a single worker instance across multiple browser tabs:
+
+```javascript
+// main.js (in multiple tabs)
+const sharedWorker = new SharedWorker('shared-worker.js');
+
+sharedWorker.port.onmessage = (event) => {
+  console.log('Message from shared worker:', event.data);
+};
+
+sharedWorker.port.postMessage('Hello from tab');
+```
+
+```javascript
+// shared-worker.js
+const connections = [];
+
+self.onconnect = (event) => {
+  const port = event.ports[0];
+  connections.push(port);
+
+  port.onmessage = (event) => {
+    // Broadcast to all connected tabs
+    connections.forEach(connection => {
+      connection.postMessage(`Broadcast: ${event.data}`);
+    });
+  };
+};
+```
+
+**Use cases:**
+- Shared state across tabs
+- Single WebSocket connection
+- Coordinated background tasks
+
+### Service Workers
+
+Special workers for network requests and caching (covered in [Prefetching section](#prefetching-and-precaching)):
+
+```javascript
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js')
+    .then(registration => {
+      console.log('Service Worker registered');
+    });
+}
+```
+
+### Worker Limitations
+
+**Cannot access:**
+- DOM
+- `window` object
+- `document` object
+- `parent` object
+
+**Can access:**
+- `navigator` object
+- `fetch()` API
+- IndexedDB
+- WebSockets
+- Timers (`setTimeout`, `setInterval`)
+- Import scripts via `importScripts()`
+
+### Transferable Objects
+
+Efficiently transfer data without copying:
+
+```javascript
+// ❌ Slow: Copies 100MB array
+const largeArray = new Uint8Array(100 * 1024 * 1024);
+worker.postMessage(largeArray);
+
+// ✅ Fast: Transfers ownership (zero-copy)
+const largeArray = new Uint8Array(100 * 1024 * 1024);
+worker.postMessage(largeArray, [largeArray.buffer]);
+// Note: largeArray is now empty in main thread
+```
+
+**Transferable types:**
+- ArrayBuffer
+- MessagePort
+- ImageBitmap
+- OffscreenCanvas
+
+### Worker Pools
+
+Manage multiple workers for parallel processing:
+
+```javascript
+class WorkerPool {
+  constructor(workerScript, poolSize = 4) {
+    this.workers = [];
+    this.taskQueue = [];
+    this.availableWorkers = [];
+
+    for (let i = 0; i < poolSize; i++) {
+      const worker = new Worker(workerScript);
+      this.workers.push(worker);
+      this.availableWorkers.push(worker);
+
+      worker.onmessage = (event) => {
+        this.handleWorkerComplete(worker, event.data);
+      };
+    }
+  }
+
+  runTask(data) {
+    return new Promise((resolve) => {
+      const task = { data, resolve };
+
+      if (this.availableWorkers.length > 0) {
+        this.executeTask(task);
+      } else {
+        this.taskQueue.push(task);
+      }
+    });
+  }
+
+  executeTask(task) {
+    const worker = this.availableWorkers.pop();
+    worker.currentTask = task;
+    worker.postMessage(task.data);
+  }
+
+  handleWorkerComplete(worker, result) {
+    worker.currentTask.resolve(result);
+
+    if (this.taskQueue.length > 0) {
+      const nextTask = this.taskQueue.shift();
+      this.executeTask(nextTask);
+    } else {
+      this.availableWorkers.push(worker);
+    }
+  }
+
+  terminate() {
+    this.workers.forEach(worker => worker.terminate());
+  }
+}
+
+// Usage
+const pool = new WorkerPool('processor.js', 4);
+
+// Process multiple tasks in parallel
+Promise.all([
+  pool.runTask({ data: dataset1 }),
+  pool.runTask({ data: dataset2 }),
+  pool.runTask({ data: dataset3 }),
+  pool.runTask({ data: dataset4 })
+]).then(results => {
+  console.log('All tasks complete:', results);
+});
+```
+
+### Debugging Web Workers
+
+**Chrome DevTools:**
+1. Open DevTools (F12)
+2. Sources tab → Threads panel
+3. View all active workers
+4. Set breakpoints in worker code
+5. Inspect messages and data
+
+**Console logging:**
+```javascript
+// worker.js
+self.onmessage = (event) => {
+  console.log('Worker received:', event.data);
+  const result = process(event.data);
+  console.log('Worker sending:', result);
+  self.postMessage(result);
+};
+```
+
+### Web Workers Best Practices
+
+**1. Keep workers lightweight:**
+```javascript
+// ❌ Don't create workers for trivial tasks
+const worker = new Worker('simple-addition.js'); // Overhead too high
+
+// ✅ Use for genuinely heavy tasks
+const worker = new Worker('process-10mb-dataset.js');
+```
+
+**2. Reuse workers:**
+```javascript
+// ✅ Create once, reuse many times
+const worker = new Worker('processor.js');
+
+button1.addEventListener('click', () => {
+  worker.postMessage({ task: 'task1' });
+});
+
+button2.addEventListener('click', () => {
+  worker.postMessage({ task: 'task2' });
+});
+```
+
+**3. Handle errors gracefully:**
+```javascript
+worker.onerror = (error) => {
+  console.error('Worker error:', error.message);
+  showUserFriendlyError();
+  worker.terminate();
+  // Optionally recreate worker
+  worker = new Worker('worker.js');
+};
+```
+
+**4. Clean up workers:**
+```javascript
+// Terminate workers when no longer needed
+window.addEventListener('beforeunload', () => {
+  worker.terminate();
+});
+
+// Or after completing a one-time task
+worker.onmessage = (event) => {
+  processResult(event.data);
+  worker.terminate();
+};
+```
+
+### Web Workers Checklist
+
+- [ ] Identify CPU-intensive tasks blocking main thread
+- [ ] Move heavy calculations to workers
+- [ ] Use transferable objects for large data
+- [ ] Implement error handling
+- [ ] Consider worker pools for parallel tasks
+- [ ] Debug with DevTools
+- [ ] Terminate workers when done
+- [ ] Test worker performance impact
+
+---
+
+## Performance Checklist
+
+A comprehensive checklist to ensure optimal web performance:
+
+### HTML & Critical Rendering Path
+
+- [ ] Keep DOM under 1,500 nodes
+- [ ] Minimize DOM depth (< 32 levels)
+- [ ] Use semantic HTML elements
+- [ ] Inline critical CSS (above-the-fold styles)
+- [ ] Defer non-critical CSS loading
+- [ ] Minify and compress HTML
+- [ ] Set appropriate cache headers
+- [ ] Use ETags for efficient revalidation
+
+### JavaScript
+
+- [ ] Add `defer` or `async` to script tags
+- [ ] Minify and compress JavaScript
+- [ ] Implement code splitting
+- [ ] Remove unused code (tree shaking)
+- [ ] Use dynamic imports for heavy features
+- [ ] Split vendor code into separate bundle
+- [ ] Analyze bundle size regularly
+- [ ] Consider modern vs. legacy bundle split
+
+### CSS
+
+- [ ] Minimize render-blocking CSS
+- [ ] Remove unused CSS
+- [ ] Use media queries for conditional loading
+- [ ] Minify and compress CSS
+- [ ] Avoid `@import` in CSS files
+- [ ] Load non-critical CSS asynchronously
+
+### Images
+
+- [ ] Use modern formats (WebP, AVIF)
+- [ ] Implement responsive images (`srcset`, `sizes`)
+- [ ] Compress images (80-85% quality for JPEG)
+- [ ] Set explicit width and height attributes
+- [ ] Use lazy loading (`loading="lazy"`)
+- [ ] Optimize above-the-fold images
+- [ ] Consider image CDN
+- [ ] Optimize SVGs
+
+### Fonts
+
+- [ ] Use `font-display: swap` or `optional`
+- [ ] Preload critical fonts only (1-2 max)
+- [ ] Subset fonts to required characters
+- [ ] Use WOFF2 format
+- [ ] Consider variable fonts
+- [ ] Self-host when possible
+- [ ] Match fallback font metrics
+
+### Video
+
+- [ ] Use `preload="none"` by default
+- [ ] Provide optimized poster images
+- [ ] Implement lazy loading
+- [ ] Use facade pattern for embeds
+- [ ] Compress videos appropriately
+- [ ] Provide multiple formats
+- [ ] Consider adaptive streaming for long videos
+
+### Resource Loading
+
+- [ ] Use resource hints appropriately:
+  - [ ] `dns-prefetch` for third-party domains
+  - [ ] `preconnect` for critical origins
+  - [ ] `preload` for critical resources
+  - [ ] `prefetch` for next page resources
+- [ ] Enable compression (Gzip/Brotli)
+- [ ] Implement lazy loading
+- [ ] Set up service worker caching
+- [ ] Choose appropriate caching strategies
+
+### Web Workers
+
+- [ ] Offload heavy computations to workers
+- [ ] Use worker pools for parallel tasks
+- [ ] Implement proper error handling
+- [ ] Use transferable objects for large data
+- [ ] Terminate workers when done
+
+### Performance Monitoring
+
+- [ ] Measure Core Web Vitals:
+  - [ ] LCP ≤ 2.5s
+  - [ ] INP ≤ 200ms
+  - [ ] CLS ≤ 0.1
+- [ ] Monitor FCP, TTI, and TBT
+- [ ] Use Lighthouse for audits
+- [ ] Set performance budgets
+- [ ] Track real-user metrics (RUM)
+- [ ] Test on real devices and networks
+
+### Network Optimization
+
+- [ ] Use HTTP/2 or HTTP/3
+- [ ] Enable connection keep-alive
+- [ ] Reduce number of HTTP requests
+- [ ] Implement effective caching strategy
+- [ ] Use CDN for static assets
+- [ ] Minimize redirect chains
+
+### Mobile Performance
+
+- [ ] Test on actual mobile devices
+- [ ] Respect `Save-Data` header
+- [ ] Detect connection type (`navigator.connection`)
+- [ ] Optimize for touch interactions
+- [ ] Reduce JavaScript execution time
+- [ ] Consider mobile-first approach
+
+### Accessibility & SEO
+
+- [ ] Ensure text remains visible during webfont load
+- [ ] Provide alt text for images
+- [ ] Use semantic HTML for better parsing
+- [ ] Implement proper heading hierarchy
+- [ ] Ensure adequate color contrast
+- [ ] Make interactive elements keyboard accessible
+
+### Build & Deployment
+
+- [ ] Set up build process with minification
+- [ ] Configure tree shaking
+- [ ] Implement cache busting for assets
+- [ ] Use service worker for offline support
+- [ ] Set up continuous performance monitoring
+- [ ] Document performance budget
+
+### Testing
+
+- [ ] Test on 3G/4G connections
+- [ ] Test on low-end devices
+- [ ] Use throttling in DevTools
+- [ ] Perform A/B testing for changes
+- [ ] Monitor performance after deployment
+
+---
+
+## Additional Resources
+
+### Tools
+
+**Performance Testing:**
+- [Lighthouse](https://developers.google.com/web/tools/lighthouse)
+- [WebPageTest](https://www.webpagetest.org/)
+- [PageSpeed Insights](https://pagespeed.web.dev/)
+- Chrome DevTools Performance Panel
+
+**Image Optimization:**
+- [Squoosh](https://squoosh.app/)
+- [ImageOptim](https://imageoptim.com/)
+- Sharp (Node.js)
+
+**Bundle Analysis:**
+- webpack-bundle-analyzer
+- Rollup Plugin Visualizer
+- source-map-explorer
+
+**Monitoring:**
+- Google Analytics
+- Sentry Performance
+- New Relic
+- Datadog RUM
+
+### Further Reading
+
+- [web.dev Learn Performance](https://web.dev/learn-core-web-vitals/)
+- [MDN Web Performance](https://developer.mozilla.org/en-US/docs/Web/Performance)
+- [Performance Budget Calculator](https://perf-budget-calculator.firebaseapp.com/)
+- [Can I Use](https://caniuse.com/) - Browser compatibility
+
+---
+
+## Conclusion
+
+Web performance optimization is an ongoing process, not a one-time task. The techniques covered in this guide provide a solid foundation for building fast, responsive websites that deliver excellent user experiences.
+
+**Key Takeaways:**
+
+1. **Performance is user experience** - Fast sites lead to better engagement and conversions
+2. **Measure first** - Use Core Web Vitals and performance tools to identify issues
+3. **Optimize strategically** - Focus on the biggest impact items first
+4. **Test continuously** - Monitor real-user performance and iterate
+5. **Consider all users** - Test on various devices, networks, and conditions
+
+Remember: A 1-second improvement in load time can significantly impact your site's success. Start with the basics, measure your progress, and continuously optimize.
+
+**Happy optimizing! 🚀**

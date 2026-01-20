@@ -1,0 +1,476 @@
+# JavaScript Execution Context - Complete Guide
+
+## Table of Contents
+
+1. [What is an Execution Context?](#what-is-an-execution-context)
+2. [Types of Execution Context](#types-of-execution-context)
+3. [Global Execution Context (GEC)](#global-execution-context-gec)
+4. [Function Execution Context (FEC)](#function-execution-context-fec)
+5. [Call Stack](#call-stack)
+6. [The `this` Keyword in Execution Context](#the-this-keyword-in-execution-context)
+7. [Lexical vs Variable Environment](#lexical-vs-variable-environment)
+8. [Hoisting Summary](#hoisting-summary)
+9. [Complete Execution Flow Example](#complete-execution-flow-example)
+10. [Execution Context vs Scope](#execution-context-vs-scope)
+11. [Closures and Execution Context](#closures-and-execution-context)
+12. [Execution Context and Event Loop](#execution-context-and-event-loop)
+13. [Microtasks and Execution Context](#microtasks-and-execution-context)
+14. [Common Interview Questions](#common-interview-questions)
+15. [Mental Models](#mental-models)
+
+---
+
+## What is an Execution Context?
+
+An **Execution Context (EC)** is the environment where JavaScript code is evaluated and executed. Think of it as a container that holds all the information needed to run a piece of code.
+
+Every Execution Context has three components:
+
+- **Variable Environment** - stores variables declared with `var`
+- **Lexical Environment** - stores variables declared with `let` and `const`
+- **`this` binding** - determines what `this` refers to
+
+---
+
+## Types of Execution Context
+
+There are three types of execution contexts in JavaScript:
+
+1. **Global Execution Context (GEC)** - created when the JavaScript file starts executing
+2. **Function Execution Context (FEC)** - created each time a function is invoked
+3. **Eval Execution Context** - created when code runs inside `eval()` (rarely used in modern JavaScript)
+
+---
+
+## Global Execution Context (GEC)
+
+### When is it created?
+
+The Global Execution Context is created when your JavaScript file starts executing. There is only **one** GEC in your entire program, and it's stored at the bottom of the Call Stack.
+
+### What happens inside the Global EC?
+
+The GEC goes through two phases:
+
+#### 1. Memory Creation Phase (Hoisting)
+
+During this phase, JavaScript allocates memory for variables and functions:
+
+- `var` declarations → initialized to `undefined`
+- `let` and `const` → placed in the Temporal Dead Zone (TDZ)
+- Function declarations → fully hoisted with their definitions
+- `this` → points to `window` (browser) or `global` (Node.js)
+
+```javascript
+console.log(a); // undefined (hoisted but not yet assigned)
+var a = 10;
+```
+
+#### 2. Execution Phase
+
+During this phase, the code runs line by line:
+
+- Variables are assigned their actual values
+- Functions are invoked
+- Expressions are evaluated
+
+---
+
+## Function Execution Context (FEC)
+
+### When is it created?
+
+A new Function Execution Context is created **each time** a function is invoked. When the function completes, its execution context is destroyed.
+
+### What happens inside the Function EC?
+
+Like the GEC, the FEC also has two phases:
+
+#### Memory Creation Phase
+
+- Function parameters → initialized to `undefined`
+- Local variables → hoisted according to their declaration type
+- Inner functions → hoisted
+- `this` → depends on how the function is called
+
+#### Execution Phase
+
+- Parameters and variables are assigned values
+- Statements are executed
+- Return value is computed
+
+---
+
+## Call Stack
+
+The **Call Stack** is a data structure that tracks execution contexts. It follows the Last In, First Out (LIFO) principle.
+
+### Example:
+
+```javascript
+function one() {
+  two();
+}
+
+function two() {
+  console.log('Hello');
+}
+
+one();
+```
+
+### Stack Flow:
+
+```
+1. Global EC (pushed)
+2. one() EC (pushed)
+3. two() EC (pushed)
+4. two() EC (popped - after console.log)
+5. one() EC (popped - after two() returns)
+6. Global EC remains until program ends
+```
+
+### Visual Representation:
+
+```
+Call Stack at peak:
+
+| two()  |  ← Top
+| one()  |
+| GEC    |  ← Bottom
+```
+
+---
+
+## The `this` Keyword in Execution Context
+
+The value of `this` depends on the execution context:
+
+### In Global EC:
+
+```javascript
+console.log(this); // window (browser) / global (Node.js)
+```
+
+### In Function EC:
+
+```javascript
+function test() {
+  console.log(this);
+}
+test(); // window (non-strict mode), undefined (strict mode)
+```
+
+### In Method Call:
+
+```javascript
+const obj = {
+  fn: function() {
+    console.log(this);
+  }
+};
+obj.fn(); // this → obj
+```
+
+---
+
+## Lexical vs Variable Environment
+
+Both are part of the execution context but handle different types of declarations:
+
+### Lexical Environment
+
+- Stores variables declared with `let` and `const`
+- Block-scoped
+- Respects block boundaries (`{}`)
+
+### Variable Environment
+
+- Stores variables declared with `var`
+- Function-scoped
+- Ignores block boundaries (except function blocks)
+
+---
+
+## Hoisting Summary
+
+| Declaration | Hoisted? | Initial Value |
+|------------|----------|---------------|
+| `var` | ✅ Yes | `undefined` |
+| `let` | ✅ Yes | TDZ (Temporal Dead Zone) |
+| `const` | ✅ Yes | TDZ (Temporal Dead Zone) |
+| `function` | ✅ Yes | Function reference |
+| Arrow function | ❌ No | TDZ |
+
+---
+
+## Complete Execution Flow Example
+
+Let's trace through a complete example:
+
+```javascript
+var x = 1;
+
+function foo(a) {
+  var y = 2;
+  function bar() {
+    console.log(a, x, y);
+  }
+  bar();
+}
+
+foo(10);
+```
+
+### Execution Order:
+
+1. **Global EC created**
+   - `x` hoisted → `undefined`
+   - `foo` hoisted → function reference
+
+2. **Execution phase begins**
+   - `x` assigned `1`
+
+3. **`foo(10)` called** → Function EC created
+   - `a` assigned `10`
+   - `y` hoisted → `undefined`
+   - `bar` hoisted → function reference
+   - `y` assigned `2`
+
+4. **`bar()` called** → New Function EC created
+   - Looks up `a` → finds `10` in `foo`'s scope
+   - Looks up `x` → finds `1` in global scope
+   - Looks up `y` → finds `2` in `foo`'s scope
+   - Logs: `10 1 2`
+
+5. **Contexts are popped** in reverse order
+
+---
+
+## Execution Context vs Scope
+
+These concepts are often confused but are fundamentally different:
+
+| Aspect | Execution Context | Scope |
+|--------|------------------|-------|
+| **Definition** | Environment where code runs | Where variables are accessible |
+| **Created** | At runtime | At definition time (lexical) |
+| **Storage** | Call Stack | Lexical structure |
+| **Lifetime** | Destroyed after execution | Can survive via closures |
+
+### One-liner:
+
+**Execution context is runtime, scope is lexical.**
+
+### Example:
+
+```javascript
+function outer() {
+  var x = 10;
+
+  function inner() {
+    console.log(x);
+  }
+
+  return inner;
+}
+
+const fn = outer();
+fn(); // 10
+```
+
+In this example:
+
+- `outer()`'s execution context is **destroyed** ❌
+- But `x` is still **accessible** ✅ → this is a closure
+- Scope survives EC destruction
+
+---
+
+## Closures and Execution Context
+
+### Definition
+
+A **closure** is created when a function remembers variables from its lexical scope, even after the outer function's execution context is gone.
+
+### How Closures Form (Internals)
+
+```javascript
+function counter() {
+  let count = 0;
+
+  return function() {
+    count++;
+    console.log(count);
+  };
+}
+
+const inc = counter();
+inc(); // 1
+inc(); // 2
+```
+
+### What Happens Internally:
+
+1. `counter()` → Function EC created
+2. `count` stored in Lexical Environment
+3. Inner function returned
+4. `counter()` EC popped from Call Stack
+5. `count` retained via closure (reference maintained)
+
+### Memory Model:
+
+```
+Heap:
+ └── LexicalEnv { count: 0 }
+
+Call Stack:
+ └── inner() EC
+```
+
+### Important Points:
+
+- Closures **don't copy values** ❌
+- Closures **keep references** ✅
+- Common use cases:
+  - Event handlers
+  - `setTimeout`
+  - Currying
+  - Memoization
+
+---
+
+## Execution Context and Event Loop
+
+Understanding how execution contexts interact with the event loop is crucial:
+
+```javascript
+console.log('A');
+
+setTimeout(() => console.log('B'), 0);
+
+console.log('C');
+```
+
+### Execution Flow:
+
+1. Global EC created
+2. `'A'` logged
+3. `setTimeout` → callback sent to Web APIs
+4. `'C'` logged
+5. Global EC completes
+6. Event loop pushes callback to Call Stack
+7. `'B'` logged
+
+### Output:
+
+```
+A
+C
+B
+```
+
+### Key Rule:
+
+The **Call Stack must be empty** before the Event Loop can push callbacks from the queue.
+
+---
+
+## Microtasks and Execution Context
+
+```javascript
+console.log('A');
+
+Promise.resolve().then(() => console.log('B'));
+
+console.log('C');
+```
+
+### Output:
+
+```
+A
+C
+B
+```
+
+### Why?
+
+**Microtasks** (like `Promise.then`) are executed:
+
+- After the current execution context finishes
+- Before macrotasks (like `setTimeout`)
+
+### Priority Order:
+
+```
+1. Call Stack
+2. Microtask Queue (Promises, queueMicrotask)
+3. Macrotask Queue (setTimeout, setInterval, I/O)
+```
+
+---
+
+## Common Interview Questions
+
+### Q: Does closure increase memory usage?
+
+**A:** Yes, if references are retained unnecessarily. Closures keep variables in memory even after the outer function completes.
+
+### Q: Is a closure created on function call or definition?
+
+**A:** Definition time (lexical scope). The closure is formed when the function is defined, not when it's called.
+
+### Q: Does a block create an execution context?
+
+**A:** No ❌. Only functions create execution contexts. Blocks create lexical scope but not execution contexts.
+
+---
+
+## Mental Models
+
+| Concept | Think of it as |
+|---------|---------------|
+| Execution Context | Stack frame in memory |
+| Scope | Variable visibility rules |
+| Closure | Preserved lexical environment |
+| Event Loop | Stack coordinator |
+
+---
+
+## Interview One-Liners
+
+**Execution Context:**
+*"An execution context is the environment where JavaScript code runs, consisting of memory creation and execution phases, created globally once and per function call thereafter."*
+
+**EC vs Scope vs Closure:**
+*"Execution contexts manage runtime execution, scopes define variable access, and closures allow lexical environments to survive beyond their execution contexts."*
+
+---
+
+## Execution Context Lifecycle
+
+```
+Code runs
+    ↓
+Execution Context created
+    ↓
+Memory phase (hoisting)
+    ↓
+Execution phase
+    ↓
+Context popped from stack
+    ↓
+Next context runs (if any)
+```
+
+---
+
+## Key Takeaways
+
+1. **Execution contexts** are created at runtime and manage code execution
+2. **Scope** is determined at definition time and controls variable access
+3. **Closures** allow inner functions to access outer variables even after the outer function has finished
+4. The **Call Stack** tracks all active execution contexts
+5. The **Event Loop** coordinates between the Call Stack and task queues
+6. **Microtasks** have higher priority than macrotasks

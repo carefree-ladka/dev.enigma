@@ -1,0 +1,3154 @@
+# Learn Web Accessibility
+
+> A comprehensive guide to web accessibility based on web.dev's Learn Accessibility course and W3C ARIA Authoring Practices Guide (APG)
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [What is Digital Accessibility?](#what-is-digital-accessibility)
+3. [How Accessibility is Measured](#how-accessibility-is-measured)
+4. [ARIA and HTML](#aria-and-html)
+5. [Content Structure](#content-structure)
+6. [Keyboard Focus](#keyboard-focus)
+7. [JavaScript Accessibility](#javascript-accessibility)
+8. [Images](#images)
+9. [Color and Contrast](#color-and-contrast)
+10. [Animation and Motion](#animation-and-motion)
+11. [Typography](#typography)
+12. [Video and Audio](#video-and-audio)
+13. [Forms](#forms)
+14. [ARIA Design Patterns](#aria-design-patterns)
+15. [Testing](#testing)
+16. [Accessibility Checklist](#accessibility-checklist)
+
+---
+
+## Introduction
+
+Web accessibility ensures that websites and applications can be used by everyone, including people with disabilities. This includes users with:
+
+- **Visual disabilities**: Blindness, low vision, color blindness
+- **Auditory disabilities**: Deafness, hard of hearing
+- **Motor disabilities**: Limited dexterity, tremors, paralysis
+- **Cognitive disabilities**: Learning disabilities, memory impairments
+- **Situational limitations**: Broken arm, bright sunlight, noisy environment
+
+### Why Accessibility Matters
+
+**1. It's the Right Thing to Do**
+- 15% of the global population (1 billion people) has some form of disability
+- Everyone experiences temporary or situational disabilities
+
+**2. Legal Requirements**
+- Americans with Disabilities Act (ADA)
+- Section 508 (US Federal agencies)
+- European Accessibility Act
+- UK Equality Act
+- Many other international laws
+
+**3. Business Benefits**
+- Larger market reach
+- Improved SEO (search engines use similar logic to screen readers)
+- Better usability for all users
+- Increased customer loyalty
+
+**4. Technical Benefits**
+- Better code quality
+- Improved mobile experience
+- Enhanced keyboard navigation
+- Faster loading times
+
+---
+
+## What is Digital Accessibility?
+
+Digital accessibility means designing and building websites and applications so that people with disabilities can interact with them in meaningful and equivalent ways.
+
+### The Four Principles of WCAG (POUR)
+
+The Web Content Accessibility Guidelines (WCAG) are organized around four principles:
+
+#### 1. Perceivable
+Information and user interface components must be presentable to users in ways they can perceive.
+
+```html
+<!-- ✅ Perceivable: Image has alt text -->
+<img src="chart.png" alt="Sales increased 40% in Q4">
+
+<!-- ❌ Not perceivable: No alternative for visual content -->
+<img src="chart.png">
+```
+
+#### 2. Operable
+User interface components and navigation must be operable by all users.
+
+```html
+<!-- ✅ Operable: Keyboard accessible -->
+<button onclick="submitForm()">Submit</button>
+
+<!-- ❌ Not operable: No keyboard access -->
+<div onclick="submitForm()">Submit</div>
+```
+
+#### 3. Understandable
+Information and operation of user interface must be understandable.
+
+```html
+<!-- ✅ Understandable: Clear label -->
+<label for="email">Email address:</label>
+<input type="email" id="email" required>
+
+<!-- ❌ Not understandable: No label -->
+<input type="email" placeholder="Enter email">
+```
+
+#### 4. Robust
+Content must be robust enough to be interpreted by a wide variety of user agents, including assistive technologies.
+
+```html
+<!-- ✅ Robust: Semantic HTML -->
+<nav>
+  <ul>
+    <li><a href="/">Home</a></li>
+  </ul>
+</nav>
+
+<!-- ❌ Not robust: Non-semantic markup -->
+<div class="nav">
+  <div><span onclick="goHome()">Home</span></div>
+</div>
+```
+
+### Types of Disabilities
+
+#### Visual Disabilities
+
+**Blindness**
+- Uses: Screen readers (JAWS, NVDA, VoiceOver)
+- Needs: Text alternatives, semantic HTML, keyboard navigation
+
+**Low Vision**
+- Uses: Screen magnification, high contrast modes
+- Needs: Scalable text, good contrast, clear focus indicators
+
+**Color Blindness**
+- Affects: 8% of men, 0.5% of women
+- Needs: Don't rely solely on color to convey information
+
+```html
+<!-- ❌ Bad: Color only -->
+<p style="color: red;">Error: Invalid email</p>
+
+<!-- ✅ Good: Icon + color + text -->
+<p style="color: red;">
+  <span aria-hidden="true">⚠️</span>
+  <strong>Error:</strong> Invalid email
+</p>
+```
+
+#### Auditory Disabilities
+
+**Deaf or Hard of Hearing**
+- Needs: Captions, transcripts, visual alerts
+
+```html
+<!-- ✅ Accessible video -->
+<video controls>
+  <source src="video.mp4" type="video/mp4">
+  <track kind="captions" src="captions.vtt" srclang="en" label="English">
+</video>
+```
+
+#### Motor Disabilities
+
+**Limited Dexterity**
+- Uses: Keyboard, switch controls, voice commands
+- Needs: Large click targets, keyboard navigation, no time limits
+
+```css
+/* ✅ Large, easy-to-hit targets */
+button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 12px 24px;
+}
+```
+
+#### Cognitive Disabilities
+
+**Learning Disabilities, ADHD, Memory Impairments**
+- Needs: Clear language, consistent navigation, reduced distractions
+
+```html
+<!-- ✅ Clear, simple language -->
+<button>Save changes</button>
+
+<!-- ❌ Complex, unclear -->
+<button>Commit modifications to persistent storage</button>
+```
+
+---
+
+## How Accessibility is Measured
+
+### WCAG Conformance Levels
+
+**Level A (Minimum)**
+- Essential accessibility features
+- If not met, some users cannot access content
+
+**Level AA (Mid-range)** ⭐ **Target for most organizations**
+- Addresses major barriers
+- Required by most accessibility laws
+
+**Level AAA (Highest)**
+- Enhanced accessibility
+- Not required for entire sites (often impossible)
+
+### Common Success Criteria by Level
+
+| Level | Criteria Examples |
+|-------|-------------------|
+| **A** | Alt text for images, Keyboard accessible, Sufficient color contrast (3:1) |
+| **AA** | Enhanced color contrast (4.5:1), Resizable text, Multiple ways to navigate |
+| **AAA** | Extended color contrast (7:1), Sign language for videos, Reading level |
+
+### Testing for Compliance
+
+**Automated Testing (catches ~30% of issues)**
+- axe DevTools
+- WAVE
+- Lighthouse
+- Pa11y
+
+**Manual Testing (required)**
+- Keyboard navigation
+- Screen reader testing
+- Code review
+- Cognitive walkthrough
+
+**User Testing (most valuable)**
+- Testing with people with disabilities
+- Real-world usage scenarios
+
+---
+
+## ARIA and HTML
+
+### The Golden Rule of ARIA
+
+> **"No ARIA is better than bad ARIA"**
+
+### The Five Rules of ARIA
+
+#### Rule 1: Don't Use ARIA If You Can Use Native HTML
+
+```html
+<!-- ❌ Bad: Using ARIA when HTML exists -->
+<div role="button" tabindex="0" onclick="submit()">Submit</div>
+
+<!-- ✅ Good: Use native HTML -->
+<button onclick="submit()">Submit</button>
+```
+
+**Why?**
+- Native HTML has built-in keyboard support
+- Native HTML has built-in semantics
+- Native HTML is better supported
+- Less code to maintain
+
+#### Rule 2: Don't Change Native Semantics
+
+```html
+<!-- ❌ Bad: Changing button to heading -->
+<button role="heading" aria-level="1">Not a button</button>
+
+<!-- ✅ Good: Use correct element -->
+<h1>This is a heading</h1>
+<button>This is a button</button>
+```
+
+#### Rule 3: All Interactive ARIA Controls Must Be Keyboard Accessible
+
+```html
+<!-- ❌ Bad: Not keyboard accessible -->
+<div role="button" onclick="doSomething()">Click me</div>
+
+<!-- ✅ Good: Keyboard accessible -->
+<div role="button"
+     tabindex="0"
+     onclick="doSomething()"
+     onkeydown="handleKey(event)">
+  Click me
+</div>
+
+<script>
+function handleKey(event) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    doSomething();
+  }
+}
+</script>
+```
+
+#### Rule 4: Don't Hide Focusable Elements
+
+```html
+<!-- ❌ Bad: Hidden but focusable -->
+<button style="display: none;">Submit</button>
+<button aria-hidden="true">Delete</button>
+
+<!-- ✅ Good: Properly hidden -->
+<button hidden>Submit</button>
+<!-- OR remove from DOM entirely -->
+```
+
+#### Rule 5: All Interactive Elements Must Have Accessible Names
+
+```html
+<!-- ❌ Bad: No accessible name -->
+<button><span class="icon-save"></span></button>
+
+<!-- ✅ Good: Multiple ways to add names -->
+<button aria-label="Save document">
+  <span class="icon-save" aria-hidden="true"></span>
+</button>
+
+<!-- OR -->
+<button>
+  <span class="icon-save" aria-hidden="true"></span>
+  <span>Save document</span>
+</button>
+
+<!-- OR -->
+<button aria-labelledby="save-label">
+  <span class="icon-save" aria-hidden="true"></span>
+</button>
+<span id="save-label" class="visually-hidden">Save document</span>
+```
+
+### ARIA Roles
+
+#### Landmark Roles
+
+Define major sections of the page:
+
+```html
+<header role="banner">
+  <!-- Site header -->
+</header>
+
+<nav role="navigation" aria-label="Main navigation">
+  <!-- Primary navigation -->
+</nav>
+
+<main role="main">
+  <!-- Main content -->
+</main>
+
+<aside role="complementary">
+  <!-- Sidebar content -->
+</aside>
+
+<footer role="contentinfo">
+  <!-- Site footer -->
+</footer>
+```
+
+**Note:** HTML5 elements have implicit roles, but explicit roles improve compatibility.
+
+#### Widget Roles
+
+For interactive components:
+
+```html
+<!-- Button -->
+<div role="button" tabindex="0">Custom Button</div>
+
+<!-- Checkbox -->
+<div role="checkbox" aria-checked="false" tabindex="0">
+  Accept terms
+</div>
+
+<!-- Tab interface -->
+<div role="tablist">
+  <button role="tab" aria-selected="true">Tab 1</button>
+  <button role="tab" aria-selected="false">Tab 2</button>
+</div>
+```
+
+### ARIA States and Properties
+
+#### Common ARIA Attributes
+
+**aria-label**
+```html
+<button aria-label="Close dialog">
+  <span aria-hidden="true">&times;</span>
+</button>
+```
+
+**aria-labelledby**
+```html
+<h2 id="dialog-title">Confirm deletion</h2>
+<div role="dialog" aria-labelledby="dialog-title">
+  <!-- Dialog content -->
+</div>
+```
+
+**aria-describedby**
+```html
+<input
+  type="password"
+  id="password"
+  aria-describedby="password-hint">
+<div id="password-hint">
+  Must be at least 8 characters with one number
+</div>
+```
+
+**aria-expanded**
+```html
+<button
+  aria-expanded="false"
+  aria-controls="menu">
+  Menu
+</button>
+<ul id="menu" hidden>
+  <li><a href="/">Home</a></li>
+</ul>
+```
+
+**aria-hidden**
+```html
+<!-- Hide decorative elements from screen readers -->
+<span class="icon-star" aria-hidden="true">★</span>
+<span>Favorite</span>
+```
+
+**aria-live**
+```html
+<!-- Announce dynamic updates -->
+<div aria-live="polite" aria-atomic="true">
+  5 new messages
+</div>
+
+<!-- For urgent updates -->
+<div aria-live="assertive">
+  Error: Connection lost
+</div>
+```
+
+### Visually Hidden but Screen Reader Accessible
+
+```css
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Allow focusable elements to be visible when focused */
+.visually-hidden.focusable:active,
+.visually-hidden.focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+```
+
+---
+
+## Content Structure
+
+### Semantic HTML
+
+Use the right element for the job:
+
+```html
+<!-- ✅ Semantic structure -->
+<article>
+  <header>
+    <h1>Article Title</h1>
+    <p>By <span>Author Name</span> on <time datetime="2024-12-06">Dec 6, 2024</time></p>
+  </header>
+
+  <section>
+    <h2>First Section</h2>
+    <p>Content...</p>
+  </section>
+
+  <section>
+    <h2>Second Section</h2>
+    <p>Content...</p>
+  </section>
+
+  <footer>
+    <p>Tags: <a href="/tag/web">Web Development</a></p>
+  </footer>
+</article>
+```
+
+### Heading Hierarchy
+
+Headings should follow logical order without skipping levels:
+
+```html
+<!-- ✅ Good: Logical hierarchy -->
+<h1>Page Title</h1>
+  <h2>Section 1</h2>
+    <h3>Subsection 1.1</h3>
+    <h3>Subsection 1.2</h3>
+  <h2>Section 2</h2>
+    <h3>Subsection 2.1</h3>
+
+<!-- ❌ Bad: Skips levels -->
+<h1>Page Title</h1>
+  <h3>Section 1</h3>  <!-- Skipped h2 -->
+  <h2>Section 2</h2>
+  <h4>Subsection</h4> <!-- Skipped h3 -->
+```
+
+**Why it matters:**
+- Screen reader users navigate by headings
+- Creates a table of contents
+- Provides document structure
+
+### Landmarks
+
+Use HTML5 sectioning elements or ARIA landmarks:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Accessible Page</title>
+</head>
+<body>
+  <!-- Banner: Site header -->
+  <header role="banner">
+    <nav aria-label="Main" role="navigation">
+      <!-- Primary navigation -->
+    </nav>
+  </header>
+
+  <!-- Main: Primary content -->
+  <main role="main" id="main-content">
+    <h1>Page Title</h1>
+
+    <article>
+      <!-- Article content -->
+    </article>
+
+    <!-- Complementary: Sidebar -->
+    <aside role="complementary">
+      <!-- Related content -->
+    </aside>
+  </main>
+
+  <!-- Contentinfo: Site footer -->
+  <footer role="contentinfo">
+    <!-- Footer content -->
+  </footer>
+</body>
+</html>
+```
+
+### Skip Links
+
+Allow keyboard users to skip repetitive content:
+
+```html
+<body>
+  <a href="#main-content" class="skip-link">
+    Skip to main content
+  </a>
+
+  <header>
+    <!-- Navigation -->
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <!-- Main content -->
+  </main>
+</body>
+
+<style>
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+</style>
+```
+
+### Lists
+
+Use appropriate list types:
+
+```html
+<!-- Unordered list -->
+<ul>
+  <li>List item 1</li>
+  <li>List item 2</li>
+  <li>List item 3</li>
+</ul>
+
+<!-- Ordered list -->
+<ol>
+  <li>First step</li>
+  <li>Second step</li>
+  <li>Third step</li>
+</ol>
+
+<!-- Description list -->
+<dl>
+  <dt>Term 1</dt>
+  <dd>Definition 1</dd>
+
+  <dt>Term 2</dt>
+  <dd>Definition 2</dd>
+</dl>
+```
+
+### Tables
+
+Create accessible data tables:
+
+```html
+<table>
+  <caption>Monthly Sales Report</caption>
+  <thead>
+    <tr>
+      <th scope="col">Month</th>
+      <th scope="col">Sales</th>
+      <th scope="col">Profit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">January</th>
+      <td>$10,000</td>
+      <td>$2,000</td>
+    </tr>
+    <tr>
+      <th scope="row">February</th>
+      <td>$12,000</td>
+      <td>$2,400</td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row">Total</th>
+      <td>$22,000</td>
+      <td>$4,400</td>
+    </tr>
+  </tfoot>
+</table>
+```
+
+**Complex tables:**
+
+```html
+<table>
+  <caption>Student Grades</caption>
+  <thead>
+    <tr>
+      <th id="student">Student</th>
+      <th id="math">Math</th>
+      <th id="english">English</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="alice">Alice</th>
+      <td headers="alice math">95</td>
+      <td headers="alice english">88</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+---
+
+## Keyboard Focus
+
+### Why Keyboard Accessibility Matters
+
+Many users rely on keyboards:
+- Motor disabilities
+- Vision disabilities (using screen readers)
+- Power users preferring keyboard
+- Temporary limitations (broken mouse)
+
+### Focus Order
+
+Focus should follow logical reading order:
+
+```html
+<!-- ✅ Good: Visual and focus order match -->
+<form>
+  <label for="name">Name:</label>
+  <input type="text" id="name">
+
+  <label for="email">Email:</label>
+  <input type="email" id="email">
+
+  <button type="submit">Submit</button>
+</form>
+
+<!-- ❌ Bad: Using positive tabindex -->
+<button tabindex="3">Third</button>
+<button tabindex="1">First</button>
+<button tabindex="2">Second</button>
+```
+
+### Managing Tabindex
+
+```html
+<!-- tabindex="0": Add to natural tab order -->
+<div role="button" tabindex="0">
+  Custom Button
+</div>
+
+<!-- tabindex="-1": Programmatically focusable only -->
+<div id="error-message" tabindex="-1">
+  Error: Please fix the form
+</div>
+
+<script>
+// Focus error message programmatically
+document.getElementById('error-message').focus();
+</script>
+
+<!-- tabindex="1+" : AVOID - Creates confusing tab order -->
+```
+
+### Focus Indicators
+
+Always provide visible focus indicators:
+
+```css
+/* ❌ Bad: Removes focus indicator */
+button:focus {
+  outline: none;
+}
+
+/* ✅ Good: Custom focus indicator */
+button:focus {
+  outline: 2px solid #4A90E2;
+  outline-offset: 2px;
+}
+
+/* ✅ Better: Respect user preferences */
+button:focus-visible {
+  outline: 2px solid #4A90E2;
+  outline-offset: 2px;
+}
+```
+
+**WCAG Requirements:**
+- Minimum 3:1 contrast ratio against background
+- At least 2px thick OR 1px thick with 4:1 contrast
+
+### Focus Management
+
+#### Moving Focus
+
+```javascript
+// When opening modal, move focus to it
+function openModal() {
+  const modal = document.getElementById('modal');
+  const previousFocus = document.activeElement;
+
+  modal.hidden = false;
+  modal.querySelector('.close-button').focus();
+
+  // Store for return focus
+  modal.dataset.returnFocus = previousFocus.id;
+}
+
+// When closing modal, return focus
+function closeModal() {
+  const modal = document.getElementById('modal');
+  const returnId = modal.dataset.returnFocus;
+
+  modal.hidden = true;
+  document.getElementById(returnId).focus();
+}
+```
+
+#### Trapping Focus in Modals
+
+```javascript
+function trapFocus(element) {
+  const focusableElements = element.querySelectorAll(
+    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+  );
+
+  const firstFocusable = focusableElements[0];
+  const lastFocusable = focusableElements[focusableElements.length - 1];
+
+  element.addEventListener('keydown', function(e) {
+    const isTabPressed = e.key === 'Tab';
+
+    if (!isTabPressed) return;
+
+    if (e.shiftKey) { // Shift + Tab
+      if (document.activeElement === firstFocusable) {
+        lastFocusable.focus();
+        e.preventDefault();
+      }
+    } else { // Tab
+      if (document.activeElement === lastFocusable) {
+        firstFocusable.focus();
+        e.preventDefault();
+      }
+    }
+  });
+}
+```
+
+### Keyboard Event Handling
+
+```javascript
+// Custom button with full keyboard support
+const customButton = document.querySelector('[role="button"]');
+
+customButton.addEventListener('keydown', (event) => {
+  // Activate with Enter or Space
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault(); // Prevent page scroll on Space
+    activateButton();
+  }
+});
+
+customButton.addEventListener('click', () => {
+  activateButton();
+});
+
+function activateButton() {
+  console.log('Button activated!');
+}
+```
+
+---
+
+## JavaScript Accessibility
+
+### Progressive Enhancement
+
+Build functionality that works without JavaScript:
+
+```html
+<!-- ✅ Works without JavaScript -->
+<form action="/search" method="GET">
+  <label for="search">Search:</label>
+  <input type="search" id="search" name="q">
+  <button type="submit">Search</button>
+</form>
+
+<script>
+// Enhance with autocomplete
+const searchInput = document.getElementById('search');
+searchInput.addEventListener('input', showAutocomplete);
+</script>
+```
+
+### Announcing Dynamic Content
+
+Use ARIA live regions:
+
+```html
+<div id="status" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+function updateStatus(message) {
+  document.getElementById('status').textContent = message;
+  // Screen reader will announce the change
+}
+
+// Usage
+updateStatus('5 items added to cart');
+</script>
+```
+
+**Live Region Options:**
+
+```html
+<!-- Polite: Wait for user to finish current task -->
+<div aria-live="polite">3 new messages</div>
+
+<!-- Assertive: Interrupt immediately (use sparingly) -->
+<div aria-live="assertive">Error: Connection lost</div>
+
+<!-- Atomic: Read entire region or just changes -->
+<div aria-live="polite" aria-atomic="true">
+  Loading: 45%
+</div>
+
+<!-- Relevant: What types of changes to announce -->
+<div aria-live="polite" aria-relevant="additions text">
+  <ul id="notifications">
+    <!-- New items announced as added -->
+  </ul>
+</div>
+```
+
+### Page Title Updates
+
+Update page title for single-page applications:
+
+```javascript
+function navigateToPage(pageName, pageTitle) {
+  // Update URL
+  history.pushState({page: pageName}, pageTitle, `/${pageName}`);
+
+  // Update title
+  document.title = pageTitle;
+
+  // Announce to screen readers
+  const announcement = document.createElement('div');
+  announcement.setAttribute('role', 'status');
+  announcement.setAttribute('aria-live', 'polite');
+  announcement.textContent = `Navigated to ${pageTitle}`;
+  document.body.appendChild(announcement);
+
+  // Remove after announcement
+  setTimeout(() => announcement.remove(), 1000);
+}
+```
+
+### Loading States
+
+Provide feedback for asynchronous operations:
+
+```html
+<button id="load-more" aria-label="Load more items">
+  <span class="button-text">Load More</span>
+  <span class="spinner" hidden aria-hidden="true"></span>
+</button>
+
+<script>
+const button = document.getElementById('load-more');
+const buttonText = button.querySelector('.button-text');
+const spinner = button.querySelector('.spinner');
+
+async function loadMore() {
+  // Show loading state
+  button.setAttribute('aria-busy', 'true');
+  button.disabled = true;
+  buttonText.textContent = 'Loading...';
+  spinner.hidden = false;
+
+  try {
+    await fetchMoreItems();
+
+    // Success state
+    buttonText.textContent = 'Load More';
+
+    // Announce to screen readers
+    announce('10 more items loaded');
+  } catch (error) {
+    // Error state
+    buttonText.textContent = 'Error - Try Again';
+    announce('Error loading items');
+  } finally {
+    // Reset state
+    button.setAttribute('aria-busy', 'false');
+    button.disabled = false;
+    spinner.hidden = true;
+  }
+}
+</script>
+```
+
+### Error Handling
+
+Provide accessible error messages:
+
+```html
+<form id="signup-form">
+  <div>
+    <label for="email">Email:</label>
+    <input
+      type="email"
+      id="email"
+      aria-required="true"
+      aria-invalid="false"
+      aria-describedby="email-error">
+    <div id="email-error" role="alert" hidden></div>
+  </div>
+
+  <button type="submit">Sign Up</button>
+</form>
+
+<script>
+const form = document.getElementById('signup-form');
+const emailInput = document.getElementById('email');
+const emailError = document.getElementById('email-error');
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  if (!emailInput.validity.valid) {
+    // Show error
+    emailInput.setAttribute('aria-invalid', 'true');
+    emailError.textContent = 'Please enter a valid email address';
+    emailError.hidden = false;
+
+    // Focus invalid field
+    emailInput.focus();
+  }
+});
+
+// Clear error on input
+emailInput.addEventListener('input', () => {
+  if (emailInput.validity.valid) {
+    emailInput.setAttribute('aria-invalid', 'false');
+    emailError.hidden = true;
+  }
+});
+</script>
+```
+
+---
+
+## Images
+
+### Alternative Text (Alt Text)
+
+Alt text is crucial for users who cannot see images:
+
+```html
+<!-- ✅ Informative image -->
+<img src="chart.png" alt="Bar chart showing 40% increase in sales from Q3 to Q4">
+
+<!-- ✅ Functional image (link/button) -->
+<a href="/search">
+  <img src="search-icon.png" alt="Search">
+</a>
+
+<!-- ✅ Decorative image -->
+<img src="border-decoration.png" alt="" role="presentation">
+
+<!-- ❌ Bad: No alt text -->
+<img src="important-chart.png">
+
+<!-- ❌ Bad: Redundant alt text -->
+<img src="photo.jpg" alt="Image of a photo showing a picture of">
+```
+
+### Writing Good Alt Text
+
+**DO:**
+- Be concise (most screen readers cut off at ~125 characters)
+- Describe the content and function
+- Provide context-specific descriptions
+- Use empty alt (`alt=""`) for decorative images
+
+**DON'T:**
+- Start with "Image of" or "Picture of"
+- Include file names
+- Be overly verbose
+- Use alt text on decorative images
+
+### Context-Specific Alt Text
+
+```html
+<!-- In a product catalog -->
+<img src="shoe.jpg" alt="Red running shoe, size 10, $89.99">
+
+<!-- In a news article about that shoe -->
+<img src="shoe.jpg" alt="The controversial red shoe that sparked debate">
+
+<!-- As decorative element in article -->
+<img src="shoe.jpg" alt="">
+```
+
+### Complex Images
+
+For charts, diagrams, and infographics:
+
+```html
+<!-- Option 1: Long description nearby -->
+<figure>
+  <img src="complex-chart.png" alt="Sales data by region"
+       aria-describedby="chart-desc">
+  <figcaption id="chart-desc">
+    Detailed description: The chart shows sales data for four regions.
+    North region: $50k, South region: $65k, East region: $45k, West region: $70k.
+    West region shows the highest sales, while East shows the lowest.
+  </figcaption>
+</figure>
+
+<!-- Option 2: Link to long description -->
+<img src="complex-chart.png" alt="Sales data by region">
+<a href="chart-description.html">View detailed description</a>
+
+<!-- Option 3: Use longdesc (limited support) -->
+<img src="complex-chart.png" alt="Sales data by region"
+     longdesc="chart-description.html">
+```
+
+### Images of Text
+
+Avoid images of text when possible:
+
+```html
+<!-- ❌ Bad: Image of text -->
+<img src="heading-text.png" alt="Welcome to Our Site">
+
+<!-- ✅ Good: Actual text -->
+<h1>Welcome to Our Site</h1>
+
+<!-- ✅ Good: SVG text (scalable, selectable) -->
+<svg role="img" aria-label="Welcome to Our Site">
+  <text x="0" y="20">Welcome to Our Site</text>
+</svg>
+```
+
+### Background Images
+
+If background images convey information, provide alternatives:
+
+```html
+<div class="hero" style="background-image: url('product.jpg')">
+  <h1>New Product Launch</h1>
+  <!-- Image is decorative, information is in text -->
+</div>
+
+<!-- If background image is informative -->
+<div class="hero"
+     style="background-image: url('product.jpg')"
+     role="img"
+     aria-label="Photo of our new wireless headphones in black">
+  <h1>New Product Launch</h1>
+</div>
+```
+
+### Icon Fonts and SVGs
+
+```html
+<!-- Icon fonts -->
+<button>
+  <span class="icon-save" aria-hidden="true"></span>
+  <span>Save</span>
+</button>
+
+<!-- OR with aria-label -->
+<button aria-label="Save document">
+  <span class="icon-save" aria-hidden="true"></span>
+</button>
+
+<!-- SVG icons -->
+<button aria-label="Close">
+  <svg aria-hidden="true" focusable="false">
+    <use xlink:href="#icon-close"></use>
+  </svg>
+</button>
+
+<!-- SVG with title -->
+<svg role="img" aria-labelledby="icon-title">
+  <title id="icon-title">Save document</title>
+  <path d="M..."></path>
+</svg>
+```
+
+---
+
+## Color and Contrast
+
+### Color Contrast Requirements
+
+**WCAG 2.1 Standards:**
+
+| Content | Level AA | Level AAA |
+|---------|----------|-----------|
+| **Normal text** | 4.5:1 | 7:1 |
+| **Large text** (18pt+ or 14pt+ bold) | 3:1 | 4.5:1 |
+| **UI components & graphics** | 3:1 | No requirement |
+
+### Testing Contrast
+
+**Tools:**
+- Chrome DevTools (built-in contrast checker)
+- WebAIM Contrast Checker
+- Stark (Figma plugin)
+- axe DevTools
+
+```css
+/* ❌ Bad: Insufficient contrast */
+.text {
+  color: #777777; /* Light gray */
+  background: #FFFFFF; /* White */
+  /* Contrast ratio: 4.47:1 - FAILS AA for normal text */
+}
+
+/* ✅ Good: Sufficient contrast */
+.text {
+  color: #595959; /* Darker gray */
+  background: #FFFFFF; /* White */
+  /* Contrast ratio: 7.0:1 - PASSES AAA */
+}
+```
+
+### Don't Rely on Color Alone
+
+```html
+<!-- ❌ Bad: Color only -->
+<p style="color: red;">Error: Invalid input</p>
+<p style="color: green;">Success: Saved!</p>
+
+<!-- ✅ Good: Color + icon + text -->
+<p style="color: red;">
+  <span aria-hidden="true">⚠️</span>
+  <strong>Error:</strong> Invalid input
+</p>
+<p style="color: green;">
+  <span aria-hidden="true">✓</span>
+  <strong>Success:</strong> Saved!
+</p>
+```
+
+### Form Validation
+
+```html
+<!-- ❌ Bad: Red border only -->
+<input class="error" type="email">
+<style>
+  .error { border: 2px solid red; }
+</style>
+
+<!-- ✅ Good: Multiple indicators -->
+<div class="field-group">
+  <label for="email">
+    Email <span aria-hidden="true">*</span>
+  </label>
+  <input
+    type="email"
+    id="email"
+    class="error"
+    aria-invalid="true"
+    aria-describedby="email-error">
+  <div id="email-error" class="error-message">
+    <span aria-hidden="true">⚠️</span>
+    Please enter a valid email address
+  </div>
+</div>
+
+<style>
+.error {
+  border: 2px solid #C00;
+  border-left-width: 4px; /* Thicker left border */
+}
+
+.error-message {
+  color: #C00;
+  font-weight: bold;
+}
+</style>
+```
+
+### Link Colors
+
+```css
+/* ✅ Good: Underlined links */
+a {
+  color: #0066CC;
+  text-decoration: underline;
+}
+
+a:hover, a:focus {
+  color: #003D7A;
+  text-decoration: underline;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* If removing underline, ensure 3:1 contrast with surrounding text */
+a.no-underline {
+  text-decoration: none;
+  font-weight: bold; /* Additional differentiation */
+}
+```
+
+### Charts and Data Visualization
+
+```html
+<!-- Use patterns/shapes, not just color -->
+<svg role="img" aria-labelledby="chart-title chart-desc">
+  <title id="chart-title">Sales by Region</title>
+  <desc id="chart-desc">
+    Bar chart showing sales data.
+    North: $50k (diagonal stripes),
+    South: $65k (dots),
+    East: $45k (solid),
+    West: $70k (crosshatch)
+  </desc>
+
+  <!-- Bars with patterns, not just colors -->
+  <rect fill="url(#pattern-diagonal)" />
+  <rect fill="url(#pattern-dots)" />
+
+  <defs>
+    <pattern id="pattern-diagonal">...</pattern>
+    <pattern id="pattern-dots">...</pattern>
+  </defs>
+</svg>
+```
+
+### Dark Mode / Light Mode
+
+```css
+/* System preference support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1A1A1A;
+    color: #FFFFFF;
+  }
+
+  a {
+    color: #66B3FF; /* Lighter blue for dark backgrounds */
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background: #FFFFFF;
+    color: #1A1A1A;
+  }
+
+  a {
+    color: #0066CC; /* Darker blue for light backgrounds */
+  }
+}
+```
+
+---
+
+## Animation and Motion
+
+### Motion Preferences
+
+Respect user preferences for reduced motion:
+
+```css
+/* Default: Smooth animations */
+.card {
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+}
+
+/* Reduced motion: Disable or minimize animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card:hover {
+    transform: none; /* No scale animation */
+    box-shadow: 0 0 0 3px blue; /* Alternative highlight */
+  }
+}
+```
+
+### Safe Animation Practices
+
+**WCAG 2.1 Guidelines:**
+- No more than 3 flashes per second
+- Avoid large, rapid movement
+- Provide pause/stop controls for auto-playing content
+
+```html
+<!-- ✅ Carousel with pause control -->
+<div class="carousel" aria-roledescription="carousel" aria-label="Featured products">
+  <button
+    class="pause-button"
+    aria-label="Pause carousel auto-play"
+    aria-pressed="false">
+    <span aria-hidden="true">⏸</span>
+  </button>
+
+  <div class="slides">
+    <!-- Slides -->
+  </div>
+</div>
+
+<script>
+let autoplayInterval;
+const pauseButton = document.querySelector('.pause-button');
+
+function startAutoplay() {
+  autoplayInterval = setInterval(nextSlide, 5000);
+  pauseButton.setAttribute('aria-pressed', 'false');
+  pauseButton.setAttribute('aria-label', 'Pause carousel auto-play');
+}
+
+function stopAutoplay() {
+  clearInterval(autoplayInterval);
+  pauseButton.setAttribute('aria-pressed', 'true');
+  pauseButton.setAttribute('aria-label', 'Resume carousel auto-play');
+}
+
+pauseButton.addEventListener('click', () => {
+  if (pauseButton.getAttribute('aria-pressed') === 'false') {
+    stopAutoplay();
+  } else {
+    startAutoplay();
+  }
+});
+
+// Pause on hover/focus
+document.querySelector('.carousel').addEventListener('mouseenter', stopAutoplay);
+document.querySelector('.carousel').addEventListener('focusin', stopAutoplay);
+</script>
+```
+
+### Parallax Scrolling
+
+```javascript
+// Disable parallax for users who prefer reduced motion
+function initParallax() {
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (prefersReducedMotion) {
+    return; // Don't initialize parallax
+  }
+
+  // Safe parallax implementation
+  window.addEventListener('scroll', () => {
+    const scrolled = window.pageYOffset;
+    const parallaxElements = document.querySelectorAll('.parallax');
+
+    parallaxElements.forEach(element => {
+      const speed = element.dataset.speed || 0.5;
+      element.style.transform = `translateY(${scrolled * speed}px)`;
+    });
+  });
+}
+```
+
+### Accessible Loading Indicators
+
+```html
+<!-- Spinner with status -->
+<div
+  role="status"
+  aria-live="polite"
+  aria-label="Loading content">
+  <div class="spinner" aria-hidden="true"></div>
+  <span class="visually-hidden">Loading...</span>
+</div>
+
+<style>
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    /* Show static indicator instead */
+    opacity: 0.6;
+  }
+}
+</style>
+```
+
+### Smooth Scrolling
+
+```css
+/* Enable smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Disable for reduced motion users */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+```
+
+---
+
+## Typography
+
+### Font Size
+
+**Minimum Recommendations:**
+- Body text: 16px (1rem)
+- Small text: 14px minimum
+- Large text: 18px+ (better for users with low vision)
+
+```css
+/* ✅ Good: Scalable, relative units */
+body {
+  font-size: 16px; /* Base size */
+}
+
+h1 { font-size: 2rem; } /* 32px */
+h2 { font-size: 1.5rem; } /* 24px */
+p { font-size: 1rem; } /* 16px */
+small { font-size: 0.875rem; } /* 14px */
+
+/* ❌ Bad: Fixed pixel sizes that don't scale */
+body { font-size: 12px; }
+```
+
+### Line Height
+
+```css
+/* ✅ Good: Readable line height */
+body {
+  line-height: 1.5; /* WCAG minimum */
+}
+
+h1, h2, h3 {
+  line-height: 1.2; /* Tighter for headings */
+}
+
+/* For long-form content */
+article p {
+  line-height: 1.6; /* More comfortable */
+}
+```
+
+### Line Length
+
+Optimal: 50-75 characters per line
+
+```css
+/* ✅ Good: Comfortable reading width */
+.content {
+  max-width: 70ch; /* Characters */
+}
+
+/* OR */
+.content {
+  max-width: 640px;
+}
+```
+
+### Letter Spacing
+
+```css
+/* ✅ Good: Adequate spacing */
+body {
+  letter-spacing: 0.02em;
+}
+
+/* For small caps or all caps */
+.caps {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ❌ Bad: Too tight */
+.bad {
+  letter-spacing: -0.05em;
+}
+```
+
+### Word Spacing
+
+```css
+/* WCAG Requirement: At least 0.16 times font size */
+p {
+  word-spacing: 0.16em;
+}
+```
+
+### Paragraph Spacing
+
+```css
+/* WCAG Requirement: At least 2 times font size */
+p {
+  margin-bottom: 2em;
+}
+```
+
+### Font Choices
+
+```css
+/* ✅ Good: Clear, readable fonts */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Avoid: */
+/* - Overly decorative fonts for body text */
+/* - All caps for long text */
+/* - Very thin font weights */
+```
+
+### Justified Text
+
+```css
+/* ❌ Avoid: Justified text creates rivers of white space */
+.bad {
+  text-align: justify;
+}
+
+/* ✅ Better: Left-aligned text */
+.good {
+  text-align: left;
+}
+
+/* If justified is necessary, add hyphenation */
+.justified {
+  text-align: justify;
+  hyphens: auto;
+}
+```
+
+### Responsive Typography
+
+```css
+/* Fluid typography */
+body {
+  font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+}
+
+h1 {
+  font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+}
+```
+
+### Text Resizing
+
+Users should be able to resize text to 200% without loss of functionality:
+
+```css
+/* ✅ Allow text resizing */
+html {
+  font-size: 100%; /* Respect user's browser settings */
+}
+
+/* Use relative units */
+.button {
+  padding: 0.5em 1em;
+  font-size: 1rem;
+}
+
+/* ❌ Bad: Fixed sizes that don't scale */
+.button {
+  padding: 8px 16px;
+  font-size: 16px;
+  height: 40px; /* Fixed height prevents text resize */
+}
+```
+
+---
+
+## Video and Audio
+
+### Captions
+
+**Required for:**
+- All pre-recorded video with audio
+- All live video with audio
+
+```html
+<video controls>
+  <source src="video.mp4" type="video/mp4">
+
+  <!-- Captions (for deaf/hard of hearing) -->
+  <track
+    kind="captions"
+    src="captions-en.vtt"
+    srclang="en"
+    label="English"
+    default>
+
+  <!-- Multiple languages -->
+  <track
+    kind="captions"
+    src="captions-es.vtt"
+    srclang="es"
+    label="Español">
+</video>
+```
+
+**WebVTT Format (captions-en.vtt):**
+```
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+Hello, welcome to our video.
+
+00:00:02.500 --> 00:00:05.000
+Today we'll discuss web accessibility.
+
+00:00:05.500 --> 00:00:08.000
+[background music playing]
+```
+
+### Transcripts
+
+Provide text transcripts for:
+- All audio content
+- All video content (even with captions)
+
+```html
+<video controls>
+  <source src="video.mp4" type="video/mp4">
+  <track kind="captions" src="captions.vtt" srclang="en" default>
+</video>
+
+<details>
+  <summary>View transcript</summary>
+  <div>
+    <h3>Transcript</h3>
+    <p>
+      [00:00] Hello, welcome to our video.
+      [00:02] Today we'll discuss web accessibility...
+    </p>
+  </div>
+</details>
+```
+
+### Audio Descriptions
+
+For video with important visual information:
+
+```html
+<video controls>
+  <source src="video.mp4" type="video/mp4">
+
+  <!-- Standard captions -->
+  <track kind="captions" src="captions.vtt" srclang="en" default>
+
+  <!-- Audio descriptions -->
+  <track kind="descriptions" src="descriptions.vtt" srclang="en">
+</video>
+
+<!-- OR provide separate version with audio descriptions -->
+<video controls>
+  <source src="video-with-descriptions.mp4" type="video/mp4">
+</video>
+```
+
+### Sign Language
+
+For Level AAA compliance:
+
+```html
+<!-- Picture-in-picture sign language -->
+<div class="video-container">
+  <video class="main-video" controls>
+    <source src="main-video.mp4" type="video/mp4">
+  </video>
+
+  <video class="sign-language" controls>
+    <source src="sign-language.mp4" type="video/mp4">
+    <track kind="captions" src="sign-captions.vtt" srclang="en">
+  </video>
+</div>
+
+<style>
+.video-container {
+  position: relative;
+}
+
+.sign-language {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 25%;
+  border: 2px solid white;
+}
+</style>
+```
+
+### Accessible Media Player
+
+```html
+<div class="media-player">
+  <video id="video">
+    <source src="video.mp4" type="video/mp4">
+    <track kind="captions" src="captions.vtt" srclang="en" default>
+  </video>
+
+  <div class="controls">
+    <button
+      id="play-pause"
+      aria-label="Play video">
+      <span aria-hidden="true">▶</span>
+    </button>
+
+    <button
+      id="mute"
+      aria-label="Mute audio">
+      <span aria-hidden="true">🔊</span>
+    </button>
+
+    <input
+      type="range"
+      id="volume"
+      min="0"
+      max="100"
+      value="100"
+      aria-label="Volume"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow="100">
+
+    <button
+      id="captions"
+      aria-label="Toggle captions"
+      aria-pressed="true">
+      <span aria-hidden="true">CC</span>
+    </button>
+
+    <button
+      id="fullscreen"
+      aria-label="Enter fullscreen">
+      <span aria-hidden="true">⛶</span>
+    </button>
+  </div>
+
+  <div
+    id="time-display"
+    aria-live="off"
+    aria-atomic="true">
+    <span id="current-time">0:00</span> /
+    <span id="duration">0:00</span>
+  </div>
+</div>
+```
+
+### Auto-Play Considerations
+
+```html
+<!-- ❌ Bad: Auto-play with sound -->
+<video autoplay>
+  <source src="video.mp4">
+</video>
+
+<!-- ✅ Better: Muted auto-play -->
+<video autoplay muted loop playsinline>
+  <source src="background-video.mp4">
+</video>
+
+<!-- ✅ Best: No auto-play, user control -->
+<video controls>
+  <source src="video.mp4">
+</video>
+```
+
+### Audio-Only Content
+
+```html
+<audio controls>
+  <source src="podcast.mp3" type="audio/mpeg">
+  Your browser doesn't support audio playback.
+</audio>
+
+<details>
+  <summary>Podcast transcript</summary>
+  <div>
+    <p><strong>Host:</strong> Welcome to our podcast...</p>
+    <p><strong>Guest:</strong> Thank you for having me...</p>
+  </div>
+</details>
+```
+
+---
+
+## Forms
+
+### Label Every Input
+
+```html
+<!-- ✅ Explicit label -->
+<label for="username">Username:</label>
+<input type="text" id="username" name="username">
+
+<!-- ✅ Implicit label -->
+<label>
+  Email:
+  <input type="email" name="email">
+</label>
+
+<!-- ❌ Bad: No label -->
+<input type="text" placeholder="Enter username">
+
+<!-- ❌ Bad: Label not associated -->
+<label>Username:</label>
+<input type="text" name="username">
+```
+
+### Required Fields
+
+```html
+<label for="email">
+  Email <span aria-label="required">*</span>
+</label>
+<input
+  type="email"
+  id="email"
+  name="email"
+  required
+  aria-required="true">
+
+<!-- OR -->
+<label for="email">
+  Email <abbr title="required" aria-label="required">*</abbr>
+</label>
+<input
+  type="email"
+  id="email"
+  required>
+```
+
+### Grouping Related Fields
+
+```html
+<fieldset>
+  <legend>Shipping Address</legend>
+
+  <label for="street">Street:</label>
+  <input type="text" id="street" name="street">
+
+  <label for="city">City:</label>
+  <input type="text" id="city" name="city">
+
+  <label for="zip">ZIP Code:</label>
+  <input type="text" id="zip" name="zip">
+</fieldset>
+
+<fieldset>
+  <legend>Payment Method</legend>
+
+  <input type="radio" id="credit" name="payment" value="credit">
+  <label for="credit">Credit Card</label>
+
+  <input type="radio" id="debit" name="payment" value="debit">
+  <label for="debit">Debit Card</label>
+
+  <input type="radio" id="paypal" name="payment" value="paypal">
+  <label for="paypal">PayPal</label>
+</fieldset>
+```
+
+### Instructions and Help Text
+
+```html
+<label for="password">Password:</label>
+<input
+  type="password"
+  id="password"
+  aria-describedby="password-hint password-requirements">
+
+<div id="password-hint">
+  Choose a strong password you haven't used elsewhere.
+</div>
+
+<div id="password-requirements">
+  Must be at least 8 characters with one number and one special character.
+</div>
+```
+
+### Error Messages
+
+```html
+<form id="signup-form" novalidate>
+  <div class="form-group">
+    <label for="email">Email:</label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      required
+      aria-required="true"
+      aria-invalid="false"
+      aria-describedby="email-error">
+    <div id="email-error" class="error" role="alert" hidden></div>
+  </div>
+
+  <button type="submit">Sign Up</button>
+</form>
+
+<script>
+const form = document.getElementById('signup-form');
+const emailInput = document.getElementById('email');
+const emailError = document.getElementById('email-error');
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  // Clear previous errors
+  clearErrors();
+
+  // Validate
+  let hasErrors = false;
+
+  if (!emailInput.validity.valid) {
+    showError(emailInput, emailError, 'Please enter a valid email address');
+    hasErrors = true;
+  }
+
+  if (hasErrors) {
+    // Focus first error
+    document.querySelector('[aria-invalid="true"]').focus();
+  } else {
+    // Submit form
+    form.submit();
+  }
+});
+
+function showError(input, errorElement, message) {
+  input.setAttribute('aria-invalid', 'true');
+  errorElement.textContent = message;
+  errorElement.hidden = false;
+}
+
+function clearErrors() {
+  document.querySelectorAll('[aria-invalid="true"]').forEach(input => {
+    input.setAttribute('aria-invalid', 'false');
+  });
+  document.querySelectorAll('.error').forEach(error => {
+    error.hidden = true;
+  });
+}
+
+// Clear error on input
+emailInput.addEventListener('input', () => {
+  if (emailInput.validity.valid) {
+    emailInput.setAttribute('aria-invalid', 'false');
+    emailError.hidden = true;
+  }
+});
+</script>
+```
+
+### Error Summary
+
+```html
+<div id="error-summary" role="alert" aria-labelledby="error-heading" hidden>
+  <h2 id="error-heading">There are 2 errors in this form</h2>
+  <ul>
+    <li><a href="#email">Email: Please enter a valid email address</a></li>
+    <li><a href="#password">Password: Password is too short</a></li>
+  </ul>
+</div>
+
+<form>
+  <!-- Form fields -->
+</form>
+```
+
+### Autocomplete
+
+```html
+<!-- Help users fill forms faster -->
+<label for="name">Full Name:</label>
+<input
+  type="text"
+  id="name"
+  name="name"
+  autocomplete="name">
+
+<label for="email">Email:</label>
+<input
+  type="email"
+  id="email"
+  name="email"
+  autocomplete="email">
+
+<label for="street">Street Address:</label>
+<input
+  type="text"
+  id="street"
+  name="street"
+  autocomplete="street-address">
+
+<label for="cc-number">Credit Card:</label>
+<input
+  type="text"
+  id="cc-number"
+  name="cc-number"
+  autocomplete="cc-number">
+```
+
+### Custom Select (Accessible)
+
+```html
+<div class="custom-select">
+  <button
+    type="button"
+    id="select-button"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    aria-labelledby="select-label select-button">
+    Select an option
+  </button>
+
+  <ul
+    id="select-listbox"
+    role="listbox"
+    aria-labelledby="select-label"
+    tabindex="-1"
+    hidden>
+    <li role="option" id="option-1" aria-selected="false">Option 1</li>
+    <li role="option" id="option-2" aria-selected="false">Option 2</li>
+    <li role="option" id="option-3" aria-selected="false">Option 3</li>
+  </ul>
+</div>
+
+<script>
+// Full implementation requires keyboard navigation (Arrow keys, Enter, Escape)
+// See ARIA APG patterns section for complete implementation
+</script>
+```
+
+---
+
+## ARIA Design Patterns
+
+Based on W3C ARIA Authoring Practices Guide (APG), here are common accessible component patterns:
+
+### Accordion
+
+Vertically stacked set of interactive headings with show/hide content:
+
+```html
+<div class="accordion">
+  <h3>
+    <button
+      id="accordion-button-1"
+      aria-expanded="false"
+      aria-controls="accordion-panel-1">
+      Section 1 Title
+      <span aria-hidden="true" class="icon"></span>
+    </button>
+  </h3>
+  <div
+    id="accordion-panel-1"
+    role="region"
+    aria-labelledby="accordion-button-1"
+    hidden>
+    <p>Section 1 content...</p>
+  </div>
+
+  <h3>
+    <button
+      id="accordion-button-2"
+      aria-expanded="false"
+      aria-controls="accordion-panel-2">
+      Section 2 Title
+      <span aria-hidden="true" class="icon"></span>
+    </button>
+  </h3>
+  <div
+    id="accordion-panel-2"
+    role="region"
+    aria-labelledby="accordion-button-2"
+    hidden>
+    <p>Section 2 content...</p>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.accordion button').forEach(button => {
+  button.addEventListener('click', () => {
+    const expanded = button.getAttribute('aria-expanded') === 'true';
+    const panel = document.getElementById(button.getAttribute('aria-controls'));
+
+    button.setAttribute('aria-expanded', !expanded);
+    panel.hidden = expanded;
+  });
+});
+</script>
+```
+
+**Keyboard Support:**
+- `Enter` or `Space`: Toggle panel
+- `Tab`: Move focus to next focusable element
+
+### Alert Dialog (Modal)
+
+```html
+<div
+  role="alertdialog"
+  aria-labelledby="dialog-title"
+  aria-describedby="dialog-desc"
+  aria-modal="true"
+  hidden>
+
+  <h2 id="dialog-title">Confirm Delete</h2>
+  <p id="dialog-desc">
+    Are you sure you want to delete this item? This action cannot be undone.
+  </p>
+
+  <button id="confirm-button">Delete</button>
+  <button id="cancel-button">Cancel</button>
+</div>
+
+<div class="backdrop" hidden aria-hidden="true"></div>
+
+<script>
+function openDialog() {
+  const dialog = document.querySelector('[role="alertdialog"]');
+  const backdrop = document.querySelector('.backdrop');
+  const previousFocus = document.activeElement;
+
+  // Show dialog
+  dialog.hidden = false;
+  backdrop.hidden = false;
+
+  // Trap focus
+  const focusableElements = dialog.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  // Focus first button
+  firstElement.focus();
+
+  // Handle Escape key
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeDialog();
+    }
+
+    // Trap focus
+    if (e.key === 'Tab') {
+      if (e.shiftKey && document.activeElement === firstElement) {
+        e.preventDefault();
+        lastElement.focus();
+      } else if (!e.shiftKey && document.activeElement === lastElement) {
+        e.preventDefault();
+        firstElement.focus();
+      }
+    }
+  });
+
+  // Store previous focus
+  dialog.dataset.returnFocus = previousFocus.id || 'body';
+}
+
+function closeDialog() {
+  const dialog = document.querySelector('[role="alertdialog"]');
+  const backdrop = document.querySelector('.backdrop');
+  const returnId = dialog.dataset.returnFocus;
+
+  dialog.hidden = true;
+  backdrop.hidden = true;
+
+  // Return focus
+  if (returnId && returnId !== 'body') {
+    document.getElementById(returnId)?.focus();
+  }
+}
+</script>
+```
+
+**Keyboard Support:**
+- `Tab`: Move focus within dialog
+- `Escape`: Close dialog
+- Focus trapped within dialog
+
+### Tabs
+
+```html
+<div class="tabs">
+  <div role="tablist" aria-label="Content sections">
+    <button
+      role="tab"
+      aria-selected="true"
+      aria-controls="panel-1"
+      id="tab-1"
+      tabindex="0">
+      Tab 1
+    </button>
+    <button
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-2"
+      id="tab-2"
+      tabindex="-1">
+      Tab 2
+    </button>
+    <button
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-3"
+      id="tab-3"
+      tabindex="-1">
+      Tab 3
+    </button>
+  </div>
+
+  <div
+    role="tabpanel"
+    id="panel-1"
+    aria-labelledby="tab-1"
+    tabindex="0">
+    <p>Content for tab 1...</p>
+  </div>
+
+  <div
+    role="tabpanel"
+    id="panel-2"
+    aria-labelledby="tab-2"
+    tabindex="0"
+    hidden>
+    <p>Content for tab 2...</p>
+  </div>
+
+  <div
+    role="tabpanel"
+    id="panel-3"
+    aria-labelledby="tab-3"
+    tabindex="0"
+    hidden>
+    <p>Content for tab 3...</p>
+  </div>
+</div>
+
+<script>
+const tablist = document.querySelector('[role="tablist"]');
+const tabs = tablist.querySelectorAll('[role="tab"]');
+const panels = document.querySelectorAll('[role="tabpanel"]');
+
+// Click handler
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    selectTab(tab);
+  });
+});
+
+// Keyboard navigation
+tablist.addEventListener('keydown', (e) => {
+  const currentTab = document.activeElement;
+  const currentIndex = Array.from(tabs).indexOf(currentTab);
+  let newIndex;
+
+  switch(e.key) {
+    case 'ArrowRight':
+      newIndex = (currentIndex + 1) % tabs.length;
+      break;
+    case 'ArrowLeft':
+      newIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      break;
+    case 'Home':
+      newIndex = 0;
+      break;
+    case 'End':
+      newIndex = tabs.length - 1;
+      break;
+    default:
+      return;
+  }
+
+  e.preventDefault();
+  selectTab(tabs[newIndex]);
+});
+
+function selectTab(selectedTab) {
+  // Deselect all tabs
+  tabs.forEach(tab => {
+    tab.setAttribute('aria-selected', 'false');
+    tab.tabIndex = -1;
+  });
+
+  // Hide all panels
+  panels.forEach(panel => {
+    panel.hidden = true;
+  });
+
+  // Select clicked tab
+  selectedTab.setAttribute('aria-selected', 'true');
+  selectedTab.tabIndex = 0;
+  selectedTab.focus();
+
+  // Show associated panel
+  const panelId = selectedTab.getAttribute('aria-controls');
+  document.getElementById(panelId).hidden = false;
+}
+</script>
+```
+
+**Keyboard Support:**
+- `Tab`: Focus active tab, then tab panel
+- `Arrow Right/Left`: Navigate between tabs
+- `Home/End`: Jump to first/last tab
+
+### Menu Button
+
+```html
+<button
+  id="menu-button"
+  aria-haspopup="true"
+  aria-expanded="false"
+  aria-controls="menu">
+  Actions
+  <span aria-hidden="true">▼</span>
+</button>
+
+<ul
+  id="menu"
+  role="menu"
+  aria-labelledby="menu-button"
+  hidden>
+  <li role="none">
+    <button role="menuitem">Edit</button>
+  </li>
+  <li role="none">
+    <button role="menuitem">Copy</button>
+  </li>
+  <li role="none">
+    <button role="menuitem">Delete</button>
+  </li>
+</ul>
+
+<script>
+const menuButton = document.getElementById('menu-button');
+const menu = document.getElementById('menu');
+const menuItems = menu.querySelectorAll('[role="menuitem"]');
+
+menuButton.addEventListener('click', toggleMenu);
+
+function toggleMenu() {
+  const isExpanded = menuButton.getAttribute('aria-expanded') === 'true';
+
+  if (isExpanded) {
+    closeMenu();
+  } else {
+    openMenu();
+  }
+}
+
+function openMenu() {
+  menuButton.setAttribute('aria-expanded', 'true');
+  menu.hidden = false;
+  menuItems[0].focus();
+}
+
+function closeMenu() {
+  menuButton.setAttribute('aria-expanded', 'false');
+  menu.hidden = true;
+  menuButton.focus();
+}
+
+// Keyboard navigation in menu
+menu.addEventListener('keydown', (e) => {
+  const currentItem = document.activeElement;
+  const currentIndex = Array.from(menuItems).indexOf(currentItem);
+
+  switch(e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % menuItems.length;
+      menuItems[nextIndex].focus();
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + menuItems.length) % menuItems.length;
+      menuItems[prevIndex].focus();
+      break;
+
+    case 'Home':
+      e.preventDefault();
+      menuItems[0].focus();
+      break;
+
+    case 'End':
+      e.preventDefault();
+      menuItems[menuItems.length - 1].focus();
+      break;
+
+    case 'Escape':
+      closeMenu();
+      break;
+
+    case 'Enter':
+    case ' ':
+      e.preventDefault();
+      currentItem.click();
+      closeMenu();
+      break;
+  }
+});
+
+// Close on click outside
+document.addEventListener('click', (e) => {
+  if (!menuButton.contains(e.target) && !menu.contains(e.target)) {
+    closeMenu();
+  }
+});
+</script>
+```
+
+**Keyboard Support:**
+- `Enter` or `Space`: Open menu / Activate menu item
+- `Arrow Down/Up`: Navigate menu items
+- `Home/End`: First/last item
+- `Escape`: Close menu
+
+### Disclosure (Show/Hide)
+
+```html
+<button
+  aria-expanded="false"
+  aria-controls="disclosure-content">
+  Show Details
+  <span aria-hidden="true" class="icon">▶</span>
+</button>
+
+<div id="disclosure-content" hidden>
+  <p>Hidden content that can be toggled...</p>
+</div>
+
+<script>
+const button = document.querySelector('[aria-controls="disclosure-content"]');
+const content = document.getElementById('disclosure-content');
+
+button.addEventListener('click', () => {
+  const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+  button.setAttribute('aria-expanded', !isExpanded);
+  content.hidden = isExpanded;
+
+  // Update button text
+  button.childNodes[0].textContent = isExpanded ? 'Show Details' : 'Hide Details';
+});
+</script>
+```
+
+### Combobox (Autocomplete)
+
+```html
+<label for="state">State:</label>
+<div class="combobox">
+  <input
+    type="text"
+    id="state"
+    role="combobox"
+    aria-autocomplete="list"
+    aria-expanded="false"
+    aria-controls="state-listbox"
+    aria-activedescendant="">
+
+  <ul
+    id="state-listbox"
+    role="listbox"
+    hidden>
+    <li role="option" id="option-ca">California</li>
+    <li role="option" id="option-tx">Texas</li>
+    <li role="option" id="option-ny">New York</li>
+    <li role="option" id="option-fl">Florida</li>
+  </ul>
+</div>
+
+<script>
+const input = document.getElementById('state');
+const listbox = document.getElementById('state-listbox');
+const options = listbox.querySelectorAll('[role="option"]');
+let currentIndex = -1;
+
+input.addEventListener('input', () => {
+  const value = input.value.toLowerCase();
+  let hasVisibleOptions = false;
+
+  options.forEach(option => {
+    const text = option.textContent.toLowerCase();
+    const matches = text.includes(value);
+    option.hidden = !matches;
+    if (matches) hasVisibleOptions = true;
+  });
+
+  if (hasVisibleOptions && value) {
+    openListbox();
+  } else {
+    closeListbox();
+  }
+});
+
+input.addEventListener('keydown', (e) => {
+  const visibleOptions = Array.from(options).filter(opt => !opt.hidden);
+
+  switch(e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      if (!listbox.hidden) {
+        currentIndex = Math.min(currentIndex + 1, visibleOptions.length - 1);
+        setActiveOption(visibleOptions[currentIndex]);
+      } else {
+        openListbox();
+      }
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      currentIndex = Math.max(currentIndex - 1, 0);
+      setActiveOption(visibleOptions[currentIndex]);
+      break;
+
+    case 'Enter':
+      if (currentIndex >= 0) {
+        e.preventDefault();
+        selectOption(visibleOptions[currentIndex]);
+      }
+      break;
+
+    case 'Escape':
+      closeListbox();
+      break;
+  }
+});
+
+function openListbox() {
+  input.setAttribute('aria-expanded', 'true');
+  listbox.hidden = false;
+}
+
+function closeListbox() {
+  input.setAttribute('aria-expanded', 'false');
+  listbox.hidden = true;
+  currentIndex = -1;
+  input.setAttribute('aria-activedescendant', '');
+}
+
+function setActiveOption(option) {
+  options.forEach(opt => opt.classList.remove('active'));
+  option.classList.add('active');
+  input.setAttribute('aria-activedescendant', option.id);
+}
+
+function selectOption(option) {
+  input.value = option.textContent;
+  closeListbox();
+}
+
+// Click to select
+options.forEach(option => {
+  option.addEventListener('click', () => selectOption(option));
+});
+</script>
+```
+
+### Tooltip
+
+```html
+<button
+  id="tooltip-button"
+  aria-describedby="tooltip">
+  Help
+  <span aria-hidden="true">?</span>
+</button>
+
+<div
+  role="tooltip"
+  id="tooltip"
+  hidden>
+  Click this button to get help with your account
+</div>
+
+<script>
+const button = document.getElementById('tooltip-button');
+const tooltip = document.getElementById('tooltip');
+let tooltipTimeout;
+
+// Show on hover
+button.addEventListener('mouseenter', () => {
+  tooltipTimeout = setTimeout(() => {
+    tooltip.hidden = false;
+  }, 500); // Delay to avoid accidental triggers
+});
+
+button.addEventListener('mouseleave', () => {
+  clearTimeout(tooltipTimeout);
+  tooltip.hidden = true;
+});
+
+// Show on focus
+button.addEventListener('focus', () => {
+  tooltip.hidden = false;
+});
+
+button.addEventListener('blur', () => {
+  tooltip.hidden = true;
+});
+
+// Show on Escape
+button.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !tooltip.hidden) {
+    tooltip.hidden = true;
+  }
+});
+</script>
+```
+
+### Slider
+
+```html
+<label id="slider-label">Volume</label>
+<div class="slider-container">
+  <div
+    role="slider"
+    tabindex="0"
+    aria-labelledby="slider-label"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="50"
+    aria-valuetext="50 percent">
+    <div class="slider-track">
+      <div class="slider-thumb" style="left: 50%"></div>
+    </div>
+  </div>
+  <output>50%</output>
+</div>
+
+<script>
+const slider = document.querySelector('[role="slider"]');
+const thumb = slider.querySelector('.slider-thumb');
+const output = document.querySelector('output');
+
+slider.addEventListener('keydown', (e) => {
+  let currentValue = parseInt(slider.getAttribute('aria-valuenow'));
+  let newValue = currentValue;
+
+  switch(e.key) {
+    case 'ArrowRight':
+    case 'ArrowUp':
+      e.preventDefault();
+      newValue = Math.min(currentValue + 1, 100);
+      break;
+
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      e.preventDefault();
+      newValue = Math.max(currentValue - 1, 0);
+      break;
+
+    case 'PageUp':
+      e.preventDefault();
+      newValue = Math.min(currentValue + 10, 100);
+      break;
+
+    case 'PageDown':
+      e.preventDefault();
+      newValue = Math.max(currentValue - 10, 0);
+      break;
+
+    case 'Home':
+      e.preventDefault();
+      newValue = 0;
+      break;
+
+    case 'End':
+      e.preventDefault();
+      newValue = 100;
+      break;
+  }
+
+  updateSlider(newValue);
+});
+
+function updateSlider(value) {
+  slider.setAttribute('aria-valuenow', value);
+  slider.setAttribute('aria-valuetext', `${value} percent`);
+  thumb.style.left = `${value}%`;
+  output.textContent = `${value}%`;
+}
+
+// Mouse drag support
+let isDragging = false;
+
+slider.addEventListener('mousedown', () => {
+  isDragging = true;
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    const rect = slider.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(100,
+      ((e.clientX - rect.left) / rect.width) * 100
+    ));
+    updateSlider(Math.round(percent));
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  isDragging = false;
+});
+</script>
+```
+
+**Keyboard Support:**
+- `Arrow Right/Up`: Increase by 1
+- `Arrow Left/Down`: Decrease by 1
+- `Page Up/Down`: Increase/decrease by 10
+- `Home/End`: Minimum/maximum value
+
+---
+
+## Testing
+
+### Automated Testing
+
+Automated tools catch ~30% of accessibility issues:
+
+#### axe DevTools
+
+```javascript
+// Install: npm install --save-dev @axe-core/cli
+
+// Command line
+npx axe https://example.com
+
+// In tests (Jest + React Testing Library)
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
+
+test('component is accessible', async () => {
+  const { container } = render(<MyComponent />);
+  const results = await axe(container);
+  expect(results).toHaveNoViolations();
+});
+```
+
+#### Lighthouse
+
+```bash
+# Command line
+lighthouse https://example.com --only-categories=accessibility
+
+# In CI/CD
+npm install -g @lhci/cli
+lhci autorun
+```
+
+#### Pa11y
+
+```javascript
+// Install: npm install --save-dev pa11y
+
+// Test script
+const pa11y = require('pa11y');
+
+async function testAccessibility() {
+  const results = await pa11y('https://example.com', {
+    standard: 'WCAG2AA'
+  });
+
+  console.log(results.issues);
+}
+```
+
+### Manual Testing
+
+#### Keyboard Navigation Testing
+
+**Test checklist:**
+- [ ] Can reach all interactive elements with Tab
+- [ ] Tab order is logical
+- [ ] Focus indicators are visible
+- [ ] Can activate elements with Enter/Space
+- [ ] Can use Arrow keys where appropriate
+- [ ] Can close modals/menus with Escape
+- [ ] No keyboard traps
+
+```
+Test Flow:
+1. Navigate with Tab (forward) and Shift+Tab (backward)
+2. Activate buttons/links with Enter or Space
+3. Navigate custom widgets with Arrow keys
+4. Test form submission
+5. Check modal focus trapping
+```
+
+#### Screen Reader Testing
+
+**Common Screen Readers:**
+- **NVDA** (Windows, free)
+- **JAWS** (Windows, commercial)
+- **VoiceOver** (macOS/iOS, built-in)
+- **TalkBack** (Android, built-in)
+
+**Basic VoiceOver Commands (macOS):**
+```
+Cmd + F5: Toggle VoiceOver
+VO + Right Arrow: Next element
+VO + Left Arrow: Previous element
+VO + Space: Activate element
+VO + U: Rotor menu
+VO + A: Start reading
+Control: Stop reading
+```
+
+**Test checklist:**
+- [ ] All content is announced
+- [ ] Heading structure makes sense
+- [ ] Landmarks are properly identified
+- [ ] Form labels are clear
+- [ ] Error messages are announced
+- [ ] Dynamic content updates are announced
+- [ ] Images have meaningful alt text
+
+#### Visual Testing
+
+**Zoom Testing:**
+- [ ] Test at 200% zoom
+- [ ] No horizontal scrolling
+- [ ] Text doesn't overlap
+- [ ] Interactive elements don't disappear
+
+**Color Contrast:**
+```css
+/* Test with tools: */
+/* - Chrome DevTools contrast checker */
+/* - WebAIM Contrast Checker */
+/* - Stark plugin */
+```
+
+**High Contrast Mode:**
+```
+Windows: Alt + Left Shift + Print Screen
+Test: All content visible, borders clear
+```
+
+### Browser Extensions
+
+**Chrome/Edge:**
+- axe DevTools
+- WAVE
+- Lighthouse
+- IBM Equal Access Accessibility Checker
+
+**Firefox:**
+- WAVE
+- axe DevTools
+
+### Testing Checklist by Component
+
+#### Links
+- [ ] Descriptive link text (not "click here")
+- [ ] Underlined or otherwise distinguishable
+- [ ] Focus indicator visible
+- [ ] Opens in new tab announced if applicable
+
+#### Buttons
+- [ ] Clear label or aria-label
+- [ ] Keyboard accessible
+- [ ] Focus indicator visible
+- [ ] Disabled state properly indicated
+
+#### Forms
+- [ ] All inputs have labels
+- [ ] Required fields indicated
+- [ ] Errors clearly communicated
+- [ ] Help text associated with inputs
+- [ ] Keyboard navigable
+
+#### Images
+- [ ] Alt text provided (or alt="" if decorative)
+- [ ] Complex images have long descriptions
+- [ ] SVGs have appropriate roles/labels
+
+#### Navigation
+- [ ] Skip links provided
+- [ ] Landmarks properly used
+- [ ] Consistent across pages
+- [ ] Current page indicated
+
+#### Modals/Dialogs
+- [ ] Focus moves to modal on open
+- [ ] Focus trapped within modal
+- [ ] Escape closes modal
+- [ ] Focus returns to trigger on close
+- [ ] Background content inert
+
+---
+
+## Accessibility Checklist
+
+### Content
+
+- [ ] Page has unique, descriptive title
+- [ ] Page language specified (`<html lang="en">`)
+- [ ] Headings follow logical hierarchy (h1, h2, h3...)
+- [ ] Content organized with semantic HTML
+- [ ] Lists use proper list elements
+- [ ] Tables have proper headers and captions
+- [ ] Language changes marked (`<span lang="es">`)
+
+### Images & Media
+
+- [ ] All images have alt text (or alt="" if decorative)
+- [ ] Complex images have detailed descriptions
+- [ ] Videos have captions
+- [ ] Videos have transcripts
+- [ ] Audio has transcripts
+- [ ] No auto-playing media with sound
+- [ ] Media controls are keyboard accessible
+
+### Color & Contrast
+
+- [ ] Text contrast ratio ≥ 4.5:1 (normal text)
+- [ ] Text contrast ratio ≥ 3:1 (large text)
+- [ ] UI component contrast ≥ 3:1
+- [ ] Information not conveyed by color alone
+- [ ] Focus indicators ≥ 3:1 contrast
+
+### Keyboard
+
+- [ ] All functionality available via keyboard
+- [ ] Focus order is logical
+- [ ] Focus indicators clearly visible
+- [ ] No keyboard traps
+- [ ] Skip links provided
+- [ ] Custom widgets support keyboard navigation
+
+### Forms
+
+- [ ] All inputs have associated labels
+- [ ] Required fields clearly indicated
+- [ ] Error messages clear and associated with fields
+- [ ] Inputs have autocomplete attributes
+- [ ] Field validation doesn't rely on color alone
+- [ ] Help text associated with inputs
+
+### ARIA
+
+- [ ] ARIA used only when necessary
+- [ ] ARIA roles, states, and properties correct
+- [ ] Landmark regions properly identified
+- [ ] Live regions for dynamic content
+- [ ] Hidden content properly hidden from AT
+
+### Navigation
+
+- [ ] Multiple ways to navigate site
+- [ ] Breadcrumbs for deep sites
+- [ ] Current page/location indicated
+- [ ] Consistent navigation across site
+- [ ] Descriptive link text
+
+### Responsive & Mobile
+
+- [ ] Site works at 200% zoom
+- [ ] No horizontal scrolling at 320px width
+- [ ] Touch targets ≥ 44×44 pixels
+- [ ] Orientation not locked
+- [ ] Works in portrait and landscape
+
+### Motion & Animation
+
+- [ ] Respects prefers-reduced-motion
+- [ ] No more than 3 flashes per second
+- [ ] Auto-playing content can be paused
+- [ ] Parallax doesn't cause motion sickness
+
+### Typography
+
+- [ ] Font size ≥ 16px for body text
+- [ ] Line height ≥ 1.5 for body text
+- [ ] Text can be resized to 200%
+- [ ] Line length ≤ 80 characters
+- [ ] Adequate letter and word spacing
+
+### JavaScript
+
+- [ ] Site works without JavaScript (progressive enhancement)
+- [ ] Dynamic content changes announced
+- [ ] Page title updated on navigation (SPAs)
+- [ ] Loading states communicated
+- [ ] Error handling accessible
+
+### Testing
+
+- [ ] Automated tests pass (axe, Lighthouse)
+- [ ] Manual keyboard testing completed
+- [ ] Screen reader testing completed
+- [ ] Tested at various zoom levels
+- [ ] Tested with high contrast mode
+- [ ] Mobile accessibility tested
+
+---
+
+## Additional Resources
+
+### Standards & Guidelines
+
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+- [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/)
+- [Section 508 Standards](https://www.section508.gov/)
+
+### Testing Tools
+
+**Automated:**
+- [axe DevTools](https://www.deque.com/axe/devtools/)
+- [WAVE](https://wave.webaim.org/)
+- [Lighthouse](https://developers.google.com/web/tools/lighthouse)
+- [Pa11y](https://pa11y.org/)
+
+**Manual:**
+- [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
+- [NVDA Screen Reader](https://www.nvaccess.org/)
+- [VoiceOver User Guide](https://support.apple.com/guide/voiceover/)
+
+### Learning Resources
+
+- [web.dev Learn Accessibility](https://web.dev/learn/accessibility)
+- [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
+- [A11y Project](https://www.a11yproject.com/)
+- [Inclusive Components](https://inclusive-components.design/)
+
+### Communities
+
+- [WebAIM Community](https://webaim.org/discussion/)
+- [a11y Slack](https://web-a11y.slack.com/)
+- [ARIA Working Group](https://www.w3.org/WAI/ARIA/)
+
+---
+
+## Conclusion
+
+Web accessibility is not optional—it's a fundamental requirement for building inclusive web experiences. By following the principles and patterns in this guide, you can create websites and applications that work for everyone.
+
+**Key Takeaways:**
+
+1. **Start with semantic HTML** - It provides accessibility for free
+2. **Use ARIA sparingly** - Only when HTML isn't sufficient
+3. **Test with real users** - People with disabilities know their needs best
+4. **Make it a process, not a project** - Build accessibility into your workflow
+5. **Everyone benefits** - Accessible design improves usability for all users
+
+**Remember:** Accessibility is a journey, not a destination. Continue learning, testing, and improving to create truly inclusive digital experiences.
+
+**Happy building! ♿**

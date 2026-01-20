@@ -1,0 +1,1366 @@
+# Complete JavaScript Hoisting Guide
+
+## Table of Contents
+
+1. [What Hoisting Actually Is](#what-hoisting-actually-is)
+2. [The Two-Phase Mechanism](#the-two-phase-mechanism)
+3. [Hoisting Rules Reference Table](#hoisting-rules-reference-table)
+4. [Temporal Dead Zone (TDZ)](#temporal-dead-zone-tdz)
+5. [var Hoisting](#var-hoisting)
+6. [let and const Hoisting](#let-and-const-hoisting)
+7. [Function Declaration Hoisting](#function-declaration-hoisting)
+8. [Function Expression Hoisting](#function-expression-hoisting)
+9. [Arrow Function Hoisting](#arrow-function-hoisting)
+10. [Class Hoisting](#class-hoisting)
+11. [Interview Problems (Beginner to Advanced)](#interview-problems)
+12. [Hoisting with Closures](#hoisting-with-closures)
+13. [Hoisting with Async Code](#hoisting-with-async-code)
+14. [Block Scope Edge Cases](#block-scope-edge-cases)
+15. [Advanced Collision Scenarios](#advanced-collision-scenarios)
+16. [typeof Operator Behavior](#typeof-operator-behavior)
+17. [Common Production Bugs](#common-production-bugs)
+18. [Mental Model for Interviews](#mental-model-for-interviews)
+19. [Interview Checklist](#interview-checklist)
+20. [Ultra-Hard Puzzles](#ultra-hard-puzzles)
+
+---
+
+## What Hoisting Actually Is
+
+**Hoisting ≠ moving code to the top**
+
+This is the most common misconception. JavaScript doesn't physically move your code. Instead, it processes your code in two distinct phases:
+
+### The Truth About Hoisting
+
+During the **creation phase**, the JavaScript engine scans through your code and:
+- Registers all variable and function declarations
+- Allocates memory for them
+- Initializes them according to specific rules (depends on declaration type)
+
+During the **execution phase**, the code runs line by line with those pre-registered bindings already in place.
+
+---
+
+## The Two-Phase Mechanism
+
+### Phase 1: Creation (Memory Allocation)
+
+```javascript
+// What you write:
+console.log(x);
+var x = 5;
+
+// How JS processes it:
+// CREATION PHASE:
+var x = undefined;  // Memory allocated, initialized to undefined
+
+// EXECUTION PHASE:
+console.log(x);     // undefined
+x = 5;              // Assignment happens
+```
+
+**Creation phase behavior by type:**
+
+| Declaration Type | Created | Initialized | Value |
+|-----------------|---------|-------------|-------|
+| `var` | ✅ | ✅ | `undefined` |
+| `let` | ✅ | ❌ | uninitialized (TDZ) |
+| `const` | ✅ | ❌ | uninitialized (TDZ) |
+| Function declaration | ✅ | ✅ | Entire function |
+| Function expression | Variable only | ❌ | `undefined` (if var) |
+| Arrow function | Variable only | ❌ | `undefined` (if var) |
+| Class | ✅ | ❌ | uninitialized (TDZ) |
+
+### Phase 2: Execution
+
+Code runs line by line, assignments happen, functions are called.
+
+---
+
+## Hoisting Rules Reference Table
+
+| Construct | Hoisted | Initialized | Access before declaration | Scope |
+|-----------|---------|-------------|---------------------------|-------|
+| `var` | ✅ | `undefined` | ✅ (returns `undefined`) | Function |
+| `let` | ✅ | ❌ | ❌ (ReferenceError - TDZ) | Block |
+| `const` | ✅ | ❌ | ❌ (ReferenceError - TDZ) | Block |
+| Function declaration | ✅ | ✅ | ✅ (fully usable) | Function/Block* |
+| Function expression | Variable only | ❌ | ❌ | Depends on var/let/const |
+| Arrow function | Variable only | ❌ | ❌ | Depends on var/let/const |
+| Class | ✅ | ❌ | ❌ (ReferenceError - TDZ) | Block |
+
+*Function declarations in blocks are complex and mode-dependent
+
+---
+
+## Temporal Dead Zone (TDZ)
+
+The TDZ is the time between entering a scope and the actual declaration line where a variable exists but cannot be accessed.
+
+### Basic TDZ Example
+
+```javascript
+console.log(a); // ❌ ReferenceError: Cannot access 'a' before initialization
+let a = 10;
+```
+
+The variable `a` exists in memory but is in the TDZ until line 2 executes.
+
+### TDZ in Block Scope
+
+```javascript
+{
+  // TDZ starts here for 'x'
+  console.log(x); // ❌ ReferenceError
+  let x = 1;      // TDZ ends here
+}
+```
+
+### TDZ with Functions
+
+```javascript
+function test() {
+  // TDZ starts for 'data'
+  console.log(data); // ❌ ReferenceError
+  let data = 100;    // TDZ ends
+}
+test();
+```
+
+### TDZ is Temporal, Not Spatial
+
+```javascript
+function useX() {
+  console.log(x); // ❌ ReferenceError
+}
+
+let x = 10;
+useX(); // This call itself is fine, but the function body accesses x before declaration
+```
+
+Wait, this actually works because by the time `useX()` is called, `x` is already declared. The TDZ only exists during the execution of the scope where the variable is declared.
+
+Correct example:
+
+```javascript
+let x = 10;
+
+function useX() {
+  console.log(x); // ✅ 10 - works fine
+}
+
+useX();
+```
+
+TDZ matters when accessing before declaration **in the same scope**:
+
+```javascript
+function useX() {
+  console.log(x); // ❌ ReferenceError - TDZ
+  let x = 10;     // Declaration in same scope
+}
+
+useX();
+```
+
+### typeof in TDZ
+
+```javascript
+console.log(typeof a); // ❌ ReferenceError
+let a = 10;
+```
+
+But with undeclared variables:
+
+```javascript
+console.log(typeof undeclaredVariable); // ✅ "undefined"
+```
+
+👉 **Key insight**: `typeof` does NOT bypass TDZ for declared variables.
+
+---
+
+## var Hoisting
+
+`var` declarations are hoisted and initialized to `undefined`.
+
+### Basic var Hoisting
+
+```javascript
+console.log(x); // undefined
+var x = 5;
+console.log(x); // 5
+```
+
+**Behind the scenes:**
+
+```javascript
+var x = undefined;  // Creation phase
+console.log(x);     // undefined
+x = 5;              // Execution phase
+console.log(x);     // 5
+```
+
+### var in Functions
+
+```javascript
+function test() {
+  console.log(a); // undefined
+  var a = 10;
+  console.log(a); // 10
+}
+test();
+```
+
+### var Scope (Function-scoped)
+
+```javascript
+function example() {
+  if (true) {
+    var x = 10;
+  }
+  console.log(x); // ✅ 10 - var ignores block scope
+}
+example();
+```
+
+### Multiple var Declarations
+
+```javascript
+var a = 1;
+var a = 2;
+console.log(a); // 2 - allowed, no error
+```
+
+### var in Global Scope
+
+```javascript
+var globalVar = 'test';
+console.log(window.globalVar); // 'test' (in browsers)
+```
+
+---
+
+## let and const Hoisting
+
+Both `let` and `const` are hoisted but not initialized, creating a TDZ.
+
+### let Hoisting
+
+```javascript
+console.log(x); // ❌ ReferenceError
+let x = 10;
+```
+
+### const Hoisting
+
+```javascript
+console.log(y); // ❌ ReferenceError
+const y = 20;
+```
+
+### Block Scope
+
+```javascript
+{
+  let x = 10;
+  const y = 20;
+}
+console.log(x); // ❌ ReferenceError - not defined outside block
+console.log(y); // ❌ ReferenceError
+```
+
+### No Re-declaration
+
+```javascript
+let a = 1;
+let a = 2; // ❌ SyntaxError: Identifier 'a' has already been declared
+```
+
+```javascript
+const b = 1;
+const b = 2; // ❌ SyntaxError
+```
+
+### const Requires Initialization
+
+```javascript
+const x; // ❌ SyntaxError: Missing initializer in const declaration
+```
+
+---
+
+## Function Declaration Hoisting
+
+Function declarations are fully hoisted and initialized.
+
+### Basic Function Hoisting
+
+```javascript
+sayHello(); // ✅ "Hello!"
+
+function sayHello() {
+  console.log("Hello!");
+}
+```
+
+**Behind the scenes:**
+
+```javascript
+// Creation phase:
+function sayHello() {
+  console.log("Hello!");
+}
+
+// Execution phase:
+sayHello(); // ✅ "Hello!"
+```
+
+### Function Overriding
+
+```javascript
+foo(); // "second"
+
+function foo() {
+  console.log("first");
+}
+
+function foo() {
+  console.log("second");
+}
+```
+
+Last declaration wins during creation phase.
+
+---
+
+## Function Expression Hoisting
+
+Function expressions only hoist the variable, not the function.
+
+### var Function Expression
+
+```javascript
+sayHi(); // ❌ TypeError: sayHi is not a function
+
+var sayHi = function() {
+  console.log("Hi!");
+};
+```
+
+**Why TypeError, not ReferenceError?**
+
+```javascript
+// Behind the scenes:
+var sayHi = undefined;  // Hoisted
+sayHi();                // undefined is not a function
+sayHi = function() {    // Assignment happens after
+  console.log("Hi!");
+};
+```
+
+### let/const Function Expression
+
+```javascript
+greet(); // ❌ ReferenceError: Cannot access 'greet' before initialization
+
+const greet = function() {
+  console.log("Greetings!");
+};
+```
+
+---
+
+## Arrow Function Hoisting
+
+Arrow functions behave like function expressions.
+
+### const Arrow Function
+
+```javascript
+sayHi(); // ❌ ReferenceError
+
+const sayHi = () => {
+  console.log("Hi!");
+};
+```
+
+### var Arrow Function
+
+```javascript
+sayHi(); // ❌ TypeError: sayHi is not a function
+
+var sayHi = () => {
+  console.log("Hi!");
+};
+```
+
+---
+
+## Class Hoisting
+
+Classes are hoisted but remain in TDZ until declaration.
+
+### Basic Class Hoisting
+
+```javascript
+const obj = new Person(); // ❌ ReferenceError
+
+class Person {
+  constructor(name) {
+    this.name = name;
+  }
+}
+```
+
+### Class Expression
+
+```javascript
+const obj = new MyClass(); // ❌ ReferenceError
+
+const MyClass = class {
+  constructor() {}
+};
+```
+
+---
+
+## Interview Problems
+
+### 🔥 Problem 1: var in Function Scope
+
+```javascript
+function test() {
+  console.log(a);
+  var a = 10;
+}
+test();
+```
+
+**Output:** `undefined`
+
+**Explanation:** `var a` is hoisted to the top of the function and initialized to `undefined`.
+
+---
+
+### 🔥 Problem 2: let vs var
+
+```javascript
+console.log(a);
+var a = 1;
+
+console.log(b);
+let b = 2;
+```
+
+**Output:**
+```
+undefined
+ReferenceError: Cannot access 'b' before initialization
+```
+
+---
+
+### 🔥 Problem 3: Function Declaration vs var
+
+```javascript
+foo();
+
+function foo() {
+  console.log("function");
+}
+
+var foo = function() {
+  console.log("var");
+};
+```
+
+**Output:** `"function"`
+
+**Explanation:**
+```javascript
+// Creation phase:
+function foo() { console.log("function"); } // Function fully hoisted
+var foo = undefined; // var is also hoisted but doesn't override function
+
+// Execution phase:
+foo(); // Calls the function
+var foo = function() { console.log("var"); }; // Reassignment happens after
+```
+
+---
+
+### 🔥 Problem 4: Function in Block (Strict vs Non-Strict)
+
+```javascript
+"use strict";
+{
+  function foo() {
+    return "inside block";
+  }
+}
+foo(); // ❌ ReferenceError in strict mode
+```
+
+**Non-strict mode (browser-dependent):**
+```javascript
+{
+  function foo() {
+    return "inside block";
+  }
+}
+foo(); // May work in some browsers
+```
+
+👉 **Best practice:** Never use function declarations inside blocks. Use function expressions instead.
+
+---
+
+### 🔥 Problem 5: Arrow Function Hoisting
+
+```javascript
+sayHi();
+
+const sayHi = () => {
+  console.log("hi");
+};
+```
+
+**Output:** `ReferenceError: Cannot access 'sayHi' before initialization`
+
+---
+
+### 🔥 Problem 6: Class Hoisting
+
+```javascript
+const obj = new Person();
+
+class Person {
+  constructor(name) {
+    this.name = name;
+  }
+}
+```
+
+**Output:** `ReferenceError: Cannot access 'Person' before initialization`
+
+---
+
+### 🔥 Problem 7: Shadowing
+
+```javascript
+var a = 1;
+
+function test() {
+  console.log(a);
+  var a = 2;
+}
+
+test();
+```
+
+**Output:** `undefined`
+
+**Explanation:** Local `var a` shadows the outer `a` and is hoisted to the top of the function.
+
+---
+
+### 🔥 Problem 8: Function Parameters
+
+```javascript
+function foo(a) {
+  console.log(a);
+  var a = 20;
+}
+
+foo(10);
+```
+
+**Output:** `10`
+
+**Explanation:** Parameter `a = 10` is already initialized. The `var a = 20` declaration is ignored (parameter takes precedence), but the assignment `a = 20` would happen after the console.log.
+
+---
+
+### 🔥 Problem 9: Duplicate Declarations
+
+```javascript
+var a = 1;
+var a = 2;
+console.log(a); // 2 - allowed
+
+let b = 1;
+let b = 2; // ❌ SyntaxError: Identifier 'b' has already been declared
+```
+
+---
+
+### 🔥 Problem 10: Loop Hoisting
+
+```javascript
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0);
+}
+```
+
+**Output:**
+```
+3
+3
+3
+```
+
+**Explanation:** `var i` is function-scoped (or global if not in a function), so there's only one binding shared across all iterations.
+
+**Fix with let:**
+
+```javascript
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 0);
+}
+// Output: 0, 1, 2
+```
+
+`let` creates a new binding for each iteration.
+
+---
+
+## Hoisting with Closures
+
+### Problem 11: var in Closure
+
+```javascript
+function createFunctions() {
+  var result = [];
+  for (var i = 0; i < 3; i++) {
+    result.push(function() {
+      return i;
+    });
+  }
+  return result;
+}
+
+const funcs = createFunctions();
+console.log(funcs[0]()); // 3
+console.log(funcs[1]()); // 3
+console.log(funcs[2]()); // 3
+```
+
+**Explanation:** All closures reference the same `i` variable.
+
+**Fix:**
+
+```javascript
+function createFunctions() {
+  var result = [];
+  for (let i = 0; i < 3; i++) {
+    result.push(function() {
+      return i;
+    });
+  }
+  return result;
+}
+
+const funcs = createFunctions();
+console.log(funcs[0]()); // 0
+console.log(funcs[1]()); // 1
+console.log(funcs[2]()); // 2
+```
+
+### Problem 12: Closure with setTimeout
+
+```javascript
+for (var i = 1; i <= 3; i++) {
+  setTimeout(function() {
+    console.log(i);
+  }, i * 1000);
+}
+```
+
+**Output:** `4, 4, 4` (after 1s, 2s, 3s)
+
+**Fix with IIFE:**
+
+```javascript
+for (var i = 1; i <= 3; i++) {
+  (function(j) {
+    setTimeout(function() {
+      console.log(j);
+    }, j * 1000);
+  })(i);
+}
+// Output: 1, 2, 3
+```
+
+**Fix with let:**
+
+```javascript
+for (let i = 1; i <= 3; i++) {
+  setTimeout(function() {
+    console.log(i);
+  }, i * 1000);
+}
+// Output: 1, 2, 3
+```
+
+---
+
+## Hoisting with Async Code
+
+### Problem 13: Hoisting in Async Functions
+
+```javascript
+async function test() {
+  console.log(x); // undefined
+  var x = 10;
+  console.log(x); // 10
+}
+test();
+```
+
+**Explanation:** Hoisting works the same in async functions.
+
+### Problem 14: Await and Hoisting
+
+```javascript
+async function getData() {
+  console.log(data); // ❌ ReferenceError
+  const data = await fetch('/api');
+}
+```
+
+**Explanation:** `const` is in TDZ before declaration, even with `await`.
+
+### Problem 15: Promise and var
+
+```javascript
+for (var i = 0; i < 3; i++) {
+  Promise.resolve().then(() => console.log(i));
+}
+```
+
+**Output:** `3, 3, 3`
+
+**Fix:**
+
+```javascript
+for (let i = 0; i < 3; i++) {
+  Promise.resolve().then(() => console.log(i));
+}
+// Output: 0, 1, 2
+```
+
+---
+
+## Block Scope Edge Cases
+
+### Problem 16: Nested Blocks
+
+```javascript
+{
+  console.log(x); // ❌ ReferenceError
+  {
+    let x = 10;
+  }
+}
+```
+
+### Problem 17: if Block
+
+```javascript
+if (true) {
+  var x = 10;
+}
+console.log(x); // ✅ 10
+```
+
+```javascript
+if (true) {
+  let y = 20;
+}
+console.log(y); // ❌ ReferenceError
+```
+
+### Problem 18: Switch Case
+
+```javascript
+switch (1) {
+  case 1:
+    let x = 10;
+    console.log(x); // 10
+    break;
+  case 2:
+    let x = 20; // ❌ SyntaxError: Identifier 'x' has already been declared
+    break;
+}
+```
+
+**Explanation:** The entire switch block is one scope.
+
+**Fix:**
+
+```javascript
+switch (1) {
+  case 1: {
+    let x = 10;
+    console.log(x);
+    break;
+  }
+  case 2: {
+    let x = 20;
+    console.log(x);
+    break;
+  }
+}
+```
+
+### Problem 19: for Loop Scope
+
+```javascript
+for (let i = 0; i < 3; i++) {
+  let i = 'inner'; // Different variable
+  console.log(i);  // 'inner', 'inner', 'inner'
+}
+```
+
+---
+
+## Advanced Collision Scenarios
+
+### Problem 20: Function vs var Collision
+
+```javascript
+console.log(foo); // [Function: foo]
+
+var foo = "variable";
+function foo() {
+  return "function";
+}
+
+console.log(foo); // "variable"
+```
+
+**Explanation:**
+```javascript
+// Creation phase:
+function foo() { return "function"; } // Function hoisted
+var foo; // var declaration (but doesn't override the function)
+
+// Execution phase:
+console.log(foo); // [Function: foo]
+foo = "variable"; // Assignment happens
+console.log(foo); // "variable"
+```
+
+### Problem 21: Multiple Functions Same Name
+
+```javascript
+foo(); // "third"
+
+function foo() {
+  console.log("first");
+}
+
+function foo() {
+  console.log("second");
+}
+
+function foo() {
+  console.log("third");
+}
+```
+
+**Explanation:** Last function declaration wins.
+
+### Problem 22: Parameter vs var
+
+```javascript
+function test(x) {
+  console.log(x); // 10
+  var x;
+  console.log(x); // 10
+  x = 20;
+  console.log(x); // 20
+}
+test(10);
+```
+
+**Explanation:** Parameter declaration takes precedence. `var x;` is redundant.
+
+### Problem 23: let in Parameter Default
+
+```javascript
+function test(a = b, b = 2) {
+  console.log(a, b);
+}
+test(); // ❌ ReferenceError: Cannot access 'b' before initialization
+```
+
+**Explanation:** Parameters are evaluated left to right. `b` is in TDZ when `a`'s default is evaluated.
+
+**Fix:**
+
+```javascript
+function test(b = 2, a = b) {
+  console.log(a, b);
+}
+test(); // 2, 2
+```
+
+---
+
+## typeof Operator Behavior
+
+### Problem 24: typeof with Undeclared Variable
+
+```javascript
+console.log(typeof undeclaredVariable); // "undefined"
+```
+
+### Problem 25: typeof with TDZ
+
+```javascript
+console.log(typeof x); // ❌ ReferenceError
+let x = 10;
+```
+
+### Problem 26: typeof with var
+
+```javascript
+console.log(typeof y); // "undefined"
+var y = 10;
+```
+
+---
+
+## Common Production Bugs
+
+### Bug 1: Conditional var Declaration
+
+❌ **Buggy:**
+
+```javascript
+function checkStatus() {
+  if (!isReady) {
+    var isReady = true;
+  }
+  return isReady;
+}
+console.log(checkStatus()); // undefined (not true!)
+```
+
+**Behind the scenes:**
+
+```javascript
+function checkStatus() {
+  var isReady; // Hoisted to top, initialized as undefined
+  if (!isReady) { // undefined is falsy
+    isReady = true;
+  }
+  return isReady;
+}
+```
+
+✅ **Fix:**
+
+```javascript
+function checkStatus() {
+  let isReady = false;
+  if (!isReady) {
+    isReady = true;
+  }
+  return isReady;
+}
+console.log(checkStatus()); // true
+```
+
+### Bug 2: Loop Event Handlers
+
+❌ **Buggy:**
+
+```javascript
+for (var i = 0; i < buttons.length; i++) {
+  buttons[i].onclick = function() {
+    alert(i); // Always alerts buttons.length
+  };
+}
+```
+
+✅ **Fix:**
+
+```javascript
+for (let i = 0; i < buttons.length; i++) {
+  buttons[i].onclick = function() {
+    alert(i); // Alerts correct index
+  };
+}
+```
+
+### Bug 3: Async var Mutation
+
+❌ **Buggy:**
+
+```javascript
+for (var i = 0; i < 5; i++) {
+  fetch('/api/' + i).then(response => {
+    console.log('Response for', i); // Always 5
+  });
+}
+```
+
+✅ **Fix:**
+
+```javascript
+for (let i = 0; i < 5; i++) {
+  fetch('/api/' + i).then(response => {
+    console.log('Response for', i); // Correct index
+  });
+}
+```
+
+---
+
+## Mental Model for Interviews
+
+When explaining hoisting in interviews, use this mental model:
+
+> "JavaScript processes code in two phases. During the **creation phase**, it scans through the scope and registers all variable and function declarations, allocating memory and initializing them according to specific rules—`var` gets `undefined`, functions get their full definition, and `let`/`const`/classes enter a temporal dead zone where they exist but can't be accessed. Then during the **execution phase**, the code runs line by line with those pre-registered bindings already in place. This is why you can call a function before it's declared, but accessing a `let` variable before declaration throws a ReferenceError."
+
+**Key phrases to use:**
+- "Two-phase mechanism: creation and execution"
+- "Memory allocation vs initialization"
+- "Temporal Dead Zone for let/const"
+- "Scope registration before execution"
+- "Function declarations are fully initialized"
+
+---
+
+## Interview Checklist
+
+✅ **Function declarations** → Fully hoisted and initialized
+✅ **var** → Hoisted, initialized to `undefined`
+✅ **let/const/class** → Hoisted but in TDZ, uninitialized
+✅ **Arrow functions** → Not hoisted as functions
+✅ **Function expressions** → Variable hoisted (if var), function not
+✅ **Parameters** → Take precedence over `var` in same scope
+✅ **Closures + var** → Single shared binding (common bug)
+✅ **Block scope** → `let`/`const` respect blocks, `var` doesn't
+✅ **typeof** → Doesn't bypass TDZ
+✅ **Switch cases** → Share one block scope
+
+---
+
+## Ultra-Hard Puzzles
+
+### 🔥 Puzzle 1: Complex Shadowing
+
+```javascript
+var a = 1;
+
+function outer() {
+  console.log(a);
+
+  function inner() {
+    console.log(a);
+    var a = 3;
+  }
+
+  inner();
+  console.log(a);
+  var a = 2;
+}
+
+outer();
+console.log(a);
+```
+
+**Output:**
+```
+undefined
+undefined
+undefined
+1
+```
+
+**Explanation:**
+- First `console.log(a)` in `outer`: local `var a` is hoisted → `undefined`
+- In `inner`, `var a` is hoisted → `undefined`
+- After `inner()`, still `undefined` in `outer`
+- After `outer()`, global `a` is still `1`
+
+---
+
+### 🔥 Puzzle 2: Function Expression Collision
+
+```javascript
+var foo = 1;
+
+function bar() {
+  console.log(foo);
+  foo = 10;
+
+  function foo() {}
+
+  console.log(foo);
+}
+
+bar();
+console.log(foo);
+```
+
+**Output:**
+```
+[Function: foo]
+10
+1
+```
+
+**Explanation:**
+- Function `foo` is hoisted in `bar`'s scope
+- `foo = 10` reassigns the local function
+- Global `foo` remains `1`
+
+---
+
+### 🔥 Puzzle 3: TDZ with Function Call
+
+```javascript
+let x = 1;
+
+function test() {
+  console.log(x);
+  let x = 2;
+}
+
+test();
+```
+
+**Output:** `ReferenceError: Cannot access 'x' before initialization`
+
+**Explanation:** Local `let x` creates TDZ in `test`, shadowing outer `x`.
+
+---
+
+### 🔥 Puzzle 4: Multiple Scopes
+
+```javascript
+var x = 1;
+
+{
+  var x = 2;
+  {
+    let x = 3;
+    console.log(x);
+  }
+  console.log(x);
+}
+
+console.log(x);
+```
+
+**Output:**
+```
+3
+2
+2
+```
+
+**Explanation:** `var` ignores block scope, `let` respects it.
+
+---
+
+### 🔥 Puzzle 5: Async + Hoisting
+
+```javascript
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => {
+    var j = i;
+    console.log(j);
+  }, 100);
+}
+```
+
+**Output:** `3, 3, 3` (after 100ms)
+
+**Explanation:** `var i` is shared. Each timeout captures the final value of `i`.
+
+---
+
+### 🔥 Puzzle 6: Class Expression
+
+```javascript
+const MyClass = class InternalName {
+  constructor() {
+    console.log(InternalName);
+  }
+};
+
+new MyClass(); // [class InternalName]
+console.log(InternalName); // ❌ ReferenceError
+```
+
+**Explanation:** Class expression name is only visible inside the class.
+
+---
+
+### 🔥 Puzzle 7: Destructuring Hoisting
+
+```javascript
+console.log(a); // ❌ ReferenceError
+let { a } = { a: 1 };
+```
+
+```javascript
+console.log(b); // undefined
+var { b } = { b: 2 };
+```
+
+**Explanation:** Destructuring follows the same hoisting rules as regular declarations.
+
+---
+
+### 🔥 Puzzle 8: Function Parameter Default with Closure
+
+```javascript
+var x = 1;
+
+function foo(x = x) {
+  console.log(x);
+}
+
+foo(); // ❌ ReferenceError: Cannot access 'x' before initialization
+```
+
+**Explanation:** Parameter `x` is in TDZ when its own default value is evaluated.
+
+---
+
+### 🔥 Puzzle 9: Nested Function Hoisting
+
+```javascript
+function outer() {
+  inner(); // ✅ Works
+
+  function inner() {
+    console.log("inner");
+  }
+}
+
+outer();
+```
+
+```javascript
+function outer() {
+  inner(); // ❌ ReferenceError
+
+  const inner = function() {
+    console.log("inner");
+  };
+}
+
+outer();
+```
+
+---
+
+### 🔥 Puzzle 10: Mixed Declarations
+
+```javascript
+console.log(typeof foo); // "function"
+console.log(typeof bar); // "undefined"
+
+var bar = function() {};
+
+function foo() {}
+```
+
+**Explanation:** Function declaration hoisted completely, function expression only hoists the variable.
+
+---
+
+### 🔥 Puzzle 11: with Statement (Don't use in production!)
+
+```javascript
+var obj = { a: 1 };
+
+with (obj) {
+  console.log(a); // 1
+  var a = 2;      // Creates global variable!
+}
+
+console.log(a);     // 2
+console.log(obj.a); // 1
+```
+
+**Explanation:** `var` inside `with` doesn't create a property on `obj`, it creates a global variable.
+
+---
+
+### 🔥 Puzzle 12: eval and Hoisting (Avoid eval!)
+
+```javascript
+function test() {
+  eval("var x = 10");
+  console.log(x); // 10 (in non-strict mode)
+}
+
+test();
+```
+
+In strict mode:
+
+```javascript
+"use strict";
+function test() {
+  eval("var x = 10");
+  console.log(x); // ❌ ReferenceError
+}
+
+test();
+```
+
+---
+
+### 🔥 Puzzle 13: Generator Function
+
+```javascript
+gen(); // ❌ ReferenceError
+
+const gen = function* () {
+  yield 1;
+};
+```
+
+```javascript
+gen(); // ✅ Works
+
+function* gen() {
+  yield 1;
+}
+```
+
+**Explanation:** Generator expressions follow function expression rules, generator declarations follow function declaration rules.
+
+---
+
+### 🔥 Puzzle 14: Arrow Function with var
+
+```javascript
+test(); // ❌ TypeError: test is not a function
+
+var test = () => console.log("arrow");
+```
+
+---
+
+### 🔥 Puzzle 15: Import Hoisting
+
+```javascript
+// This works:
+myFunction();
+
+import { myFunction } from './module.js';
+```
+
+**Explanation:** Imports are hoisted to the top of the module and initialized before any code runs.

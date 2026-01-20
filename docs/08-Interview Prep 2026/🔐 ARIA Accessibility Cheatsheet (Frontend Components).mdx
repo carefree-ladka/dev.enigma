@@ -1,0 +1,1256 @@
+# 🔐 ARIA Accessibility Cheatsheet (Frontend Components)
+
+**Golden Rule:** Use semantic HTML first. ARIA only when semantics are not enough.
+
+---
+
+## Table of Contents
+
+1. [Accordion (Disclosure Pattern)](#1️⃣-accordion-disclosure-pattern)
+2. [Tabs](#2️⃣-tabs)
+3. [Modal / Dialog](#3️⃣-modal--dialog)
+4. [Dropdown Menu](#4️⃣-dropdown-menu)
+5. [Tooltip](#5️⃣-tooltip)
+6. [Toast / Notification](#6️⃣-toast--notification)
+7. [Carousel / Slider](#7️⃣-carousel--slider)
+8. [Pagination](#8️⃣-pagination)
+9. [Breadcrumbs](#9️⃣-breadcrumbs)
+10. [Listbox / Custom Select](#🔟-listbox--custom-select)
+11. [Combobox / Autocomplete](#1️⃣1️⃣-combobox--autocomplete)
+12. [Toggle Switch](#1️⃣2️⃣-toggle-switch)
+13. [Alert Banner](#1️⃣3️⃣-alert-banner)
+14. [Skip Links](#1️⃣4️⃣-skip-links)
+15. [Loading Spinner](#1️⃣5️⃣-loading-spinner)
+
+---
+
+## 1️⃣ Accordion (Disclosure Pattern)
+
+### Use Case
+Show/hide sections of related content.
+
+### Roles & ARIA
+
+| Element | Attribute |
+|---------|-----------|
+| Header button | `aria-expanded="true/false"` |
+| Header button | `aria-controls="panel-id"` |
+| Panel | `role="region"` |
+| Panel | `aria-labelledby="header-id"` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Move between headers |
+| `Enter / Space` | Toggle panel |
+| `ArrowUp / ArrowDown` | Move focus (optional) |
+| `Home / End` | First / last header (optional) |
+
+### HTML Code Snippet
+
+```html
+<div class="accordion">
+  <!-- Accordion Item 1 -->
+  <div class="accordion-item">
+    <h3>
+      <button
+        id="accordion-header-1"
+        aria-expanded="false"
+        aria-controls="accordion-panel-1"
+        class="accordion-trigger"
+      >
+        Section 1 Title
+      </button>
+    </h3>
+    <div
+      id="accordion-panel-1"
+      role="region"
+      aria-labelledby="accordion-header-1"
+      hidden
+      class="accordion-panel"
+    >
+      <p>Content for section 1...</p>
+    </div>
+  </div>
+
+  <!-- Accordion Item 2 -->
+  <div class="accordion-item">
+    <h3>
+      <button
+        id="accordion-header-2"
+        aria-expanded="true"
+        aria-controls="accordion-panel-2"
+        class="accordion-trigger"
+      >
+        Section 2 Title
+      </button>
+    </h3>
+    <div
+      id="accordion-panel-2"
+      role="region"
+      aria-labelledby="accordion-header-2"
+      class="accordion-panel"
+    >
+      <p>Content for section 2...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.accordion-trigger').forEach(button => {
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', !expanded);
+      const panel = document.getElementById(button.getAttribute('aria-controls'));
+      panel.hidden = expanded;
+    });
+  });
+</script>
+```
+
+### Notes
+- Use `<button>` for header
+- Use `hidden` attribute for closed panels
+- No `aria-multiselectable` (common mistake)
+- Wrap button in heading tag for proper document outline
+
+---
+
+## 2️⃣ Tabs
+
+### Use Case
+Switch between related views, only one active at a time.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Tabs container | `role="tablist"` |
+| Tab | `role="tab"` |
+| Tab | `aria-selected="true/false"` |
+| Tab | `aria-controls="panel-id"` |
+| Panel | `role="tabpanel"` |
+| Panel | `aria-labelledby="tab-id"` |
+| Inactive tabs | `tabindex="-1"` |
+| Active tab | `tabindex="0"` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `ArrowLeft / ArrowRight` | Switch tabs |
+| `Home / End` | First / last tab |
+| `Tab` | Move focus to panel |
+
+### HTML Code Snippet
+
+```html
+<div class="tabs">
+  <div role="tablist" aria-label="Content sections">
+    <button
+      role="tab"
+      aria-selected="true"
+      aria-controls="panel-1"
+      id="tab-1"
+      tabindex="0"
+    >
+      Tab 1
+    </button>
+    <button
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-2"
+      id="tab-2"
+      tabindex="-1"
+    >
+      Tab 2
+    </button>
+    <button
+      role="tab"
+      aria-selected="false"
+      aria-controls="panel-3"
+      id="tab-3"
+      tabindex="-1"
+    >
+      Tab 3
+    </button>
+  </div>
+
+  <div role="tabpanel" id="panel-1" aria-labelledby="tab-1">
+    <p>Content for tab 1</p>
+  </div>
+
+  <div role="tabpanel" id="panel-2" aria-labelledby="tab-2" hidden>
+    <p>Content for tab 2</p>
+  </div>
+
+  <div role="tabpanel" id="panel-3" aria-labelledby="tab-3" hidden>
+    <p>Content for tab 3</p>
+  </div>
+</div>
+
+<script>
+  const tablist = document.querySelector('[role="tablist"]');
+  const tabs = tablist.querySelectorAll('[role="tab"]');
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => activateTab(tab));
+
+    tab.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const nextIndex = (index + 1) % tabs.length;
+        tabs[nextIndex].focus();
+        activateTab(tabs[nextIndex]);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prevIndex = (index - 1 + tabs.length) % tabs.length;
+        tabs[prevIndex].focus();
+        activateTab(tabs[prevIndex]);
+      }
+    });
+  });
+
+  function activateTab(tab) {
+    tabs.forEach(t => {
+      t.setAttribute('aria-selected', 'false');
+      t.setAttribute('tabindex', '-1');
+      document.getElementById(t.getAttribute('aria-controls')).hidden = true;
+    });
+
+    tab.setAttribute('aria-selected', 'true');
+    tab.setAttribute('tabindex', '0');
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = false;
+  }
+</script>
+```
+
+### Notes
+- Only active tab is tabbable
+- Do NOT use buttons without roles
+- Panels must be hidden when inactive
+- Arrow keys navigate between tabs
+
+---
+
+## 3️⃣ Modal / Dialog
+
+### Use Case
+Blocking interaction until dismissed.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Modal | `role="dialog"` |
+| Modal | `aria-modal="true"` |
+| Modal | `aria-labelledby="title-id"` |
+| Modal | `aria-describedby="content-id"` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `Tab` | Trap focus inside modal |
+| `Shift + Tab` | Reverse trap |
+| `Escape` | Close modal |
+
+### HTML Code Snippet
+
+```html
+<!-- Trigger Button -->
+<button id="open-modal">Open Modal</button>
+
+<!-- Modal -->
+<div
+  id="modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title"
+  aria-describedby="modal-desc"
+  hidden
+  class="modal-overlay"
+>
+  <div class="modal-content">
+    <h2 id="modal-title">Modal Title</h2>
+    <p id="modal-desc">This is the modal content description.</p>
+
+    <button id="close-modal">Close</button>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('modal');
+  const openBtn = document.getElementById('open-modal');
+  const closeBtn = document.getElementById('close-modal');
+  let previousFocus;
+
+  openBtn.addEventListener('click', () => {
+    previousFocus = document.activeElement;
+    modal.hidden = false;
+    closeBtn.focus();
+    trapFocus();
+  });
+
+  closeBtn.addEventListener('click', closeModal);
+
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  function closeModal() {
+    modal.hidden = true;
+    previousFocus?.focus();
+  }
+
+  function trapFocus() {
+    const focusableElements = modal.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            e.preventDefault();
+            lastFocusable.focus();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            e.preventDefault();
+            firstFocusable.focus();
+          }
+        }
+      }
+    });
+  }
+</script>
+```
+
+### Notes
+- Focus moves inside on open
+- Focus returns to trigger on close
+- Background must be inert (`aria-modal="true"` handles this)
+- Trap focus within modal
+- Close on Escape key
+
+---
+
+## 4️⃣ Dropdown Menu
+
+### Use Case
+Action or navigation menu triggered by a button.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Trigger | `aria-haspopup="menu"` |
+| Trigger | `aria-expanded="true/false"` |
+| Menu | `role="menu"` |
+| Item | `role="menuitem"` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `ArrowDown / ArrowUp` | Navigate items |
+| `Enter / Space` | Select item |
+| `Escape` | Close menu |
+| `Home / End` | First / last item |
+
+### HTML Code Snippet
+
+```html
+<div class="dropdown">
+  <button
+    id="menu-button"
+    aria-haspopup="menu"
+    aria-expanded="false"
+    aria-controls="menu-list"
+  >
+    Actions
+  </button>
+
+  <ul id="menu-list" role="menu" aria-labelledby="menu-button" hidden>
+    <li role="none">
+      <button role="menuitem">Edit</button>
+    </li>
+    <li role="none">
+      <button role="menuitem">Delete</button>
+    </li>
+    <li role="none">
+      <button role="menuitem">Share</button>
+    </li>
+  </ul>
+</div>
+
+<script>
+  const menuButton = document.getElementById('menu-button');
+  const menu = document.getElementById('menu-list');
+  const menuItems = menu.querySelectorAll('[role="menuitem"]');
+  let currentIndex = -1;
+
+  menuButton.addEventListener('click', () => {
+    const isExpanded = menuButton.getAttribute('aria-expanded') === 'true';
+    menuButton.setAttribute('aria-expanded', !isExpanded);
+    menu.hidden = isExpanded;
+    if (!isExpanded) menuItems[0].focus();
+  });
+
+  menu.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentIndex = (currentIndex + 1) % menuItems.length;
+      menuItems[currentIndex].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentIndex = (currentIndex - 1 + menuItems.length) % menuItems.length;
+      menuItems[currentIndex].focus();
+    }
+  });
+
+  function closeMenu() {
+    menuButton.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+    menuButton.focus();
+  }
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', closeMenu);
+  });
+</script>
+```
+
+### Notes
+- Use `role="menu"` ONLY for actions
+- For form controls → use Listbox instead
+- Menu closes on selection or Escape
+- Arrow keys navigate menu items
+
+---
+
+## 5️⃣ Tooltip
+
+### Use Case
+Supplementary info on hover or focus.
+
+### Roles & ARIA
+
+| Element | Attribute |
+|---------|-----------|
+| Tooltip | `role="tooltip"` |
+| Trigger | `aria-describedby="tooltip-id"` |
+
+### HTML Code Snippet
+
+```html
+<button aria-describedby="tooltip-1" class="tooltip-trigger">
+  Help
+</button>
+
+<div id="tooltip-1" role="tooltip" hidden class="tooltip">
+  This is helpful information
+</div>
+
+<script>
+  const trigger = document.querySelector('.tooltip-trigger');
+  const tooltip = document.getElementById('tooltip-1');
+
+  trigger.addEventListener('mouseenter', () => tooltip.hidden = false);
+  trigger.addEventListener('mouseleave', () => tooltip.hidden = true);
+  trigger.addEventListener('focus', () => tooltip.hidden = false);
+  trigger.addEventListener('blur', () => tooltip.hidden = true);
+</script>
+```
+
+### Notes
+- Tooltip should NOT trap focus
+- Show on both hover AND focus
+- Keep content brief
+- Use `aria-describedby` not `aria-labelledby`
+
+---
+
+## 6️⃣ Toast / Notification
+
+### Use Case
+Transient feedback messages.
+
+### Roles & ARIA
+
+| Type | Role | Live Region |
+|------|------|-------------|
+| Info | `role="status"` | `aria-live="polite"` |
+| Error/Warning | `role="alert"` | `aria-live="assertive"` |
+
+### HTML Code Snippet
+
+```html
+<!-- Info Toast -->
+<div
+  role="status"
+  aria-live="polite"
+  aria-atomic="true"
+  class="toast toast-info"
+>
+  <p>File uploaded successfully!</p>
+</div>
+
+<!-- Error Toast -->
+<div
+  role="alert"
+  aria-live="assertive"
+  aria-atomic="true"
+  class="toast toast-error"
+>
+  <p>Error: Failed to save changes.</p>
+</div>
+
+<script>
+  function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    toast.setAttribute('aria-atomic', 'true');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<p>${message}</p>`;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.remove();
+    }, 5000);
+  }
+
+  // Usage
+  // showToast('Operation completed!', 'info');
+  // showToast('An error occurred!', 'error');
+</script>
+```
+
+### Notes
+- Use `role="status"` for non-critical info
+- Use `role="alert"` for errors/warnings
+- `aria-atomic="true"` reads entire message
+- Auto-dismiss after 5-10 seconds
+- Provide manual dismiss for critical messages
+
+---
+
+## 7️⃣ Carousel / Slider
+
+### Use Case
+Scrollable or rotating content.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Container | `role="region"` |
+| Container | `aria-roledescription="carousel"` |
+| Container | `aria-label="Featured products"` |
+| Slides container | `role="group"` |
+| Slide | `role="group"` |
+| Slide | `aria-roledescription="slide"` |
+| Slide | `aria-label="Slide 1 of 5"` |
+| Controls | `aria-controls="carousel-id"` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `ArrowLeft / ArrowRight` | Navigate slides |
+| `Tab` | Move to controls |
+| `Enter / Space` | Activate control |
+
+### HTML Code Snippet
+
+```html
+<section
+  id="carousel-1"
+  role="region"
+  aria-roledescription="carousel"
+  aria-label="Featured Products"
+  class="carousel"
+>
+  <!-- Controls -->
+  <div class="carousel-controls">
+    <button
+      aria-label="Previous slide"
+      aria-controls="carousel-slides"
+    >
+      ◀
+    </button>
+    <button
+      aria-label="Pause auto-rotation"
+      aria-controls="carousel-slides"
+    >
+      ⏸
+    </button>
+    <button
+      aria-label="Next slide"
+      aria-controls="carousel-slides"
+    >
+      ▶
+    </button>
+  </div>
+
+  <!-- Slides -->
+  <div id="carousel-slides" class="carousel-slides">
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="1 of 3"
+      class="carousel-slide"
+    >
+      <img src="product1.jpg" alt="Product 1">
+      <h3>Product 1</h3>
+    </div>
+
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="2 of 3"
+      class="carousel-slide"
+      hidden
+    >
+      <img src="product2.jpg" alt="Product 2">
+      <h3>Product 2</h3>
+    </div>
+
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="3 of 3"
+      class="carousel-slide"
+      hidden
+    >
+      <img src="product3.jpg" alt="Product 3">
+      <h3>Product 3</h3>
+    </div>
+  </div>
+
+  <!-- Pagination Dots -->
+  <div role="group" aria-label="Slide navigation">
+    <button aria-label="Go to slide 1" aria-current="true">•</button>
+    <button aria-label="Go to slide 2">•</button>
+    <button aria-label="Go to slide 3">•</button>
+  </div>
+</section>
+```
+
+### Notes
+- Pause auto-rotation on hover/focus
+- Avoid auto-play by default
+- Provide manual navigation controls
+- Screen readers hate infinite loops
+- Always include pause button
+
+---
+
+## 8️⃣ Pagination
+
+### Use Case
+Navigate through pages of content.
+
+### Roles & ARIA
+
+| Element | Attribute |
+|---------|-----------|
+| Container | `<nav>` with `aria-label="Pagination"` |
+| Current page | `aria-current="page"` |
+| Previous/Next | `aria-label="Previous/Next page"` |
+
+### HTML Code Snippet
+
+```html
+<nav aria-label="Pagination" class="pagination">
+  <a href="?page=1" aria-label="Previous page" class="pagination-prev">
+    ← Previous
+  </a>
+
+  <ul class="pagination-list">
+    <li>
+      <a href="?page=1">1</a>
+    </li>
+    <li>
+      <a href="?page=2" aria-current="page">2</a>
+    </li>
+    <li>
+      <a href="?page=3">3</a>
+    </li>
+    <li>
+      <a href="?page=4">4</a>
+    </li>
+    <li>
+      <span aria-hidden="true">...</span>
+    </li>
+    <li>
+      <a href="?page=10">10</a>
+    </li>
+  </ul>
+
+  <a href="?page=3" aria-label="Next page" class="pagination-next">
+    Next →
+  </a>
+</nav>
+```
+
+### Notes
+- Use `<nav>` + `<a>` elements
+- Do NOT use `role="button"` for links
+- `aria-current="page"` only on active page
+- Disable prev/next at boundaries
+- Use descriptive labels for screen readers
+
+---
+
+## 9️⃣ Breadcrumbs
+
+### Use Case
+Show current location in site hierarchy.
+
+### Roles & ARIA
+
+| Element | Attribute |
+|---------|-----------|
+| Container | `<nav>` with `aria-label="Breadcrumb"` |
+| List | `<ol>` (ordered list) |
+| Current page | `aria-current="page"` |
+
+### HTML Code Snippet
+
+```html
+<nav aria-label="Breadcrumb">
+  <ol class="breadcrumb">
+    <li>
+      <a href="/">Home</a>
+    </li>
+    <li>
+      <a href="/products">Products</a>
+    </li>
+    <li>
+      <a href="/products/electronics">Electronics</a>
+    </li>
+    <li>
+      <a href="/products/electronics/laptops" aria-current="page">
+        Laptops
+      </a>
+    </li>
+  </ol>
+</nav>
+
+<style>
+  .breadcrumb {
+    display: flex;
+    list-style: none;
+    padding: 0;
+  }
+
+  .breadcrumb li:not(:last-child)::after {
+    content: "/";
+    margin: 0 0.5rem;
+  }
+
+  .breadcrumb [aria-current="page"] {
+    font-weight: bold;
+    color: currentColor;
+    pointer-events: none;
+  }
+</style>
+```
+
+### Notes
+- Use `<nav>` with descriptive label
+- Use `<ol>` for semantic ordering
+- Current page gets `aria-current="page"`
+- Separators should be CSS-only or `aria-hidden`
+- Last item can be text or non-clickable link
+
+---
+
+## 🔟 Listbox / Custom Select
+
+### Use Case
+Single or multi-select dropdown alternative.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Container | `role="listbox"` |
+| Option | `role="option"` |
+| Option | `aria-selected="true/false"` |
+| Listbox | `aria-multiselectable="true"` (if multi) |
+| Listbox | `aria-labelledby` or `aria-label` |
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| `ArrowUp / Down` | Navigate options |
+| `Enter / Space` | Select option |
+| `Home / End` | First / last option |
+
+### HTML Code Snippet
+
+```html
+<div class="select-wrapper">
+  <label id="listbox-label">Choose a country:</label>
+
+  <button
+    id="listbox-button"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    aria-labelledby="listbox-label listbox-button"
+  >
+    Select option
+  </button>
+
+  <ul
+    id="listbox"
+    role="listbox"
+    aria-labelledby="listbox-label"
+    hidden
+  >
+    <li role="option" id="option-1">United States</li>
+    <li role="option" id="option-2">Canada</li>
+    <li role="option" id="option-3" aria-selected="true">United Kingdom</li>
+    <li role="option" id="option-4">Australia</li>
+  </ul>
+</div>
+
+<script>
+  const button = document.getElementById('listbox-button');
+  const listbox = document.getElementById('listbox');
+  const options = listbox.querySelectorAll('[role="option"]');
+  let currentIndex = -1;
+
+  button.addEventListener('click', () => {
+    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+    button.setAttribute('aria-expanded', !isExpanded);
+    listbox.hidden = isExpanded;
+  });
+
+  options.forEach((option, index) => {
+    option.addEventListener('click', () => {
+      selectOption(option);
+    });
+  });
+
+  listbox.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentIndex = Math.min(currentIndex + 1, options.length - 1);
+      options[currentIndex].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentIndex = Math.max(currentIndex - 1, 0);
+      options[currentIndex].focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      selectOption(document.activeElement);
+    }
+  });
+
+  function selectOption(option) {
+    options.forEach(opt => opt.removeAttribute('aria-selected'));
+    option.setAttribute('aria-selected', 'true');
+    button.textContent = option.textContent;
+    button.setAttribute('aria-expanded', 'false');
+    listbox.hidden = true;
+    button.focus();
+  }
+</script>
+```
+
+### Notes
+- Use native `<select>` when possible
+- For multi-select: add `aria-multiselectable="true"`
+- Use Space/Enter to select
+- Arrow keys navigate options
+
+---
+
+## 1️⃣1️⃣ Combobox / Autocomplete
+
+### Use Case
+Search with suggestions dropdown.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Input | `role="combobox"` |
+| Input | `aria-expanded="true/false"` |
+| Input | `aria-controls="listbox-id"` |
+| Input | `aria-autocomplete="list"` |
+| Dropdown | `role="listbox"` |
+| Option | `role="option"` |
+| Option | `aria-selected="true"` (for highlighted) |
+
+### HTML Code Snippet
+
+```html
+<div class="combobox-wrapper">
+  <label for="search-input">Search:</label>
+
+  <input
+    type="text"
+    id="search-input"
+    role="combobox"
+    aria-expanded="false"
+    aria-controls="suggestions"
+    aria-autocomplete="list"
+    placeholder="Type to search..."
+  >
+
+  <ul id="suggestions" role="listbox" hidden>
+    <li role="option" id="option-1">Apple</li>
+    <li role="option" id="option-2">Banana</li>
+    <li role="option" id="option-3">Cherry</li>
+  </ul>
+</div>
+
+<script>
+  const input = document.getElementById('search-input');
+  const listbox = document.getElementById('suggestions');
+  const options = listbox.querySelectorAll('[role="option"]');
+  let currentIndex = -1;
+
+  input.addEventListener('input', (e) => {
+    const hasValue = e.target.value.length > 0;
+    input.setAttribute('aria-expanded', hasValue);
+    listbox.hidden = !hasValue;
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentIndex = Math.min(currentIndex + 1, options.length - 1);
+      highlightOption(currentIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentIndex = Math.max(currentIndex - 1, 0);
+      highlightOption(currentIndex);
+    } else if (e.key === 'Enter' && currentIndex >= 0) {
+      e.preventDefault();
+      selectOption(options[currentIndex]);
+    }
+  });
+
+  function highlightOption(index) {
+    options.forEach((opt, i) => {
+      opt.setAttribute('aria-selected', i === index ? 'true' : 'false');
+    });
+  }
+
+  function selectOption(option) {
+    input.value = option.textContent;
+    listbox.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+  }
+</script>
+```
+
+### Notes
+- Use `aria-autocomplete="list"` for filtering
+- Show suggestions on input
+- Arrow keys navigate suggestions
+- Enter selects highlighted option
+
+---
+
+## 1️⃣2️⃣ Toggle Switch
+
+### Use Case
+Binary on/off control.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Switch | `role="switch"` |
+| Switch | `aria-checked="true/false"` |
+| Switch | `aria-label` or `aria-labelledby` |
+
+### HTML Code Snippet
+
+```html
+<div class="toggle-wrapper">
+  <button
+    role="switch"
+    aria-checked="false"
+    aria-labelledby="toggle-label"
+    class="toggle-switch"
+  >
+    <span class="toggle-slider"></span>
+  </button>
+  <span id="toggle-label">Enable notifications</span>
+</div>
+
+<script>
+  const toggle = document.querySelector('[role="switch"]');
+
+  toggle.addEventListener('click', () => {
+    const isChecked = toggle.getAttribute('aria-checked') === 'true';
+    toggle.setAttribute('aria-checked', !isChecked);
+  });
+
+  toggle.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      toggle.click();
+    }
+  });
+</script>
+
+<style>
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .toggle-switch[aria-checked="true"] {
+    background: #4CAF50;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+  }
+
+  .toggle-switch[aria-checked="true"] .toggle-slider {
+    transform: translateX(20px);
+  }
+</style>
+```
+
+### Notes
+- Use `role="switch"` not checkbox
+- `aria-checked` indicates state
+- Space or Enter toggles
+- Visual indicator of state required
+
+---
+
+## 1️⃣3️⃣ Alert Banner
+
+### Use Case
+Important site-wide messages.
+
+### Roles & ARIA
+
+| Element | Role / Attribute |
+|---------|------------------|
+| Alert (important) | `role="alert"` |
+| Alert (info) | `role="status"` |
+| Dismissible | Close button with `aria-label` |
+
+### HTML Code Snippet
+
+```html
+<!-- Critical Alert -->
+<div role="alert" class="alert alert-error">
+  <p>Your session will expire in 5 minutes.</p>
+  <button aria-label="Dismiss alert">×</button>
+</div>
+
+<!-- Info Banner -->
+<div role="status" class="alert alert-info">
+  <p>New features are now available!</p>
+  <button aria-label="Dismiss notification">×</button>
+</div>
+
+<script>
+  document.querySelectorAll('.alert button').forEach(button => {
+    button.addEventListener('click', () => {
+      button.closest('.alert').remove();
+    });
+  });
+</script>
+```
+
+### Notes
+- Use `role="alert"` for critical messages
+- Use `role="status"` for non-critical info
+- Provide dismiss button with clear label
+- Don't auto-dismiss critical alerts
+
+---
+
+## 1️⃣4️⃣ Skip Links
+
+### Use Case
+Allow keyboard users to skip navigation.
+
+### HTML Code Snippet
+
+```html
+<a href="#main-content" class="skip-link">
+  Skip to main content
+</a>
+
+<nav>
+  <!-- Navigation items -->
+</nav>
+
+<main id="main-content" tabindex="-1">
+  <!-- Main content -->
+</main>
+
+<style>
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100;
+  }
+
+  .skip-link:focus {
+    top: 0;
+  }
+</style>
+```
+
+### Notes
+- First focusable element on page
+- Visible only on focus
+- Target should have `tabindex="-1"` for focus
+- Essential for keyboard navigation
+
+---
+
+## 1️⃣5️⃣ Loading Spinner
+
+### Use Case
+Indicate loading state to users.
+
+### Roles & ARIA
+
+| Element | Attribute |
+|---------|-----------|
+| Spinner | `role="status"` |
+| Spinner | `aria-live="polite"` |
+| Spinner | `aria-label="Loading"` |
+
+### HTML Code Snippet
+
+```html
+<div
+  role="status"
+  aria-live="polite"
+  aria-label="Loading content"
+  class="spinner"
+>
+  <span class="visually-hidden">Loading...</span>
+  <div class="spinner-icon"></div>
+</div>
+
+<style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .spinner-icon {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+```
+
+### Notes
+- Include screen reader text
+- Use `role="status"` for non-blocking loads
+- Remove or hide when loading completes
+- Don't trap focus during loading
+
+---
+
+## 📋 Quick Reference: Common ARIA Attributes
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `aria-label` | Provides label when none visible | `<button aria-label="Close">×</button>` |
+| `aria-labelledby` | References visible label | `<div aria-labelledby="title-id">` |
+| `aria-describedby` | Additional description | `<input aria-describedby="help-text">` |
+| `aria-expanded` | Disclosure state | `aria-expanded="true/false"` |
+| `aria-hidden` | Hide from screen readers | `aria-hidden="true"` |
+| `aria-live` | Announce dynamic changes | `aria-live="polite/assertive"` |
+| `aria-current` | Current item in set | `aria-current="page/step/location"` |
+| `aria-selected` | Selection state | `aria-selected="true/false"` |
+| `aria-checked` | Checked state | `aria-checked="true/false"` |
+| `aria-disabled` | Disabled state | `aria-disabled="true"` |
+| `aria-controls` | Element controlled by this | `aria-controls="panel-id"` |
+| `aria-haspopup` | Popup type | `aria-haspopup="menu/dialog"` |
+
+---
+
+## 🎯 Testing Checklist
+
+- [ ] Keyboard navigation works (Tab, Arrow keys, Enter, Escape)
+- [ ] Screen reader announces states correctly
+- [ ] Focus visible and logical
+- [ ] Color contrast meets WCAG 2.1 AA (4.5:1 for text)
+- [ ] Touch targets at least 44×44 pixels
+- [ ] No keyboard traps
+- [ ] Live regions announce updates
+- [ ] Forms have proper labels
+- [ ] Error messages are announced
+- [ ] Interactive elements have visible focus indicators
+
+---
+
+## 🛠️ Testing Tools
+
+- **Keyboard**: Navigate with Tab, Shift+Tab, Arrow keys
+- **Screen Readers**: NVDA (Windows), JAWS (Windows), VoiceOver (Mac/iOS)
+- **Browser DevTools**: Accessibility tree inspector
+- **axe DevTools**: Browser extension for automated testing
+- **Lighthouse**: Built into Chrome DevTools
+- **WAVE**: Web accessibility evaluation tool
+
+---
+
+## 📚 Resources
+
+- [ARIA Authoring Practices Guide (APG)](https://www.w3.org/WAI/ARIA/apg/)
+- [MDN ARIA Documentation](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA)
+- [WebAIM](https://webaim.org/)
+- [A11y Project](https://www.a11yproject.com/)
