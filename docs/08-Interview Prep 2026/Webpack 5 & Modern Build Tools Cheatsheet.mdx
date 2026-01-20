@@ -1,0 +1,903 @@
+# Webpack 5 & Modern Build Tools Cheatsheet
+
+## Table of Contents
+
+1. [Build Tools Overview](#build-tools-overview)
+2. [Why Build Tools Are Needed](#why-build-tools-are-needed)
+3. [Webpack 5](#webpack-5)
+4. [Vite](#vite)
+5. [Why Vite is Faster](#why-vite-is-faster)
+6. [Other Modern Build Tools](#other-modern-build-tools)
+7. [Performance Comparison](#performance-comparison)
+8. [When to Use What](#when-to-use-what)
+9. [Migration Guide](#migration-guide)
+10. [Interview Questions](#interview-questions)
+
+---
+
+## Build Tools Overview
+
+### What Are Build Tools?
+
+Build tools transform and bundle source code into optimized production assets.
+
+```
+Source Code               Build Tool              Production
+├── TypeScript      →                    →   ├── Minified JS
+├── JSX/TSX         →    Webpack/Vite    →   ├── CSS bundles
+├── SASS/LESS       →                    →   ├── Optimized images
+├── Modern JS       →                    →   └── index.html
+└── Assets
+```
+
+### Popular Build Tools
+
+| Tool | Type | Release | Primary Use Case |
+|------|------|---------|------------------|
+| **Webpack** | Bundler | 2012 | Production apps, complex configs |
+| **Vite** | Dev Server + Bundler | 2020 | Fast dev, modern projects |
+| **Rollup** | Bundler | 2015 | Libraries, tree-shaking |
+| **Parcel** | Zero-config bundler | 2017 | Quick prototypes |
+| **esbuild** | Bundler | 2020 | Extremely fast builds |
+| **Turbopack** | Bundler | 2022 | Next.js, Rust-based |
+| **SWC** | Compiler | 2020 | Faster Babel alternative |
+
+---
+
+## Why Build Tools Are Needed
+
+### Key Problems They Solve
+
+#### 1. **Module System**
+Browsers don't natively support CommonJS/ES Modules everywhere.
+
+```javascript
+// Won't work directly in older browsers
+import React from 'react';
+const lodash = require('lodash');
+```
+
+#### 2. **Code Transformation**
+Transform modern syntax to browser-compatible code.
+
+```javascript
+// JSX → JavaScript
+<div className="app">Hello</div>
+// ↓
+React.createElement('div', { className: 'app' }, 'Hello')
+```
+
+#### 3. **Asset Processing**
+Handle CSS, images, fonts, etc.
+
+```javascript
+import './styles.css';
+import logo from './logo.png';
+```
+
+#### 4. **Code Optimization**
+- Minification
+- Tree shaking (remove unused code)
+- Code splitting
+- Dead code elimination
+
+#### 5. **Developer Experience**
+- Hot Module Replacement (HMR)
+- Source maps
+- TypeScript support
+- Fast refresh
+
+---
+
+## Webpack 5
+
+### Core Concepts
+
+```javascript
+// webpack.config.js
+module.exports = {
+  // 1. Entry: Starting point
+  entry: './src/index.js',
+
+  // 2. Output: Where to emit bundles
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].[contenthash].js',
+  },
+
+  // 3. Loaders: Transform files
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,
+        use: 'babel-loader',
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.(png|jpg|gif)$/,
+        type: 'asset/resource',
+      },
+    ],
+  },
+
+  // 4. Plugins: Additional functionality
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './src/index.html',
+    }),
+    new MiniCssExtractPlugin(),
+  ],
+
+  // 5. Mode: development or production
+  mode: 'production',
+};
+```
+
+### How Webpack Works
+
+```
+1. Entry Point
+   ↓
+2. Build Dependency Graph (parse all imports)
+   ↓
+3. Apply Loaders (transform files)
+   ↓
+4. Apply Plugins (optimize, emit assets)
+   ↓
+5. Output Bundle(s)
+```
+
+### Webpack 5 Key Features
+
+#### 1. **Persistent Caching**
+
+```javascript
+module.exports = {
+  cache: {
+    type: 'filesystem', // Cache to disk
+    buildDependencies: {
+      config: [__filename],
+    },
+  },
+};
+```
+
+#### 2. **Module Federation**
+
+Share code between separate builds (microfrontends).
+
+```javascript
+// App 1 (host)
+new ModuleFederationPlugin({
+  name: 'host',
+  remotes: {
+    app2: 'app2@http://localhost:3002/remoteEntry.js',
+  },
+});
+
+// App 2 (remote)
+new ModuleFederationPlugin({
+  name: 'app2',
+  filename: 'remoteEntry.js',
+  exposes: {
+    './Button': './src/Button',
+  },
+});
+
+// Use in App 1
+import Button from 'app2/Button';
+```
+
+#### 3. **Asset Modules**
+
+No need for file-loader, url-loader, raw-loader.
+
+```javascript
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.png$/,
+        type: 'asset/resource', // Emits separate file
+      },
+      {
+        test: /\.svg$/,
+        type: 'asset/inline', // Inline as data URI
+      },
+      {
+        test: /\.txt$/,
+        type: 'asset/source', // Export as string
+      },
+      {
+        test: /\.jpg$/,
+        type: 'asset', // Auto choose based on size
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8 * 1024, // 8kb
+          },
+        },
+      },
+    ],
+  },
+};
+```
+
+#### 4. **Tree Shaking Improvements**
+
+Better detection of unused exports.
+
+```javascript
+// utils.js
+export const add = (a, b) => a + b;
+export const subtract = (a, b) => a - b; // Won't be bundled if unused
+
+// app.js
+import { add } from './utils';
+console.log(add(2, 3));
+```
+
+#### 5. **Code Splitting**
+
+```javascript
+// Dynamic imports
+const loadComponent = async () => {
+  const module = await import(/* webpackChunkName: "heavy" */ './HeavyComponent');
+  return module.default;
+};
+
+// Split vendors
+optimization: {
+  splitChunks: {
+    chunks: 'all',
+    cacheGroups: {
+      vendor: {
+        test: /[\\/]node_modules[\\/]/,
+        name: 'vendors',
+        priority: 10,
+      },
+    },
+  },
+}
+```
+
+### Webpack Dev Server
+
+```javascript
+devServer: {
+  port: 3000,
+  hot: true, // Hot Module Replacement
+  open: true,
+  historyApiFallback: true, // SPA routing
+  proxy: {
+    '/api': 'http://localhost:8080',
+  },
+}
+```
+
+---
+
+## Vite
+
+### What is Vite?
+
+Fast dev server + production bundler (uses Rollup) built on native ES modules.
+
+### Basic Setup
+
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+  },
+});
+```
+
+### How Vite Works
+
+#### Development Mode
+
+```
+Browser Request
+     ↓
+Vite Dev Server
+     ↓
+Transform on-demand (esbuild)
+     ↓
+Serve ES Modules
+```
+
+**Key Difference**: No bundling in dev! Each file is served separately.
+
+```html
+<!-- Vite serves this directly -->
+<script type="module">
+  import { createApp } from '/node_modules/vue/dist/vue.esm-browser.js'
+  import App from '/src/App.vue'
+  createApp(App).mount('#app')
+</script>
+```
+
+#### Production Mode
+
+Uses Rollup for optimized bundling.
+
+```
+Source Files
+     ↓
+Rollup (bundler)
+     ↓
+Optimized Bundle
+```
+
+### Vite Features
+
+#### 1. **Instant Server Start**
+
+```bash
+# Webpack: 10-30s for large projects
+npm run webpack-dev
+
+# Vite: <1s regardless of project size
+npm run vite
+```
+
+#### 2. **Lightning Fast HMR**
+
+```javascript
+// Vite only updates the changed module
+if (import.meta.hot) {
+  import.meta.hot.accept((newModule) => {
+    // Handle update
+  });
+}
+```
+
+#### 3. **Optimized Dependencies**
+
+Vite pre-bundles dependencies with esbuild.
+
+```
+node_modules/
+├── react (100+ files)
+├── lodash (500+ files)
+     ↓ (Pre-bundled)
+.vite/deps/
+├── react.js (1 file)
+└── lodash.js (1 file)
+```
+
+#### 4. **Built-in Features**
+
+No loaders needed for common files:
+
+```javascript
+// TypeScript
+import Component from './Component.tsx';
+
+// CSS
+import './styles.css';
+
+// CSS Modules
+import styles from './App.module.css';
+
+// JSON
+import data from './data.json';
+
+// Assets
+import logo from './logo.png';
+
+// Web Workers
+import Worker from './worker?worker';
+```
+
+#### 5. **Environment Variables**
+
+```javascript
+// .env
+VITE_API_URL=https://api.example.com
+
+// Access in code
+console.log(import.meta.env.VITE_API_URL);
+```
+
+---
+
+## Why Vite is Faster
+
+### 1. **No Bundling in Development**
+
+```
+Webpack Dev:
+[All Files] → Bundle → Serve (slow start)
+
+Vite Dev:
+[Request] → Transform Single File → Serve (instant)
+```
+
+### 2. **Native ES Modules**
+
+Modern browsers support ES modules natively.
+
+```javascript
+// Browser can handle this directly
+import { useState } from 'react';
+```
+
+### 3. **esbuild for Dependencies**
+
+esbuild is written in Go (10-100x faster than JavaScript-based tools).
+
+```
+Babel Transform: ~1000ms
+esbuild Transform: ~10ms
+```
+
+### 4. **Smart Dependency Pre-bundling**
+
+```javascript
+// These are pre-bundled once
+import _ from 'lodash'; // 100s of files → 1 file
+import React from 'react'; // Multiple files → 1 file
+
+// These are transformed on-demand
+import App from './App.jsx'; // Your code
+```
+
+### 5. **Optimized HMR**
+
+```
+Webpack HMR:
+Change → Rebuild affected chunks → Full page update
+
+Vite HMR:
+Change → Transform single module → Precise update
+```
+
+### 6. **Better Caching**
+
+```javascript
+// Strong caching with immutable filenames
+// dist/assets/index-4f3b8d2a.js
+// ↓ Change code
+// dist/assets/index-8a2c9f1b.js (new hash)
+```
+
+### Performance Numbers
+
+```
+Cold Server Start:
+Webpack: 15-30s (large project)
+Vite: <1s
+
+Hot Module Replacement:
+Webpack: 200-500ms
+Vite: <50ms
+
+Production Build:
+Webpack: 30-60s
+Vite: 20-40s (uses Rollup)
+```
+
+---
+
+## Other Modern Build Tools
+
+### esbuild
+
+Extremely fast bundler written in Go.
+
+```javascript
+// esbuild.config.js
+require('esbuild').build({
+  entryPoints: ['src/index.js'],
+  bundle: true,
+  outfile: 'dist/bundle.js',
+  minify: true,
+});
+```
+
+**Speed**: 10-100x faster than webpack
+**Limitation**: Less plugin ecosystem
+
+### Turbopack (Next.js)
+
+Rust-based bundler by Vercel.
+
+```javascript
+// next.config.js
+module.exports = {
+  experimental: {
+    turbo: {}, // Enable Turbopack
+  },
+};
+```
+
+**Claims**: 700x faster than Webpack, 10x faster than Vite (disputed)
+
+### Rollup
+
+Tree-shaking focused bundler, great for libraries.
+
+```javascript
+// rollup.config.js
+export default {
+  input: 'src/index.js',
+  output: {
+    file: 'dist/bundle.js',
+    format: 'esm',
+  },
+  plugins: [resolve(), commonjs(), terser()],
+};
+```
+
+### Parcel
+
+Zero-config bundler.
+
+```bash
+# No config needed
+parcel index.html
+```
+
+**Pros**: Easy to use
+**Cons**: Less control, slower than modern tools
+
+### SWC
+
+Rust-based JavaScript/TypeScript compiler (Babel alternative).
+
+```javascript
+// .swcrc
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true
+    },
+    "transform": {
+      "react": {
+        "runtime": "automatic"
+      }
+    }
+  }
+}
+```
+
+**Speed**: 20x faster than Babel
+**Used by**: Next.js, Vite (optionally)
+
+---
+
+## Performance Comparison
+
+### Build Speed (10,000 modules)
+
+```
+Tool           Cold Start    Hot Reload    Production Build
+───────────────────────────────────────────────────────────
+Webpack 5      ~25s          ~300ms        ~45s
+Vite           <1s           ~50ms         ~30s
+esbuild        <500ms        N/A           ~5s
+Turbopack      ~1s           ~30ms         ~25s
+```
+
+### Why Speed Differences?
+
+```
+Language Implementation:
+JavaScript (Webpack): Slow
+Go (esbuild): Fast (10-100x)
+Rust (Turbopack, SWC): Fast (10-100x)
+
+Architecture:
+Bundle-first (Webpack): Slow dev start
+Module-first (Vite): Fast dev start
+```
+
+---
+
+## When to Use What
+
+### Use Webpack When:
+
+✅ You need Module Federation
+✅ Complex custom configurations required
+✅ Legacy project migration
+✅ Need specific loaders/plugins
+✅ Team is already familiar with it
+
+```javascript
+// Complex webpack use case
+module.exports = {
+  entry: {
+    app: './src/app.js',
+    admin: './src/admin.js',
+  },
+  optimization: {
+    runtimeChunk: 'single',
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all',
+        },
+      },
+    },
+  },
+};
+```
+
+### Use Vite When:
+
+✅ Starting a new project
+✅ Developer experience is priority
+✅ Modern browser targets
+✅ TypeScript/JSX/CSS modules
+✅ Fast iteration needed
+
+```javascript
+// Simple Vite setup
+export default defineConfig({
+  plugins: [react()],
+  // That's it for most projects!
+});
+```
+
+### Use esbuild When:
+
+✅ Building libraries
+✅ CI/CD pipelines (speed critical)
+✅ Simple bundling needs
+✅ No complex transformations
+
+### Use Rollup When:
+
+✅ Building npm packages
+✅ Tree-shaking is critical
+✅ Multiple output formats needed
+
+```javascript
+// Library with multiple formats
+export default {
+  input: 'src/index.js',
+  output: [
+    { file: 'dist/bundle.cjs.js', format: 'cjs' },
+    { file: 'dist/bundle.esm.js', format: 'esm' },
+    { file: 'dist/bundle.umd.js', format: 'umd', name: 'MyLib' },
+  ],
+};
+```
+
+---
+
+## Migration Guide
+
+### Webpack to Vite
+
+```javascript
+// webpack.config.js
+module.exports = {
+  entry: './src/main.js',
+  module: {
+    rules: [
+      { test: /\.css$/, use: ['style-loader', 'css-loader'] },
+      { test: /\.jsx?$/, use: 'babel-loader' },
+    ],
+  },
+};
+
+// ↓ Migrate to ↓
+
+// vite.config.js
+export default defineConfig({
+  plugins: [react()],
+  // CSS and JSX work out of the box!
+});
+```
+
+### Key Changes
+
+```javascript
+// Webpack: CommonJS
+const path = require('path');
+module.exports = { /* ... */ };
+
+// Vite: ES Modules
+import { defineConfig } from 'vite';
+export default defineConfig({ /* ... */ });
+
+// Webpack: Environment variables
+process.env.REACT_APP_API_URL
+
+// Vite: Environment variables
+import.meta.env.VITE_API_URL
+
+// Webpack: Import assets
+import logo from './logo.png';
+
+// Vite: Import assets (same, but different handling)
+import logo from './logo.png'; // Returns URL
+import logo from './logo.png?url'; // Explicit URL
+import logo from './logo.png?raw'; // Raw string
+```
+
+### Migration Checklist
+
+- [ ] Update `package.json` scripts
+- [ ] Convert webpack config to vite config
+- [ ] Update environment variable names (`REACT_APP_*` → `VITE_*`)
+- [ ] Remove webpack-specific loaders
+- [ ] Update import statements if using CommonJS
+- [ ] Test all dynamic imports
+- [ ] Update proxy configuration
+- [ ] Test production build
+
+---
+
+## Interview Questions
+
+### 1. **What is tree shaking?**
+
+Removing unused code from bundles. Works with ES modules (static analysis).
+
+```javascript
+// lib.js
+export function used() { return 'used'; }
+export function unused() { return 'unused'; }
+
+// app.js
+import { used } from './lib';
+console.log(used());
+
+// Bundle: Only includes 'used' function
+```
+
+### 2. **What is code splitting?**
+
+Breaking code into separate bundles loaded on-demand.
+
+```javascript
+// Static
+import Component from './Component';
+
+// Dynamic (creates separate chunk)
+const Component = lazy(() => import('./Component'));
+```
+
+### 3. **How does HMR work?**
+
+Hot Module Replacement updates modules without full page reload.
+
+```
+File Change → Dev Server Detects → WebSocket Message → Update Module
+```
+
+### 4. **Why is Vite faster than Webpack in development?**
+
+1. No bundling (uses native ES modules)
+2. On-demand transformation (only requested files)
+3. esbuild for dependencies (Go vs JavaScript)
+4. Optimized dependency pre-bundling
+5. Better caching strategy
+
+### 5. **What is the difference between loader and plugin in Webpack?**
+
+**Loaders**: Transform individual files (CSS, TS, images)
+**Plugins**: Perform broader tasks (optimization, injection, bundling)
+
+```javascript
+module: {
+  rules: [
+    { test: /\.css$/, use: 'css-loader' }, // Loader
+  ],
+},
+plugins: [
+  new HtmlWebpackPlugin(), // Plugin
+],
+```
+
+### 6. **Explain Module Federation**
+
+Share code between separate Webpack builds at runtime.
+
+```javascript
+// Use case: Microfrontends
+// App A can import components from App B
+// without rebuilding or duplicating code
+```
+
+### 7. **What are source maps?**
+
+Map minified/transformed code back to original source for debugging.
+
+```javascript
+devtool: 'source-map', // webpack
+build: { sourcemap: true }, // vite
+```
+
+### 8. **How does Vite handle dependencies?**
+
+Pre-bundles with esbuild, caches aggressively, serves as single files.
+
+```
+First run: Scan → Pre-bundle → Cache
+Subsequent: Serve from cache (instant)
+```
+
+### 9. **What is the purpose of content hashing?**
+
+Cache busting - new hash when content changes.
+
+```javascript
+output: {
+  filename: '[name].[contenthash].js', // webpack
+}
+
+// Produces: main.4f3b8d2a.js
+// Change content → main.8a2c9f1b.js
+```
+
+### 10. **When would you choose Webpack over Vite?**
+
+- Module Federation needed
+- Complex existing configuration
+- Required plugins only available in Webpack
+- Server-side rendering with custom setup
+- Need fine-grained control over bundling
+
+---
+
+## Quick Reference
+
+### Webpack vs Vite Comparison
+
+| Feature | Webpack 5 | Vite |
+|---------|-----------|------|
+| **Dev Start** | Slow (bundle first) | Instant (no bundle) |
+| **HMR** | ~300ms | ~50ms |
+| **Config** | Complex | Simple |
+| **Plugins** | Extensive | Growing |
+| **Production** | Webpack | Rollup |
+| **Browser Support** | All | Modern (ES2015+) |
+| **Learning Curve** | Steep | Gentle |
+
+### Common Commands
+
+```bash
+# Webpack
+webpack --mode production
+webpack serve --mode development
+
+# Vite
+vite build
+vite dev
+vite preview
+
+# Package.json scripts
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview"
+}
+```
+
+### Key Takeaways
+
+✅ **Webpack**: Mature, powerful, configurable, slower dev experience
+✅ **Vite**: Fast, modern, simple, best for new projects
+✅ **esbuild**: Fastest builds, limited ecosystem
+✅ **Choice depends on**: Project needs, team familiarity, browser support
