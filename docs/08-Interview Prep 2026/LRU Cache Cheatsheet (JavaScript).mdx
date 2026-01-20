@@ -1,0 +1,590 @@
+# LRU Cache Cheatsheet (JavaScript)
+
+## Table of Contents
+
+1. [Theory & Concepts](#theory--concepts)
+2. [Why LRU Cache?](#why-lru-cache)
+3. [Data Structures Used](#data-structures-used)
+4. [Implementation: Map + Doubly Linked List](#implementation-map--doubly-linked-list)
+5. [Implementation: Map Only (ES6 Ordered Map)](#implementation-map-only-es6-ordered-map)
+6. [Time & Space Complexity](#time--space-complexity)
+7. [Use Cases](#use-cases)
+8. [Interview Tips](#interview-tips)
+9. [Common Variations](#common-variations)
+
+---
+
+## Theory & Concepts
+
+### What is LRU Cache?
+
+**LRU (Least Recently Used)** is a cache eviction policy that removes the least recently accessed item when the cache reaches its capacity.
+
+### Key Properties
+
+- **Fixed capacity**: Cache has a maximum size
+- **Fast access**: O(1) read and write operations
+- **Eviction policy**: When full, remove the least recently used item
+- **Recently used tracking**: Both reads and writes update recency
+
+### Operation Flow
+
+```
+Cache Operations:
+1. GET(key) → Returns value, moves item to "most recent"
+2. PUT(key, value) → Adds/updates item, moves to "most recent"
+                   → If full, removes "least recent" item first
+
+Access Order: [Least Recent] ← ... ← [Most Recent]
+```
+
+---
+
+## Why LRU Cache?
+
+### Problem It Solves
+
+- **Memory constraints**: Limited storage for frequently accessed data
+- **Performance optimization**: Reduces expensive operations (DB queries, API calls)
+- **Predictive efficiency**: Recently used items are likely to be used again
+
+### Real-World Examples
+
+- Browser cache (web pages, images)
+- Database query result caching
+- Operating system page replacement
+- CDN content caching
+- Application-level data caching
+
+---
+
+## Data Structures Used
+
+### Option 1: Map + Doubly Linked List (Classic)
+
+**Map**: O(1) key lookup
+**Doubly Linked List**: O(1) insertion/deletion at both ends
+
+```
+Map: { key → Node }
+DLL: [Head] ↔ [Node] ↔ [Node] ↔ [Tail]
+     (LRU)                      (MRU)
+```
+
+### Option 2: ES6 Map Only
+
+JavaScript Maps maintain insertion order, allowing simpler implementation.
+
+```
+Map: { key1: val1, key2: val2, ... }
+     (oldest)              (newest)
+```
+
+---
+
+## Implementation: Map + Doubly Linked List
+
+### Full Implementation
+
+```javascript
+class Node {
+  constructor(key, value) {
+    this.key = key;
+    this.value = value;
+    this.prev = null;
+    this.next = null;
+  }
+}
+
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map(); // key → Node
+
+    // Dummy head and tail for easier list manipulation
+    this.head = new Node(0, 0); // LRU side
+    this.tail = new Node(0, 0); // MRU side
+    this.head.next = this.tail;
+    this.tail.prev = this.head;
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) {
+      return -1;
+    }
+
+    const node = this.cache.get(key);
+    this.removeNode(node);
+    this.addToTail(node);
+
+    return node.value;
+  }
+
+  put(key, value) {
+    // Update existing key
+    if (this.cache.has(key)) {
+      const node = this.cache.get(key);
+      node.value = value;
+      this.removeNode(node);
+      this.addToTail(node);
+      return;
+    }
+
+    // Add new key
+    const newNode = new Node(key, value);
+    this.cache.set(key, newNode);
+    this.addToTail(newNode);
+
+    // Check capacity and evict if needed
+    if (this.cache.size > this.capacity) {
+      const lruNode = this.head.next;
+      this.removeNode(lruNode);
+      this.cache.delete(lruNode.key);
+    }
+  }
+
+  // Helper: Remove node from list
+  removeNode(node) {
+    const prevNode = node.prev;
+    const nextNode = node.next;
+    prevNode.next = nextNode;
+    nextNode.prev = prevNode;
+  }
+
+  // Helper: Add node to tail (most recent)
+  addToTail(node) {
+    const prevNode = this.tail.prev;
+    prevNode.next = node;
+    node.prev = prevNode;
+    node.next = this.tail;
+    this.tail.prev = node;
+  }
+
+  // Optional: Display current cache state
+  display() {
+    let current = this.head.next;
+    const items = [];
+    while (current !== this.tail) {
+      items.push(`${current.key}:${current.value}`);
+      current = current.next;
+    }
+    console.log('[LRU] ' + items.join(' ↔ ') + ' [MRU]');
+  }
+}
+```
+
+### Usage Example
+
+```javascript
+const cache = new LRUCache(3);
+
+cache.put(1, 'A');  // Cache: [1:A]
+cache.put(2, 'B');  // Cache: [1:A, 2:B]
+cache.put(3, 'C');  // Cache: [1:A, 2:B, 3:C]
+
+cache.get(1);       // Returns 'A', Cache: [2:B, 3:C, 1:A]
+
+cache.put(4, 'D');  // Evicts key 2, Cache: [3:C, 1:A, 4:D]
+
+cache.get(2);       // Returns -1 (not found)
+
+cache.put(5, 'E');  // Evicts key 3, Cache: [1:A, 4:D, 5:E]
+```
+
+---
+
+## Implementation: Map Only (ES6 Ordered Map)
+
+### Simpler Implementation
+
+```javascript
+class LRUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) {
+      return -1;
+    }
+
+    // Remove and re-insert to move to end (most recent)
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+
+    return value;
+  }
+
+  put(key, value) {
+    // If key exists, delete it first
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
+    // Add to end (most recent)
+    this.cache.set(key, value);
+
+    // Evict least recent if over capacity
+    if (this.cache.size > this.capacity) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+  }
+
+  // Optional: Display cache
+  display() {
+    console.log('[LRU]', Array.from(this.cache.entries()), '[MRU]');
+  }
+}
+```
+
+### Usage Example
+
+```javascript
+const cache = new LRUCache(2);
+
+cache.put(1, 1);    // Cache: {1=1}
+cache.put(2, 2);    // Cache: {1=1, 2=2}
+cache.get(1);       // Returns 1, Cache: {2=2, 1=1}
+cache.put(3, 3);    // Evicts 2, Cache: {1=1, 3=3}
+cache.get(2);       // Returns -1 (not found)
+cache.put(4, 4);    // Evicts 1, Cache: {3=3, 4=4}
+cache.get(1);       // Returns -1 (not found)
+cache.get(3);       // Returns 3, Cache: {4=4, 3=3}
+cache.get(4);       // Returns 4, Cache: {3=3, 4=4}
+```
+
+---
+
+## Time & Space Complexity
+
+### Map + Doubly Linked List
+
+| Operation | Time Complexity | Explanation |
+|-----------|----------------|-------------|
+| `get(key)` | O(1) | Map lookup + DLL reordering |
+| `put(key, value)` | O(1) | Map insertion + DLL operations |
+| Space | O(capacity) | Map + DLL nodes |
+
+### Map Only
+
+| Operation | Time Complexity | Explanation |
+|-----------|----------------|-------------|
+| `get(key)` | O(1) amortized | Map delete + set operations |
+| `put(key, value)` | O(1) amortized | Map delete + set operations |
+| Space | O(capacity) | Map storage only |
+
+**Note**: Map-only approach is simpler but has slightly more overhead per operation due to delete/re-insert.
+
+---
+
+## Use Cases
+
+### 1. Database Query Cache
+
+```javascript
+class DatabaseCache {
+  constructor(capacity = 100) {
+    this.cache = new LRUCache(capacity);
+  }
+
+  async query(sql) {
+    const cached = this.cache.get(sql);
+    if (cached !== -1) {
+      console.log('Cache hit!');
+      return cached;
+    }
+
+    console.log('Cache miss, querying database...');
+    const result = await database.execute(sql);
+    this.cache.put(sql, result);
+    return result;
+  }
+}
+```
+
+### 2. API Response Cache
+
+```javascript
+class APICache {
+  constructor(capacity = 50) {
+    this.cache = new LRUCache(capacity);
+  }
+
+  async fetchUser(userId) {
+    const cached = this.cache.get(userId);
+    if (cached !== -1) return cached;
+
+    const userData = await fetch(`/api/users/${userId}`).then(r => r.json());
+    this.cache.put(userId, userData);
+    return userData;
+  }
+}
+```
+
+### 3. Memoization
+
+```javascript
+function memoize(fn, capacity = 100) {
+  const cache = new LRUCache(capacity);
+
+  return function(...args) {
+    const key = JSON.stringify(args);
+    const cached = cache.get(key);
+
+    if (cached !== -1) return cached;
+
+    const result = fn.apply(this, args);
+    cache.put(key, result);
+    return result;
+  };
+}
+
+// Usage
+const expensiveFunction = memoize((n) => {
+  console.log('Computing...');
+  return n * n;
+}, 10);
+
+expensiveFunction(5); // Computing... → 25
+expensiveFunction(5); // → 25 (cached)
+```
+
+---
+
+## Interview Tips
+
+### Common Questions
+
+1. **"Why not use a regular object or Map without eviction?"**
+   - Unbounded growth leads to memory issues
+   - LRU provides automatic memory management
+
+2. **"Why doubly linked list instead of array?"**
+   - Array deletion is O(n)
+   - DLL allows O(1) removal from middle
+
+3. **"Can you implement LFU instead?"**
+   - LFU (Least Frequently Used) tracks access count
+   - More complex: requires frequency tracking + min-heap
+
+4. **"How would you make it thread-safe?"**
+   - Add locking mechanisms (mutex/semaphore)
+   - Consider ConcurrentHashMap in other languages
+
+### What Interviewers Look For
+
+✅ Understanding of both data structures
+✅ Clean code with helper methods
+✅ Edge case handling (capacity = 1, updating existing keys)
+✅ Ability to explain trade-offs
+✅ Time/space complexity analysis
+
+### Edge Cases to Consider
+
+```javascript
+// Capacity = 1
+const cache = new LRUCache(1);
+cache.put(1, 1);
+cache.put(2, 2); // Should evict 1
+
+// Update existing key
+cache.put(1, 'A');
+cache.put(1, 'B'); // Should update, not add new
+
+// Get non-existent key
+cache.get(999); // Should return -1 or null
+```
+
+---
+
+## Common Variations
+
+### LRU with Expiration Time
+
+```javascript
+class LRUCacheWithTTL {
+  constructor(capacity, ttl = 60000) { // 60s default
+    this.capacity = capacity;
+    this.ttl = ttl;
+    this.cache = new Map();
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return -1;
+
+    const { value, timestamp } = this.cache.get(key);
+
+    // Check if expired
+    if (Date.now() - timestamp > this.ttl) {
+      this.cache.delete(key);
+      return -1;
+    }
+
+    // Refresh timestamp and move to end
+    this.cache.delete(key);
+    this.cache.set(key, { value, timestamp: Date.now() });
+
+    return value;
+  }
+
+  put(key, value) {
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+
+    this.cache.set(key, { value, timestamp: Date.now() });
+
+    if (this.cache.size > this.capacity) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+  }
+}
+```
+
+### LRU with Size Limit (Bytes)
+
+```javascript
+class SizeLimitedLRUCache {
+  constructor(maxBytes) {
+    this.maxBytes = maxBytes;
+    this.currentBytes = 0;
+    this.cache = new Map();
+  }
+
+  getSize(value) {
+    return JSON.stringify(value).length;
+  }
+
+  put(key, value) {
+    const size = this.getSize(value);
+
+    if (this.cache.has(key)) {
+      const oldSize = this.getSize(this.cache.get(key));
+      this.currentBytes -= oldSize;
+      this.cache.delete(key);
+    }
+
+    // Evict until there's space
+    while (this.currentBytes + size > this.maxBytes && this.cache.size > 0) {
+      const [firstKey, firstValue] = this.cache.entries().next().value;
+      this.currentBytes -= this.getSize(firstValue);
+      this.cache.delete(firstKey);
+    }
+
+    if (size <= this.maxBytes) {
+      this.cache.set(key, value);
+      this.currentBytes += size;
+    }
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return -1;
+
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+
+    return value;
+  }
+}
+```
+
+### LFU Cache (Alternative Eviction Policy)
+
+```javascript
+class LFUCache {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.cache = new Map(); // key → { value, freq }
+    this.freqMap = new Map(); // freq → Set of keys
+    this.minFreq = 0;
+  }
+
+  get(key) {
+    if (!this.cache.has(key)) return -1;
+
+    const { value, freq } = this.cache.get(key);
+
+    // Update frequency
+    this.freqMap.get(freq).delete(key);
+    if (this.freqMap.get(freq).size === 0 && freq === this.minFreq) {
+      this.minFreq++;
+    }
+
+    const newFreq = freq + 1;
+    if (!this.freqMap.has(newFreq)) {
+      this.freqMap.set(newFreq, new Set());
+    }
+    this.freqMap.get(newFreq).add(key);
+
+    this.cache.set(key, { value, freq: newFreq });
+
+    return value;
+  }
+
+  put(key, value) {
+    if (this.capacity === 0) return;
+
+    if (this.cache.has(key)) {
+      const { freq } = this.cache.get(key);
+      this.cache.set(key, { value, freq });
+      this.get(key); // Update frequency
+      return;
+    }
+
+    if (this.cache.size >= this.capacity) {
+      // Evict least frequent
+      const keyToDelete = this.freqMap.get(this.minFreq).values().next().value;
+      this.freqMap.get(this.minFreq).delete(keyToDelete);
+      this.cache.delete(keyToDelete);
+    }
+
+    this.cache.set(key, { value, freq: 1 });
+    if (!this.freqMap.has(1)) {
+      this.freqMap.set(1, new Set());
+    }
+    this.freqMap.get(1).add(key);
+    this.minFreq = 1;
+  }
+}
+```
+
+---
+
+## Quick Reference
+
+### When to Use Which Implementation?
+
+| Implementation | Best For |
+|----------------|----------|
+| **Map + DLL** | Technical interviews, learning fundamentals |
+| **Map Only** | Production code, simpler maintenance |
+| **With TTL** | Session storage, temporary caching |
+| **Size-based** | Memory-constrained environments |
+| **LFU** | Access patterns where frequency matters more |
+
+### Cheat Sheet Summary
+
+```javascript
+// Map + DLL (Classic Interview Solution)
+class LRUCache {
+  constructor(capacity) { /* ... */ }
+  get(key) { /* Map lookup + move to tail */ }
+  put(key, value) { /* Add to tail + evict head if needed */ }
+  removeNode(node) { /* Update prev/next pointers */ }
+  addToTail(node) { /* Insert before tail */ }
+}
+
+// Map Only (Modern ES6 Solution)
+class LRUCache {
+  constructor(capacity) { this.cache = new Map(); }
+  get(key) { delete + set to move to end }
+  put(key, value) { set + evict first key if needed }
+}
+
+// Key Insight: Map maintains insertion order!
+```
