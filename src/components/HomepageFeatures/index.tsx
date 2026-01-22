@@ -121,7 +121,7 @@ function Feature({ title, Svg, description, color }: FeatureItem) {
       >
         <div className={styles.featureIconWrapper}>
           <div className={styles.featureIconBg} />
-          <Svg className={styles.featureSvg} role="img" />
+          <Svg className={styles.featureSvg} role="img" aria-hidden="true" />
         </div>
         <div className={styles.featureContent}>
           <Heading as="h3" className={styles.featureTitle}>
@@ -133,6 +133,8 @@ function Feature({ title, Svg, description, color }: FeatureItem) {
     </div>
   );
 }
+
+const MemoizedFeature = React.memo(Feature);
 
 export default function HomepageFeatures(): JSX.Element {
   return (
@@ -149,7 +151,7 @@ export default function HomepageFeatures(): JSX.Element {
         </div>
         <div className="row">
           {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+            <MemoizedFeature key={idx} {...props} />
           ))}
         </div>
       </div>
