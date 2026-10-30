@@ -7,8 +7,8 @@ const config: Config = {
   tagline: 'Code beyond boundaries',
   favicon: 'img/favicon.ico',
 
-  url: 'https://carefree-ladka.in',
-  baseUrl: '/',
+  url: 'https://carefree-ladka.github.io',
+  baseUrl: '/dev.enigma/',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -154,10 +154,8 @@ const config: Config = {
         { className: 'code-block-error-line', line: 'error-line' },
         { className: 'code-block-success-line', line: 'success-line' },
       ],
-      // Enable line numbers globally for all code blocks
       defaultLanguage: 'javascript',
     },
-    // Live codeblock configuration
     liveCodeBlock: {
       playgroundPosition: 'bottom',
     },
